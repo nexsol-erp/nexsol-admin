@@ -1,41 +1,42 @@
-import React, { createContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 
-const WebSocketContext = createContext(null);
+const WebSocketContext = createContext();
+
+export const useWebSocket = () => useContext(WebSocketContext);
 
 export const WebSocketProvider = ({ children }) => {
-  const ws = useRef(null);
   const [data, setData] = useState({});
+  const [ws, setWs] = useState(null);
 
   useEffect(() => {
-    ws.current = new WebSocket("ws://localhost:8081/KOLLAM/nexsoldb");
+    const tenancyId = localStorage.getItem("tenancyId");
+    if (tenancyId) {
+      const wsUrl = `ws://tradelink247.com:8081/${tenancyId}/WEB`;
+      const websocket = new WebSocket(wsUrl);
 
-    ws.current.onopen = () => {
-      console.log("WebSocket connected");
-    };
+      websocket.onopen = () => {
+        console.log("WebSocket connected");
+        setWs(websocket);
+      };
 
-    ws.current.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      setData((prevData) => ({ ...prevData, ...message }));
-    };
+      websocket.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        setData((prevData) => ({ ...prevData, ...message }));
+      };
 
-    ws.current.onclose = () => {
-      console.log("WebSocket disconnected");
-    };
+      websocket.onclose = () => {
+        console.log("WebSocket disconnected");
+      };
 
-    ws.current.onerror = (error) => {
-      console.error("WebSocket error", error);
-    };
-
-    return () => {
-      if (ws.current) {
-        ws.current.close();
-      }
-    };
+      websocket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+      };
+    }
   }, []);
 
   const sendMessage = (message) => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify(message));
+    if (ws) {
+      ws.send(JSON.stringify(message));
     }
   };
 
@@ -44,8 +45,4 @@ export const WebSocketProvider = ({ children }) => {
       {children}
     </WebSocketContext.Provider>
   );
-};
-
-export const useWebSocket = () => {
-  return React.useContext(WebSocketContext);
 };
