@@ -14,9 +14,16 @@ import {
   Paper,
   TextField,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from "@mui/material";
 import dayjs from "dayjs";
 import "dayjs/locale/en";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const SalesDetail = () => {
   const [branch, setBranch] = useState("");
@@ -26,11 +33,14 @@ const SalesDetail = () => {
   );
   const [toDate, setToDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [salesData, setSalesData] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [fileName, setFileName] = useState("SalesData.xlsx");
 
   const fetchBranches = async () => {
     try {
+      const tenancyId = localStorage.getItem("tenancyId");
       const response = await fetch(
-        "http://localhost:8082/api/nexsoldb/branches"
+        `http://tradelink247.com:80/api/${tenancyId}/branches`
       );
       const data = await response.json();
       setBranches(data.branches);
@@ -42,8 +52,9 @@ const SalesDetail = () => {
   const fetchSalesData = async () => {
     if (branch && fromDate && toDate) {
       try {
+        const tenancyId = localStorage.getItem("tenancyId");
         const response = await fetch(
-          `http://localhost:8082/api/nexsoldb/salesdata?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`
+          `http://tradelink247.com:80/api/${tenancyId}/salesdata?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`
         );
         const data = await response.json();
         setSalesData(data.data);
@@ -69,6 +80,28 @@ const SalesDetail = () => {
     setToDate(event.target.value);
   };
 
+  const handleClickOpen = () => {
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+  };
+
+  const handleExport = () => {
+    const worksheet = XLSX.utils.json_to_sheet(salesData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sales Data");
+    XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    saveAs(
+      new Blob([XLSX.write(workbook, { bookType: "xlsx", type: "array" })], {
+        type: "application/octet-stream",
+      }),
+      fileName
+    );
+    setOpen(false);
+  };
+
   const totalAmount = Array.isArray(salesData)
     ? salesData.reduce((total, item) => total + parseFloat(item.amount), 0)
     : 0;
@@ -83,8 +116,8 @@ const SalesDetail = () => {
           onChange={handleBranchChange}
         >
           {branches.map((branch) => (
-            <MenuItem key={branch.id} value={branch.name}>
-              {branch.name}
+            <MenuItem key={branch.id} value={branch.branchCode}>
+              {branch.branchCode}
             </MenuItem>
           ))}
         </Select>
@@ -121,6 +154,41 @@ const SalesDetail = () => {
       >
         Fetch Sales Data
       </Button>
+
+      <Button
+        variant="contained"
+        color="secondary"
+        onClick={handleClickOpen}
+        sx={{ mb: 3, ml: 2 }}
+      >
+        Export to Excel
+      </Button>
+
+      <Dialog open={open} onClose={handleClose}>
+        <DialogTitle>Export to Excel</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Please enter the file name for the Excel file.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="File Name"
+            type="text"
+            fullWidth
+            value={fileName}
+            onChange={(e) => setFileName(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleExport} color="primary">
+            Export
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <TableContainer component={Paper} sx={{ width: "100%", mt: 2 }}>
         <Table>

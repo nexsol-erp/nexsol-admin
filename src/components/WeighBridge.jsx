@@ -25,16 +25,16 @@ import "dayjs/locale/en";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-const PurchaseDetail = () => {
+const WeighBridge = () => {
   const [branch, setBranch] = useState("");
   const [branches, setBranches] = useState([]);
   const [fromDate, setFromDate] = useState(
     dayjs().subtract(30, "day").format("YYYY-MM-DD")
   );
   const [toDate, setToDate] = useState(dayjs().format("YYYY-MM-DD"));
-  const [purchaseData, setPurchaseData] = useState([]);
+  const [weighbridgeData, setWeighbridgeData] = useState([]);
   const [open, setOpen] = useState(false);
-  const [fileName, setFileName] = useState("PurchasesData.xlsx");
+  const [fileName, setFileName] = useState("WeighbridgeData.xlsx");
 
   const fetchBranches = async () => {
     try {
@@ -49,17 +49,17 @@ const PurchaseDetail = () => {
     }
   };
 
-  const fetchPurchaseData = async () => {
+  const fetchWeighBridgeData = async () => {
     if (branch && fromDate && toDate) {
       try {
         const tenancyId = localStorage.getItem("tenancyId");
         const response = await fetch(
-          `http://tradelink247.com:80/api/${tenancyId}/purchasedata?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`
+          `http://tradelink247.com:80/api/${tenancyId}/weighbridge?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`
         );
         const data = await response.json();
-        setPurchaseData(data.data);
+        setWeighbridgeData(data.data);
       } catch (error) {
-        console.error("Error fetching sales data:", error);
+        console.error("Error fetching Wb data:", error);
       }
     }
   };
@@ -89,9 +89,9 @@ const PurchaseDetail = () => {
   };
 
   const handleExport = () => {
-    const worksheet = XLSX.utils.json_to_sheet(purchaseData);
+    const worksheet = XLSX.utils.json_to_sheet(weighbridgeData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Purchase Data");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "WB Data");
     XLSX.write(workbook, { bookType: "xlsx", type: "array" });
     saveAs(
       new Blob([XLSX.write(workbook, { bookType: "xlsx", type: "array" })], {
@@ -102,8 +102,11 @@ const PurchaseDetail = () => {
     setOpen(false);
   };
 
-  const totalAmount = Array.isArray(purchaseData)
-    ? purchaseData.reduce((total, item) => total + parseFloat(item.amount), 0)
+  const totalAmount = Array.isArray(weighbridgeData)
+    ? weighbridgeData.reduce(
+        (total, item) => total + parseFloat(item.amount),
+        0
+      )
     : 0;
 
   return (
@@ -149,10 +152,10 @@ const PurchaseDetail = () => {
       <Button
         variant="contained"
         color="primary"
-        onClick={fetchPurchaseData}
+        onClick={fetchWeighBridgeData}
         sx={{ mb: 3 }}
       >
-        Fetch Purchase Data
+        Fetch WeighBridge Sales
       </Button>
 
       <Button
@@ -194,25 +197,27 @@ const PurchaseDetail = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Supplier Name</TableCell>
-              <TableCell>Supplier Voucher Number</TableCell>
-              <TableCell>Supplier Voucher Date</TableCell>
-              <TableCell>Item Name</TableCell>
-              <TableCell align="right">Quantity</TableCell>
-              <TableCell align="right">Rate</TableCell>
+              <TableCell>Voucher Number</TableCell>
+              <TableCell>Voucher Date</TableCell>
+              <TableCell>Vehicle Number</TableCell>
+              <TableCell>Wheel Type</TableCell>
+              <TableCell align="right">Machine Weight</TableCell>
+              <TableCell align="right">First Weight</TableCell>
               <TableCell align="right">Amount</TableCell>
+              <TableCell align="right">RoundTrip</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {purchaseData.map((row, index) => (
+            {weighbridgeData.map((row, index) => (
               <TableRow key={index}>
-                <TableCell>{row.supplier_name}</TableCell>
-                <TableCell>{row.supplier_inv_no}</TableCell>
-                <TableCell>{row.supplier_inv_date}</TableCell>
-                <TableCell>{row.item_name}</TableCell>
-                <TableCell align="right">{row.qty}</TableCell>
-                <TableCell align="right">{row.purchase_rate}</TableCell>
+                <TableCell>{row.voucher_number}</TableCell>
+                <TableCell>{row.voucher_date}</TableCell>
+                <TableCell>{row.vehicle_number}</TableCell>
+                <TableCell>{row.wheel_type}</TableCell>
+                <TableCell align="right">{row.lcd_number}</TableCell>
+                <TableCell align="right">{row.first_weight}</TableCell>
                 <TableCell align="right">{row.amount}</TableCell>
+                <TableCell align="right">{row.round_trip}</TableCell>
               </TableRow>
             ))}
             <TableRow>
@@ -230,4 +235,4 @@ const PurchaseDetail = () => {
   );
 };
 
-export default PurchaseDetail;
+export default WeighBridge;
