@@ -7,7 +7,7 @@ const DownloadPage = () => {
   const handleDownload = () => {
     const tenancyId = localStorage.getItem("tenancyId"); // Retrieve the tenancyId from local storage
     const fileName = "nexsol-pos.zip"; // Replace with your actual file name
-    const url = `http://tradelink247.com:80/api/download/${tenancyId}/${fileName}`;
+    const url = `/api/download/${tenancyId}/${fileName}`;
 
     // Trigger the file download
     const link = document.createElement("a");

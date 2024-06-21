@@ -8,7 +8,7 @@ const LoginForm = ({ onLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-     const response = await fetch("http://tradelink247.com:80/api/login", {
+     const response = await fetch("/api/login", {
        method: "POST",
        headers: {
          "Content-Type": "application/json",

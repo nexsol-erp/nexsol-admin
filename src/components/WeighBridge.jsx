@@ -40,7 +40,7 @@ const WeighBridge = () => {
     try {
       const tenancyId = localStorage.getItem("tenancyId");
       const response = await fetch(
-        `http://tradelink247.com:80/api/${tenancyId}/branches`
+        `/api/${tenancyId}/branches`
       );
       const data = await response.json();
       setBranches(data.branches);
@@ -54,7 +54,7 @@ const WeighBridge = () => {
       try {
         const tenancyId = localStorage.getItem("tenancyId");
         const response = await fetch(
-          `http://tradelink247.com:80/api/${tenancyId}/weighbridge?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`
+          `/api/${tenancyId}/weighbridge?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`
         );
         const data = await response.json();
         setWeighbridgeData(data.data);
