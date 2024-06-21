@@ -40,7 +40,7 @@ const PurchaseDetail = () => {
     try {
       const tenancyId = localStorage.getItem("tenancyId");
       const response = await fetch(
-        `http://tradelink247.com:80/api/${tenancyId}/branches`
+        `/api/${tenancyId}/branches`
       );
       const data = await response.json();
       setBranches(data.branches);
@@ -54,7 +54,7 @@ const PurchaseDetail = () => {
       try {
         const tenancyId = localStorage.getItem("tenancyId");
         const response = await fetch(
-          `http://tradelink247.com:80/api/${tenancyId}/purchasedata?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`
+          `/api/${tenancyId}/purchasedata?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`
         );
         const data = await response.json();
         setPurchaseData(data.data);
