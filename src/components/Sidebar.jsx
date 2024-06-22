@@ -21,79 +21,95 @@ import {
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 
-const Sidebar = ({ mode, setMode }) => {
+const Sidebar = ({ mode, setMode, roles }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
+  const menuItems = [
+    {
+      label: "Dashboard",
+      icon: <Home sx={{ color: "#ffe3a3" }} />,
+      link: "/dashboard",
+      roles: ["admin", "user"],
+    },
+    {
+      label: "Sales",
+      icon: <Pages sx={{ color: "#ffe3a3" }} />,
+      link: "/sales",
+      roles: ["user"],
+    },
+    {
+      label: "HSN wise Sales",
+      icon: <Pages sx={{ color: "#ffe3a3" }} />,
+      link: "/hsnsales",
+      roles: ["admin", "user"],
+    },
+    {
+      label: "Purchase",
+      icon: <Luggage sx={{ color: "#ffe3a3" }} />,
+      link: "/purchase",
+      roles: ["user", "manager"],
+    },
+    {
+      label: "Weighbridge",
+      icon: <Luggage sx={{ color: "#ffe3a3" }} />,
+      link: "/weighbridge",
+      roles: ["admin"],
+    },
+    {
+      label: "Branch Creation",
+      icon: <Luggage sx={{ color: "#ffe3a3" }} />,
+      link: "/branchcreationpage",
+      roles: ["admin"],
+    },
+    {
+      label: "User Creation",
+      icon: <Luggage sx={{ color: "#ffe3a3" }} />,
+      link: "/usercreationpage",
+      roles: ["admin"],
+    },
+    {
+      label: "About",
+      icon: <Man sx={{ color: "#ffe3a3" }} />,
+      link: "/about",
+      roles: ["user"],
+    },
+    {
+      label: "Settings",
+      icon: <Settings sx={{ color: "#ffe3a3" }} />,
+      link: "/settings",
+      roles: ["admin", "user", "manager"],
+    },
+    {
+      label: "Download",
+      icon: <Settings sx={{ color: "#ffe3a3" }} />,
+      link: "/download",
+      roles: ["user"],
+    },
+    {
+      label: "Help",
+      icon: <Settings sx={{ color: "#ffe3a3" }} />,
+      link: "/help",
+      roles: ["user"],
+    },
+  ];
+
   const drawerContent = (
     <List>
-      <ListItem disablePadding>
-        <ListItemButton component={Link} to="/dashboard">
-          <ListItemIcon>
-            <Home sx={{ color: "#ffe3a3" }} />
-          </ListItemIcon>
-          <ListItemText primary="Dashboard" />
-        </ListItemButton>
-      </ListItem>
-      <ListItem disablePadding>
-        <ListItemButton component={Link} to="/sales">
-          <ListItemIcon>
-            <Pages sx={{ color: "#ffe3a3" }} />
-          </ListItemIcon>
-          <ListItemText primary="Sales" />
-        </ListItemButton>
-      </ListItem>
-      <ListItem disablePadding>
-        <ListItemButton component={Link} to="/purchase">
-          <ListItemIcon>
-            <Luggage sx={{ color: "#ffe3a3" }} />
-          </ListItemIcon>
-          <ListItemText primary="Purchase" />
-        </ListItemButton>
-      </ListItem>
-      <ListItem disablePadding>
-        <ListItemButton component={Link} to="/weighbridge">
-          <ListItemIcon>
-            <Luggage sx={{ color: "#ffe3a3" }} />
-          </ListItemIcon>
-          <ListItemText primary="Weighbridge" />
-        </ListItemButton>
-      </ListItem>
-      <ListItem disablePadding>
-        <ListItemButton component={Link} to="/about">
-          <ListItemIcon>
-            <Man sx={{ color: "#ffe3a3" }} />
-          </ListItemIcon>
-          <ListItemText primary="About" />
-        </ListItemButton>
-      </ListItem>
-      <ListItem disablePadding>
-        <ListItemButton component={Link} to="/settings">
-          <ListItemIcon>
-            <Settings sx={{ color: "#ffe3a3" }} />
-          </ListItemIcon>
-          <ListItemText primary="Settings" />
-        </ListItemButton>
-      </ListItem>
-      <ListItem disablePadding>
-        <ListItemButton component={Link} to="/download">
-          <ListItemIcon>
-            <Settings sx={{ color: "#ffe3a3" }} />
-          </ListItemIcon>
-          <ListItemText primary="Download" />
-        </ListItemButton>
-      </ListItem>
-      <ListItem disablePadding>
-        <ListItemButton component={Link} to="/help">
-          <ListItemIcon>
-            <Settings sx={{ color: "#ffe3a3" }} />
-          </ListItemIcon>
-          <ListItemText primary="Help" />
-        </ListItemButton>
-      </ListItem>
+      {menuItems.map(
+        (item, index) =>
+          roles.some((role) => item.roles.includes(role)) && (
+            <ListItem disablePadding key={index}>
+              <ListItemButton component={Link} to={item.link}>
+                <ListItemIcon>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.label} />
+              </ListItemButton>
+            </ListItem>
+          )
+      )}
       <ListItem disablePadding>
         <ListItemButton
           component="button"

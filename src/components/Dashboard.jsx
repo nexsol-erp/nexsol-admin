@@ -3,6 +3,8 @@ import { Typography } from '@mui/material';
 import { useWebSocket } from './WebSocketContext';
 import Feed from './Feed';
 import Layout from './Layout';
+import { Box   } from "@mui/material";
+
 
 const Dashboard = () => {
   const { data } = useWebSocket();
@@ -15,13 +17,20 @@ const Dashboard = () => {
   }, [data]);
 
   return (
+  <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        
+        backgroundColor: '#4CAF50', // Green background color
+      }}
+    >
     <Layout>
-       
-     
-       
       <Feed></Feed>
        
-    </Layout>
+      </Layout>
+      </Box>
   );
 };
 

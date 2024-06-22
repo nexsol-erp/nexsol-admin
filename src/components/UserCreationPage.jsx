@@ -1,0 +1,134 @@
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Paper,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+} from "@mui/material";
+
+const UserCreationPage = () => {
+  const [username, setUsername] = useState("");
+  const [userId, setUserId] = useState("");
+  const [password, setPassword] = useState("");
+  const [branchCode, setBranchCode] = useState("");
+  const [branches, setBranches] = useState([]);
+
+  useEffect(() => {
+    fetchBranches();
+  }, []);
+
+  const fetchBranches = async () => {
+    try {
+      const tenancyId = localStorage.getItem("tenancyId");
+      const response = await fetch(`/api/${tenancyId}/branches`);
+      const data = await response.json();
+      setBranches(data.branches);
+    } catch (error) {
+      console.error("Error fetching branches:", error);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const formData = {
+      username,
+      userId,
+      password,
+      branchCode,
+    };
+
+    try {
+      const response = await fetch("/api/createuser", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert("User created successfully!");
+        // Optionally redirect or perform other actions after successful user creation
+      } else {
+        alert(data.message);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("An error occurred. Please try again later.");
+    }
+  };
+
+  const handleBranchChange = (event) => {
+    setBranchCode(event.target.value);
+  };
+
+  return (
+    <Box
+      sx={{
+        flexGrow: 1,
+        p: 3,
+        ml: "240px",
+        mt: 2,
+      }}
+    >
+      <Paper
+        sx={{ width: "100%", maxWidth: 600, padding: "20px" }}
+        elevation={3}
+      >
+        <Typography variant="h4" gutterBottom>
+          Create User
+        </Typography>
+        <form onSubmit={handleSubmit}>
+          <TextField
+            label="Username"
+            fullWidth
+            margin="normal"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+          <TextField
+            label="User ID"
+            fullWidth
+            margin="normal"
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            required
+          />
+          <TextField
+            label="Password"
+            type="password"
+            fullWidth
+            margin="normal"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <FormControl fullWidth margin="normal" required>
+            <InputLabel>Branch Name</InputLabel>
+            <Select value={branchCode} onChange={handleBranchChange}>
+              {branches.map((branch) => (
+                <MenuItem key={branch.branchCode} value={branch.branchCode}>
+                  {branch.branchCode}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Box mt={2}>
+            <Button type="submit" variant="contained" color="primary" fullWidth>
+              Create User
+            </Button>
+          </Box>
+        </form>
+      </Paper>
+    </Box>
+  );
+};
+
+export default UserCreationPage;
