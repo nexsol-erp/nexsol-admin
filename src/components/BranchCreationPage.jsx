@@ -4,22 +4,38 @@ import { Box, Button, TextField, Typography, Paper } from "@mui/material";
 const BranchCreationPage = () => {
   const [branchCode, setBranchCode] = useState("");
   const [branchName, setBranchName] = useState("");
-  const [branchAddress, setBranchAddress] = useState("");
-  const [branchPhone, setBranchPhone] = useState("");
-  const [branchPlace, setBranchPlace] = useState("");
+  const [branchState, setBranchState] = useState("");
+  const [branchBuildingAddress, setBranchBuildingAddress] = useState("");
+  const [branchStreetAddress, setBranchStreetAddress] = useState("");
+  const [branchAddress1, setBranchAddress1] = useState("");
+  const [branchAddress2, setBranchAddress2] = useState("");
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate branch code to contain only letters and numbers
+    const branchCodeRegex = /^[A-Za-z0-9]+$/;
+    if (!branchCodeRegex.test(branchCode)) {
+      setError(
+        "Branch Code must contain only letters and numbers without spaces or special characters."
+      );
+      return;
+    }
+
     const formData = {
       branchCode,
       branchName,
-      branchAddress,
-      branchPhone,
-      branchPlace,
+      branchState,
+      branchBuildingAddress,
+      branchStreetAddress,
+      branchAddress1,
+      branchAddress2,
     };
 
     try {
-      const response = await fetch("/api/createbranch", {
+      const tenancyId = localStorage.getItem("tenancyId");
+      const response = await fetch(`/api/${tenancyId}/createbranch`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -29,14 +45,14 @@ const BranchCreationPage = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert("User created successfully!");
+        alert("Branch created successfully!");
         // Optionally redirect or perform other actions after successful user creation
       } else {
-        alert(data.message);
+        setError(data.message);
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("An error occurred. Please try again later.");
+      setError("An error occurred. Please try again later.");
     }
   };
 
@@ -53,6 +69,11 @@ const BranchCreationPage = () => {
         <Typography variant="h4" gutterBottom>
           Branch Creation
         </Typography>
+        {error && (
+          <Typography color="error" variant="body1" gutterBottom>
+            {error}
+          </Typography>
+        )}
         <form onSubmit={handleSubmit}>
           <TextField
             label="Branch Code"
@@ -61,7 +82,6 @@ const BranchCreationPage = () => {
             value={branchCode}
             onChange={(e) => setBranchCode(e.target.value)}
             required
-            pattern="[A-Za-z0-9]+"
           />
           <TextField
             label="Branch Name"
@@ -72,29 +92,43 @@ const BranchCreationPage = () => {
             required
           />
           <TextField
-            label="Branch Address"
+            label="Branch State"
             fullWidth
             margin="normal"
-            value={branchAddress}
-            onChange={(e) => setBranchAddress(e.target.value)}
+            value={branchState}
+            onChange={(e) => setBranchState(e.target.value)}
             required
           />
           <TextField
-            label="Branch Phone"
-            type="tel"
+            label="Branch Building"
             fullWidth
             margin="normal"
-            value={branchPhone}
-            onChange={(e) => setBranchPhone(e.target.value)}
+            value={branchBuildingAddress}
+            onChange={(e) => setBranchBuildingAddress(e.target.value)}
             required
           />
           <TextField
-            label="Branch Place"
-            type="email"
+            label="Branch Street"
             fullWidth
             margin="normal"
-            value={branchPlace}
-            onChange={(e) => setBranchPlace(e.target.value)}
+            value={branchStreetAddress}
+            onChange={(e) => setBranchStreetAddress(e.target.value)}
+            required
+          />
+          <TextField
+            label="Branch Address1"
+            fullWidth
+            margin="normal"
+            value={branchAddress1}
+            onChange={(e) => setBranchAddress1(e.target.value)}
+            required
+          />
+          <TextField
+            label="Branch Address2"
+            fullWidth
+            margin="normal"
+            value={branchAddress2}
+            onChange={(e) => setBranchAddress2(e.target.value)}
             required
           />
           <Box mt={2}>
