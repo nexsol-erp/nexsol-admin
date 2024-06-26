@@ -16,6 +16,7 @@ import WeighBridge from "./components/WeighBridge";
 import HSNSalesDetail from "./components/HSNWiseSalesDetail";
 import BranchCreationPage from "./components/BranchCreationPage";
 import UserCreationPage from "./components/UserCreationPage";
+import SchemePage from "./components/SchemePage";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -62,6 +63,8 @@ const App = () => {
                 element={<BranchCreationPage />}
               />
               <Route path="/usercreationpage" element={<UserCreationPage />} />
+              <Route path="/schemepage" element={<SchemePage />} />
+
               <Route path="/about" element={<About />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/download" element={<DownloadPage />} />
