@@ -72,6 +72,12 @@ const Sidebar = ({ mode, setMode, roles }) => {
       roles: ["admin"],
     },
     {
+      label: "Scheme Creation",
+      icon: <Luggage sx={{ color: "#ffe3a3" }} />,
+      link: "/schemepage",
+      roles: ["admin"],
+    },
+    {
       label: "About",
       icon: <Man sx={{ color: "#ffe3a3" }} />,
       link: "/about",

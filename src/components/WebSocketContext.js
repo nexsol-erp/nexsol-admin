@@ -11,17 +11,30 @@ export const WebSocketProvider = ({ children }) => {
   useEffect(() => {
     const tenancyId = localStorage.getItem("tenancyId");
     if (tenancyId) {
-      const wsUrl = `ws://tradelink247.com:8081/${tenancyId}/WEB`;
+      const wsUrl = `ws://localhost:8081/${tenancyId}/WEB`;
       const websocket = new WebSocket(wsUrl);
 
       websocket.onopen = () => {
         console.log("WebSocket connected");
         setWs(websocket);
+        // Fetch items and categories when WebSocket connects
+        websocket.send(JSON.stringify({ action: "GET_ITEMS" }));
+        websocket.send(JSON.stringify({ action: "GET_CATEGORIES" }));
       };
 
       websocket.onmessage = (event) => {
         const message = JSON.parse(event.data);
-        setData((prevData) => ({ ...prevData, ...message }));
+        if (message.action === "ITEM_MST") {
+          const items = JSON.parse(message.message).items;
+          localStorage.setItem("items", JSON.stringify(items));
+          setData((prevData) => ({ ...prevData, items }));
+        } else if (message.action === "CATEGORIES_LIST") {
+          const categories = JSON.parse(message.message).categories;
+          localStorage.setItem("categories", JSON.stringify(categories));
+          setData((prevData) => ({ ...prevData, categories }));
+        } else {
+          setData((prevData) => ({ ...prevData, ...message }));
+        }
       };
 
       websocket.onclose = () => {
