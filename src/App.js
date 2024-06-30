@@ -17,6 +17,8 @@ import HSNSalesDetail from "./components/HSNWiseSalesDetail";
 import BranchCreationPage from "./components/BranchCreationPage";
 import UserCreationPage from "./components/UserCreationPage";
 import SchemePage from "./components/SchemePage";
+import PublishSchemePage from "./components/PublishSchemePage";
+import SeasonalReport from "./components/SeasonalReport"; // Import the new component
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -64,11 +66,15 @@ const App = () => {
               />
               <Route path="/usercreationpage" element={<UserCreationPage />} />
               <Route path="/schemepage" element={<SchemePage />} />
-
+              <Route
+                path="/publishschemepage"
+                element={<PublishSchemePage />}
+              />
               <Route path="/about" element={<About />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/download" element={<DownloadPage />} />
               <Route path="/help" element={<HelpPage />} />
+              <Route path="/seasonalreport" element={<SeasonalReport />} />
             </Routes>
           </WebSocketProvider>
         </Box>

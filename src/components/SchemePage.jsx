@@ -67,22 +67,22 @@ const SchemePage = () => {
 
   const handleCreateScheme = async () => {
     const newScheme = {
-      name: schemeName,
+      schemeName,
       startDate,
       endDate,
       schemeType,
       offerType,
       itemName,
       categoryName,
-      requiredCategoryQty,
-      offerQty,
-      totalEligibilityAmount,
-      eligibilityAmount,
+      requiredCategoryQty: requiredCategoryQty || 0,
+      offerQty: offerQty || 0,
+      totalEligibilityAmount: totalEligibilityAmount || 0,
+      eligibilityAmount: eligibilityAmount || 0,
       eligibilityItemName,
-      eligibilityQty,
+      eligibilityQty: eligibilityQty || 0,
       offerItem,
-      offerDiscountPercent,
-      cashBackAmount,
+      offerDiscountPercent: offerDiscountPercent || 0,
+      cashBackAmount: cashBackAmount || 0,
     };
     const tenancyId = localStorage.getItem("tenancyId");
     const response = await fetch(`/api/${tenancyId}/scheme`, {
@@ -157,15 +157,21 @@ const SchemePage = () => {
               <MenuItem value="Category wise total qty">
                 Category wise total qty
               </MenuItem>
-              <MenuItem value="Item wise total amount">
+
+            /*   <MenuItem value="Item wise total amount">
                 Item wise total amount
-              </MenuItem>
+              </MenuItem> 
+              */
+              
               <MenuItem value="Item wise total qty">
                 Item wise total qty
               </MenuItem>
-              <MenuItem value="Total Invoice Amount">
+
+             /* <MenuItem value="Total Invoice Amount">
                 Total Invoice Amount
               </MenuItem>
+              */
+
             </Select>
           </FormControl>
           {schemeType === "Category wise total qty" && (
@@ -300,10 +306,10 @@ const SchemePage = () => {
           {offerType === "Free Qty" && (
             <>
               <FormControl fullWidth margin="normal">
-                <InputLabel>Item Name</InputLabel>
+                <InputLabel>Offer Item Name</InputLabel>
                 <Select
-                  value={itemName}
-                  onChange={(e) => setItemName(e.target.value)}
+                  value={offerItem}
+                  onChange={(e) => setOfferItem(e.target.value)}
                 >
                   {items.map((item) => (
                     <MenuItem key={item.item_id} value={item.item_name}>
@@ -367,7 +373,7 @@ const SchemePage = () => {
           </Button>
         </form>
       </Paper>
-      <Paper elevation={3} sx={{ padding: 4, maxWidth: 600, marginTop: 4 }}>
+      <Paper elevation={3} sx={{ padding: 4, maxWidth: 1500, marginTop: 4 }}>
         <Typography variant="h4" gutterBottom>
           Existing Schemes
         </Typography>
@@ -379,15 +385,15 @@ const SchemePage = () => {
               <TableCell>End Date</TableCell>
               <TableCell>Scheme Type</TableCell>
               <TableCell>Offer Type</TableCell>
-              <TableCell>Item Name</TableCell>
+
               <TableCell>Category Name</TableCell>
               <TableCell>Required Category Qty</TableCell>
-              <TableCell>Total Eligibility Amount</TableCell>
-              <TableCell>Eligibility Amount</TableCell>
+              <TableCell>Category Eligibility Amount</TableCell>
+              <TableCell>Invoice Eligibility Amount</TableCell>
               <TableCell>Eligibility Item Name</TableCell>
               <TableCell>Eligibility Qty</TableCell>
+              <TableCell>Offer Item Name</TableCell>
               <TableCell>Offer Qty</TableCell>
-              <TableCell>Offer Item</TableCell>
               <TableCell>Offer Discount Percent</TableCell>
               <TableCell>Cash Back Amount</TableCell>
             </TableRow>
@@ -395,20 +401,20 @@ const SchemePage = () => {
           <TableBody>
             {schemes.map((row, index) => (
               <TableRow key={index}>
-                <TableCell>{row.name}</TableCell>
+                <TableCell>{row.schemeName}</TableCell>
                 <TableCell>{row.startDate}</TableCell>
                 <TableCell>{row.endDate}</TableCell>
                 <TableCell>{row.schemeType}</TableCell>
                 <TableCell>{row.offerType}</TableCell>
-                <TableCell>{row.itemName}</TableCell>
+
                 <TableCell>{row.categoryName}</TableCell>
                 <TableCell>{row.requiredCategoryQty}</TableCell>
                 <TableCell>{row.totalEligibilityAmount}</TableCell>
                 <TableCell>{row.eligibilityAmount}</TableCell>
                 <TableCell>{row.eligibilityItemName}</TableCell>
                 <TableCell>{row.eligibilityQty}</TableCell>
-                <TableCell>{row.offerQty}</TableCell>
                 <TableCell>{row.offerItem}</TableCell>
+                <TableCell>{row.offerQty}</TableCell>
                 <TableCell>{row.offerDiscountPercent}</TableCell>
                 <TableCell>{row.cashBackAmount}</TableCell>
               </TableRow>
