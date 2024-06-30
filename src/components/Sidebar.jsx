@@ -6,6 +6,7 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Collapse,
   Switch,
   Drawer,
   IconButton,
@@ -18,14 +19,28 @@ import {
   Pages,
   Settings,
   Menu as MenuIcon,
+  ExpandLess,
+  ExpandMore,
+  Assessment,
+  AccountTree,
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 
 const Sidebar = ({ mode, setMode, roles }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openAIReports, setOpenAIReports] = useState(false);
+  const [openScheme, setOpenScheme] = useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleClickAIReports = () => {
+    setOpenAIReports(!openAIReports);
+  };
+
+  const handleClickScheme = () => {
+    setOpenScheme(!openScheme);
   };
 
   const menuItems = [
@@ -72,10 +87,37 @@ const Sidebar = ({ mode, setMode, roles }) => {
       roles: ["admin"],
     },
     {
-      label: "Scheme Creation",
-      icon: <Luggage sx={{ color: "#ffe3a3" }} />,
-      link: "/schemepage",
+      label: "Scheme",
+      icon: <AccountTree sx={{ color: "#ffe3a3" }} />,
+      link: "",
       roles: ["admin"],
+      hasSubmenu: true,
+      submenu: [
+        {
+          label: "Scheme Creation",
+          link: "/schemepage",
+          roles: ["admin"],
+        },
+        {
+          label: "Manage Scheme",
+          link: "/publishschemepage",
+          roles: ["admin"],
+        },
+      ],
+    },
+    {
+      label: "AI Reports",
+      icon: <Assessment sx={{ color: "#ffe3a3" }} />,
+      link: "",
+      roles: ["admin"],
+      hasSubmenu: true,
+      submenu: [
+        {
+          label: "Season Sales Report",
+          link: "/seasonalreport",
+          roles: ["admin"],
+        },
+      ],
     },
     {
       label: "About",
@@ -105,17 +147,58 @@ const Sidebar = ({ mode, setMode, roles }) => {
 
   const drawerContent = (
     <List>
-      {menuItems.map(
-        (item, index) =>
-          roles.some((role) => item.roles.includes(role)) && (
-            <ListItem disablePadding key={index}>
-              <ListItemButton component={Link} to={item.link}>
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.label} />
-              </ListItemButton>
-            </ListItem>
-          )
-      )}
+      {menuItems.map((item, index) => {
+        if (item.roles.some((role) => roles.includes(role))) {
+          if (item.hasSubmenu) {
+            const isOpen =
+              item.label === "AI Reports" ? openAIReports : openScheme;
+            const handleClick =
+              item.label === "AI Reports"
+                ? handleClickAIReports
+                : handleClickScheme;
+
+            return (
+              <React.Fragment key={index}>
+                <ListItem disablePadding>
+                  <ListItemButton onClick={handleClick}>
+                    <ListItemIcon>{item.icon}</ListItemIcon>
+                    <ListItemText primary={item.label} />
+                    {isOpen ? <ExpandLess /> : <ExpandMore />}
+                  </ListItemButton>
+                </ListItem>
+                <Collapse in={isOpen} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {item.submenu.map(
+                      (subItem, subIndex) =>
+                        subItem.roles.some((role) => roles.includes(role)) && (
+                          <ListItem key={subIndex} disablePadding>
+                            <ListItemButton
+                              component={Link}
+                              to={subItem.link}
+                              sx={{ pl: 4 }}
+                            >
+                              <ListItemText primary={subItem.label} />
+                            </ListItemButton>
+                          </ListItem>
+                        )
+                    )}
+                  </List>
+                </Collapse>
+              </React.Fragment>
+            );
+          } else {
+            return (
+              <ListItem disablePadding key={index}>
+                <ListItemButton component={Link} to={item.link}>
+                  <ListItemIcon>{item.icon}</ListItemIcon>
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              </ListItem>
+            );
+          }
+        }
+        return null;
+      })}
       <ListItem disablePadding>
         <ListItemButton
           component="button"
