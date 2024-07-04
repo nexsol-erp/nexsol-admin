@@ -12,11 +12,8 @@ import {
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 
 const DownloadPage = () => {
-   const [branch, setBranch] = useState("");
-   
-  //const [selectedBranchCode, setSelectedBranchCode] = useState("");
+  const [branch, setBranch] = useState("");
   const [branches, setBranches] = useState([]);
-
 
   const fetchBranches = async () => {
     try {
@@ -29,24 +26,35 @@ const DownloadPage = () => {
     }
   };
 
-
-     useEffect(() => {
-       fetchBranches();
-     }, []);
+  useEffect(() => {
+    fetchBranches();
+  }, []);
 
   const handleBranchChange = (event) => {
     setBranch(event.target.value);
   };
+
   const handleDownload = () => {
-    const tenancyId = localStorage.getItem("tenancyId"); // Retrieve the tenancyId from local storage
- 
-    const fileName = "nexsol-pos.zip"; // Replace with your actual file name
+    const tenancyId = localStorage.getItem("tenancyId");
+    const fileName = "nexsol-pos.zip";
     const url = `/api/download/${tenancyId}/${branch}/${fileName}`;
 
-    // Trigger the file download
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", fileName); // Set the file name
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleUpgradeDownload = () => {
+    const tenancyId = localStorage.getItem("tenancyId");
+    const fileName = "nexsol-pos-upgrade.zip";
+    const url = `/api/download/${tenancyId}/${branch}/upgrade/${fileName}`;
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", fileName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -79,16 +87,26 @@ const DownloadPage = () => {
             ))}
           </Select>
         </FormControl>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<CloudDownloadIcon />}
-          onClick={handleDownload}
-          sx={{ mt: 3 }}
-          disabled={!branch}
-        >
-          Download Now
-        </Button>
+        <Box sx={{ mt: 3, display: "flex", gap: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<CloudDownloadIcon />}
+            onClick={handleDownload}
+            disabled={!branch}
+          >
+            Download Full
+          </Button>
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<CloudDownloadIcon />}
+            onClick={handleUpgradeDownload}
+            disabled={!branch}
+          >
+            Download Patch
+          </Button>
+        </Box>
       </Paper>
     </Box>
   );

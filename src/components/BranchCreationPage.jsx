@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { Box, Button, TextField, Typography, Paper } from "@mui/material";
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Paper,
+  CircularProgress,
+} from "@mui/material";
 
 const BranchCreationPage = () => {
   const [branchCode, setBranchCode] = useState("");
@@ -10,6 +17,7 @@ const BranchCreationPage = () => {
   const [branchAddress1, setBranchAddress1] = useState("");
   const [branchAddress2, setBranchAddress2] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,6 +41,9 @@ const BranchCreationPage = () => {
       branchAddress2,
     };
 
+    setLoading(true);
+    setError("");
+
     try {
       const tenancyId = localStorage.getItem("tenancyId");
       const response = await fetch(`/api/${tenancyId}/createbranch`, {
@@ -44,14 +55,22 @@ const BranchCreationPage = () => {
       });
 
       const data = await response.json();
+      setLoading(false);
       if (data.success) {
         alert("Branch created successfully!");
-        // Optionally redirect or perform other actions after successful user creation
+        setBranchCode("");
+        setBranchName("");
+        setBranchState("");
+        setBranchBuildingAddress("");
+        setBranchStreetAddress("");
+        setBranchAddress1("");
+        setBranchAddress2("");
       } else {
         setError(data.message);
       }
     } catch (error) {
       console.error("Error:", error);
+      setLoading(false);
       setError("An error occurred. Please try again later.");
     }
   };
@@ -132,8 +151,14 @@ const BranchCreationPage = () => {
             required
           />
           <Box mt={2}>
-            <Button type="submit" variant="contained" color="primary" fullWidth>
-              Create Branch
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              fullWidth
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={24} /> : "Create Branch"}
             </Button>
           </Box>
         </form>
