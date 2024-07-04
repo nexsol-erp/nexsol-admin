@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Box, Button, TextField, Typography, Paper, Grid } from "@mui/material";
+import { Box, Button, TextField, Typography, Paper } from "@mui/material";
 import Select from "react-select";
 
 const SignUpForm = ({ onSignUp }) => {
@@ -11,6 +11,7 @@ const SignUpForm = ({ onSignUp }) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [countries, setCountries] = useState([]);
   const [selectedCountry, setSelectedCountry] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchCountries();
@@ -35,8 +36,17 @@ const SignUpForm = ({ onSignUp }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const mobileNumberRegex = /^[0-9]+$/;
+    if (!mobileNumberRegex.test(mobileNumber)) {
+      setError(
+        "Mobile Number must contain only digits without spaces or special characters."
+      );
+      return;
+    }
+
     if (password !== confirmPassword) {
-      alert("Passwords do not match!");
+      setError("Passwords do not match!");
       return;
     }
 
@@ -63,11 +73,11 @@ const SignUpForm = ({ onSignUp }) => {
         alert("Signup successful!");
         onSignUp(); // Notify parent component (LoginForm) about successful signup
       } else {
-        alert(data.message);
+        setError(data.message);
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("An error occurred. Please try again later.");
+      setError("An error occurred. Please try again later.");
     }
   };
 
@@ -89,6 +99,11 @@ const SignUpForm = ({ onSignUp }) => {
       <Typography variant="h4" gutterBottom>
         Sign Up
       </Typography>
+      {error && (
+        <Typography color="error" variant="body1" gutterBottom>
+          {error}
+        </Typography>
+      )}
       <form onSubmit={handleSubmit}>
         <TextField
           label="Company Name"
@@ -119,6 +134,7 @@ const SignUpForm = ({ onSignUp }) => {
           margin="normal"
           value={mobileNumber}
           onChange={(e) => setMobileNumber(e.target.value)}
+          required
         />
         <Select
           options={countries}
