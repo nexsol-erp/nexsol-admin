@@ -16,6 +16,8 @@ const BranchCreationPage = () => {
   const [branchStreetAddress, setBranchStreetAddress] = useState("");
   const [branchAddress1, setBranchAddress1] = useState("");
   const [branchAddress2, setBranchAddress2] = useState("");
+  const [branchGst, setBranchGst] = useState("");
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -39,6 +41,7 @@ const BranchCreationPage = () => {
       branchStreetAddress,
       branchAddress1,
       branchAddress2,
+      branchGst,
     };
 
     setLoading(true);
@@ -65,6 +68,7 @@ const BranchCreationPage = () => {
         setBranchStreetAddress("");
         setBranchAddress1("");
         setBranchAddress2("");
+        setBranchGst("");
       } else {
         setError(data.message);
       }
@@ -148,6 +152,14 @@ const BranchCreationPage = () => {
             margin="normal"
             value={branchAddress2}
             onChange={(e) => setBranchAddress2(e.target.value)}
+            required
+          />
+          <TextField
+            label="Branch GST"
+            fullWidth
+            margin="normal"
+            value={branchGst}
+            onChange={(e) => setBranchGst(e.target.value)}
             required
           />
           <Box mt={2}>
