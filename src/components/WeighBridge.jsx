@@ -29,9 +29,9 @@ const WeighBridge = () => {
   const [branch, setBranch] = useState("");
   const [branches, setBranches] = useState([]);
   const [fromDate, setFromDate] = useState(
-    dayjs().subtract(30, "day").format("YYYY-MM-DD")
+    dayjs().subtract(30, "day").format("YYYY-MM-DDTHH:mm")
   );
-  const [toDate, setToDate] = useState(dayjs().format("YYYY-MM-DD"));
+  const [toDate, setToDate] = useState(dayjs().format("YYYY-MM-DDTHH:mm"));
   const [weighbridgeData, setWeighbridgeData] = useState([]);
   const [open, setOpen] = useState(false);
   const [fileName, setFileName] = useState("WeighbridgeData.xlsx");
@@ -39,9 +39,7 @@ const WeighBridge = () => {
   const fetchBranches = async () => {
     try {
       const tenancyId = localStorage.getItem("tenancyId");
-      const response = await fetch(
-        `/api/${tenancyId}/branches`
-      );
+      const response = await fetch(`/api/${tenancyId}/branches`);
       const data = await response.json();
       setBranches(data.branches);
     } catch (error) {
@@ -128,7 +126,7 @@ const WeighBridge = () => {
 
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
         <TextField
-          type="date"
+          type="datetime-local"
           label="From Date"
           value={fromDate}
           onChange={handleFromDateChange}
@@ -138,7 +136,7 @@ const WeighBridge = () => {
           sx={{ flex: 1, mr: 2 }}
         />
         <TextField
-          type="date"
+          type="datetime-local"
           label="To Date"
           value={toDate}
           onChange={handleToDateChange}
