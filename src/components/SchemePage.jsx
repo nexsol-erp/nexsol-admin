@@ -158,19 +158,19 @@ const SchemePage = () => {
                 Category wise total qty
               </MenuItem>
 
-            /*   <MenuItem value="Item wise total amount">
+              <MenuItem value="Item wise total amount">
                 Item wise total amount
               </MenuItem> 
-              */
+              
               
               <MenuItem value="Item wise total qty">
                 Item wise total qty
               </MenuItem>
 
-             /* <MenuItem value="Total Invoice Amount">
+               <MenuItem value="Total Invoice Amount">
                 Total Invoice Amount
               </MenuItem>
-              */
+              
 
             </Select>
           </FormControl>
