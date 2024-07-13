@@ -11,7 +11,7 @@ export const WebSocketProvider = ({ children }) => {
   useEffect(() => {
     const tenancyId = localStorage.getItem("tenancyId");
     if (tenancyId) {
-      const wsUrl = `wss://tradelink247.com:8081/${tenancyId}/WEB`;
+      const wsUrl = `ws://localhost:8081/${tenancyId}/WEB`;
       const websocket = new WebSocket(wsUrl);
 
       websocket.onopen = () => {
