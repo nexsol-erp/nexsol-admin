@@ -42,7 +42,7 @@ export const WebSocketProvider = ({ children }) => {
           localStorage.setItem("items", JSON.stringify(items));
           setData((prevData) => ({ ...prevData, items }));
         } else if (message.action === "CATEGORIES_LIST") {
-          const categories = JSON.parse(message.message).categories;
+          const categories = message.message.categories; // Access the categories directly
           console.log(
             "Received CATEGORIES_LIST action, categories:",
             categories
