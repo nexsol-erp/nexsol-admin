@@ -10,23 +10,18 @@ export const WebSocketProvider = ({ children }) => {
 
   useEffect(() => {
     const tenancyId = localStorage.getItem("tenancyId");
-    console.log("WebSocket useEffect triggered");
+    const branchId = "WEB";
+    console.log("WebSocket useEffect triggered with tenancyId:", tenancyId);
+
     if (tenancyId) {
-      const wsUrl = `wss://tradelink247.com/ws`;
+      const wsUrl = `wss://tradelink247.com/ws?company=${tenancyId}&branch=${branchId}`;
+      //?company=${tenancyId}&branch=${branchId}
+      //const wsUrl = `ws://localhost:8081/ws?company=${tenancyId}&branch=${branchId}`;
       console.log(`Attempting to connect to WebSocket at ${wsUrl}`);
       const websocket = new WebSocket(wsUrl);
 
       websocket.onopen = function () {
         console.log("WebSocket connected successfully");
-
-        // Send initial message with company and branch info
-        const initMessage = {
-          company: tenancyId,
-          branch: "WEB",
-        };
-        console.log("Sending initial message:", initMessage);
-        websocket.send(JSON.stringify(initMessage));
-
         setWs(websocket);
 
         // Fetch items and categories when WebSocket connects
@@ -60,8 +55,8 @@ export const WebSocketProvider = ({ children }) => {
         }
       };
 
-      websocket.onclose = () => {
-        console.log("WebSocket disconnected");
+      websocket.onclose = (event) => {
+        console.log("WebSocket disconnected", event);
         setWs(null); // Ensure ws is reset on close
       };
 
