@@ -11,11 +11,20 @@ export const WebSocketProvider = ({ children }) => {
   useEffect(() => {
     const tenancyId = localStorage.getItem("tenancyId");
     if (tenancyId) {
-      const wsUrl = `ws://tradelink247.com:8081/${tenancyId}/WEB`;
+      const wsUrl = `ws://tradelink247.com:8081/ws`;
       console.log(`Attempting to connect to WebSocket at ${wsUrl}`);
       const websocket = new WebSocket(wsUrl);
 
       websocket.onopen = () => {
+        websocket.onopen = function () {
+          websocket.send(
+            JSON.stringify({
+              action: "setHeaders",
+              company: tenancyId,
+              branch: "WEB",
+            })
+          );
+        };
         console.log("WebSocket connected successfully");
         setWs(websocket);
         // Fetch items and categories when WebSocket connects
