@@ -15,16 +15,15 @@ export const WebSocketProvider = ({ children }) => {
       console.log(`Attempting to connect to WebSocket at ${wsUrl}`);
       const websocket = new WebSocket(wsUrl);
 
-      websocket.onopen = () => {
-        websocket.onopen = function () {
-          websocket.send(
-            JSON.stringify({
-              action: "setHeaders",
-              company: tenancyId,
-              branch: "WEB",
-            })
-          );
-        };
+      websocket.onopen = function () {
+        websocket.send(
+          JSON.stringify({
+            action: "setHeaders",
+            company: tenancyId,
+            branch: "WEB",
+          })
+        );
+
         console.log("WebSocket connected successfully");
         setWs(websocket);
         // Fetch items and categories when WebSocket connects
