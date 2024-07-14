@@ -10,27 +10,32 @@ export const WebSocketProvider = ({ children }) => {
 
   useEffect(() => {
     const tenancyId = localStorage.getItem("tenancyId");
+    console.log("WebSocket useEffect triggered");
     if (tenancyId) {
       const wsUrl = `wss://tradelink247.com/ws`;
       console.log(`Attempting to connect to WebSocket at ${wsUrl}`);
       const websocket = new WebSocket(wsUrl);
 
       websocket.onopen = function () {
-        websocket.send(
-          JSON.stringify({
-            action: "setHeaders",
-            company: tenancyId,
-            branch: "WEB",
-          })
-        );
-
         console.log("WebSocket connected successfully");
+
+        // Send initial message with company and branch info
+        const initMessage = {
+          company: tenancyId,
+          branch: "WEB",
+        };
+        console.log("Sending initial message:", initMessage);
+        websocket.send(JSON.stringify(initMessage));
+
         setWs(websocket);
+
         // Fetch items and categories when WebSocket connects
-        websocket.send(JSON.stringify({ action: "GET_ITEMS" }));
-        console.log("Sent GET_ITEMS action");
-        websocket.send(JSON.stringify({ action: "GET_CATEGORIES" }));
-        console.log("Sent GET_CATEGORIES action");
+        const getItemsMessage = { action: "GET_ITEMS" };
+        const getCategoriesMessage = { action: "GET_CATEGORIES" };
+        console.log("Sending GET_ITEMS action:", getItemsMessage);
+        websocket.send(JSON.stringify(getItemsMessage));
+        console.log("Sending GET_CATEGORIES action:", getCategoriesMessage);
+        websocket.send(JSON.stringify(getCategoriesMessage));
       };
 
       websocket.onmessage = (event) => {
@@ -38,17 +43,20 @@ export const WebSocketProvider = ({ children }) => {
         const message = JSON.parse(event.data);
         if (message.action === "ITEM_MST") {
           const items = JSON.parse(message.message).items;
+          console.log("Received ITEM_MST action, items:", items);
           localStorage.setItem("items", JSON.stringify(items));
           setData((prevData) => ({ ...prevData, items }));
-          console.log("Items updated:", items);
         } else if (message.action === "CATEGORIES_LIST") {
           const categories = JSON.parse(message.message).categories;
+          console.log(
+            "Received CATEGORIES_LIST action, categories:",
+            categories
+          );
           localStorage.setItem("categories", JSON.stringify(categories));
           setData((prevData) => ({ ...prevData, categories }));
-          console.log("Categories updated:", categories);
         } else {
+          console.log("Received other message action:", message);
           setData((prevData) => ({ ...prevData, ...message }));
-          console.log("Other message received:", message);
         }
       };
 
@@ -73,8 +81,8 @@ export const WebSocketProvider = ({ children }) => {
 
   const sendMessage = (message) => {
     if (ws) {
+      console.log("Sending message:", message);
       ws.send(JSON.stringify(message));
-      console.log("Sent message:", message);
     } else {
       console.warn("WebSocket is not connected. Message not sent:", message);
     }
