@@ -39,9 +39,7 @@ const HSNSalesDetail = () => {
   const fetchBranches = async () => {
     try {
       const tenancyId = localStorage.getItem("tenancyId");
-      const response = await fetch(
-        `/api/${tenancyId}/branches`
-      );
+      const response = await fetch(`/api/${tenancyId}/branches`);
       const data = await response.json();
       setBranches(data.branches);
     } catch (error) {
