@@ -23,6 +23,7 @@ import {
   ExpandMore,
   Assessment,
   AccountTree,
+  Category,
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 
@@ -30,6 +31,7 @@ const Sidebar = ({ mode, setMode, roles }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openAIReports, setOpenAIReports] = useState(false);
   const [openScheme, setOpenScheme] = useState(false);
+  const [openMasters, setOpenMasters] = useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -41,6 +43,10 @@ const Sidebar = ({ mode, setMode, roles }) => {
 
   const handleClickScheme = () => {
     setOpenScheme(!openScheme);
+  };
+
+  const handleClickMasters = () => {
+    setOpenMasters(!openMasters);
   };
 
   const menuItems = [
@@ -106,6 +112,25 @@ const Sidebar = ({ mode, setMode, roles }) => {
       ],
     },
     {
+      label: "Masters",
+      icon: <Category sx={{ color: "#ffe3a3" }} />,
+      link: "",
+      roles: ["admin"],
+      hasSubmenu: true,
+      submenu: [
+        {
+          label: "Category Type",
+          link: "/categorytypemaster",
+          roles: ["admin"],
+        },
+        {
+          label: "Category Name",
+          link: "/categorynamemaster",
+          roles: ["admin"],
+        },
+      ],
+    },
+    {
       label: "AI Reports",
       icon: <Assessment sx={{ color: "#ffe3a3" }} />,
       link: "",
@@ -151,11 +176,17 @@ const Sidebar = ({ mode, setMode, roles }) => {
         if (item.roles.some((role) => roles.includes(role))) {
           if (item.hasSubmenu) {
             const isOpen =
-              item.label === "AI Reports" ? openAIReports : openScheme;
+              item.label === "AI Reports"
+                ? openAIReports
+                : item.label === "Scheme"
+                ? openScheme
+                : openMasters;
             const handleClick =
               item.label === "AI Reports"
                 ? handleClickAIReports
-                : handleClickScheme;
+                : item.label === "Scheme"
+                ? handleClickScheme
+                : handleClickMasters;
 
             return (
               <React.Fragment key={index}>

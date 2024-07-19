@@ -18,7 +18,9 @@ import BranchCreationPage from "./components/BranchCreationPage";
 import UserCreationPage from "./components/UserCreationPage";
 import SchemePage from "./components/SchemePage";
 import PublishSchemePage from "./components/PublishSchemePage";
-import SeasonalReport from "./components/SeasonalReport"; // Import the new component
+import SeasonalReport from "./components/SeasonalReport";
+import CategoryTypeMaster from "./components/CategoryTypeMaster"; // Import CategoryTypeMaster
+import CategoryNameMaster from "./components/CategoryNameMaster"; // Import CategoryNameMaster
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -75,6 +77,16 @@ const App = () => {
               <Route path="/download" element={<DownloadPage />} />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/seasonalreport" element={<SeasonalReport />} />
+              <Route
+                path="/categorytypemaster"
+                element={<CategoryTypeMaster />}
+              />{" "}
+              {/* Add CategoryTypeMaster route */}
+              <Route
+                path="/categorynamemaster"
+                element={<CategoryNameMaster />}
+              />{" "}
+              {/* Add CategoryNameMaster route */}
             </Routes>
           </WebSocketProvider>
         </Box>
