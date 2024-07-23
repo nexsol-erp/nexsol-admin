@@ -14,6 +14,7 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Alert,
 } from "@mui/material";
 import { useWebSocket } from "./WebSocketContext"; // Adjust the import path as needed
 
@@ -38,23 +39,40 @@ const SchemePage = () => {
   const [cashBackAmount, setCashBackAmount] = useState("");
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [error, setError] = useState("");
 
   const fetchSchemes = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
-    const response = await fetch(`/api/${tenancyId}/scheme`);
-    const data = await response.json();
-    setSchemes(Array.isArray(data) ? data : []);
+    try {
+      const response = await fetch(`/api/${tenancyId}/scheme`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch schemes.");
+      }
+      const data = await response.json();
+      if (!data) {
+        throw new Error("No data returned from server.");
+      }
+      setSchemes(Array.isArray(data) ? data : []);
+    } catch (error) {
+      setError("An error occurred while fetching schemes.");
+      console.error("Fetch Schemes Error:", error);
+    }
   };
 
-  useEffect(() => {
-    fetchSchemes();
-    const storedItems = JSON.parse(localStorage.getItem("items") || "[]");
-    setItems(storedItems);
-    const storedCategories = JSON.parse(
-      localStorage.getItem("categories") || "[]"
-    );
-    setCategories(storedCategories);
-  }, []);
+  try {
+    useEffect(() => {
+      fetchSchemes();
+      const storedItems = JSON.parse(localStorage.getItem("items") || "[]");
+      setItems(storedItems);
+      const storedCategories = JSON.parse(
+        localStorage.getItem("categories") || "[]"
+      );
+      setCategories(storedCategories);
+    }, []);
+  } catch (error) {
+    setError("An error occurred while fetching schemes.");
+    console.error("Fetch Schemes Error:", error);
+  }
 
   useEffect(() => {
     if (data.items) {
@@ -66,6 +84,7 @@ const SchemePage = () => {
   }, [data.items, data.categories]);
 
   const handleCreateScheme = async () => {
+    setError("");
     const newScheme = {
       schemeName,
       startDate,
@@ -85,14 +104,21 @@ const SchemePage = () => {
       cashBackAmount: cashBackAmount || 0,
     };
     const tenancyId = localStorage.getItem("tenancyId");
-    const response = await fetch(`/api/${tenancyId}/scheme`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(newScheme),
-    });
-    if (response.ok) {
+    try {
+      const response = await fetch(`/api/${tenancyId}/scheme`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newScheme),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to create scheme.");
+      }
+      const data = await response.json();
+      if (!data) {
+        throw new Error("No data returned from server.");
+      }
       fetchSchemes();
       setSchemeName("");
       setStartDate("");
@@ -110,6 +136,9 @@ const SchemePage = () => {
       setOfferItem("");
       setOfferDiscountPercent("");
       setCashBackAmount("");
+    } catch (error) {
+      setError("An error occurred while creating the scheme.");
+      console.error("Create Scheme Error:", error);
     }
   };
 
@@ -119,6 +148,11 @@ const SchemePage = () => {
         <Typography variant="h4" gutterBottom>
           Create Scheme
         </Typography>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
         <form noValidate autoComplete="off">
           <TextField
             label="Scheme Name"
@@ -157,21 +191,15 @@ const SchemePage = () => {
               <MenuItem value="Category wise total qty">
                 Category wise total qty
               </MenuItem>
-
               <MenuItem value="Item wise total amount">
                 Item wise total amount
-              </MenuItem> 
-              
-              
+              </MenuItem>
               <MenuItem value="Item wise total qty">
                 Item wise total qty
               </MenuItem>
-
-               <MenuItem value="Total Invoice Amount">
+              <MenuItem value="Total Invoice Amount">
                 Total Invoice Amount
               </MenuItem>
-              
-
             </Select>
           </FormControl>
           {schemeType === "Category wise total qty" && (
@@ -377,6 +405,11 @@ const SchemePage = () => {
         <Typography variant="h4" gutterBottom>
           Existing Schemes
         </Typography>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
         <Table>
           <TableHead>
             <TableRow>
@@ -385,7 +418,6 @@ const SchemePage = () => {
               <TableCell>End Date</TableCell>
               <TableCell>Scheme Type</TableCell>
               <TableCell>Offer Type</TableCell>
-
               <TableCell>Category Name</TableCell>
               <TableCell>Required Category Qty</TableCell>
               <TableCell>Category Eligibility Amount</TableCell>
@@ -406,7 +438,6 @@ const SchemePage = () => {
                 <TableCell>{row.endDate}</TableCell>
                 <TableCell>{row.schemeType}</TableCell>
                 <TableCell>{row.offerType}</TableCell>
-
                 <TableCell>{row.categoryName}</TableCell>
                 <TableCell>{row.requiredCategoryQty}</TableCell>
                 <TableCell>{row.totalEligibilityAmount}</TableCell>
