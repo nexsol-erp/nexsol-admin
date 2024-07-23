@@ -6,6 +6,7 @@ import LoginForm from "./components/LoginForm";
 import Dashboard from "./components/Dashboard";
 import SalesDetail from "./components/SalesDetail";
 import PurchaseDetail from "./components/PurchaseDetail";
+
 import About from "./components/About";
 import Settings from "./components/Settings";
 import Sidebar from "./components/Sidebar";
@@ -19,8 +20,10 @@ import UserCreationPage from "./components/UserCreationPage";
 import SchemePage from "./components/SchemePage";
 import PublishSchemePage from "./components/PublishSchemePage";
 import SeasonalReport from "./components/SeasonalReport";
-import CategoryTypeMaster from "./components/CategoryTypeMaster"; // Import CategoryTypeMaster
-import CategoryNameMaster from "./components/CategoryNameMaster"; // Import CategoryNameMaster
+import CategoryTypeMaster from "./components/CategoryTypeMaster";
+import CategoryNameMaster from "./components/CategoryNameMaster";
+import SupplierCreationForm from "./components/SupplierCreationForm";
+import PurchaseEntryForm from "./components/PurchaseEntryForm";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -60,7 +63,8 @@ const App = () => {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/sales" element={<SalesDetail />} />
               <Route path="/hsnsales" element={<HSNSalesDetail />} />
-              <Route path="/purchase" element={<PurchaseDetail />} />
+              <Route path="/purchasereport" element={<PurchaseDetail />} />
+
               <Route path="/weighbridge" element={<WeighBridge />} />
               <Route
                 path="/branchcreationpage"
@@ -80,13 +84,16 @@ const App = () => {
               <Route
                 path="/categorytypemaster"
                 element={<CategoryTypeMaster />}
-              />{" "}
-              {/* Add CategoryTypeMaster route */}
+              />
               <Route
                 path="/categorynamemaster"
                 element={<CategoryNameMaster />}
-              />{" "}
-              {/* Add CategoryNameMaster route */}
+              />
+              <Route
+                path="/suppliercreation"
+                element={<SupplierCreationForm />}
+              />
+              <Route path="/purchaseentry" element={<PurchaseEntryForm />} />
             </Routes>
           </WebSocketProvider>
         </Box>

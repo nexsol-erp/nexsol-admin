@@ -32,6 +32,7 @@ const Sidebar = ({ mode, setMode, roles }) => {
   const [openAIReports, setOpenAIReports] = useState(false);
   const [openScheme, setOpenScheme] = useState(false);
   const [openMasters, setOpenMasters] = useState(false);
+  const [openPurchase, setOpenPurchase] = useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -47,6 +48,10 @@ const Sidebar = ({ mode, setMode, roles }) => {
 
   const handleClickMasters = () => {
     setOpenMasters(!openMasters);
+  };
+
+  const handleClickPurchase = () => {
+    setOpenPurchase(!openPurchase);
   };
 
   const menuItems = [
@@ -71,8 +76,21 @@ const Sidebar = ({ mode, setMode, roles }) => {
     {
       label: "Purchase",
       icon: <Luggage sx={{ color: "#ffe3a3" }} />,
-      link: "/purchase",
+      link: "",
       roles: ["user", "manager"],
+      hasSubmenu: true,
+      submenu: [
+        {
+          label: "Purchase Entry",
+          link: "/purchaseentry",
+          roles: ["user", "manager"],
+        },
+        {
+          label: "Purchase Report",
+          link: "/purchasereport",
+          roles: ["user", "manager"],
+        },
+      ],
     },
     {
       label: "Weighbridge",
@@ -128,6 +146,11 @@ const Sidebar = ({ mode, setMode, roles }) => {
           link: "/categorynamemaster",
           roles: ["admin"],
         },
+        {
+          label: "Supplier Creation",
+          link: "/suppliercreation",
+          roles: ["admin"],
+        },
       ],
     },
     {
@@ -180,13 +203,17 @@ const Sidebar = ({ mode, setMode, roles }) => {
                 ? openAIReports
                 : item.label === "Scheme"
                 ? openScheme
-                : openMasters;
+                : item.label === "Masters"
+                ? openMasters
+                : openPurchase;
             const handleClick =
               item.label === "AI Reports"
                 ? handleClickAIReports
                 : item.label === "Scheme"
                 ? handleClickScheme
-                : handleClickMasters;
+                : item.label === "Masters"
+                ? handleClickMasters
+                : handleClickPurchase;
 
             return (
               <React.Fragment key={index}>
