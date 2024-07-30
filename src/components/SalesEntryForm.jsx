@@ -1,0 +1,444 @@
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  IconButton,
+} from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { useWebSocket } from "./WebSocketContext"; // Adjust the import path as needed
+
+const SalesEntryForm = () => {
+  const { data } = useWebSocket(); // Use WebSocket context to get the data
+  const [customer, setCustomer] = useState("");
+  const [customers, setCustomers] = useState([]);
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [customerGST, setCustomerGST] = useState("");
+  const [items, setItems] = useState([]);
+  const [itemDialogOpen, setItemDialogOpen] = useState(false);
+  const [itemList, setItemList] = useState([]);
+  const [filteredItemList, setFilteredItemList] = useState([]);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [item_name, setItemName] = useState("");
+  const [barcode, setBarcode] = useState("");
+  const [standard_price, setStandardPrice] = useState("");
+  const [tax_rate, setTaxRate] = useState("");
+  const [qty, setQuantity] = useState("");
+  const [amount, setTotalAmount] = useState("");
+  const [newCustomerDialogOpen, setNewCustomerDialogOpen] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerAddress, setNewCustomerAddress] = useState("");
+  const [newCustomerGST, setNewCustomerGST] = useState("");
+
+  useEffect(() => {
+    if (data.items) {
+      setItemList(data.items);
+      setFilteredItemList(data.items);
+    }
+  }, [data.items]);
+
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const tenancyId = localStorage.getItem("tenancyId");
+        const response = await fetch(`/api/${tenancyId}/customers`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch customers");
+        }
+        const data = await response.json();
+        setCustomers(data);
+      } catch (error) {
+        console.error("Error fetching customers:", error);
+      }
+    };
+
+    fetchCustomers();
+  }, []);
+
+  const handleCustomerChange = (event) => {
+    const selectedCustomer = customers.find(
+      (cust) => cust.name === event.target.value
+    );
+    setCustomer(event.target.value);
+    setCustomerAddress(selectedCustomer?.address || "");
+    setCustomerGST(selectedCustomer?.gst || "");
+  };
+
+const handleAddItem = () => {
+  const newItem = {
+    item_name,
+    barcode,
+    standard_price: parseFloat(standard_price) || 0,
+    tax_rate: parseFloat(tax_rate) || 0,
+    qty: parseFloat(qty) || 0,
+    amount: parseFloat(amount) || 0,
+  };
+
+  setItems([...items, newItem]);
+  setItemDialogOpen(false);
+  setItemName("");
+  setBarcode("");
+  setStandardPrice("");
+  setTaxRate("");
+  setQuantity("");
+  setTotalAmount("");
+};
+
+
+  const calculateTotalAmount = (price, qty) => {
+    const parsedPrice = parseFloat(price) || 0;
+    const parsedQty = parseFloat(qty) || 0;
+    return (parsedPrice * parsedQty).toFixed(2);
+  };
+
+  const handleQuantityChange = (value) => {
+    setQuantity(value);
+    setTotalAmount(calculateTotalAmount(standard_price, value));
+  };
+
+  const handleDeleteItem = (index) => {
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  const calculateGrandTotal = () =>
+    items.reduce((total, item) => total + item.amount, 0).toFixed(2);
+
+  const handleItemSearch = (value) => {
+    setItemName(value);
+    const filteredItems = itemList.filter((item) =>
+      item.item_name.toLowerCase().includes(value.toLowerCase())
+    );
+    setFilteredItemList(filteredItems);
+  };
+
+  const handleNewCustomerSubmit = async () => {
+    const newCustomer = {
+      name: newCustomerName,
+      address: newCustomerAddress,
+      gst: newCustomerGST,
+    };
+
+    const tenancyId = localStorage.getItem("tenancyId");
+    try {
+      const response = await fetch(`/api/${tenancyId}/customers`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newCustomer),
+      });
+
+      if (response.ok) {
+        setCustomers([...customers, newCustomer]);
+        setNewCustomerDialogOpen(false);
+        setNewCustomerName("");
+        setNewCustomerAddress("");
+        setNewCustomerGST("");
+      } else {
+        alert("Failed to create new customer");
+      }
+    } catch (error) {
+      console.error("Error creating new customer:", error);
+      alert("An error occurred while creating new customer.");
+    }
+  };
+
+  const handleItemSelect = (item) => {
+    setSelectedItem(item);
+    setItemName(item.item_name);
+    setBarcode(item.barcode);
+    setStandardPrice(item.standard_price);
+    setTaxRate(item.tax_rate);
+    setTotalAmount(calculateTotalAmount(item.standard_price, qty));
+  };
+
+  const handleBarcodeKeyPress = (event) => {
+    if (event.key === "Enter") {
+      const fetchedItem = itemList.find((item) => item.barcode === barcode);
+      if (fetchedItem) {
+        handleItemSelect(fetchedItem);
+      } else {
+        alert("Item not found");
+      }
+    }
+  };
+
+const handleSave = async () => {
+  const salesEntry = {
+    customer: {
+      name: customer,
+      address: customerAddress,
+      gst: customerGST,
+    },
+    items,
+  };
+
+  const tenancyId = localStorage.getItem("tenancyId");
+  try {
+    const response = await fetch(`/api/${tenancyId}/sales`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(salesEntry),
+    });
+
+    if (response.ok) {
+      alert("Sales entry saved successfully");
+      setCustomer("");
+      setCustomerAddress("");
+      setCustomerGST("");
+      setItems([]);
+    } else {
+      alert("Failed to save sales entry");
+    }
+  } catch (error) {
+    console.error("Error saving sales entry:", error);
+    alert("An error occurred while saving sales entry.");
+  }
+};
+
+
+  return (
+    <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
+      <Paper elevation={3} sx={{ padding: 4, maxWidth: 800 }}>
+        <Typography variant="h4" gutterBottom>
+          Sales Entry
+        </Typography>
+        <FormControl fullWidth margin="normal">
+          <InputLabel>Customer</InputLabel>
+          <Select value={customer} onChange={handleCustomerChange}>
+            {customers.map((cust) => (
+              <MenuItem key={cust.id} value={cust.name}>
+                {cust.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <TextField
+          label="Customer Address"
+          fullWidth
+          margin="normal"
+          value={customerAddress}
+          disabled
+        />
+        <TextField
+          label="Customer GST"
+          fullWidth
+          margin="normal"
+          value={customerGST}
+          disabled
+        />
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => setNewCustomerDialogOpen(true)}
+          sx={{ mb: 3 }}
+        >
+          Create New Customer
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => setItemDialogOpen(true)}
+          sx={{ mb: 3 }}
+        >
+          Add Item
+        </Button>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Item Name</TableCell>
+                <TableCell>Barcode</TableCell>
+                <TableCell>Standard Price</TableCell>
+                <TableCell>Tax Rate</TableCell>
+                <TableCell>Quantity</TableCell>
+                <TableCell>Total Amount</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {items.map((item, index) => (
+                <TableRow key={index}>
+                  <TableCell>{item.item_name}</TableCell>
+                  <TableCell>{item.barcode}</TableCell>
+                  <TableCell>{item.standard_price.toFixed(2)}</TableCell>
+                  <TableCell>{item.tax_rate}</TableCell>
+                  <TableCell>{item.qty}</TableCell>
+                  <TableCell>{(item.amount || 0).toFixed(2)}</TableCell>{" "}
+                  {/* Use fallback value */}
+                  <TableCell>
+                    <IconButton
+                      onClick={() => handleDeleteItem(index)}
+                      color="secondary"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+              <TableRow>
+                <TableCell colSpan={5} sx={{ fontWeight: "bold" }}>
+                  Grand Total
+                </TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>
+                  {calculateGrandTotal()}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleSave}
+          sx={{ mt: 3 }}
+        >
+          Save
+        </Button>
+      </Paper>
+
+      <Dialog open={itemDialogOpen} onClose={() => setItemDialogOpen(false)}>
+        <DialogTitle>Add Item</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Barcode"
+            fullWidth
+            margin="normal"
+            value={barcode}
+            onChange={(e) => setBarcode(e.target.value)}
+            onKeyPress={handleBarcodeKeyPress}
+          />
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Item Name</InputLabel>
+            <TextField
+              value={item_name}
+              onChange={(e) => handleItemSearch(e.target.value)}
+              InputProps={{
+                endAdornment: (
+                  <IconButton onClick={() => setItemDialogOpen(true)}>
+                    <SearchIcon />
+                  </IconButton>
+                ),
+              }}
+            />
+            <Select
+              value={selectedItem?.item_name || ""}
+              onChange={(e) =>
+                handleItemSelect(
+                  filteredItemList.find(
+                    (item) => item.item_name === e.target.value
+                  )
+                )
+              }
+            >
+              {filteredItemList.map((item) => (
+                <MenuItem key={item.item_id} value={item.item_name}>
+                  {item.item_name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            label="Standard Price"
+            fullWidth
+            margin="normal"
+            value={standard_price}
+            disabled
+          />
+          <TextField
+            label="Tax Rate"
+            fullWidth
+            margin="normal"
+            value={tax_rate}
+            disabled
+          />
+          <TextField
+            label="Quantity"
+            type="number"
+            fullWidth
+            margin="normal"
+            value={qty}
+            onChange={(e) => handleQuantityChange(e.target.value)}
+          />
+          <TextField
+            label="Total Amount"
+            fullWidth
+            margin="normal"
+            value={amount}
+            disabled
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setItemDialogOpen(false)} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleAddItem} color="primary">
+            Add Item
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={newCustomerDialogOpen}
+        onClose={() => setNewCustomerDialogOpen(false)}
+      >
+        <DialogTitle>Create New Customer</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Customer Name"
+            fullWidth
+            margin="normal"
+            value={newCustomerName}
+            onChange={(e) => setNewCustomerName(e.target.value)}
+          />
+          <TextField
+            label="Customer Address"
+            fullWidth
+            margin="normal"
+            value={newCustomerAddress}
+            onChange={(e) => setNewCustomerAddress(e.target.value)}
+          />
+          <TextField
+            label="Customer GST"
+            fullWidth
+            margin="normal"
+            value={newCustomerGST}
+            onChange={(e) => setNewCustomerGST(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setNewCustomerDialogOpen(false)}
+            color="primary"
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleNewCustomerSubmit} color="primary">
+            Create Customer
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+export default SalesEntryForm;
