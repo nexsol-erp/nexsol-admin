@@ -24,6 +24,7 @@ import CategoryTypeMaster from "./components/CategoryTypeMaster";
 import CategoryNameMaster from "./components/CategoryNameMaster";
 import SupplierCreationForm from "./components/SupplierCreationForm";
 import PurchaseEntryForm from "./components/PurchaseEntryForm";
+import SalesEntryForm from "./components/SalesEntryForm"
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -64,7 +65,6 @@ const App = () => {
               <Route path="/sales" element={<SalesDetail />} />
               <Route path="/hsnsales" element={<HSNSalesDetail />} />
               <Route path="/purchasereport" element={<PurchaseDetail />} />
-
               <Route path="/weighbridge" element={<WeighBridge />} />
               <Route
                 path="/branchcreationpage"
@@ -94,6 +94,7 @@ const App = () => {
                 element={<SupplierCreationForm />}
               />
               <Route path="/purchaseentry" element={<PurchaseEntryForm />} />
+              <Route path="/salesentryform" element={<SalesEntryForm />} />
             </Routes>
           </WebSocketProvider>
         </Box>

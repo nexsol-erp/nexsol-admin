@@ -68,6 +68,13 @@ const Sidebar = ({ mode, setMode, roles }) => {
       roles: ["user"],
     },
     {
+      label: "SalesEntry",
+      icon: <Pages sx={{ color: "#ffe3a3" }} />,
+      link: "/salesentryform",
+      roles: ["user"],
+    },
+
+    {
       label: "HSN wise Sales",
       icon: <Pages sx={{ color: "#ffe3a3" }} />,
       link: "/hsnsales",
