@@ -23,7 +23,8 @@ import {
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { useWebSocket } from "./WebSocketContext"; // Adjust the import path as needed
+import { useWebSocket } from "./WebSocketContext";
+import { getItems, saveSalesTransaction } from "../services/apiservice"; // Ensure you import your API service
 
 const SalesEntryForm = () => {
   const { data } = useWebSocket(); // Use WebSocket context to get the data
@@ -36,10 +37,10 @@ const SalesEntryForm = () => {
   const [itemList, setItemList] = useState([]);
   const [filteredItemList, setFilteredItemList] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [item_name, setItemName] = useState("");
+  const [itemName, setItemName] = useState("");
   const [barcode, setBarcode] = useState("");
-  const [standard_price, setStandardPrice] = useState("");
-  const [tax_rate, setTaxRate] = useState("");
+  const [standardPrice, setStandardPrice] = useState("");
+  const [taxRate, setTaxRate] = useState("");
   const [qty, setQuantity] = useState("");
   const [amount, setTotalAmount] = useState("");
   const [newCustomerDialogOpen, setNewCustomerDialogOpen] = useState(false);
@@ -48,11 +49,18 @@ const SalesEntryForm = () => {
   const [newCustomerGST, setNewCustomerGST] = useState("");
 
   useEffect(() => {
-    if (data.items) {
-      setItemList(data.items);
-      setFilteredItemList(data.items);
+    fetchItems();
+  }, []);
+
+  const fetchItems = async () => {
+    try {
+      const response = await getItems();
+      setItemList(response.data);
+      setFilteredItemList(response.data);
+    } catch (error) {
+      console.error("Error fetching items:", error);
     }
-  }, [data.items]);
+  };
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -81,26 +89,25 @@ const SalesEntryForm = () => {
     setCustomerGST(selectedCustomer?.gst || "");
   };
 
-const handleAddItem = () => {
-  const newItem = {
-    item_name,
-    barcode,
-    standard_price: parseFloat(standard_price) || 0,
-    tax_rate: parseFloat(tax_rate) || 0,
-    qty: parseFloat(qty) || 0,
-    amount: parseFloat(amount) || 0,
+  const handleAddItem = () => {
+    const newItem = {
+      itemName,
+      barcode,
+      standardPrice: parseFloat(standardPrice) || 0,
+      taxRate: parseFloat(taxRate) || 0,
+      qty: parseFloat(qty) || 0,
+      amount: parseFloat(amount) || 0,
+    };
+
+    setItems([...items, newItem]);
+    setItemDialogOpen(false);
+    setItemName("");
+    setBarcode("");
+    setStandardPrice("");
+    setTaxRate("");
+    setQuantity("");
+    setTotalAmount("");
   };
-
-  setItems([...items, newItem]);
-  setItemDialogOpen(false);
-  setItemName("");
-  setBarcode("");
-  setStandardPrice("");
-  setTaxRate("");
-  setQuantity("");
-  setTotalAmount("");
-};
-
 
   const calculateTotalAmount = (price, qty) => {
     const parsedPrice = parseFloat(price) || 0;
@@ -110,7 +117,7 @@ const handleAddItem = () => {
 
   const handleQuantityChange = (value) => {
     setQuantity(value);
-    setTotalAmount(calculateTotalAmount(standard_price, value));
+    setTotalAmount(calculateTotalAmount(standardPrice, value));
   };
 
   const handleDeleteItem = (index) => {
@@ -123,7 +130,7 @@ const handleAddItem = () => {
   const handleItemSearch = (value) => {
     setItemName(value);
     const filteredItems = itemList.filter((item) =>
-      item.item_name.toLowerCase().includes(value.toLowerCase())
+      item.itemName.toLowerCase().includes(value.toLowerCase())
     );
     setFilteredItemList(filteredItems);
   };
@@ -162,11 +169,11 @@ const handleAddItem = () => {
 
   const handleItemSelect = (item) => {
     setSelectedItem(item);
-    setItemName(item.item_name);
+    setItemName(item.itemName);
     setBarcode(item.barcode);
-    setStandardPrice(item.standard_price);
-    setTaxRate(item.tax_rate);
-    setTotalAmount(calculateTotalAmount(item.standard_price, qty));
+    setStandardPrice(item.standardPrice);
+    setTaxRate(item.taxRate);
+    setTotalAmount(calculateTotalAmount(item.standardPrice, qty));
   };
 
   const handleBarcodeKeyPress = (event) => {
@@ -180,41 +187,40 @@ const handleAddItem = () => {
     }
   };
 
-const handleSave = async () => {
-  const salesEntry = {
-    customer: {
-      name: customer,
-      address: customerAddress,
-      gst: customerGST,
-    },
-    items,
-  };
-
-  const tenancyId = localStorage.getItem("tenancyId");
-  try {
-    const response = await fetch(`/api/${tenancyId}/sales`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+  const handleSave = async () => {
+    const salesEntry = {
+      customer: {
+        name: customer,
+        address: customerAddress,
+        gst: customerGST,
       },
-      body: JSON.stringify(salesEntry),
-    });
+      items,
+    };
 
-    if (response.ok) {
-      alert("Sales entry saved successfully");
-      setCustomer("");
-      setCustomerAddress("");
-      setCustomerGST("");
-      setItems([]);
-    } else {
-      alert("Failed to save sales entry");
+    const tenancyId = localStorage.getItem("tenancyId");
+    try {
+      const response = await fetch(`/api/${tenancyId}/sales`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(salesEntry),
+      });
+
+      if (response.ok) {
+        alert("Sales entry saved successfully");
+        setCustomer("");
+        setCustomerAddress("");
+        setCustomerGST("");
+        setItems([]);
+      } else {
+        alert("Failed to save sales entry");
+      }
+    } catch (error) {
+      console.error("Error saving sales entry:", error);
+      alert("An error occurred while saving sales entry.");
     }
-  } catch (error) {
-    console.error("Error saving sales entry:", error);
-    alert("An error occurred while saving sales entry.");
-  }
-};
-
+  };
 
   return (
     <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
@@ -278,10 +284,10 @@ const handleSave = async () => {
             <TableBody>
               {items.map((item, index) => (
                 <TableRow key={index}>
-                  <TableCell>{item.item_name}</TableCell>
+                  <TableCell>{item.itemName}</TableCell>
                   <TableCell>{item.barcode}</TableCell>
-                  <TableCell>{item.standard_price.toFixed(2)}</TableCell>
-                  <TableCell>{item.tax_rate}</TableCell>
+                  <TableCell>{item.standardPrice.toFixed(2)}</TableCell>
+                  <TableCell>{item.taxRate}</TableCell>
                   <TableCell>{item.qty}</TableCell>
                   <TableCell>{(item.amount || 0).toFixed(2)}</TableCell>{" "}
                   {/* Use fallback value */}
@@ -330,7 +336,7 @@ const handleSave = async () => {
           <FormControl fullWidth margin="normal">
             <InputLabel>Item Name</InputLabel>
             <TextField
-              value={item_name}
+              value={itemName}
               onChange={(e) => handleItemSearch(e.target.value)}
               InputProps={{
                 endAdornment: (
@@ -341,18 +347,18 @@ const handleSave = async () => {
               }}
             />
             <Select
-              value={selectedItem?.item_name || ""}
+              value={selectedItem?.itemName || ""}
               onChange={(e) =>
                 handleItemSelect(
                   filteredItemList.find(
-                    (item) => item.item_name === e.target.value
+                    (item) => item.itemName === e.target.value
                   )
                 )
               }
             >
               {filteredItemList.map((item) => (
-                <MenuItem key={item.item_id} value={item.item_name}>
-                  {item.item_name}
+                <MenuItem key={item.item_id} value={item.itemName}>
+                  {item.itemName}
                 </MenuItem>
               ))}
             </Select>
@@ -361,14 +367,14 @@ const handleSave = async () => {
             label="Standard Price"
             fullWidth
             margin="normal"
-            value={standard_price}
+            value={standardPrice}
             disabled
           />
           <TextField
             label="Tax Rate"
             fullWidth
             margin="normal"
-            value={tax_rate}
+            value={taxRate}
             disabled
           />
           <TextField
