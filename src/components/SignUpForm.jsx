@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Box, Button, TextField, Typography, Paper } from "@mui/material";
 import Select from "react-select";
+import moment from "moment-timezone"; // Optional for loading time zones
 
 const SignUpForm = ({ onSignUp }) => {
   const [companyName, setCompanyName] = useState("");
@@ -11,10 +12,13 @@ const SignUpForm = ({ onSignUp }) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [countries, setCountries] = useState([]);
   const [selectedCountry, setSelectedCountry] = useState(null);
+  const [timezones, setTimezones] = useState([]);
+  const [selectedTimezone, setSelectedTimezone] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     fetchCountries();
+    fetchTimezones();
   }, []);
 
   const fetchCountries = async () => {
@@ -32,6 +36,20 @@ const SignUpForm = ({ onSignUp }) => {
     } catch (error) {
       console.error("Error fetching countries:", error);
     }
+  };
+
+  const fetchTimezones = () => {
+    // Using moment-timezone to get all time zones
+    const timezoneNames = moment.tz.names();
+    const formattedTimezones = timezoneNames.map((tz) => ({
+      label: tz,
+      value: tz,
+    }));
+    setTimezones(formattedTimezones);
+
+    // Optionally, set the default time zone to the user's local time zone
+    const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    setSelectedTimezone({ label: localTimezone, value: localTimezone });
   };
 
   const handleSubmit = async (e) => {
@@ -57,6 +75,7 @@ const SignUpForm = ({ onSignUp }) => {
       mobileNumber,
       password,
       country: selectedCountry ? selectedCountry.label : null,
+      timezone: selectedTimezone ? selectedTimezone.value : null, // Add the timezone to form data
     };
 
     try {
@@ -83,6 +102,10 @@ const SignUpForm = ({ onSignUp }) => {
 
   const handleCountryChange = (selectedOption) => {
     setSelectedCountry(selectedOption);
+  };
+
+  const handleTimezoneChange = (selectedOption) => {
+    setSelectedTimezone(selectedOption);
   };
 
   return (
@@ -141,6 +164,14 @@ const SignUpForm = ({ onSignUp }) => {
           value={selectedCountry}
           onChange={handleCountryChange}
           placeholder="Select Country"
+          isClearable
+          styles={{ menu: (provided) => ({ ...provided, zIndex: 9999 }) }}
+        />
+        <Select
+          options={timezones}
+          value={selectedTimezone}
+          onChange={handleTimezoneChange}
+          placeholder="Select Timezone"
           isClearable
           styles={{ menu: (provided) => ({ ...provided, zIndex: 9999 }) }}
         />

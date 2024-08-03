@@ -181,9 +181,9 @@ const Sidebar = ({ mode, setMode, roles }) => {
       roles: ["user"],
     },
     {
-      label: "Settings",
+      label: "StockMovement Report",
       icon: <Settings sx={{ color: "#ffe3a3" }} />,
-      link: "/settings",
+      link: "/stockmovementreport",
       roles: ["admin", "user", "manager"],
     },
     {
