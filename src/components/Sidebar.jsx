@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   List,
@@ -10,6 +10,10 @@ import {
   Switch,
   Drawer,
   IconButton,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import {
   Home,
@@ -24,22 +28,50 @@ import {
   Assessment,
   AccountTree,
   Category,
+  ExitToApp,
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+
+import axios from "axios";
 
 const Sidebar = ({ mode, setMode, roles }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [openAIReports, setOpenAIReports] = useState(false);
+  const [openReports, setOpenReports] = useState(false);
   const [openScheme, setOpenScheme] = useState(false);
   const [openMasters, setOpenMasters] = useState(false);
   const [openPurchase, setOpenPurchase] = useState(false);
+  const [branches, setBranches] = useState([]);
+  const [selectedBranch, setSelectedBranch] = useState("");
+  const navigate = useNavigate(); // Initialize navigate
+
+  useEffect(() => {
+    // Fetch branches from the backend API
+    const fetchBranches = async () => {
+      try {
+        const tenancyId = localStorage.getItem("tenancyId");
+        const response = await fetch(`/api/${tenancyId}/branches`);
+        const data = await response.json();
+        setBranches(data.branches);
+      } catch (error) {
+        console.error("Error fetching branches:", error);
+      }
+    };
+
+    fetchBranches();
+  }, []);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
-  const handleClickAIReports = () => {
-    setOpenAIReports(!openAIReports);
+  const handleBranchChange = (event) => {
+    setSelectedBranch(event.target.value);
+    localStorage.setItem("branchCode", event.target.value);
+  };
+
+  const handleClickReports = () => {
+    setOpenReports(!openReports);
   };
 
   const handleClickScheme = () => {
@@ -54,6 +86,16 @@ const Sidebar = ({ mode, setMode, roles }) => {
     setOpenPurchase(!openPurchase);
   };
 
+  const handleLogout = () => {
+    // Clear user session data or tokens here
+    localStorage.removeItem("tenancyId");
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("branchCode");
+    // Navigate to the login page
+    navigate("/login");
+    console.log("User logged out");
+  };
+
   const menuItems = [
     {
       label: "Dashboard",
@@ -62,18 +104,11 @@ const Sidebar = ({ mode, setMode, roles }) => {
       roles: ["admin", "user"],
     },
     {
-      label: "Sales",
-      icon: <Pages sx={{ color: "#ffe3a3" }} />,
-      link: "/sales",
-      roles: ["user"],
-    },
-    {
-      label: "SalesEntry",
+      label: "Sales Entry",
       icon: <Pages sx={{ color: "#ffe3a3" }} />,
       link: "/salesentryform",
       roles: ["user"],
     },
-
     {
       label: "HSN wise Sales",
       icon: <Pages sx={{ color: "#ffe3a3" }} />,
@@ -103,7 +138,7 @@ const Sidebar = ({ mode, setMode, roles }) => {
       label: "Weighbridge",
       icon: <Luggage sx={{ color: "#ffe3a3" }} />,
       link: "/weighbridge",
-      roles: ["admin"],
+      roles: ["WB"],
     },
     {
       label: "Branch Creation",
@@ -161,12 +196,27 @@ const Sidebar = ({ mode, setMode, roles }) => {
       ],
     },
     {
-      label: "AI Reports",
+      label: "Reports",
       icon: <Assessment sx={{ color: "#ffe3a3" }} />,
       link: "",
-      roles: ["admin"],
+      roles: ["admin", "user", "manager"],
       hasSubmenu: true,
       submenu: [
+        {
+          label: "Sales Report",
+          link: "/sales",
+          roles: ["admin", "user", "manager"],
+        },
+        {
+          label: "Purchase Report",
+          link: "/purchasereport",
+          roles: ["admin", "user", "manager"],
+        },
+        {
+          label: "Stock Movement Report",
+          link: "/stockmovementreport",
+          roles: ["admin", "user", "manager"],
+        },
         {
           label: "Season Sales Report",
           link: "/seasonalreport",
@@ -181,12 +231,6 @@ const Sidebar = ({ mode, setMode, roles }) => {
       roles: ["user"],
     },
     {
-      label: "StockMovement Report",
-      icon: <Settings sx={{ color: "#ffe3a3" }} />,
-      link: "/stockmovementreport",
-      roles: ["admin", "user", "manager"],
-    },
-    {
       label: "Download",
       icon: <Settings sx={{ color: "#ffe3a3" }} />,
       link: "/download",
@@ -198,24 +242,49 @@ const Sidebar = ({ mode, setMode, roles }) => {
       link: "/help",
       roles: ["user"],
     },
+    {
+      label: "Logout",
+      icon: <ExitToApp sx={{ color: "#ffe3a3" }} />,
+      action: handleLogout,
+      roles: ["admin", "user", "manager"],
+    },
   ];
 
   const drawerContent = (
     <List>
+      {/* Branch Selector */}
+      <ListItem>
+        <FormControl fullWidth>
+          <InputLabel sx={{ color: "#ffe3a3" }}>Select Branch</InputLabel>
+          <Select
+            value={selectedBranch}
+            onChange={handleBranchChange}
+            sx={{ color: "#ffe3a3" }}
+          >
+            {branches.map((branch) => (
+              <MenuItem key={branch.branchCode} value={branch.branchCode}>
+                {branch.branchCode}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </ListItem>
+
+      {/* Other Menu Items */}
       {menuItems.map((item, index) => {
         if (item.roles.some((role) => roles.includes(role))) {
           if (item.hasSubmenu) {
             const isOpen =
-              item.label === "AI Reports"
-                ? openAIReports
+              item.label === "Reports"
+                ? openReports
                 : item.label === "Scheme"
                 ? openScheme
                 : item.label === "Masters"
                 ? openMasters
                 : openPurchase;
             const handleClick =
-              item.label === "AI Reports"
-                ? handleClickAIReports
+              item.label === "Reports"
+                ? handleClickReports
                 : item.label === "Scheme"
                 ? handleClickScheme
                 : item.label === "Masters"
@@ -250,6 +319,15 @@ const Sidebar = ({ mode, setMode, roles }) => {
                   </List>
                 </Collapse>
               </React.Fragment>
+            );
+          } else if (item.action) {
+            return (
+              <ListItem disablePadding key={index}>
+                <ListItemButton onClick={item.action}>
+                  <ListItemIcon>{item.icon}</ListItemIcon>
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              </ListItem>
             );
           } else {
             return (

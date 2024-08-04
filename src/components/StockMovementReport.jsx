@@ -33,13 +33,17 @@ const StockMovementReport = () => {
 
   const fetchStockData = async () => {
     try {
+      const branchCode = localStorage.getItem("branchCode");
       const tenancyId = localStorage.getItem("tenancyId");
-      const response = await axios.get(`/api/${tenancyId}/stock-data`, {
-        params: {
-          openingDate: fromDate,
-          closingDate: toDate,
-        },
-      });
+      const response = await axios.get(
+        `/api/${tenancyId}/${branchCode}/stock-data`,
+        {
+          params: {
+            openingDate: fromDate,
+            closingDate: toDate,
+          },
+        }
+      );
       const data = response.data;
 
       // Process data to accumulate closing stock
