@@ -20,6 +20,7 @@ const LoginForm = ({ onLogin }) => {
 
       const data = await response.json();
       if (data.success) {
+        localStorage.setItem("jwtToken", data.token); // Store the JWT token
         localStorage.setItem("tenancyId", data.tenancyId);
         localStorage.setItem("roles", JSON.stringify(data.roles)); // Store roles in localStorage
         onLogin(data.roles); // Pass roles to onLogin handler

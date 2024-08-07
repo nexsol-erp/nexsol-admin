@@ -156,9 +156,11 @@ const PurchaseEntryForm = () => {
     };
 
     try {
+      const token = localStorage.getItem("jwtToken");
       const response = await fetch(`/api/${tenancyId}/partial-save`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
@@ -185,9 +187,11 @@ const PurchaseEntryForm = () => {
     };
 
     try {
+      const token = localStorage.getItem("jwtToken");
       const response = await fetch(`/api/${tenancyId}/final-save`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),

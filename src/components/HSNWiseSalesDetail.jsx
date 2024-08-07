@@ -51,8 +51,17 @@ const HSNSalesDetail = () => {
     if (branch && fromDate && toDate) {
       try {
         const tenancyId = localStorage.getItem("tenancyId");
+        const token = localStorage.getItem("jwtToken");
+
         const response = await fetch(
-          `/api/${tenancyId}/salesdatahsnwise?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`
+          `/api/${tenancyId}/salesdatahsnwise?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
         );
         const data = await response.json();
         setSalesData(data.data);

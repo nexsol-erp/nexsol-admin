@@ -15,9 +15,6 @@ import {
   InputLabel,
 } from "@mui/material";
 
-
-
-
 const PublishSchemePage = () => {
   const [schemes, setSchemes] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -34,7 +31,14 @@ const PublishSchemePage = () => {
   const fetchBranches = async () => {
     try {
       const tenancyId = localStorage.getItem("tenancyId");
-      const response = await fetch(`/api/${tenancyId}/branches`);
+      const token = localStorage.getItem("jwtToken");
+      const response = await fetch(`/api/${tenancyId}/branches`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
       const data = await response.json();
       setBranches(data.branches);
     } catch (error) {
@@ -49,9 +53,11 @@ const PublishSchemePage = () => {
 
   const handlePublishScheme = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
     const response = await fetch(`/api/${tenancyId}/scheme/publish-scheme`, {
       method: "POST",
       headers: {
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -69,7 +75,9 @@ const PublishSchemePage = () => {
 
   const handleDeleteScheme = async (schemeId) => {
     const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
     const response = await fetch(`/api/${tenancyId}/scheme/${schemeId}`, {
+      Authorization: `Bearer ${token}`,
       method: "DELETE",
     });
 
@@ -139,8 +147,8 @@ const PublishSchemePage = () => {
             {schemes.map((scheme) => (
               <TableRow key={scheme.schemeName}>
                 <TableCell>{scheme.schemeName}</TableCell>
-                <TableCell>{(scheme.startDate)}</TableCell>
-                <TableCell>{(scheme.endDate)}</TableCell>
+                <TableCell>{scheme.startDate}</TableCell>
+                <TableCell>{scheme.endDate}</TableCell>
                 <TableCell>
                   <Button
                     variant="contained"

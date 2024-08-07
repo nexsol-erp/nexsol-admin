@@ -39,9 +39,14 @@ const PurchaseDetail = () => {
   const fetchBranches = async () => {
     try {
       const tenancyId = localStorage.getItem("tenancyId");
-      const response = await fetch(
-        `/api/${tenancyId}/branches`
-      );
+       const token = localStorage.getItem("jwtToken");
+      const response = await fetch(`/api/${tenancyId}/branches`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
       const data = await response.json();
       setBranches(data.branches);
     } catch (error) {
@@ -53,8 +58,16 @@ const PurchaseDetail = () => {
     if (branch && fromDate && toDate) {
       try {
         const tenancyId = localStorage.getItem("tenancyId");
+        const token = localStorage.getItem("jwtToken");
         const response = await fetch(
-          `/api/${tenancyId}/purchasedata?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`
+          `/api/${tenancyId}/purchasedata?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
         );
         const data = await response.json();
         setPurchaseData(data.data);

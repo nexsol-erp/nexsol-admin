@@ -23,7 +23,14 @@ const CategoryTypeMaster = () => {
   const fetchCategories = async () => {
     try {
       const tenancyId = localStorage.getItem("tenancyId");
-      const response = await fetch(`/api/${tenancyId}/categories`);
+      const token = localStorage.getItem("jwtToken");
+      const response = await fetch(`/api/${tenancyId}/categories`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch categories");
       }
@@ -56,9 +63,11 @@ const CategoryTypeMaster = () => {
 
     try {
       const tenancyId = localStorage.getItem("tenancyId");
+         const token = localStorage.getItem("jwtToken");
       const response = await fetch(`/api/${tenancyId}/categories/create`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),

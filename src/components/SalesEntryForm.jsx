@@ -65,8 +65,16 @@ const SalesEntryForm = () => {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
+        const token = localStorage.getItem("jwtToken");
         const tenancyId = localStorage.getItem("tenancyId");
-        const response = await fetch(`/api/${tenancyId}/customers`);
+        const response = await fetch(`/api/${tenancyId}/customers`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
         if (!response.ok) {
           throw new Error("Failed to fetch customers");
         }
@@ -143,10 +151,12 @@ const SalesEntryForm = () => {
     };
 
     const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
     try {
       const response = await fetch(`/api/${tenancyId}/customers`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(newCustomer),
@@ -198,10 +208,12 @@ const SalesEntryForm = () => {
     };
 
     const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
     try {
       const response = await fetch(`/api/${tenancyId}/sales`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(salesEntry),

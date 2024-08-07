@@ -37,10 +37,12 @@ const SupplierCreationForm = () => {
     setSuccess(false);
 
     try {
+      const token = localStorage.getItem("jwtToken");
       const tenancyId = localStorage.getItem("tenancyId");
       const response = await fetch(`/api/${tenancyId}/suppliers`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(supplier),
