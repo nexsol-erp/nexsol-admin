@@ -6,6 +6,7 @@ import {
   Typography,
   Paper,
   CircularProgress,
+  Grid,
 } from "@mui/material";
 
 const BranchCreationPage = () => {
@@ -17,6 +18,7 @@ const BranchCreationPage = () => {
   const [branchAddress1, setBranchAddress1] = useState("");
   const [branchAddress2, setBranchAddress2] = useState("");
   const [branchGst, setBranchGst] = useState("");
+  const [branchInvoicePrefix, setBranchInvoicePrefix] = useState("");
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -42,6 +44,7 @@ const BranchCreationPage = () => {
       branchAddress1,
       branchAddress2,
       branchGst,
+      branchInvoicePrefix, // include the new field
     };
 
     setLoading(true);
@@ -49,9 +52,11 @@ const BranchCreationPage = () => {
 
     try {
       const tenancyId = localStorage.getItem("tenancyId");
+      const token = localStorage.getItem("jwtToken");
       const response = await fetch(`/api/${tenancyId}/createbranch`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
@@ -69,6 +74,7 @@ const BranchCreationPage = () => {
         setBranchAddress1("");
         setBranchAddress2("");
         setBranchGst("");
+        setBranchInvoicePrefix(""); // reset the new field
       } else {
         setError(data.message);
       }
@@ -88,7 +94,7 @@ const BranchCreationPage = () => {
         mt: 2,
       }}
     >
-      <Paper elevation={3} sx={{ padding: 4, maxWidth: 400 }}>
+      <Paper elevation={3} sx={{ padding: 4, maxWidth: 800 }}>
         <Typography variant="h4" gutterBottom>
           Branch Creation
         </Typography>
@@ -98,70 +104,98 @@ const BranchCreationPage = () => {
           </Typography>
         )}
         <form onSubmit={handleSubmit}>
-          <TextField
-            label="Branch Code"
-            fullWidth
-            margin="normal"
-            value={branchCode}
-            onChange={(e) => setBranchCode(e.target.value)}
-            required
-          />
-          <TextField
-            label="Branch Name"
-            fullWidth
-            margin="normal"
-            value={branchName}
-            onChange={(e) => setBranchName(e.target.value)}
-            required
-          />
-          <TextField
-            label="Branch State"
-            fullWidth
-            margin="normal"
-            value={branchState}
-            onChange={(e) => setBranchState(e.target.value)}
-            required
-          />
-          <TextField
-            label="Branch Building"
-            fullWidth
-            margin="normal"
-            value={branchBuildingAddress}
-            onChange={(e) => setBranchBuildingAddress(e.target.value)}
-            required
-          />
-          <TextField
-            label="Branch Street"
-            fullWidth
-            margin="normal"
-            value={branchStreetAddress}
-            onChange={(e) => setBranchStreetAddress(e.target.value)}
-            required
-          />
-          <TextField
-            label="Branch Address1"
-            fullWidth
-            margin="normal"
-            value={branchAddress1}
-            onChange={(e) => setBranchAddress1(e.target.value)}
-            required
-          />
-          <TextField
-            label="Branch Address2"
-            fullWidth
-            margin="normal"
-            value={branchAddress2}
-            onChange={(e) => setBranchAddress2(e.target.value)}
-            required
-          />
-          <TextField
-            label="Branch GST"
-            fullWidth
-            margin="normal"
-            value={branchGst}
-            onChange={(e) => setBranchGst(e.target.value)}
-            required
-          />
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Branch Code"
+                fullWidth
+                margin="normal"
+                value={branchCode}
+                onChange={(e) => setBranchCode(e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Branch Name"
+                fullWidth
+                margin="normal"
+                value={branchName}
+                onChange={(e) => setBranchName(e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Branch State"
+                fullWidth
+                margin="normal"
+                value={branchState}
+                onChange={(e) => setBranchState(e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Branch Building"
+                fullWidth
+                margin="normal"
+                value={branchBuildingAddress}
+                onChange={(e) => setBranchBuildingAddress(e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Branch Street"
+                fullWidth
+                margin="normal"
+                value={branchStreetAddress}
+                onChange={(e) => setBranchStreetAddress(e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Branch Address1"
+                fullWidth
+                margin="normal"
+                value={branchAddress1}
+                onChange={(e) => setBranchAddress1(e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Branch Address2"
+                fullWidth
+                margin="normal"
+                value={branchAddress2}
+                onChange={(e) => setBranchAddress2(e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Branch GST"
+                fullWidth
+                margin="normal"
+                value={branchGst}
+                onChange={(e) => setBranchGst(e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Branch Invoice Prefix"
+                fullWidth
+                margin="normal"
+                value={branchInvoicePrefix}
+                onChange={(e) => setBranchInvoicePrefix(e.target.value)}
+                required
+              />
+            </Grid>
+          </Grid>
           <Box mt={2}>
             <Button
               type="submit"

@@ -43,8 +43,16 @@ const SchemePage = () => {
 
   const fetchSchemes = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
+
     try {
-      const response = await fetch(`/api/${tenancyId}/scheme`);
+      const response = await fetch(`/api/${tenancyId}/scheme`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch schemes.");
       }
@@ -104,10 +112,12 @@ const SchemePage = () => {
       cashBackAmount: cashBackAmount || 0,
     };
     const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
     try {
       const response = await fetch(`/api/${tenancyId}/scheme`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(newScheme),

@@ -35,9 +35,14 @@ const StockMovementReport = () => {
     try {
       const branchCode = localStorage.getItem("branchCode");
       const tenancyId = localStorage.getItem("tenancyId");
+      const token = localStorage.getItem("jwtToken");
       const response = await axios.get(
         `/api/${tenancyId}/${branchCode}/stock-data`,
         {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
           params: {
             openingDate: fromDate,
             closingDate: toDate,

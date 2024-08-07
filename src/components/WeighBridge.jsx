@@ -50,10 +50,16 @@ const WeighBridge = () => {
   const fetchWeighBridgeData = async () => {
     if (branch && fromDate && toDate) {
       try {
+          const token = localStorage.getItem("jwtToken");
         const tenancyId = localStorage.getItem("tenancyId");
         const response = await fetch(
-          `/api/${tenancyId}/weighbridge?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`
-        );
+          `/api/${tenancyId}/weighbridge?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}` , {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
         const data = await response.json();
         setWeighbridgeData(data.data);
       } catch (error) {

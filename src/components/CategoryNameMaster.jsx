@@ -34,7 +34,14 @@ const CategoryNameMaster = () => {
   const fetchCategoryTypes = async () => {
     try {
       const tenancyId = localStorage.getItem("tenancyId");
-      const response = await fetch(`/api/${tenancyId}/categories`);
+      const token = localStorage.getItem("jwtToken");
+      const response = await fetch(`/api/${tenancyId}/categories`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch category types");
       }
@@ -48,7 +55,14 @@ const CategoryNameMaster = () => {
   const fetchCategories = async () => {
     try {
       const tenancyId = localStorage.getItem("tenancyId");
-      const response = await fetch(`/api/${tenancyId}/categoriesNames`);
+      const token = localStorage.getItem("jwtToken");
+      const response = await fetch(`/api/${tenancyId}/categoriesNames`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch categories");
       }
@@ -83,9 +97,11 @@ const CategoryNameMaster = () => {
 
     try {
       const tenancyId = localStorage.getItem("tenancyId");
+      const token = localStorage.getItem("jwtToken");
       const response = await fetch(`/api/${tenancyId}/categoriesNames/create`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
@@ -111,9 +127,17 @@ const CategoryNameMaster = () => {
   const handleDelete = async (id) => {
     try {
       const tenancyId = localStorage.getItem("tenancyId");
-      const response = await fetch(`/api/${tenancyId}/categoriesNames/${id}`, {
-        method: "DELETE",
-      });
+      const token = localStorage.getItem("jwtToken");
+      const response = await fetch(
+        `/api/${tenancyId}/categoriesNames/delete/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (response.ok) {
         fetchCategories(); // Refresh the categories list

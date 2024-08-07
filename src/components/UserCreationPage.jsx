@@ -24,8 +24,15 @@ const UserCreationPage = () => {
 
   const fetchBranches = async () => {
     try {
+       const token = localStorage.getItem("jwtToken");
       const tenancyId = localStorage.getItem("tenancyId");
-      const response = await fetch(`/api/${tenancyId}/branches`);
+      const response = await fetch(`/api/${tenancyId}/branches`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
       const data = await response.json();
       setBranches(data.branches);
     } catch (error) {
@@ -43,9 +50,12 @@ const UserCreationPage = () => {
     };
 
     try {
-      const response = await fetch("/api/createuser", {
+        const token = localStorage.getItem("jwtToken");
+       // const tenancyId = localStorage.getItem("tenancyId");
+      const response = await fetch(`/api/createbranchuser`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
