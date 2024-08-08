@@ -49,8 +49,16 @@ const Sidebar = ({ mode, setMode, roles }) => {
     // Fetch branches from the backend API
     const fetchBranches = async () => {
       try {
+        const token = localStorage.getItem("jwtToken");
         const tenancyId = localStorage.getItem("tenancyId");
-        const response = await fetch(`/api/${tenancyId}/branches`);
+        const response = await fetch(`/api/${tenancyId}/branches`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            }
+      });
         const data = await response.json();
         setBranches(data.branches);
       } catch (error) {
