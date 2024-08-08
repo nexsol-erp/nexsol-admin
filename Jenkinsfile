@@ -4,7 +4,7 @@ pipeline {
     environment {
         REACT_REPO = 'https://github.com/nexsol-erp/nexsol-admin.git'
         DEPLOY_DIR = '/root/webmodule'
-        SERVICE_NAME = '/webmodule.service'
+        SERVICE_NAME = 'webmodule.service'
         STATIC_RESOURCES_DIR = 'src/main/resources/static'
 
          CI = ''  // Unset the CI environment variable
