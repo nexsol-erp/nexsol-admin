@@ -3,18 +3,14 @@ pipeline {
 
     environment {
         REACT_REPO = 'https://github.com/nexsol-erp/nexsol-admin.git'
-        DEPLOY_DIR = '/root/webmodule'
-        SERVICE_NAME = 'webmodule.service'
+        DEPLOY_DIR = '/var/www/html' // Directory served by Nginx
+        SERVICE_NAME = 'nginx' // Assuming Nginx service is managed here
         STATIC_RESOURCES_DIR = 'src/main/resources/static'
-
-         CI = ''  // Unset the CI environment variable
-
+        CI = ''  // Unset the CI environment variable
     }
 
     tools {
-       
         nodejs 'NodeJS'  // Name of the NodeJS installation configured in Jenkins
-        
     }
 
     stages {
@@ -37,18 +33,14 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                
-                 script {
-                    sh 'sudo systemctl stop ${SERVICE_NAME}'
-                    sh 'scp -r build/* ${DEPLOY_DIR}'
-                    sh 'sudo systemctl start ${SERVICE_NAME}'
+                script {
+                    sh 'sudo cp -r react-project/build/* ${DEPLOY_DIR}'
+                    sh 'sudo systemctl reload ${SERVICE_NAME}' // Reload Nginx configuration
                 }
-                
             }
         }
     }
 
-   
     post {
         success {
             echo 'Build and deployment succeeded!'
