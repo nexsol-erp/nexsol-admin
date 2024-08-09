@@ -17,7 +17,7 @@ const DownloadPage = () => {
 
   const fetchBranches = async () => {
     try {
-       const token = localStorage.getItem("jwtToken");
+      const token = localStorage.getItem("jwtToken");
       const tenancyId = localStorage.getItem("tenancyId");
       const response = await fetch(`/api/${tenancyId}/branches`, {
         method: "GET",
@@ -41,30 +41,66 @@ const DownloadPage = () => {
     setBranch(event.target.value);
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
     const fileName = "nexsol-pos.zip";
     const url = `/api/download/${tenancyId}/${branch}/${fileName}`;
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/octet-stream",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to download file");
+      }
+
+      const blob = await response.blob();
+      const link = document.createElement("a");
+      link.href = window.URL.createObjectURL(blob);
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+    }
   };
 
-  const handleUpgradeDownload = () => {
+  const handleUpgradeDownload = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
     const fileName = "nexsol-pos-upgrade.zip";
     const url = `/api/download/${tenancyId}/${branch}/upgrade/${fileName}`;
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/octet-stream",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to download file");
+      }
+
+      const blob = await response.blob();
+      const link = document.createElement("a");
+      link.href = window.URL.createObjectURL(blob);
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+    }
   };
 
   return (
