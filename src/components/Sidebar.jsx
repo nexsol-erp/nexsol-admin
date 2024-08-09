@@ -225,6 +225,12 @@ const Sidebar = ({ mode, setMode, roles }) => {
           link: "/stockmovementreport",
           roles: ["admin", "user", "manager"],
         },
+         {
+          label: "Bill Series Report",
+          link: "/billseriesreport",
+          roles: ["admin", "user", "manager"],
+        },
+        
         {
           label: "Season Sales Report",
           link: "/seasonalreport",
