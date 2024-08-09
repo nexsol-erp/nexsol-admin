@@ -26,6 +26,7 @@ import SupplierCreationForm from "./components/SupplierCreationForm";
 import PurchaseEntryForm from "./components/PurchaseEntryForm";
 import SalesEntryForm from "./components/SalesEntryForm"
 import StockMovementReport from "./components/StockMovementReport";
+import BillSeriesReport from "./components/BillSeriesReport"
 
 
 const App = () => {
@@ -97,14 +98,13 @@ const App = () => {
               />
               <Route path="/purchaseentry" element={<PurchaseEntryForm />} />
               <Route path="/salesentryform" element={<SalesEntryForm />} />
+              <Route path="/billseriesreport" element={<BillSeriesReport />} />
+
               <Route
                 path="/stockmovementreport"
                 element={<StockMovementReport />}
               />
-              <Route
-                path="/login"
-                element={<LoginForm />}
-              />
+              <Route path="/login" element={<LoginForm />} />
             </Routes>
           </WebSocketProvider>
         </Box>
