@@ -68,7 +68,7 @@ const UploadPage = () => {
     formData.append("fileType", fileType);
 
     try {
-      const response = await fetch(`/api/upload/${tenancyId}`, {
+      const response = await fetch(`/api/${tenancyId}/upload`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -136,7 +136,7 @@ const UploadPage = () => {
           >
             <MenuItem value="INI">INI</MenuItem>
             <MenuItem value="EXE">EXE</MenuItem>
-            <MenuItem value="ITEM_MASTER">PDF</MenuItem>
+            <MenuItem value="ITEM_MASTER">ITEM_MASTER</MenuItem>
             <MenuItem value="OTHERS">OTHERS</MenuItem>
           </Select>
         </FormControl>
