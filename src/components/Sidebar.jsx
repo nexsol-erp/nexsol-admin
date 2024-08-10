@@ -225,12 +225,12 @@ const Sidebar = ({ mode, setMode, roles }) => {
           link: "/stockmovementreport",
           roles: ["admin", "user", "manager"],
         },
-         {
+        {
           label: "Bill Series Report",
           link: "/billseriesreport",
           roles: ["admin", "user", "manager"],
         },
-        
+
         {
           label: "Season Sales Report",
           link: "/seasonalreport",
@@ -250,6 +250,13 @@ const Sidebar = ({ mode, setMode, roles }) => {
       link: "/download",
       roles: ["user"],
     },
+    {
+      label: "Upload",
+      icon: <Settings sx={{ color: "#ffe3a3" }} />,
+      link: "/uploadpage",
+      roles: ["user"],
+    },
+
     {
       label: "Help",
       icon: <Settings sx={{ color: "#ffe3a3" }} />,
