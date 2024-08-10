@@ -24,10 +24,10 @@ import CategoryTypeMaster from "./components/CategoryTypeMaster";
 import CategoryNameMaster from "./components/CategoryNameMaster";
 import SupplierCreationForm from "./components/SupplierCreationForm";
 import PurchaseEntryForm from "./components/PurchaseEntryForm";
-import SalesEntryForm from "./components/SalesEntryForm"
+import SalesEntryForm from "./components/SalesEntryForm";
 import StockMovementReport from "./components/StockMovementReport";
-import BillSeriesReport from "./components/BillSeriesReport"
-
+import BillSeriesReport from "./components/BillSeriesReport";
+import UploadPage from "./components/UploadPage";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -99,6 +99,7 @@ const App = () => {
               <Route path="/purchaseentry" element={<PurchaseEntryForm />} />
               <Route path="/salesentryform" element={<SalesEntryForm />} />
               <Route path="/billseriesreport" element={<BillSeriesReport />} />
+              <Route path="/uploadpage" element={<UploadPage />} />
 
               <Route
                 path="/stockmovementreport"
