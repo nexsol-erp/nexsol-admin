@@ -10,6 +10,7 @@ import {
   MenuItem,
   TextField,
   LinearProgress,
+  Alert,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
@@ -20,6 +21,9 @@ const UploadPage = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [message, setMessage] = useState(""); // State for the first message
+  const [message2, setMessage2] = useState(""); // State for the second message
+  const [error, setError] = useState(false); // State to differentiate between success and error messages
 
   const fetchBranches = async () => {
     try {
@@ -59,6 +63,10 @@ const UploadPage = () => {
     if (!selectedFile || !branch || !fileType) return;
 
     setUploading(true);
+    setMessage(""); // Clear any previous messages
+    setMessage2(""); // Clear any previous second messages
+    setError(false); // Reset error state
+
     const tenancyId = localStorage.getItem("tenancyId");
     const token = localStorage.getItem("jwtToken");
 
@@ -80,23 +88,23 @@ const UploadPage = () => {
         throw new Error("Failed to upload file");
       }
 
-      const reader = response.body.getReader();
-      const contentLength = +response.headers.get("Content-Length");
-      let receivedLength = 0;
+      // Parse the JSON response
+      const responseData = await response.json();
 
-      reader.read().then(function processText({ done, value }) {
-        if (done) {
-          setUploading(false);
-          return;
-        }
+      if (responseData.success) {
+        setMessage(responseData.message); // Set first message
+        setMessage2(responseData.message2); // Set second message if any
+      } else {
+        setMessage(responseData.message || "An error occurred during upload.");
+        setMessage2(responseData.message2 || "");
+        setError(true); // Set error state
+      }
 
-        receivedLength += value.length;
-        setProgress((receivedLength / contentLength) * 100);
-
-        return reader.read().then(processText);
-      });
+      setUploading(false); // Stop the loading state after processing
     } catch (error) {
       console.error("Error uploading file:", error);
+      setMessage("An error occurred during file upload.");
+      setError(true); // Set error state
       setUploading(false);
     }
   };
@@ -113,6 +121,22 @@ const UploadPage = () => {
         <Typography variant="body1" gutterBottom>
           Select a file to upload to the selected branch.
         </Typography>
+
+        {message && (
+          <Alert severity={error ? "error" : "success"} sx={{ mt: 2 }}>
+            {message}
+          </Alert>
+        )}
+
+        {message2 && (
+          <Alert
+            severity={error ? "error" : "info"} // Using "info" as a neutral tone for the second message
+            sx={{ mt: 2 }}
+          >
+            {message2}
+          </Alert>
+        )}
+
         <FormControl fullWidth sx={{ mt: 3 }}>
           <InputLabel id="branch-label">Branch Code</InputLabel>
           <Select
@@ -134,10 +158,9 @@ const UploadPage = () => {
             value={fileType}
             onChange={handleFileTypeChange}
           >
-            <MenuItem value="INI">INI</MenuItem>
-            <MenuItem value="EXE">EXE</MenuItem>
             <MenuItem value="ITEM_MASTER">ITEM_MASTER</MenuItem>
-            <MenuItem value="OTHERS">OTHERS</MenuItem>
+            <MenuItem value="OPENING_STOCK">OPENING_STOCK</MenuItem>
+            <MenuItem value="INI">INI</MenuItem>
           </Select>
         </FormControl>
         <TextField
