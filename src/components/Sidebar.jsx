@@ -253,7 +253,7 @@ const Sidebar = ({ mode, setMode, roles }) => {
       label: "Upload",
       icon: <Settings sx={{ color: "#ffe3a3" }} />,
       link: "/uploadpage",
-      roles: ["user"],
+      roles: ["admin"],
     },
 
     {
