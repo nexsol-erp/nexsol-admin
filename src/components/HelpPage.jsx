@@ -113,10 +113,26 @@ const HelpPage = () => {
             <li>
               Upload Item Masters: Upload item master data using the specified
               Excel format.
+              <li>
+                1.item name 2. tax_rate 3. unit_name 4. itemcode 5.
+                standard_price 6. hsn code 7. item_id 8. barcode
+              </li>
+              <li>
+                Note: Tax_rate and standard price should be numeric. All other
+                colums should be text format.
+              </li>
             </li>
             <li>
               Upload Stock for Each Branch: Upload stock data using the
               specified Excel format.
+            </li>
+            <li>
+              1. Stock Date 2. ITem name 3. Branch code 4. Qty 5. Batch 6.
+              Expiry
+            </li>
+            <li>
+              Note: Stock Date and Expiry should be in dd/MM/yyyy format. Qty in
+              numeric and all other in Text Format.
             </li>
             <li>
               Initialize Desktop Application: Go to the 'Initialize' menu,
@@ -163,7 +179,8 @@ const HelpPage = () => {
           Stock Movement, Bill Series, and Season Sales.
         </Typography>
         <Typography paragraph>
-          <strong>Download</strong>: Download desktop application for each branch.
+          <strong>Download</strong>: Download desktop application for each
+          branch.
         </Typography>
         <Typography paragraph>
           <strong>Upload</strong>: Upload files or data into the system.
@@ -259,10 +276,10 @@ const HelpPage = () => {
           If you encounter any issues, please contact our support team:
           <ul>
             <li>
-              <strong>Email</strong>: support@example.com
+              <strong>Email</strong>: erpmaple@gmail.com
             </li>
             <li>
-              <strong>Phone</strong>: +1 (555) 123-4567
+              <strong>Phone</strong>:
             </li>
             <li>
               <strong>Support Hours</strong>: Monday to Friday, 9 AM to 5 PM
