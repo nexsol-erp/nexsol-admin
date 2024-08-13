@@ -266,7 +266,7 @@ const HelpPage = () => {
         </Typography>
         <Typography paragraph>
           If you encounter any issues not covered in this manual, please contact
-          our support team at <strong>support@yourcompany.com</strong>.
+          our support team at <strong>erp.nexsol@gmail.com</strong>.
         </Typography>
       </Paper>
     </Box>
