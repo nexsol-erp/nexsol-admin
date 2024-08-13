@@ -113,10 +113,16 @@ const HelpPage = () => {
             <li>
               Upload Item Masters: Upload item master data using the specified
               Excel format.
-              <li>
-                1.item name 2. tax_rate 3. unit_name 4. itemcode 5.
-                standard_price 6. hsn code 7. item_id 8. barcode
-              </li>
+               
+              1.item name
+              2. tax_rate
+              3. unit_name
+              4. itemcode
+              5.standard_price
+              6. hsn code
+              7. item_id
+              8. barcode
+              
               <li>
                 Note: Tax_rate and standard price should be numeric. All other
                 colums should be text format.
@@ -126,10 +132,14 @@ const HelpPage = () => {
               Upload Stock for Each Branch: Upload stock data using the
               specified Excel format.
             </li>
-            <li>
-              1. Stock Date 2. ITem name 3. Branch code 4. Qty 5. Batch 6.
-              Expiry
-            </li>
+            
+            1. Stock Date
+            2. ITem name
+            3. Branch code
+            4. Qty
+            5. Batch
+            6.Expiry
+             
             <li>
               Note: Stock Date and Expiry should be in dd/MM/yyyy format. Qty in
               numeric and all other in Text Format.
