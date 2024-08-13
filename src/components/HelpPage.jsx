@@ -6,7 +6,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  Link,
 } from "@mui/material";
 
 const HelpPage = () => {
@@ -65,84 +64,78 @@ const HelpPage = () => {
         </Typography>
         <Typography paragraph>
           To use the system effectively, ensure you have:
-          <ul>
-            <li>A computer with internet access</li>
-            <li>
-              A modern web browser (Google Chrome, Mozilla Firefox, Microsoft
-              Edge, or Safari)
-            </li>
-            <li>An active user account</li>
-          </ul>
         </Typography>
+        <ul>
+          <li>A computer with internet access</li>
+          <li>
+            A modern web browser (Google Chrome, Mozilla Firefox, Microsoft
+            Edge, or Safari)
+          </li>
+          <li>An active user account</li>
+        </ul>
 
         <Typography variant="h5" gutterBottom id="login-and-authentication">
           Login and Authentication
         </Typography>
-        <Typography paragraph>
-          <ol>
-            <li>
-              Access the Login Page: Open your web browser and navigate to your
-              system's login page.
-            </li>
-            <li>
-              Login: Enter your username and password, then click "Login". If
-              successful, you'll be redirected to the dashboard.
-            </li>
-          </ol>
-        </Typography>
+        <Typography paragraph>Follow these steps to log in:</Typography>
+        <ol>
+          <li>
+            Access the Login Page: Open your web browser and navigate to your
+            system's login page.
+          </li>
+          <li>
+            Login: Enter your username and password, then click "Login". If
+            successful, you'll be redirected to the dashboard.
+          </li>
+        </ol>
 
         <Typography variant="h5" gutterBottom id="setup-sequence">
           Setup Sequence
         </Typography>
         <Typography paragraph>
           Follow these steps to set up the system:
-          <ol>
-            <li>Signup: Create an account.</li>
-            <li>Login: Log in with your credentials.</li>
-            <li>Create Branch: Set up new branches.</li>
-            <li>
-              Download Desktop for Each Branch: Install the desktop application
-              for each branch.
-            </li>
-            <li>
-              Create User for Branch: Set up user accounts for each branch.
-            </li>
-            <li>
-              Create Category Type and Name: Define categories for your items.
-            </li>
-            <li>
-              Upload Item Masters: Upload item master data using the specified
-              Excel format.
-            </li>
-            <p>
-              The following details are required for each item: Item Name, Tax
-              Rate, Unit Name, Item Code, Standard Price, HSN Code, Item ID, and
-              Barcode.
-              <br>
-                <strong>Note:</strong> Tax Rate and Standard Price should be in
-                numeric format, while all other columns should be in text
-                format.
-              </br>
-            </p>
-            <li>
-              Upload Stock for Each Branch: Upload stock data using the
-              specified Excel format.
-            </li>
-            <p>
-              The following details are required for each record : Stock Date,
-              ITem name, Branch code , Qty , Batch,Expiry date
-              <br>
-                <strong>Note:</strong> Note: Stock Date and Expiry should be in
-                dd/MM/yyyy format. Qty in numeric and all other in Text Format.
-              </br>
-            </p>
-            <li>
-              Initialize Desktop Application: Go to the 'Initialize' menu,
-              select 'All', and click 'Fetch'.
-            </li>
-            <li>Start Billing: You can now begin processing transactions.</li>
-          </ol>
         </Typography>
+        <ol>
+          <li>Signup: Create an account.</li>
+          <li>Login: Log in with your credentials.</li>
+          <li>Create Branch: Set up new branches.</li>
+          <li>
+            Download Desktop for Each Branch: Install the desktop application
+            for each branch.
+          </li>
+          <li>Create User for Branch: Set up user accounts for each branch.</li>
+          <li>
+            Create Category Type and Name: Define categories for your items.
+          </li>
+          <li>
+            Upload Item Masters: Upload item master data using the specified
+            Excel format.
+          </li>
+          <Typography paragraph>
+            The following details are required for each item in order: Item Name, Tax
+            Rate, Unit Name, Item Code, Standard Price, HSN Code, Item ID, and
+            Barcode.
+            <br />
+            <strong>Note:</strong> Tax Rate and Standard Price should be in
+            numeric format, while all other columns should be in text format.
+          </Typography>
+          <li>
+            Upload Stock for Each Branch: Upload stock data using the specified
+            Excel format.
+          </li>
+          <Typography paragraph>
+            The following details are required for each record in order: Stock Date, Item
+            Name, Branch Code, Qty, Batch(Default 'NB'), Expiry Date(This can be null).
+            <br />
+            <strong>Note:</strong> Stock Date and Expiry should be in dd/MM/yyyy
+            format. Qty in numeric and all other in Text Format.
+          </Typography>
+          <li>
+            Initialize Desktop Application: Go to the 'Initialize' menu, select
+            'All', and click 'Fetch'.
+          </li>
+          <li>Start Billing: You can now begin processing transactions.</li>
+        </ol>
 
         <Typography variant="h5" gutterBottom id="menu-descriptions">
           Menu Descriptions
@@ -250,44 +243,30 @@ const HelpPage = () => {
           Troubleshooting
         </Typography>
         <Typography paragraph>
-          <strong>Common Issues</strong>
-          <ul>
-            <li>Unable to Login: Check your credentials and server status.</li>
-            <li>
-              Download Button Not Working: Verify server accessibility and file
-              existence.
-            </li>
-            <li>
-              Sales Data Not Loading: Check branch and date selections, and
-              server status.
-            </li>
-            <li>
-              Inventory Discrepancies: Ensure all stock movements are logged.
-            </li>
-            <li>
-              POS Not Responding: Restart the application and check server
-              connection.
-            </li>
-          </ul>
+          <strong>Common Issues:</strong>
         </Typography>
+        <ul>
+          <li>Unable to Login: Check your credentials and server status.</li>
+          <li>
+            Download Button Not Working: Verify server accessibility and file
+            existence.
+          </li>
+          <li>
+            Sales Data Not Loading: Check branch and date selections, and server
+            status.
+          </li>
+          <li>
+            Inventory Discrepancies: Ensure all stock movements are logged.
+          </li>
+          <li>System Slow: Check your internet connection and server load.</li>
+        </ul>
 
         <Typography variant="h5" gutterBottom id="contact-support">
           Contact Support
         </Typography>
         <Typography paragraph>
-          If you encounter any issues, please contact our support team:
-          <ul>
-            <li>
-              <strong>Email</strong>: erpmaple@gmail.com
-            </li>
-            <li>
-              <strong>Phone</strong>:
-            </li>
-            <li>
-              <strong>Support Hours</strong>: Monday to Friday, 9 AM to 5 PM
-              (PST)
-            </li>
-          </ul>
+          If you encounter any issues not covered in this manual, please contact
+          our support team at <strong>support@yourcompany.com</strong>.
         </Typography>
       </Paper>
     </Box>
