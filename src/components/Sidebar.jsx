@@ -241,13 +241,13 @@ const Sidebar = ({ mode, setMode, roles }) => {
       label: "About",
       icon: <Man sx={{ color: "#ffe3a3" }} />,
       link: "/about",
-      roles: ["user"],
+      roles: ["manager"],
     },
     {
       label: "Download",
       icon: <Settings sx={{ color: "#ffe3a3" }} />,
       link: "/download",
-      roles: ["user"],
+      roles: ["user", "manager", "admin"],
     },
     {
       label: "Upload",
@@ -260,7 +260,7 @@ const Sidebar = ({ mode, setMode, roles }) => {
       label: "Help",
       icon: <Settings sx={{ color: "#ffe3a3" }} />,
       link: "/help",
-      roles: ["user"],
+      roles: ["user", "admin", "manager"],
     },
     {
       label: "Logout",
