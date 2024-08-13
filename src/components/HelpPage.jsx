@@ -33,15 +33,14 @@ const HelpPage = () => {
           <ListItem button component="a" href="#login-and-authentication">
             <ListItemText primary="Login and Authentication" />
           </ListItem>
-          <ListItem
-            button
-            component="a"
-            href="#using-the-file-download-feature"
-          >
-            <ListItemText primary="Using the File Download Feature" />
+          <ListItem button component="a" href="#setup-sequence">
+            <ListItemText primary="Setup Sequence" />
           </ListItem>
-          <ListItem button component="a" href="#technical-details">
-            <ListItemText primary="Technical Details" />
+          <ListItem button component="a" href="#menu-descriptions">
+            <ListItemText primary="Menu Descriptions" />
+          </ListItem>
+          <ListItem button component="a" href="#desktop-menus">
+            <ListItemText primary="Desktop Menus" />
           </ListItem>
           <ListItem button component="a" href="#troubleshooting">
             <ListItemText primary="Troubleshooting" />
@@ -55,18 +54,17 @@ const HelpPage = () => {
           Introduction
         </Typography>
         <Typography paragraph>
-          Welcome to MapleERP, a POS system integrated with accounting and
-          inventory. This system is ideal for retail outlets with multiple
-          branches. We have a desktop application for fast POS billing. You can
-          monitor all branches using the web application. You can download the
-          desktop application for trial using the provided link.
+          Welcome to our system, designed for efficient management of sales,
+          purchases, stock, and other business operations across multiple
+          branches. This guide will help you navigate the system and make the
+          most of its features.
         </Typography>
 
         <Typography variant="h5" gutterBottom id="system-requirements">
           System Requirements
         </Typography>
         <Typography paragraph>
-          To use MapleERP, ensure you have the following:
+          To use the system effectively, ensure you have:
           <ul>
             <li>A computer with internet access</li>
             <li>
@@ -83,145 +81,150 @@ const HelpPage = () => {
         <Typography paragraph>
           <ol>
             <li>
-              Access the Login Page: Open your web browser and navigate to{" "}
-              <code>http://localhost:3000</code> (or the URL where your frontend
-              application is hosted).
+              Access the Login Page: Open your web browser and navigate to your
+              system's login page.
             </li>
             <li>
-              Login: Enter your username and password, then click the "Login"
-              button. If the credentials are correct, you will be logged in and
-              redirected to the main dashboard.
+              Login: Enter your username and password, then click "Login". If
+              successful, you'll be redirected to the dashboard.
             </li>
           </ol>
         </Typography>
 
-        <Typography
-          variant="h5"
-          gutterBottom
-          id="using-the-file-download-feature"
-        >
-          Using the File Download Feature
+        <Typography variant="h5" gutterBottom id="setup-sequence">
+          Setup Sequence
         </Typography>
         <Typography paragraph>
-          <strong>Navigating to the Download Page</strong>
+          Follow these steps to set up the system:
           <ol>
+            <li>Signup: Create an account.</li>
+            <li>Login: Log in with your credentials.</li>
+            <li>Create Branch: Set up new branches.</li>
             <li>
-              Access the Download Page: After logging in, navigate to the
-              "Download" section from the main menu.
+              Download Desktop for Each Branch: Install the desktop application
+              for each branch.
             </li>
             <li>
-              Download the Desktop Application: Click the "Download Now" button
-              to download the latest version of the desktop application. A
-              prompt will appear asking you to choose the download location and
-              file name.
-            </li>
-          </ol>
-
-          <Typography variant="h5" gutterBottom id="technical-details">
-            Web Reports
-          </Typography>
-          <strong>Sales Report</strong>
-          <ol>
-            <li>
-              Select Branch and Date Range: Choose the branch from the dropdown
-              menu. Select the "From Date" and "To Date" to specify the date
-              range for the report.
+              Create User for Branch: Set up user accounts for each branch.
             </li>
             <li>
-              Fetch Sales Data: Click the "Fetch Sales Data" button to retrieve
-              the sales data for the selected branch and date range.
+              Create Category Type and Name: Define categories for your items.
             </li>
             <li>
-              Export to Excel: Click the "Export to Excel" button. A file save
-              dialog will appear, allowing you to choose the name and location
-              for the Excel file. The sales data will be saved to an Excel file
-              at the chosen location.
+              Upload Item Masters: Upload item master data using the specified
+              Excel format.
             </li>
+            <li>
+              Upload Stock for Each Branch: Upload stock data using the
+              specified Excel format.
+            </li>
+            <li>
+              Initialize Desktop Application: Go to the 'Initialize' menu,
+              select 'All', and click 'Fetch'.
+            </li>
+            <li>Start Billing: You can now begin processing transactions.</li>
           </ol>
         </Typography>
 
-        <Typography variant="h5" gutterBottom id="technical-details">
-          Desktop POS
+        <Typography variant="h5" gutterBottom id="menu-descriptions">
+          Menu Descriptions
         </Typography>
         <Typography paragraph>
-          <strong>Menus</strong>
-          <ul>
-            <li>
-              <strong>POS</strong>: POS Billing. This is the fastest billing
-              method. You can use a barcode scanner to select items.
-            </li>
-            <li>
-              <strong>KOT</strong>: Kitchen Order Ticket. Capture the order and
-              convert it into POS.
-            </li>
-            <li>
-              <strong>Stock Transfer</strong>: You can transfer stock from one
-              location to another.
-            </li>
-            <li>
-              <strong>Accept Stock</strong>: Transferred stock is accepted here.
-            </li>
-            <li>
-              <strong>Purchase</strong>: Manage purchase orders and receive
-              inventory.
-            </li>
-            <li>
-              <strong>Day End</strong>: Perform end-of-day operations to close
-              out the day's transactions.
-            </li>
-            <li>
-              <strong>Scheme Offer</strong>: Manage promotional schemes and
-              offers.
-            </li>
-            <li>
-              <strong>Item Master Creation</strong>: Create and manage item
-              master data.
-            </li>
-            <li>
-              <strong>Inventory</strong>: Manage inventory levels and stock
-              details.
-            </li>
-            <li>
-              <strong>Reports</strong>: Generate various reports for sales,
-              inventory, and more.
-            </li>
-            <li>
-              <strong>Settings</strong>: Configure system settings and user
-              preferences.
-            </li>
-            <li>
-              <strong>Customer Management</strong>: Manage customer information
-              and history.
-            </li>
-            <li>
-              <strong>Supplier Management</strong>: Manage supplier information
-              and purchase history.
-            </li>
-            <li>
-              <strong>Loyalty Programs</strong>: Manage customer loyalty
-              programs and rewards.
-            </li>
-            <li>
-              <strong>Table Management</strong> (for restaurants): Manage table
-              reservations and status.
-            </li>
-            <li>
-              <strong>Menu Management</strong> (for restaurants): Manage food
-              and beverage menu items.
-            </li>
-            <li>
-              <strong>Prescription Management</strong> (for pharmacies): Manage
-              and fill customer prescriptions.
-            </li>
-            <li>
-              <strong>Expiry Management</strong> (for pharmacies): Track and
-              manage product expiry dates.
-            </li>
-            <li>
-              <strong>Batch Management</strong> (for pharmacies): Manage
-              inventory batches and lot numbers.
-            </li>
-          </ul>
+          <strong>Dashboard</strong>: Provides an overview of key metrics and
+          performance indicators.
+        </Typography>
+        <Typography paragraph>
+          <strong>Sales Entry</strong>: Record and manage sales transactions.
+        </Typography>
+        <Typography paragraph>
+          <strong>HSNwise Sales Report</strong>: Generate reports based on HSN
+          codes.
+        </Typography>
+        <Typography paragraph>
+          <strong>Purchase</strong>: Manage purchase activities with sub-menus
+          for Purchase Entry and Purchase Report.
+        </Typography>
+        <Typography paragraph>
+          <strong>Branch Creation</strong>: Create new branches for your
+          business.
+        </Typography>
+        <Typography paragraph>
+          <strong>User Creation</strong>: Manage user accounts and roles.
+        </Typography>
+        <Typography paragraph>
+          <strong>Scheme</strong>: Create and manage promotional schemes.
+        </Typography>
+        <Typography paragraph>
+          <strong>Masters</strong>: Manage master data, including Category Type,
+          Category Name, and Supplier Creation.
+        </Typography>
+        <Typography paragraph>
+          <strong>Reports</strong>: Access various reports like Sales, Purchase,
+          Stock Movement, Bill Series, and Season Sales.
+        </Typography>
+        <Typography paragraph>
+          <strong>Download</strong>: Download desktop application for each branch.
+        </Typography>
+        <Typography paragraph>
+          <strong>Upload</strong>: Upload files or data into the system.
+        </Typography>
+
+        <Typography variant="h5" gutterBottom id="desktop-menus">
+          Desktop Menus
+        </Typography>
+        <Typography paragraph>
+          <strong>Day End Report</strong>: Generate a summary report for the
+          day's operations.
+        </Typography>
+        <Typography paragraph>
+          <strong>POS</strong>: Access the Point of Sale system.
+        </Typography>
+        <Typography paragraph>
+          <strong>KOT</strong>: Manage Kitchen Order Tickets.
+        </Typography>
+        <Typography paragraph>
+          <strong>Credit Sales</strong>: Record credit sales.
+        </Typography>
+        <Typography paragraph>
+          <strong>Stock Transfer</strong>: Transfer stock between branches.
+        </Typography>
+        <Typography paragraph>
+          <strong>Accept Stock</strong>: Record incoming stock.
+        </Typography>
+        <Typography paragraph>
+          <strong>Purchase</strong>: Manage purchases directly from the desktop
+          application.
+        </Typography>
+        <Typography paragraph>
+          <strong>Initialize</strong>: Initialize the system or synchronize
+          data.
+        </Typography>
+        <Typography paragraph>
+          <strong>Physical Stock</strong>: Manage and update physical stock
+          inventory.
+        </Typography>
+        <Typography paragraph>
+          <strong>Item Masters</strong>: Manage item master data.
+        </Typography>
+        <Typography paragraph>
+          <strong>Production Def, Planning, Execution</strong>: Handle
+          production-related activities.
+        </Typography>
+        <Typography paragraph>
+          <strong>Receipt Modes</strong>: Manage payment modes.
+        </Typography>
+        <Typography paragraph>
+          <strong>Supplier</strong>: Manage supplier information.
+        </Typography>
+        <Typography paragraph>
+          <strong>Customer</strong>: Manage customer information.
+        </Typography>
+        <Typography paragraph>
+          <strong>Account Heads</strong>: Manage financial accounts and ledgers.
+        </Typography>
+        <Typography paragraph>
+          <strong>Reports</strong>: Access various reports related to sales,
+          purchases, inventory, and accounting.
         </Typography>
 
         <Typography variant="h5" gutterBottom id="troubleshooting">
@@ -230,27 +233,21 @@ const HelpPage = () => {
         <Typography paragraph>
           <strong>Common Issues</strong>
           <ul>
+            <li>Unable to Login: Check your credentials and server status.</li>
             <li>
-              <strong>Unable to Login</strong>: Ensure your credentials are
-              correct. Check if the backend server is running.
+              Download Button Not Working: Verify server accessibility and file
+              existence.
             </li>
             <li>
-              <strong>Download Button Not Working</strong>: Ensure the backend
-              server is running and accessible. Check if the file exists on the
-              server.
+              Sales Data Not Loading: Check branch and date selections, and
+              server status.
             </li>
             <li>
-              <strong>Sales Data Not Loading</strong>: Verify that the selected
-              branch and date range are correct. Ensure the backend server is
-              running and accessible.
+              Inventory Discrepancies: Ensure all stock movements are logged.
             </li>
             <li>
-              <strong>Inventory Discrepancies</strong>: Ensure that all stock
-              movements (sales, transfers, purchases) are correctly logged.
-            </li>
-            <li>
-              <strong>POS Not Responding</strong>: Restart the POS application
-              and ensure the connection to the backend server is stable.
+              POS Not Responding: Restart the application and check server
+              connection.
             </li>
           </ul>
         </Typography>
@@ -259,8 +256,7 @@ const HelpPage = () => {
           Contact Support
         </Typography>
         <Typography paragraph>
-          If you encounter any issues not covered in this manual, please contact
-          our support team:
+          If you encounter any issues, please contact our support team:
           <ul>
             <li>
               <strong>Email</strong>: support@example.com
@@ -273,8 +269,6 @@ const HelpPage = () => {
               (PST)
             </li>
           </ul>
-          Thank you for using MapleERP. We hope this manual helps you make the
-          most of the system's features.
         </Typography>
       </Paper>
     </Box>
