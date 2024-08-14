@@ -39,7 +39,7 @@ const WeighBridge = () => {
   const fetchBranches = async () => {
     try {
       const tenancyId = localStorage.getItem("tenancyId");
-        const token = localStorage.getItem("jwtToken");
+      const token = localStorage.getItem("jwtToken");
       const response = await fetch(`/api/${tenancyId}/branches`, {
         method: "GET",
         headers: {
@@ -57,17 +57,19 @@ const WeighBridge = () => {
   const fetchWeighBridgeData = async () => {
     if (branch && fromDate && toDate) {
       try {
-          const token = localStorage.getItem("jwtToken");
+        const token = localStorage.getItem("jwtToken");
         const tenancyId = localStorage.getItem("tenancyId");
-         //const branchCode = localStorage.getItem("branchCode");
+        const branchCode = localStorage.getItem("branchCode");
         const response = await fetch(
-          `/api/${tenancyId}/weighbridge?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}` , {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+          `/api/${tenancyId}/weighbridge?branch=${branchCode}&fromDate=${fromDate}&toDate=${toDate}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
         const data = await response.json();
         setWeighbridgeData(data.data);
       } catch (error) {
