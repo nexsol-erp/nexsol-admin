@@ -39,6 +39,7 @@ const WeighBridge = () => {
   const fetchBranches = async () => {
     try {
       const tenancyId = localStorage.getItem("tenancyId");
+        const token = localStorage.getItem("jwtToken");
       const response = await fetch(`/api/${tenancyId}/branches`, {
         method: "GET",
         headers: {
@@ -58,6 +59,7 @@ const WeighBridge = () => {
       try {
           const token = localStorage.getItem("jwtToken");
         const tenancyId = localStorage.getItem("tenancyId");
+         //const branchCode = localStorage.getItem("branchCode");
         const response = await fetch(
           `/api/${tenancyId}/weighbridge?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}` , {
         method: "GET",
