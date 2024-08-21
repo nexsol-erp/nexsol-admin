@@ -122,13 +122,13 @@ const SchemePage = () => {
         },
         body: JSON.stringify(newScheme),
       });
-      if (!response.ok) {
-        throw new Error("Failed to create scheme.");
-      }
+       if (response.ok) {
+         alert("Scheme saved successfully!");
+       } else {
+         alert("Failed to save scheme.");
+       }
       const data = await response.json();
-      if (!data) {
-        throw new Error("No data returned from server.");
-      }
+     
       fetchSchemes();
       setSchemeName("");
       setStartDate("");
