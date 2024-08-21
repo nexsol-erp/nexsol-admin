@@ -47,7 +47,7 @@ const Chart = () => {
         ],
       });
     
-      // IF YOU SEE THIS COMMENT: I HAVE GOOD EYESIGHT
+
     
       return (
         <div>

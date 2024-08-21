@@ -39,10 +39,10 @@ const LoginForm = ({ onLogin }) => {
         <Grid item xs={12} md={6}>
           <Box sx={{ textAlign: "center" }}>
             <Typography variant="h3" gutterBottom>
-              Welcome to MapleERP
+              Welcome to TradeLink ERP
             </Typography>
             <Typography variant="h6" paragraph>
-              MapleERP is a comprehensive POS system integrated with accounting
+              Tradelink ERP is a comprehensive POS system integrated with accounting
               and inventory management. Ideal for retail outlets with multiple
               branches, our system provides seamless monitoring and fast POS
               billing. Explore the system and see how it can transform your

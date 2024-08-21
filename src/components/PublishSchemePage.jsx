@@ -23,7 +23,14 @@ const PublishSchemePage = () => {
 
   const fetchSchemes = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
-    const response = await fetch(`/api/${tenancyId}/scheme`);
+        const token = localStorage.getItem("jwtToken");
+    const response = await fetch(`/api/${tenancyId}/scheme`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
     const data = await response.json();
     setSchemes(Array.isArray(data) ? data : []);
   };
