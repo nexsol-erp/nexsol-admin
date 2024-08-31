@@ -198,7 +198,8 @@ const SalesEntryForm = () => {
   };
 
   const handleSave = async () => {
-     const branchCode = localStorage.getItem("branchCode");
+    const zonedDateTime = new Date().toISOString();  
+    const branchCode = localStorage.getItem("branchCode");
     const salesEntry = {
       customer: {
         name: customer,
@@ -206,6 +207,7 @@ const SalesEntryForm = () => {
         gst: customerGST,
       },
       branch_code: branchCode,
+      voucher_date: JSON.stringify({ date: zonedDateTime }),
       items,
     };
 
