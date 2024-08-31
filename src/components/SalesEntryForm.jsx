@@ -198,12 +198,14 @@ const SalesEntryForm = () => {
   };
 
   const handleSave = async () => {
+     const branchCode = localStorage.getItem("branchCode");
     const salesEntry = {
       customer: {
         name: customer,
         address: customerAddress,
         gst: customerGST,
       },
+      branch_code: branchCode,
       items,
     };
 
