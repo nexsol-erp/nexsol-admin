@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from "react";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import InvoiceGenerator from "./InvoiceGenerator";
 import {
   Box,
   Button,
@@ -27,6 +30,12 @@ import { useWebSocket } from "./WebSocketContext";
 import { getItems, saveSalesTransaction } from "../services/apiservice"; // Ensure you import your API service
 
 const SalesEntryForm = () => {
+
+  const [savedSalesEntry, setSavedSalesEntry] = useState(null);
+  const [showInvoice, setShowInvoice] = useState(false); // To control InvoiceGenerator visibility
+  const [template, setTemplate] = useState(null);
+
+
   const { data } = useWebSocket(); // Use WebSocket context to get the data
   const [customer, setCustomer] = useState("");
   const [customers, setCustomers] = useState([]);
@@ -47,6 +56,7 @@ const SalesEntryForm = () => {
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newCustomerAddress, setNewCustomerAddress] = useState("");
   const [newCustomerGST, setNewCustomerGST] = useState("");
+ 
 
   useEffect(() => {
     fetchItems();
@@ -67,14 +77,13 @@ const SalesEntryForm = () => {
       try {
         const token = localStorage.getItem("jwtToken");
         const tenancyId = localStorage.getItem("tenancyId");
-        const response = await fetch(`/api/${tenancyId}/customers`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          });
+        const response = await fetch(`/api/${tenancyId}/customers`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
         if (!response.ok) {
           throw new Error("Failed to fetch customers");
         }
@@ -197,8 +206,33 @@ const SalesEntryForm = () => {
     }
   };
 
+  const fetchTemplate = async (templateId) => {
+    try {
+      const tenancyId = localStorage.getItem("tenancyId");
+      const token = localStorage.getItem("jwtToken");
+      const response = await fetch(
+        `/api/${tenancyId}/invoice-templates/${templateId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setTemplate(data); // Set the fetched template
+      } else {
+        alert("Failed to fetch template");
+      }
+    } catch (error) {
+      console.error("Error fetching template:", error);
+      alert("An error occurred while fetching template.");
+    }
+  };
+
   const handleSave = async () => {
-    
     const branchCode = localStorage.getItem("branchCode");
     const salesEntry = {
       customer: {
@@ -225,6 +259,17 @@ const SalesEntryForm = () => {
 
       if (response.ok) {
         alert("Sales entry saved successfully");
+
+        const responseData = await response.json();
+        const salesEntryWithInvoice = {
+          ...salesEntry,
+          invoiceNumber: responseData.invoiceNumber,
+        };
+        setSavedSalesEntry(salesEntryWithInvoice); // Save the entry data
+        const templateId = 8; // Example template ID
+        await fetchTemplate(templateId); // Fetch the template
+        setShowInvoice(true); // Show InvoiceGenerator after saving
+
         setCustomer("");
         setCustomerAddress("");
         setCustomerGST("");
@@ -238,6 +283,9 @@ const SalesEntryForm = () => {
     }
   };
 
+   const handleCloseInvoice = () => {
+     setShowInvoice(false); // Close the popup
+   };
   return (
     <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
       <Paper elevation={3} sx={{ padding: 4, maxWidth: 800 }}>
@@ -328,14 +376,18 @@ const SalesEntryForm = () => {
             </TableBody>
           </Table>
         </TableContainer>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleSave}
-          sx={{ mt: 3 }}
-        >
-          Save
-        </Button>
+        {/* Box for Save and Print Invoice Buttons */}
+        <Box sx={{ display: "flex", justifyContent: "space-between", mt: 3 }}>
+          <Button variant="contained" color="primary" onClick={handleSave}>
+            Save
+          </Button>
+          {savedSalesEntry && template && (
+            <InvoiceGenerator
+              template={template}
+              salesEntry={savedSalesEntry}
+            />
+          )}
+        </Box>
       </Paper>
 
       <Dialog open={itemDialogOpen} onClose={() => setItemDialogOpen(false)}>

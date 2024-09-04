@@ -28,6 +28,7 @@ import SalesEntryForm from "./components/SalesEntryForm";
 import StockMovementReport from "./components/StockMovementReport";
 import BillSeriesReport from "./components/BillSeriesReport";
 import UploadPage from "./components/UploadPage";
+import Invoicedesigner from "./components/InvoiceDesigner";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -100,12 +101,12 @@ const App = () => {
               <Route path="/salesentryform" element={<SalesEntryForm />} />
               <Route path="/billseriesreport" element={<BillSeriesReport />} />
               <Route path="/uploadpage" element={<UploadPage />} />
-
               <Route
                 path="/stockmovementreport"
                 element={<StockMovementReport />}
               />
               <Route path="/login" element={<LoginForm />} />
+              <Route path="/invoicedesigner" element={<Invoicedesigner />} />
             </Routes>
           </WebSocketProvider>
         </Box>
