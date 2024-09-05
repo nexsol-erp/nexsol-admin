@@ -238,8 +238,11 @@ const SalesEntryForm = () => {
         const responseData = await response.json();
         const salesEntryWithInvoice = {
           ...salesEntry,
-          invoiceNumber: responseData.invoiceNumber,
+          invoiceNumber: responseData.voucher_number,
+          invoiceDate: responseData.voucher_date,
         };
+      
+  
         setSavedSalesEntry(salesEntryWithInvoice); // Save the entry data
 
        

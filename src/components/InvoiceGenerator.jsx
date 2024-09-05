@@ -71,6 +71,19 @@ const InvoiceGenerator = ({ salesEntry }) => {
       currentPage++;
     };
 
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      const formattedDate = date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+      });
+      
+      return `${formattedDate} `;
+    };
+
+ 
+
     // Function to print headers
     const printHeaders = () => {
       // Add Company Name (Centralized)
@@ -127,10 +140,24 @@ const InvoiceGenerator = ({ salesEntry }) => {
         doc.text(`Address: ${salesEntry.customer.address}`, startX, startY);
         startY += lineHeight; // Move to the next line
         doc.text(`GST: ${salesEntry.customer.gst}`, startX, startY);
+      //  startY += lineHeight; // Move to the next line
+        doc.setFontSize(12);
+        doc.text(`Voucher No    :: ${salesEntry.invoiceNumber}`, startX+120, startY);
         startY += lineHeight; // Move to the next line
+        doc.text(
+          `Voucher Date::  ${formatDate(salesEntry.invoiceDate)}`,
+          startX + 120,
+          startY
+        );
+        doc.setFontSize(14);
+        doc.text(`SALES INVOICE`, startX + 70, startY);
+        startY += lineHeight; // Move to the next line
+        //  invoiceNumber: responseData.voucher_number,
+        // invoiceDate: responseData.voucher_date,
+ 
       }
-   doc.line(lineXStart, startY, lineXEnd, startY);
-   startY += lineHeight;
+      doc.line(lineXStart, startY, lineXEnd, startY);
+      startY += lineHeight;
       // Add Table Header (including SGST and CGST)
       doc.setFontSize(10);
       doc.text("Item", startX, startY);
