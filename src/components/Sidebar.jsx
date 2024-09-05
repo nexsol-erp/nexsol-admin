@@ -272,7 +272,7 @@ const Sidebar = ({ mode, setMode, roles }) => {
       label: "Invoice Designer",
       icon: <Settings sx={{ color: "#ffe3a3" }} />,
       link: "/invoicedesigner",
-      roles: ["admin", "manager"],
+      roles: ["user","admin", "manager"],
     },
   ];
 
