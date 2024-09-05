@@ -29,6 +29,7 @@ import StockMovementReport from "./components/StockMovementReport";
 import BillSeriesReport from "./components/BillSeriesReport";
 import UploadPage from "./components/UploadPage";
 import Invoicedesigner from "./components/InvoiceDesigner";
+import CreateItemMaster from "./components/CreateItemMaster";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -101,6 +102,7 @@ const App = () => {
               <Route path="/salesentryform" element={<SalesEntryForm />} />
               <Route path="/billseriesreport" element={<BillSeriesReport />} />
               <Route path="/uploadpage" element={<UploadPage />} />
+              <Route path="/createitemmaster" element={<CreateItemMaster />} />
               <Route
                 path="/stockmovementreport"
                 element={<StockMovementReport />}
