@@ -33,7 +33,7 @@ const SalesEntryForm = () => {
 
   const [savedSalesEntry, setSavedSalesEntry] = useState(null);
   const [showInvoice, setShowInvoice] = useState(false); // To control InvoiceGenerator visibility
-  const [template, setTemplate] = useState(null);
+ 
 
 
   const { data } = useWebSocket(); // Use WebSocket context to get the data
@@ -206,32 +206,7 @@ const SalesEntryForm = () => {
     }
   };
 
-  const fetchTemplate = async (templateId) => {
-    try {
-      const tenancyId = localStorage.getItem("tenancyId");
-      const token = localStorage.getItem("jwtToken");
-      const response = await fetch(
-        `/api/${tenancyId}/invoice-templates/${templateId}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setTemplate(data); // Set the fetched template
-      } else {
-        alert("Failed to fetch template");
-      }
-    } catch (error) {
-      console.error("Error fetching template:", error);
-      alert("An error occurred while fetching template.");
-    }
-  };
-
+   
   const handleSave = async () => {
     const branchCode = localStorage.getItem("branchCode");
     const salesEntry = {
@@ -266,8 +241,8 @@ const SalesEntryForm = () => {
           invoiceNumber: responseData.invoiceNumber,
         };
         setSavedSalesEntry(salesEntryWithInvoice); // Save the entry data
-        const templateId = 8; // Example template ID
-        await fetchTemplate(templateId); // Fetch the template
+
+       
         setShowInvoice(true); // Show InvoiceGenerator after saving
 
         setCustomer("");
@@ -381,9 +356,8 @@ const SalesEntryForm = () => {
           <Button variant="contained" color="primary" onClick={handleSave}>
             Save
           </Button>
-          {savedSalesEntry && template && (
+          {savedSalesEntry && (
             <InvoiceGenerator
-              template={template}
               salesEntry={savedSalesEntry}
             />
           )}
