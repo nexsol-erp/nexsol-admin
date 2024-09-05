@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -7,12 +7,20 @@ import {
   Paper,
   Checkbox,
   FormControlLabel,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
   Grid,
+  IconButton,
+  Radio,
+  RadioGroup,
+  FormControl,
+  FormLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { useFormik } from "formik";
 import * as yup from "yup";
 import { useDropzone } from "react-dropzone";
@@ -26,19 +34,34 @@ const columnOptions = [
   { label: "Total", value: "total" },
 ];
 
-const logoPositions = ["Top Left", "Top Center", "Top Right"];
-
 const validationSchema = yup.object({
   companyName: yup.string().required("Company Name is required"),
   companyAddress: yup.string().required("Company Address is required"),
   companyContact: yup.string().required("Company Contact is required"),
   companyGST: yup.string(),
   selectedColumns: yup.array().min(1, "At least one column must be selected"),
-  logoPosition: yup.string().required("Logo position is required"),
+  logoWidth: yup
+    .number()
+    .min(1, "Logo width must be greater than 0")
+    .required("Logo width is required"),
+  logoHeight: yup
+    .number()
+    .min(1, "Logo height must be greater than 0")
+    .required("Logo height is required"),
+  logoStartX: yup
+    .number()
+    .min(0, "Logo start X position must be greater than or equal to 0")
+    .required("Logo start X position is required"),
+  logoStartY: yup
+    .number()
+    .min(0, "Logo start Y position must be greater than or equal to 0")
+    .required("Logo start Y position is required"),
 });
 
 const InvoiceDesigner = ({ onSave }) => {
   const [logoFile, setLogoFile] = useState(null);
+  const [templates, setTemplates] = useState([]);
+  const [activeTemplateId, setActiveTemplateId] = useState(null);
 
   const onDrop = (acceptedFiles) => {
     setLogoFile(acceptedFiles[0]);
@@ -46,13 +69,95 @@ const InvoiceDesigner = ({ onSave }) => {
 
   const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  const fetchTemplates = async () => {
+    try {
+      const tenancyId = localStorage.getItem("tenancyId");
+      const token = localStorage.getItem("jwtToken");
+      const response = await fetch(`/api/${tenancyId}/invoice-templates`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      setTemplates(data);
+      // Find the active template
+      const activeTemplate = data.find((template) => template.active === 1);
+      if (activeTemplate) {
+        setActiveTemplateId(activeTemplate.id);
+      }
+    } catch (error) {
+      console.error("Error fetching templates:", error);
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId) => {
+    try {
+      const tenancyId = localStorage.getItem("tenancyId");
+      const token = localStorage.getItem("jwtToken");
+      const response = await fetch(
+        `/api/${tenancyId}/invoice-templates/delete/${templateId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        alert("Template deleted successfully!");
+        fetchTemplates(); // Refresh templates after deletion
+      } else {
+        alert("Failed to delete template.");
+      }
+    } catch (error) {
+      console.error("Error deleting template:", error);
+      alert("An error occurred while deleting the template.");
+    }
+  };
+
+  const handleMakeActive = async (templateId) => {
+    try {
+      const tenancyId = localStorage.getItem("tenancyId");
+      const token = localStorage.getItem("jwtToken");
+      const response = await fetch(
+        `/api/${tenancyId}/invoice-templates/activate/${templateId}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        alert("Template activated successfully!");
+        setActiveTemplateId(templateId); // Set the selected template as active
+        fetchTemplates(); // Refresh templates after activation
+      } else {
+        alert("Failed to activate template.");
+      }
+    } catch (error) {
+      console.error("Error activating template:", error);
+      alert("An error occurred while activating the template.");
+    }
+  };
+
   const formik = useFormik({
     initialValues: {
       companyName: "",
       companyAddress: "",
       companyContact: "",
       companyGST: "",
-      logoPosition: "Top Left",
+      logoWidth: 50, // Default values for logo width and height
+      logoHeight: 20,
+      logoStartX: 15, // Default value for logo X position
+      logoStartY: 10, // Default value for logo Y position
       selectedColumns: ["itemName", "quantity", "standardPrice", "total"],
       footerText: "",
     },
@@ -64,7 +169,6 @@ const InvoiceDesigner = ({ onSave }) => {
 
   const handleSaveTemplate = async (values) => {
     const formData = new FormData();
-   
 
     // Append form data fields
     formData.append(
@@ -74,7 +178,10 @@ const InvoiceDesigner = ({ onSave }) => {
         companyAddress: values.companyAddress,
         companyContact: values.companyContact,
         companyGST: values.companyGST,
-        logoPosition: values.logoPosition,
+        logoWidth: values.logoWidth,
+        logoHeight: values.logoHeight,
+        logoStartX: values.logoStartX,
+        logoStartY: values.logoStartY,
         selectedColumns: values.selectedColumns,
         footerText: values.footerText,
       })
@@ -98,6 +205,7 @@ const InvoiceDesigner = ({ onSave }) => {
 
       if (response.ok) {
         alert("Invoice template saved successfully!");
+        fetchTemplates(); // Refresh templates after saving
       } else {
         alert("Failed to save invoice template.");
       }
@@ -166,6 +274,7 @@ const InvoiceDesigner = ({ onSave }) => {
             onChange={formik.handleChange}
             margin="normal"
           />
+
           <Box
             {...getRootProps()}
             sx={{
@@ -185,20 +294,62 @@ const InvoiceDesigner = ({ onSave }) => {
               </Typography>
             )}
           </Box>
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Logo Position</InputLabel>
-            <Select
-              name="logoPosition"
-              value={formik.values.logoPosition}
-              onChange={formik.handleChange}
-            >
-              {logoPositions.map((position) => (
-                <MenuItem key={position} value={position}>
-                  {position}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          
+          {/* Fields for Logo Width, Height, X Position, and Y Position */}
+          <TextField
+            fullWidth
+            label="Logo Width (in mm)"
+            name="logoWidth"
+            value={formik.values.logoWidth}
+            onChange={formik.handleChange}
+            error={formik.touched.logoWidth && Boolean(formik.errors.logoWidth)}
+            helperText={formik.touched.logoWidth && formik.errors.logoWidth}
+            margin="normal"
+            type="number"
+          />
+
+          <TextField
+            fullWidth
+            label="Logo Height (in mm)"
+            name="logoHeight"
+            value={formik.values.logoHeight}
+            onChange={formik.handleChange}
+            error={
+              formik.touched.logoHeight && Boolean(formik.errors.logoHeight)
+            }
+            helperText={formik.touched.logoHeight && formik.errors.logoHeight}
+            margin="normal"
+            type="number"
+          />
+
+          <TextField
+            fullWidth
+            label="Logo Start X Position (in mm)"
+            name="logoStartX"
+            value={formik.values.logoStartX}
+            onChange={formik.handleChange}
+            error={
+              formik.touched.logoStartX && Boolean(formik.errors.logoStartX)
+            }
+            helperText={formik.touched.logoStartX && formik.errors.logoStartX}
+            margin="normal"
+            type="number"
+          />
+
+          <TextField
+            fullWidth
+            label="Logo Start Y Position (in mm)"
+            name="logoStartY"
+            value={formik.values.logoStartY}
+            onChange={formik.handleChange}
+            error={
+              formik.touched.logoStartY && Boolean(formik.errors.logoStartY)
+            }
+            helperText={formik.touched.logoStartY && formik.errors.logoStartY}
+            margin="normal"
+            type="number"
+          />
+
           <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
             Select Columns to Include
           </Typography>
@@ -245,6 +396,57 @@ const InvoiceDesigner = ({ onSave }) => {
             Save Template
           </Button>
         </form>
+      </Paper>
+
+      {/* List of available templates */}
+      <Paper sx={{ p: 4, mt: 4 }}>
+        <Typography variant="h5" gutterBottom>
+          Available Templates
+        </Typography>
+
+        <FormControl component="fieldset">
+          <FormLabel component="legend">Active Template</FormLabel>
+          <RadioGroup
+            aria-label="active-template"
+            name="active-template"
+            value={activeTemplateId}
+            onChange={(e) => handleMakeActive(Number(e.target.value))}
+          >
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Company Name</TableCell>
+                    <TableCell>Columns</TableCell>
+                    <TableCell>Active</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {templates.map((template) => (
+                    <TableRow key={template.id}>
+                      <TableCell>{template.companyName}</TableCell>
+                      <TableCell>
+                        {template.selectedColumns.join(", ")}
+                      </TableCell>
+                      <TableCell>
+                        <Radio value={template.id} />
+                      </TableCell>
+                      <TableCell>
+                        <IconButton
+                          onClick={() => handleDeleteTemplate(template.id)}
+                          color="error"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </RadioGroup>
+        </FormControl>
       </Paper>
     </Box>
   );
