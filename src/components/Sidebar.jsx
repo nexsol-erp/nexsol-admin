@@ -263,16 +263,16 @@ const Sidebar = ({ mode, setMode, roles }) => {
       roles: ["user", "admin", "manager"],
     },
     {
+      label: "Invoice Designer",
+      icon: <Settings sx={{ color: "#ffe3a3" }} />,
+      link: "/invoicedesigner",
+      roles: ["user", "admin", "manager"],
+    },
+    {
       label: "Logout",
       icon: <ExitToApp sx={{ color: "#ffe3a3" }} />,
       action: handleLogout,
       roles: ["admin", "user", "manager"],
-    },
-    {
-      label: "Invoice Designer",
-      icon: <Settings sx={{ color: "#ffe3a3" }} />,
-      link: "/invoicedesigner",
-      roles: ["user","admin", "manager"],
     },
   ];
 
