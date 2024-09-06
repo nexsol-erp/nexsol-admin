@@ -30,13 +30,23 @@ import BillSeriesReport from "./components/BillSeriesReport";
 import UploadPage from "./components/UploadPage";
 import Invoicedesigner from "./components/InvoiceDesigner";
 import CreateItemMaster from "./components/CreateItemMaster";
+import SalesSummaryReport from "./components/SalesSummaryReport";
 
+ 
 const App = () => {
+ 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [mode, setMode] = useState("dark");
   const [roles, setRoles] = useState([]);
 
   const theme = createTheme({
+    typography: {
+      fontSize: 12, // Set the base font size to 12px
+      h1: { fontSize: "2rem" },
+      h2: { fontSize: "1.75rem" },
+      h3: { fontSize: "1.5rem" },
+      // Adjust other heading sizes if needed
+    },
     palette: {
       mode,
     },
@@ -104,6 +114,11 @@ const App = () => {
               <Route path="/uploadpage" element={<UploadPage />} />
               <Route path="/createitemmaster" element={<CreateItemMaster />} />
               <Route
+                path="/salessummaryreport"
+                element={<SalesSummaryReport />}
+              />
+
+              <Route
                 path="/stockmovementreport"
                 element={<StockMovementReport />}
               />
@@ -113,8 +128,7 @@ const App = () => {
           </WebSocketProvider>
         </Box>
       </Router>
-    </ThemeProvider>
-  );
+  </ThemeProvider>);
 };
 
 export default App;
