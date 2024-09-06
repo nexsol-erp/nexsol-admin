@@ -208,7 +208,11 @@ const SalesEntryForm = () => {
 
    
   const handleSave = async () => {
-    const branchCode = localStorage.getItem("branchCode");
+    let branchCode = localStorage.getItem("branchCode");
+    if (!branchCode) {
+      branchCode = "WEB"; // Set default branch code to 'WEB'
+      localStorage.setItem("branchCode", branchCode); // Save it to local storage
+    }
     const salesEntry = {
       customer: {
         name: customer,
