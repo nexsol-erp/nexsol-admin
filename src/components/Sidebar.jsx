@@ -134,11 +134,6 @@ const Sidebar = ({ mode, setMode, roles }) => {
           link: "/purchaseentry",
           roles: ["user", "manager"],
         },
-        {
-          label: "Purchase Report",
-          link: "/purchasereport",
-          roles: ["user", "manager"],
-        },
       ],
     },
     {
@@ -214,6 +209,11 @@ const Sidebar = ({ mode, setMode, roles }) => {
       roles: ["admin", "user", "manager"],
       hasSubmenu: true,
       submenu: [
+        {
+          label: "Sales  Re Print",
+          link: "/salessummaryreport",
+          roles: ["admin", "user", "manager"],
+        },
         {
           label: "Sales Report",
           link: "/sales",
