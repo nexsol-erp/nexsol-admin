@@ -41,7 +41,7 @@ const SalesEntryForm = () => {
   const [customers, setCustomers] = useState([]);
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerGST, setCustomerGST] = useState("");
-  const [items, setItems] = useState([]);
+  const [salesDetails, setItems] = useState([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [itemList, setItemList] = useState([]);
   const [filteredItemList, setFilteredItemList] = useState([]);
@@ -68,7 +68,7 @@ const SalesEntryForm = () => {
       setItemList(response.data);
       setFilteredItemList(response.data);
     } catch (error) {
-      console.error("Error fetching items:", error);
+      console.error("Error fetching salesDetails:", error);
     }
   };
 
@@ -116,7 +116,7 @@ const SalesEntryForm = () => {
       amount: parseFloat(amount) || 0,
     };
 
-    setItems([...items, newItem]);
+    setItems([...salesDetails, newItem]);
     setItemDialogOpen(false);
     setItemName("");
     setBarcode("");
@@ -138,11 +138,11 @@ const SalesEntryForm = () => {
   };
 
   const handleDeleteItem = (index) => {
-    setItems(items.filter((_, i) => i !== index));
+    setItems(salesDetails.filter((_, i) => i !== index));
   };
 
   const calculateGrandTotal = () =>
-    items.reduce((total, item) => total + item.amount, 0).toFixed(2);
+    salesDetails.reduce((total, item) => total + item.amount, 0).toFixed(2);
 
   const handleItemSearch = (value) => {
     setItemName(value);
@@ -221,7 +221,7 @@ const SalesEntryForm = () => {
       },
       branch_code: branchCode,
       voucher_date: new Date().toISOString(),
-      items,
+      salesDetails,
     };
 
     const tenancyId = localStorage.getItem("tenancyId");
@@ -328,7 +328,7 @@ const SalesEntryForm = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {items.map((item, index) => (
+              {salesDetails.map((item, index) => (
                 <TableRow key={index}>
                   <TableCell>{item.itemName}</TableCell>
                   <TableCell>{item.barcode}</TableCell>
@@ -363,11 +363,7 @@ const SalesEntryForm = () => {
           <Button variant="contained" color="primary" onClick={handleSave}>
             Save
           </Button>
-          {savedSalesEntry && (
-            <InvoiceGenerator
-              salesEntry={savedSalesEntry}
-            />
-          )}
+          {savedSalesEntry && <InvoiceGenerator salesEntry={savedSalesEntry} />}
         </Box>
       </Paper>
 
