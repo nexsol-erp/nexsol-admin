@@ -242,8 +242,9 @@ const SalesEntryForm = () => {
         const responseData = await response.json();
         const salesEntryWithInvoice = {
           ...salesEntry,
-          invoiceNumber: responseData.voucher_number,
-          invoiceDate: responseData.voucher_date,
+          invoiceNumber: responseData.invoiceNumber,
+          invoiceDate: responseData.invoiceDate,
+          items: responseData.items,
         };
       
   
