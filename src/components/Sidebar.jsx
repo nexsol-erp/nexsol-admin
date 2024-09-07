@@ -265,6 +265,13 @@ const Sidebar = ({ mode, setMode, roles }) => {
       roles: ["user", "admin", "manager"],
     },
     {
+      label: t("Workflow Designer"),
+      icon: <Settings sx={{ color: "#ffe3a3" }} />,
+      link: "/workflowdesign",
+      roles: ["user", "admin", "manager"],
+    },
+
+    {
       label: t("About"),
       icon: <Man sx={{ color: "#ffe3a3" }} />,
       link: "/about",
@@ -287,9 +294,6 @@ const Sidebar = ({ mode, setMode, roles }) => {
 
   const drawerContent = (
     <List>
-      {/* Branch Selector */}
-     
-        {/* Branch Selector */}
         <ListItem>
           <FormControl fullWidth>
             {/* Translate the label "Select Branch" */}

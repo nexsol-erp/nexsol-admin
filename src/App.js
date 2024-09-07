@@ -37,6 +37,7 @@ import UploadPage from "./components/UploadPage";
 import Invoicedesigner from "./components/InvoiceDesigner";
 import CreateItemMaster from "./components/CreateItemMaster";
 import SalesSummaryReport from "./components/SalesSummaryReport";
+import WorkflowDesigner from "./components/WorkflowDesigner";
 import "./i18n"; // Import i18n configuration
 
 const App = () => {
@@ -97,8 +98,6 @@ const App = () => {
             }}
           >
             <WebSocketProvider>
-             
-
               <Routes>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/sales" element={<SalesDetail />} />
@@ -156,6 +155,7 @@ const App = () => {
                 />
                 <Route path="/login" element={<LoginForm />} />
                 <Route path="/invoicedesigner" element={<Invoicedesigner />} />
+                <Route path="/workflowdesign" element={<WorkflowDesigner />} />
               </Routes>
             </WebSocketProvider>
           </Box>
