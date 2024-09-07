@@ -27,16 +27,16 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useWebSocket } from "./WebSocketContext";
-import { getItems, saveSalesTransaction } from "../services/apiservice"; // Ensure you import your API service
+import { getItems, saveSalesTransaction } from "../services/apiservice";
+import { useTranslation } from "react-i18next"; // Import useTranslation hook
 
 const SalesEntryForm = () => {
+  const { t } = useTranslation(); // Initialize translation hook
 
   const [savedSalesEntry, setSavedSalesEntry] = useState(null);
-  const [showInvoice, setShowInvoice] = useState(false); // To control InvoiceGenerator visibility
- 
+  const [showInvoice, setShowInvoice] = useState(false);
 
-
-  const { data } = useWebSocket(); // Use WebSocket context to get the data
+  const { data } = useWebSocket();
   const [customer, setCustomer] = useState("");
   const [customers, setCustomers] = useState([]);
   const [customerAddress, setCustomerAddress] = useState("");
@@ -56,7 +56,6 @@ const SalesEntryForm = () => {
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newCustomerAddress, setNewCustomerAddress] = useState("");
   const [newCustomerGST, setNewCustomerGST] = useState("");
- 
 
   useEffect(() => {
     fetchItems();
@@ -206,7 +205,6 @@ const SalesEntryForm = () => {
     }
   };
 
-   
   const handleSave = async () => {
     let branchCode = localStorage.getItem("branchCode");
     if (!branchCode) {
@@ -237,7 +235,7 @@ const SalesEntryForm = () => {
       });
 
       if (response.ok) {
-        alert("Sales entry saved successfully");
+        alert(t("salesEntrySuccess"));
 
         const responseData = await response.json();
         const salesEntryWithInvoice = {
@@ -246,11 +244,8 @@ const SalesEntryForm = () => {
           invoiceDate: responseData.invoiceDate,
           items: responseData.items,
         };
-      
-  
-        setSavedSalesEntry(salesEntryWithInvoice); // Save the entry data
 
-       
+        setSavedSalesEntry(salesEntryWithInvoice); // Save the entry data
         setShowInvoice(true); // Show InvoiceGenerator after saving
 
         setCustomer("");
@@ -258,25 +253,26 @@ const SalesEntryForm = () => {
         setCustomerGST("");
         setItems([]);
       } else {
-        alert("Failed to save sales entry");
+        alert(t("salesEntryFailure"));
       }
     } catch (error) {
       console.error("Error saving sales entry:", error);
-      alert("An error occurred while saving sales entry.");
+      alert(t("salesEntryError"));
     }
   };
 
-   const handleCloseInvoice = () => {
-     setShowInvoice(false); // Close the popup
-   };
+  const handleCloseInvoice = () => {
+    setShowInvoice(false); // Close the popup
+  };
+
   return (
     <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
       <Paper elevation={3} sx={{ padding: 4, maxWidth: 800 }}>
         <Typography variant="h4" gutterBottom>
-          Sales Entry
+          {t("salesEntry")}
         </Typography>
         <FormControl fullWidth margin="normal">
-          <InputLabel>Customer</InputLabel>
+          <InputLabel>{t("customer")}</InputLabel>
           <Select value={customer} onChange={handleCustomerChange}>
             {customers.map((cust) => (
               <MenuItem key={cust.id} value={cust.name}>
@@ -286,14 +282,14 @@ const SalesEntryForm = () => {
           </Select>
         </FormControl>
         <TextField
-          label="Customer Address"
+          label={t("customerAddress")}
           fullWidth
           margin="normal"
           value={customerAddress}
           disabled
         />
         <TextField
-          label="Customer GST"
+          label={t("customerGST")}
           fullWidth
           margin="normal"
           value={customerGST}
@@ -305,7 +301,7 @@ const SalesEntryForm = () => {
           onClick={() => setNewCustomerDialogOpen(true)}
           sx={{ mb: 3 }}
         >
-          Create New Customer
+          {t("createCustomer")}
         </Button>
         <Button
           variant="contained"
@@ -313,19 +309,19 @@ const SalesEntryForm = () => {
           onClick={() => setItemDialogOpen(true)}
           sx={{ mb: 3 }}
         >
-          Add Item
+          {t("addItem")}
         </Button>
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Item Name</TableCell>
-                <TableCell>Barcode</TableCell>
-                <TableCell>Standard Price</TableCell>
-                <TableCell>Tax Rate</TableCell>
-                <TableCell>Quantity</TableCell>
-                <TableCell>Total Amount</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell>{t("itemName")}</TableCell>
+                <TableCell>{t("barcode")}</TableCell>
+                <TableCell>{t("standardPrice")}</TableCell>
+                <TableCell>{t("taxRate")}</TableCell>
+                <TableCell>{t("quantity")}</TableCell>
+                <TableCell>{t("totalAmount")}</TableCell>
+                <TableCell>{t("actions")}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -336,8 +332,7 @@ const SalesEntryForm = () => {
                   <TableCell>{item.standardPrice.toFixed(2)}</TableCell>
                   <TableCell>{item.taxRate}</TableCell>
                   <TableCell>{item.qty}</TableCell>
-                  <TableCell>{(item.amount || 0).toFixed(2)}</TableCell>{" "}
-                  {/* Use fallback value */}
+                  <TableCell>{(item.amount || 0).toFixed(2)}</TableCell>
                   <TableCell>
                     <IconButton
                       onClick={() => handleDeleteItem(index)}
@@ -350,7 +345,7 @@ const SalesEntryForm = () => {
               ))}
               <TableRow>
                 <TableCell colSpan={5} sx={{ fontWeight: "bold" }}>
-                  Grand Total
+                  {t("grandTotal")}
                 </TableCell>
                 <TableCell sx={{ fontWeight: "bold" }}>
                   {calculateGrandTotal()}
@@ -362,17 +357,17 @@ const SalesEntryForm = () => {
         {/* Box for Save and Print Invoice Buttons */}
         <Box sx={{ display: "flex", justifyContent: "space-between", mt: 3 }}>
           <Button variant="contained" color="primary" onClick={handleSave}>
-            Save
+            {t("save")}
           </Button>
           {savedSalesEntry && <InvoiceGenerator salesEntry={savedSalesEntry} />}
         </Box>
       </Paper>
 
       <Dialog open={itemDialogOpen} onClose={() => setItemDialogOpen(false)}>
-        <DialogTitle>Add Item</DialogTitle>
+        <DialogTitle>{t("addItem")}</DialogTitle>
         <DialogContent>
           <TextField
-            label="Barcode"
+            label={t("barcode")}
             fullWidth
             margin="normal"
             value={barcode}
@@ -380,7 +375,7 @@ const SalesEntryForm = () => {
             onKeyPress={handleBarcodeKeyPress}
           />
           <FormControl fullWidth margin="normal">
-            <InputLabel>Item Name</InputLabel>
+            <InputLabel>{t("itemName")}</InputLabel>
             <TextField
               value={itemName}
               onChange={(e) => handleItemSearch(e.target.value)}
@@ -410,21 +405,21 @@ const SalesEntryForm = () => {
             </Select>
           </FormControl>
           <TextField
-            label="Standard Price"
+            label={t("standardPrice")}
             fullWidth
             margin="normal"
             value={standardPrice}
             disabled
           />
           <TextField
-            label="Tax Rate"
+            label={t("taxRate")}
             fullWidth
             margin="normal"
             value={taxRate}
             disabled
           />
           <TextField
-            label="Quantity"
+            label={t("quantity")}
             type="number"
             fullWidth
             margin="normal"
@@ -432,7 +427,7 @@ const SalesEntryForm = () => {
             onChange={(e) => handleQuantityChange(e.target.value)}
           />
           <TextField
-            label="Total Amount"
+            label={t("totalAmount")}
             fullWidth
             margin="normal"
             value={amount}
@@ -441,10 +436,10 @@ const SalesEntryForm = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setItemDialogOpen(false)} color="primary">
-            Cancel
+            {t("cancel")}
           </Button>
           <Button onClick={handleAddItem} color="primary">
-            Add Item
+            {t("addItem")}
           </Button>
         </DialogActions>
       </Dialog>
@@ -453,24 +448,24 @@ const SalesEntryForm = () => {
         open={newCustomerDialogOpen}
         onClose={() => setNewCustomerDialogOpen(false)}
       >
-        <DialogTitle>Create New Customer</DialogTitle>
+        <DialogTitle>{t("createCustomer")}</DialogTitle>
         <DialogContent>
           <TextField
-            label="Customer Name"
+            label={t("customerName")}
             fullWidth
             margin="normal"
             value={newCustomerName}
             onChange={(e) => setNewCustomerName(e.target.value)}
           />
           <TextField
-            label="Customer Address"
+            label={t("customerAddress")}
             fullWidth
             margin="normal"
             value={newCustomerAddress}
             onChange={(e) => setNewCustomerAddress(e.target.value)}
           />
           <TextField
-            label="Customer GST"
+            label={t("customerGST")}
             fullWidth
             margin="normal"
             value={newCustomerGST}
@@ -482,10 +477,10 @@ const SalesEntryForm = () => {
             onClick={() => setNewCustomerDialogOpen(false)}
             color="primary"
           >
-            Cancel
+            {t("cancel")}
           </Button>
           <Button onClick={handleNewCustomerSubmit} color="primary">
-            Create Customer
+            {t("createCustomer")}
           </Button>
         </DialogActions>
       </Dialog>

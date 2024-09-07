@@ -32,10 +32,13 @@ import {
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
+  import { useTranslation } from "react-i18next"; // Import the useTranslation hook for translations
 
 import axios from "axios";
 
 const Sidebar = ({ mode, setMode, roles }) => {
+   const { t } = useTranslation(); 
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openReports, setOpenReports] = useState(false);
   const [openScheme, setOpenScheme] = useState(false);
@@ -105,176 +108,177 @@ const Sidebar = ({ mode, setMode, roles }) => {
 
   const menuItems = [
     {
-      label: "Dashboard",
+      label: t("Dashboard"),
       icon: <Home sx={{ color: "#ffe3a3" }} />,
       link: "/dashboard",
       roles: ["admin", "user"],
     },
     {
-      label: "Sales Entry",
+      label: t("Sales Entry"),
       icon: <Pages sx={{ color: "#ffe3a3" }} />,
       link: "/salesentryform",
       roles: ["user"],
     },
     {
-      label: "HSN wise Sales",
+      label: t("HSN wise Sales"),
       icon: <Pages sx={{ color: "#ffe3a3" }} />,
       link: "/hsnsales",
       roles: ["admin", "user"],
     },
     {
-      label: "Purchase",
+      label: t("Purchase"),
       icon: <Luggage sx={{ color: "#ffe3a3" }} />,
       link: "",
       roles: ["user", "manager"],
       hasSubmenu: true,
       submenu: [
         {
-          label: "Purchase Entry",
+          label: t("Purchase Entry"),
           link: "/purchaseentry",
           roles: ["user", "manager"],
         },
       ],
     },
     {
-      label: "Weighbridge",
+      label: t("Weighbridge"),
       icon: <Luggage sx={{ color: "#ffe3a3" }} />,
       link: "/weighbridge",
       roles: ["WB"],
     },
     {
-      label: "Branch Creation",
+      label: t("Branch Creation"),
       icon: <Luggage sx={{ color: "#ffe3a3" }} />,
       link: "/branchcreationpage",
       roles: ["admin"],
     },
     {
-      label: "User Creation",
+      label: t("User Creation"),
       icon: <Luggage sx={{ color: "#ffe3a3" }} />,
       link: "/usercreationpage",
       roles: ["admin"],
     },
     {
-      label: "Scheme",
+      label: t("Scheme"),
       icon: <AccountTree sx={{ color: "#ffe3a3" }} />,
       link: "",
       roles: ["admin"],
       hasSubmenu: true,
       submenu: [
         {
-          label: "Scheme Creation",
+          label: t("Scheme Creation"),
           link: "/schemepage",
           roles: ["admin"],
         },
         {
-          label: "Manage Scheme",
+          label: t("Manage Scheme"),
           link: "/publishschemepage",
           roles: ["admin"],
         },
       ],
     },
     {
-      label: "Masters",
+      label: t("Masters"),
       icon: <Category sx={{ color: "#ffe3a3" }} />,
       link: "",
       roles: ["admin"],
       hasSubmenu: true,
       submenu: [
         {
-          label: "Item Creation",
+          label: t("Item Creation"),
           link: "/createitemmaster",
           roles: ["admin"],
         },
         {
-          label: "Category Type",
+          label: t("Category Type"),
           link: "/categorytypemaster",
           roles: ["admin"],
         },
         {
-          label: "Category Name",
+          label: t("Category Name"),
           link: "/categorynamemaster",
           roles: ["admin"],
         },
         {
-          label: "Supplier Creation",
+          label: t("Supplier Creation"),
           link: "/suppliercreation",
           roles: ["admin"],
         },
       ],
     },
     {
-      label: "Reports",
+      label: t("Reports"),
       icon: <Assessment sx={{ color: "#ffe3a3" }} />,
       link: "",
       roles: ["admin", "user", "manager"],
       hasSubmenu: true,
       submenu: [
         {
-          label: "Sales  Re Print",
+          label: t("Sales  Re Print"),
           link: "/salessummaryreport",
           roles: ["admin", "user", "manager"],
         },
         {
-          label: "Sales Report",
+          label: t("Sales Report"),
           link: "/sales",
           roles: ["admin", "user", "manager"],
         },
         {
-          label: "Purchase Report",
+          label: t("Purchase Report"),
           link: "/purchasereport",
           roles: ["admin", "user", "manager"],
         },
         {
-          label: "Stock Movement Report",
+          label: t("Stock Movement Report"),
           link: "/stockmovementreport",
           roles: ["admin", "user", "manager"],
         },
         {
-          label: "Bill Series Report",
+          label: t("Bill Series Report"),
           link: "/billseriesreport",
           roles: ["admin", "user", "manager"],
         },
 
         {
-          label: "Season Sales Report",
+          label: t("Season Sales Report"),
           link: "/seasonalreport",
           roles: ["admin"],
         },
       ],
     },
+
     {
-      label: "About",
-      icon: <Man sx={{ color: "#ffe3a3" }} />,
-      link: "/about",
-      roles: ["manager"],
-    },
-    {
-      label: "Download",
+      label: t("Download"),
       icon: <Settings sx={{ color: "#ffe3a3" }} />,
       link: "/download",
       roles: ["user", "manager", "admin"],
     },
     {
-      label: "Upload",
+      label: t("Upload"),
       icon: <Settings sx={{ color: "#ffe3a3" }} />,
       link: "/uploadpage",
       roles: ["admin"],
     },
-
     {
-      label: "Help",
-      icon: <Settings sx={{ color: "#ffe3a3" }} />,
-      link: "/help",
-      roles: ["user", "admin", "manager"],
-    },
-    {
-      label: "Invoice Designer",
+      label: t("Invoice Designer"),
       icon: <Settings sx={{ color: "#ffe3a3" }} />,
       link: "/invoicedesigner",
       roles: ["user", "admin", "manager"],
     },
     {
-      label: "Logout",
+      label: t("About"),
+      icon: <Man sx={{ color: "#ffe3a3" }} />,
+      link: "/about",
+      roles: ["manager"],
+    },
+    {
+      label: t("Help"),
+      icon: <Settings sx={{ color: "#ffe3a3" }} />,
+      link: "/help",
+      roles: ["user", "admin", "manager"],
+    },
+
+    {
+      label: t("Logout"),
       icon: <ExitToApp sx={{ color: "#ffe3a3" }} />,
       action: handleLogout,
       roles: ["admin", "user", "manager"],
@@ -284,22 +288,29 @@ const Sidebar = ({ mode, setMode, roles }) => {
   const drawerContent = (
     <List>
       {/* Branch Selector */}
-      <ListItem>
-        <FormControl fullWidth>
-          <InputLabel sx={{ color: "#ffe3a3" }}>Select Branch</InputLabel>
-          <Select
-            value={selectedBranch}
-            onChange={handleBranchChange}
-            sx={{ color: "#ffe3a3" }}
-          >
-            {branches.map((branch) => (
-              <MenuItem key={branch.branchCode} value={branch.branchCode}>
-                {branch.branchCode}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </ListItem>
+     
+        {/* Branch Selector */}
+        <ListItem>
+          <FormControl fullWidth>
+            {/* Translate the label "Select Branch" */}
+            <InputLabel sx={{ color: "#ffe3a3" }}>
+              {t("Select Branch")}
+            </InputLabel>
+            <Select
+              value={selectedBranch}
+              onChange={handleBranchChange}
+              sx={{ color: "#ffe3a3" }}
+            >
+              {branches.map((branch) => (
+                <MenuItem key={branch.branchCode} value={branch.branchCode}>
+                  {/* Optionally translate branch codes if needed */}
+                  {t(branch.branchCode)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </ListItem>
+   
 
       {/* Other Menu Items */}
       {menuItems.map((item, index) => {
