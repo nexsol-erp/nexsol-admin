@@ -19,7 +19,8 @@ export const saveSalesTransaction = (salesTransaction) => {
 export const saveWorkflow = (workflowData) => {
   return apiClient.post("/workflow", workflowData);
 };
-export const loadWorkflow = () => {
-  return apiClient.get("/workflow/fetch"); // Adjust the endpoint to your backend URL
+export const loadWorkflow = (workflowName) => {
+  return apiClient.get(`/workflow/fetch`, {
+    params: { name: workflowName },
+  });
 };
- 
