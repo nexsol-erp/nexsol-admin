@@ -16,3 +16,10 @@ export const getItems = () => {
 export const saveSalesTransaction = (salesTransaction) => {
   return apiClient.post("/sales", salesTransaction);
 };
+export const saveWorkflow = (workflowData) => {
+  return apiClient.post("/workflow", workflowData);
+};
+export const loadWorkflow = () => {
+  return apiClient.get("/workflow/fetch"); // Adjust the endpoint to your backend URL
+};
+ 

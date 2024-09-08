@@ -1,13 +1,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import {
-  CssBaseline,
-  Box,
-  Select,
-  MenuItem,
-  CircularProgress,
-} from "@mui/material";
+import { CssBaseline, Box, CircularProgress } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import LoginForm from "./components/LoginForm";
 import Dashboard from "./components/Dashboard";
@@ -54,7 +48,7 @@ const App = () => {
       i18n.changeLanguage(storedLanguage); // Change the language in i18next
       setLanguage(storedLanguage); // Update the state
     }
-  }, [i18n]); // Only run this once when the app initializes
+  }, [i18n]);
 
   const theme = createTheme({
     typography: {
@@ -67,6 +61,16 @@ const App = () => {
       mode,
     },
   });
+
+  const defaultRoles = ["admin", "user"]; // Add default roles as per your requirement
+
+  // Mock authentication for development environment
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      setIsAuthenticated(false); // Automatically mark as authenticated in development
+      setRoles(defaultRoles); // Set default roles for development
+    }
+  }, []);
 
   const handleLogin = (roles) => {
     setIsAuthenticated(true);
