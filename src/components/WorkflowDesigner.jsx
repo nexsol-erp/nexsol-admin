@@ -155,28 +155,67 @@ const WorkflowDesigner = () => {
   const [isFetching, setIsFetching] = useState(false); // Track saving state
   const [saveSuccess, setSaveSuccess] = useState(null); // Track save success/failure
   const [fetchSuccess, setFetchSuccess] = useState(null); // Track fetch success/failure
-
-  // Load Workflow function
+const [workflowName, setWorkflowName] = useState("");
+  // Load Workflow function with edge transformation
   const loadTisWorkflow = async () => {
-    setIsFetching(true);  // Set loading state
+    setIsFetching(true); // Set loading state
     try {
-      const response = await loadWorkflow();  // Fetch workflow from API
-      const { nodes, edges } = response.data;  // Destructure nodes and edges from the response
+      const response = await loadWorkflow(workflowName); // Fetch workflow from API
+      const { nodes, edges } = response.data; // Destructure nodes and edges from the response
 
-      // Ensure each node has a position
-      const updatedNodes = nodes.map(node => ({
-        ...node,
-        position: node.position || { x: 0, y: 0 }  // Default to (0,0) if position is missing
-      }));
+      // Transform the node structure to match the required format
+      const updatedNodes = nodes.map((node) => {
+        return {
+          id: node.id,
+          type: node.type === "null" || !node.type ? "userStage" : node.type, // Default to 'userStage' if 'type' is null
+          data: {
+            label: node.label || "User", // Fallback label
+            properties: node.properties || [], // Custom properties
+          },
+          position: node.position || { x: 0, y: 0 }, // Ensure position exists
+          width: node.width || 60, // Default width
+          height: node.height || 66, // Default height
+          label: node.label || "User", // Fallback to label 'User'
+          selected: node.selected || false, // Ensure selected is present
+          positionAbsolute: node.positionAbsolute || node.position, // Position absolute
+          dragging: node.dragging || false, // Ensure dragging state exists
+        };
+      });
 
-      setNodes(updatedNodes);  // Update state with fetched nodes
-      setEdges(edges);  // Update state with fetched edges
+      // Transform the edge structure to match the required format
+      const updatedEdges = edges.map((edge) => {
+        return {
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          label: edge.label || "Next", // Default label for connectors
+          data: {
+            properties: edge.properties
+              ? Object.entries(edge.properties).map(([key, value]) => ({
+                  key,
+                  value,
+                }))
+              : [], // Convert object to array if properties exist
+          },
+          sourceHandle: edge.sourceHandle || null, // Default to null if missing
+          targetHandle: edge.targetHandle || null, // Default to null if missing
+          animated: edge.animated || true, // Default to true if missing
+          style: edge.style || { strokeWidth: 2 }, // Default style if missing
+          selected: edge.selected || false, // Ensure selected is present
+        };
+      });
 
-      console.log("Workflow Fetched successfully:", response.data);
+      setNodes(updatedNodes); // Update state with transformed nodes
+      setEdges(updatedEdges); // Update state with transformed edges
+
+      console.log("Workflow Fetched and Transformed Successfully:", {
+        updatedNodes,
+        updatedEdges,
+      });
     } catch (error) {
       console.error("Error fetching workflow:", error);
     } finally {
-      setIsFetching(false);  // Reset loading state
+      setIsFetching(false); // Reset loading state
     }
   };
 
@@ -186,7 +225,8 @@ const WorkflowDesigner = () => {
     setSaveSuccess(null); // Clear any previous success or error message
 
     try {
-      const workflowData = { nodes, edges };
+        const workflowData = { name: workflowName, nodes, edges };
+ 
       const response = await saveWorkflow(workflowData);
 
       setSaveSuccess(true); // Set success state
@@ -196,6 +236,22 @@ const WorkflowDesigner = () => {
       console.error("Error saving workflow:", error);
     } finally {
       setIsSaving(false); // Reset loading state
+    }
+  };
+
+  // Function to show all attributes in an alert box
+  // Function to show all attributes in an alert box
+  // Function to show the entire data structure in an alert box
+  const showPropertiesAlert = () => {
+    if (selectedElement) {
+      // Convert the entire selected element to a string using JSON.stringify
+      const elementData = JSON.stringify(selectedElement, null, 2); // Pretty print with 2-space indentation
+
+      // Display the data structure in an alert box
+      //alert(`Selected Element Data:\n${elementData}`);
+      console.debug(elementData);
+    } else {
+      alert("No element selected.");
     }
   };
 
@@ -372,6 +428,17 @@ const WorkflowDesigner = () => {
   return (
     <div className="workflow-designer">
       <div className="sidebar">
+        {/* Input field to capture workflow name */}
+        <div className="workflow-name">
+          <label htmlFor="workflow-name">Workflow Name:</label>
+          <input
+            type="text"
+            id="workflow-name"
+            value={workflowName}
+            onChange={(e) => setWorkflowName(e.target.value)}
+            placeholder="Enter workflow name"
+          />
+        </div>
         <button onClick={addNode}>Add Node</button>
         <button onClick={addConditionalNode}>Add Conditional Node</button>
         <button onClick={addUserStageNode}>Add User Stage</button>
@@ -385,6 +452,9 @@ const WorkflowDesigner = () => {
         </button>
         <button onClick={loadTisWorkflow} disabled={isFetching}>
           {getFetchButtonLabel()}
+        </button>
+        <button onClick={showPropertiesAlert} disabled={!selectedElement}>
+          Show Properties in Alert
         </button>
         {selectedElement && (
           <div className="properties-section">
