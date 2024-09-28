@@ -14,7 +14,15 @@ const SignUpForm = ({ onSignUp }) => {
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [timezones, setTimezones] = useState([]);
   const [selectedTimezone, setSelectedTimezone] = useState(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState({
+    general: "",
+    companyName: "",
+    username: "",
+    country: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
 
   useEffect(() => {
     fetchCountries();
@@ -39,15 +47,12 @@ const SignUpForm = ({ onSignUp }) => {
   };
 
   const fetchTimezones = () => {
-    // Using moment-timezone to get all time zones
     const timezoneNames = moment.tz.names();
     const formattedTimezones = timezoneNames.map((tz) => ({
       label: tz,
       value: tz,
     }));
     setTimezones(formattedTimezones);
-
-    // Optionally, set the default time zone to the user's local time zone
     const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setSelectedTimezone({ label: localTimezone, value: localTimezone });
   };
@@ -55,18 +60,99 @@ const SignUpForm = ({ onSignUp }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    let formHasErrors = false;
     const mobileNumberRegex = /^[0-9]+$/;
-    if (!mobileNumberRegex.test(mobileNumber)) {
-      setError(
-        "Mobile Number must contain only digits without spaces or special characters."
-      );
-      return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Basic email regex for validation
+    const passwordRegex = /^\S{3,}$/; // No spaces, min 3 characters
+    const usernameRegex = /^\S+$/; // No spaces allowed
+
+    // Clear existing errors
+    setError({
+      general: "",
+      companyName: "",
+      username: "",
+      country: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    });
+
+    // Validate company name
+    if (!companyName) {
+      setError((prev) => ({
+        ...prev,
+        companyName: "Company Name cannot be blank.",
+      }));
+      formHasErrors = true;
     }
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match!");
-      return;
+    // Validate username (should not be blank and should not contain spaces)
+    if (!username) {
+      setError((prev) => ({
+        ...prev,
+        username: "Username cannot be blank.",
+      }));
+      formHasErrors = true;
+    } else if (!usernameRegex.test(username)) {
+      setError((prev) => ({
+        ...prev,
+        username: "Username cannot contain spaces.",
+      }));
+      formHasErrors = true;
     }
+
+    // Validate mobile number
+    if (!mobileNumberRegex.test(mobileNumber)) {
+      setError((prev) => ({
+        ...prev,
+        general:
+          "Mobile Number must contain only digits without spaces or special characters.",
+      }));
+      formHasErrors = true;
+    }
+
+    // Validate email
+    if (!email) {
+      setError((prev) => ({
+        ...prev,
+        email: "Email cannot be blank.",
+      }));
+      formHasErrors = true;
+    } else if (!emailRegex.test(email)) {
+      setError((prev) => ({
+        ...prev,
+        email: "Please enter a valid email address.",
+      }));
+      formHasErrors = true;
+    }
+
+    // Validate country selection
+    if (!selectedCountry) {
+      setError((prev) => ({ ...prev, country: "Please select a country." }));
+      formHasErrors = true;
+    }
+
+    // Validate password (min 3 chars, no spaces)
+    if (!passwordRegex.test(password)) {
+      setError((prev) => ({
+        ...prev,
+        password:
+          "Password must be at least 3 characters long and contain no spaces.",
+      }));
+      formHasErrors = true;
+    }
+
+    // Validate confirm password
+    if (password !== confirmPassword) {
+      setError((prev) => ({
+        ...prev,
+        confirmPassword: "Passwords do not match!",
+      }));
+      formHasErrors = true;
+    }
+
+    // If there are errors, stop the form submission
+    if (formHasErrors) return;
 
     const formData = {
       companyName,
@@ -75,7 +161,7 @@ const SignUpForm = ({ onSignUp }) => {
       mobileNumber,
       password,
       country: selectedCountry ? selectedCountry.label : null,
-      timezone: selectedTimezone ? selectedTimezone.value : null, // Add the timezone to form data
+      timezone: selectedTimezone ? selectedTimezone.value : null,
     };
 
     try {
@@ -92,16 +178,23 @@ const SignUpForm = ({ onSignUp }) => {
         alert("Signup successful!");
         onSignUp(); // Notify parent component (LoginForm) about successful signup
       } else {
-        setError(data.message);
+        setError((prev) => ({
+          ...prev,
+          general: data.message,
+        }));
       }
     } catch (error) {
       console.error("Error:", error);
-      setError("An error occurred. Please try again later.");
+      setError((prev) => ({
+        ...prev,
+        general: "An error occurred. Please try again later.",
+      }));
     }
   };
 
   const handleCountryChange = (selectedOption) => {
     setSelectedCountry(selectedOption);
+    setError((prev) => ({ ...prev, country: "" }));
   };
 
   const handleTimezoneChange = (selectedOption) => {
@@ -122,9 +215,9 @@ const SignUpForm = ({ onSignUp }) => {
       <Typography variant="h4" gutterBottom>
         Sign Up
       </Typography>
-      {error && (
+      {error.general && (
         <Typography color="error" variant="body1" gutterBottom>
-          {error}
+          {error.general}
         </Typography>
       )}
       <form onSubmit={handleSubmit}>
@@ -135,6 +228,11 @@ const SignUpForm = ({ onSignUp }) => {
           value={companyName}
           onChange={(e) => setCompanyName(e.target.value)}
         />
+        {error.companyName && (
+          <Typography color="error" variant="body2">
+            {error.companyName}
+          </Typography>
+        )}
         <TextField
           label="Username"
           fullWidth
@@ -142,6 +240,11 @@ const SignUpForm = ({ onSignUp }) => {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
+        {error.username && (
+          <Typography color="error" variant="body2">
+            {error.username}
+          </Typography>
+        )}
         <TextField
           label="Email"
           type="email"
@@ -150,6 +253,11 @@ const SignUpForm = ({ onSignUp }) => {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
+        {error.email && (
+          <Typography color="error" variant="body2">
+            {error.email}
+          </Typography>
+        )}
         <TextField
           label="Mobile Number"
           type="tel"
@@ -159,6 +267,11 @@ const SignUpForm = ({ onSignUp }) => {
           onChange={(e) => setMobileNumber(e.target.value)}
           required
         />
+        {error.general && (
+          <Typography color="error" variant="body2">
+            {error.general}
+          </Typography>
+        )}
         <Select
           options={countries}
           value={selectedCountry}
@@ -167,6 +280,11 @@ const SignUpForm = ({ onSignUp }) => {
           isClearable
           styles={{ menu: (provided) => ({ ...provided, zIndex: 9999 }) }}
         />
+        {error.country && (
+          <Typography color="error" variant="body2">
+            {error.country}
+          </Typography>
+        )}
         <Select
           options={timezones}
           value={selectedTimezone}
@@ -183,6 +301,11 @@ const SignUpForm = ({ onSignUp }) => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+        {error.password && (
+          <Typography color="error" variant="body2">
+            {error.password}
+          </Typography>
+        )}
         <TextField
           label="Confirm Password"
           type="password"
@@ -191,6 +314,11 @@ const SignUpForm = ({ onSignUp }) => {
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
         />
+        {error.confirmPassword && (
+          <Typography color="error" variant="body2">
+            {error.confirmPassword}
+          </Typography>
+        )}
         <Box mt={2}>
           <Button type="submit" variant="contained" color="primary" fullWidth>
             Sign Up
