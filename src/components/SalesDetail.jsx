@@ -60,7 +60,7 @@ const SalesDetail = () => {
         const tenancyId = localStorage.getItem("tenancyId");
         const token = localStorage.getItem("jwtToken");
         const response = await fetch(
-          `/api/${tenancyId}/salesdata?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`,
+          `/api/${tenancyId}/sales/salesdata?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`,
           {
             method: "GET",
             headers: {
