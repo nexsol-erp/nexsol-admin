@@ -7,6 +7,7 @@ pipeline {
         SERVICE_NAME = 'nginx' // Assuming Nginx service is managed here
         STATIC_RESOURCES_DIR = 'src/main/resources/static'
         CI = ''  // Unset the CI environment variable
+        GIT_SSH_COMMAND = 'ssh -o StrictHostKeyChecking=no'
     }
 
     tools {
