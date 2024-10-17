@@ -19,6 +19,8 @@ const BranchCreationPage = () => {
   const [branchAddress2, setBranchAddress2] = useState("");
   const [branchGst, setBranchGst] = useState("");
   const [branchInvoicePrefix, setBranchInvoicePrefix] = useState("");
+  const [isControlBranch, setIsControlBranch] = useState("");
+  
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,6 +47,7 @@ const BranchCreationPage = () => {
       branchAddress2,
       branchGst,
       branchInvoicePrefix, // include the new field
+      isControlBranch,
     };
 
     setLoading(true);
@@ -75,6 +78,7 @@ const BranchCreationPage = () => {
         setBranchAddress2("");
         setBranchGst("");
         setBranchInvoicePrefix(""); // reset the new field
+        setIsControlBranch("");
       } else {
         setError(data.message);
       }
@@ -192,6 +196,16 @@ const BranchCreationPage = () => {
                 margin="normal"
                 value={branchInvoicePrefix}
                 onChange={(e) => setBranchInvoicePrefix(e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Is Control Branch(Y/N)"
+                fullWidth
+                margin="normal"
+                value={isControlBranch}
+                onChange={(e) => setIsControlBranch(e.target.value)}
                 required
               />
             </Grid>
