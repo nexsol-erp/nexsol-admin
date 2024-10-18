@@ -100,16 +100,16 @@ const LoginForm = ({ onLogin }) => {
       {/* Full-page scrolling background images */}
       <Slider {...settings}>
         <div>
-          <img src="../assets/image-1.jpg" alt="Image 1" />
+          <img src="../assets/image_1.jpg" alt="Image 1" />
         </div>
         <div>
-          <img src="../assets/image-2.jpg" alt="Image 2" />
+          <img src="../assets/image_2.jpg" alt="Image 2" />
         </div>
         <div>
-          <img src="../assets/image-3.jpg" alt="Image 3" />
+          <img src="../assets/image_3.jpg" alt="Image 3" />
         </div>
         <div>
-          <img src="../assets/image-4.jpg" alt="Image 4" />
+          <img src="../assets/image_4.jpg" alt="Image 4" />
         </div>
       </Slider>
 
