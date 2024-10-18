@@ -2,21 +2,21 @@ import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
-  TextField,
   Typography,
   Paper,
   Grid,
-  MenuItem,
-  Select,
   Modal,
   IconButton,
   AppBar,
   Toolbar,
+  Select,
+  MenuItem,
+  TextField,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import SignUpForm from "./SignUpForm";
-import logo from "../assets/maple-logo.png";
 import CloseIcon from "@mui/icons-material/Close";
+import SignUpForm from "./SignUpForm";
+import Slider from "react-slick"; // Importing react-slick for the carousel
 
 const LoginForm = ({ onLogin }) => {
   const [username, setUsername] = useState("");
@@ -69,6 +69,17 @@ const LoginForm = ({ onLogin }) => {
     localStorage.setItem("language", newLanguage); // Save the selected language in localStorage
   };
 
+  // Slider settings for react-slick
+  const settings = {
+    dots: true,
+    infinite: true,
+    speed: 500,
+    slidesToShow: 1,
+    slidesToScroll: 1,
+    autoplay: true,
+    autoplaySpeed: 3000,
+  };
+
   return (
     <Box>
       {/* Top navigation bar with login and signup links */}
@@ -86,56 +97,21 @@ const LoginForm = ({ onLogin }) => {
         </Toolbar>
       </AppBar>
 
-      {/* Scrolling content section with images and text */}
-      <Box
-        sx={{
-          height: "80vh",
-          overflowY: "scroll",
-          padding: 4,
-        }}
-      >
-        <Grid container spacing={4}>
-          <Grid item xs={12} md={6}>
-            <Box sx={{ textAlign: "center" }}>
-              <Typography variant="h3" gutterBottom>
-                {t("welcome")}
-              </Typography>
-              <Typography variant="h6" paragraph>
-                {t("description")}
-              </Typography>
-              <img
-                src={logo}
-                alt="MapleERP Logo"
-                style={{
-                  maxWidth: "100%",
-                  height: "auto",
-                  marginBottom: "20px",
-                }}
-              />
-              <Typography variant="body1" color="textSecondary">
-                {t("experience")}
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Box sx={{ textAlign: "left" }}>
-              <Typography variant="h5" gutterBottom>
-                About MapleERP
-              </Typography>
-              <Typography variant="body1">
-                MapleERP offers robust solutions for supermarkets and bakeries,
-                enabling efficient inventory management, sales tracking, and
-                customer engagement. Our AI-powered stocktaking and real-time
-                shelf management ensure seamless operations for your business.
-              </Typography>
-              <Typography variant="body1" sx={{ mt: 2 }}>
-                Explore our solutions and learn how MapleERP can transform your
-                business, driving growth and enhancing customer satisfaction.
-              </Typography>
-            </Box>
-          </Grid>
-        </Grid>
-      </Box>
+      {/* Full-page scrolling background images */}
+      <Slider {...settings}>
+        <div>
+          <img src="../assets/image-1.jpg" alt="Image 1" />
+        </div>
+        <div>
+          <img src="../assets/image-2.jpg" alt="Image 2" />
+        </div>
+        <div>
+          <img src="../assets/image-3.jpg" alt="Image 3" />
+        </div>
+        <div>
+          <img src="../assets/image-4.jpg" alt="Image 4" />
+        </div>
+      </Slider>
 
       {/* Modal for login and signup */}
       <Modal

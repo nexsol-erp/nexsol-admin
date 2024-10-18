@@ -36,3 +36,16 @@
     transform: rotate(360deg);
   }
 }
+.slick-prev:before, .slick-next:before {
+  color: black;
+}
+
+.slick-dots li button:before {
+  color: white;
+}
+
+.slick-slide img {
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+}
