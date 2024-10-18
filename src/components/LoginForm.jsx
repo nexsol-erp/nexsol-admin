@@ -21,8 +21,8 @@ import CloseIcon from "@mui/icons-material/Close";
 const LoginForm = ({ onLogin }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false); // To handle modal
+  const [isSignUp, setIsSignUp] = useState(false); // To track if the user clicked sign up
+  const [modalOpen, setModalOpen] = useState(false); // To handle modal visibility
   const { t, i18n } = useTranslation(); // Hook for translation
   const [selectedLanguage, setSelectedLanguage] = useState("en"); // Default language
 
@@ -52,7 +52,7 @@ const LoginForm = ({ onLogin }) => {
         localStorage.setItem("tenancyId", data.tenancyId);
         localStorage.setItem("roles", JSON.stringify(data.roles));
         onLogin(data.roles);
-        setLoginOpen(false); // Close the modal upon successful login
+        setModalOpen(false); // Close the modal upon successful login
       } else {
         alert(data.message);
       }
@@ -71,14 +71,17 @@ const LoginForm = ({ onLogin }) => {
 
   return (
     <Box>
-      {/* Top navigation bar with login link */}
+      {/* Top navigation bar with login and signup links */}
       <AppBar position="static" color="default">
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             MapleERP
           </Typography>
-          <Button color="primary" onClick={() => setLoginOpen(true)}>
+          <Button color="primary" onClick={() => { setIsSignUp(false); setModalOpen(true); }}>
             {t("login")}
+          </Button>
+          <Button color="secondary" onClick={() => { setIsSignUp(true); setModalOpen(true); }}>
+            {t("signup")}
           </Button>
         </Toolbar>
       </AppBar>
@@ -134,12 +137,12 @@ const LoginForm = ({ onLogin }) => {
         </Grid>
       </Box>
 
-      {/* Modal for login */}
+      {/* Modal for login and signup */}
       <Modal
-        open={loginOpen}
-        onClose={() => setLoginOpen(false)}
-        aria-labelledby="login-modal-title"
-        aria-describedby="login-modal-description"
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        aria-labelledby="auth-modal-title"
+        aria-describedby="auth-modal-description"
       >
         <Paper
           elevation={3}
@@ -154,38 +157,44 @@ const LoginForm = ({ onLogin }) => {
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-            <Typography variant="h4" id="login-modal-title">
-              {t("login")}
+            <Typography variant="h4" id="auth-modal-title">
+              {isSignUp ? t("signup") : t("login")}
             </Typography>
-            <IconButton onClick={() => setLoginOpen(false)}>
+            <IconButton onClick={() => setModalOpen(false)}>
               <CloseIcon />
             </IconButton>
           </Box>
-          <form onSubmit={handleSubmit}>
-            <TextField
-              label={t("username")}
-              fullWidth
-              margin="normal"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-            <TextField
-              label={t("password")}
-              type="password"
-              fullWidth
-              margin="normal"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth
-            >
-              {t("login")}
-            </Button>
-          </form>
+
+          {/* Render Sign Up or Login form based on isSignUp state */}
+          {isSignUp ? (
+            <SignUpForm onSignUp={() => setModalOpen(false)} />
+          ) : (
+            <form onSubmit={handleSubmit}>
+              <TextField
+                label={t("username")}
+                fullWidth
+                margin="normal"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+              <TextField
+                label={t("password")}
+                type="password"
+                fullWidth
+                margin="normal"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                fullWidth
+              >
+                {t("login")}
+              </Button>
+            </form>
+          )}
 
           {/* Language Selector */}
           <Select
