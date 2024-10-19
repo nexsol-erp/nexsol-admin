@@ -26,7 +26,7 @@ import { useWebSocket } from "./WebSocketContext"; // Adjust the import path as 
 
 const PurchaseEntryForm = () => {
   const { data } = useWebSocket(); // Use WebSocket context to get the data
-  const [supplier, setSupplier] = useState("");
+  const [supplierName, setSupplierName] = useState("");
   const [suppliers, setSuppliers] = useState([]);
   const [voucherNumber, setVoucherNumber] = useState("");
   const [voucherDate, setVoucherDate] = useState("");
@@ -59,7 +59,7 @@ const PurchaseEntryForm = () => {
             Authorization: `Bearer ${token}`, // Add the JWT token here
           },
         });
-  
+
         if (!response.ok) {
           throw new Error("Failed to fetch suppliers");
         }
@@ -159,7 +159,7 @@ const PurchaseEntryForm = () => {
   const handlePartialSave = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
     const payload = {
-      supplier,
+      supplierName,
       voucherNumber,
       voucherDate,
       items,
@@ -190,7 +190,7 @@ const PurchaseEntryForm = () => {
   const handleFinalSave = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
     const payload = {
-      supplier,
+      supplierName,
       voucherNumber,
       voucherDate,
       items,
@@ -228,7 +228,7 @@ const PurchaseEntryForm = () => {
           <InputLabel>Supplier</InputLabel>
           <Select
             value={supplier}
-            onChange={(e) => setSupplier(e.target.value)}
+            onChange={(e) => setSupplierName(e.target.value)}
           >
             {suppliers.map((supplier) => (
               <MenuItem key={supplier.id} value={supplier.supplierName}>
