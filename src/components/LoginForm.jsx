@@ -4,7 +4,6 @@ import {
   Button,
   Typography,
   Paper,
-  Grid,
   Modal,
   IconButton,
   AppBar,
@@ -12,11 +11,15 @@ import {
   Select,
   MenuItem,
   TextField,
+  Grid,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import CloseIcon from "@mui/icons-material/Close";
 import SignUpForm from "./SignUpForm";
-import Slider from "react-slick"; // Importing react-slick for the carousel
+import image1 from "../assets/image-1.jpg";
+import image2 from "../assets/image-2.jpg";
+import image3 from "../assets/image-3.jpg";
+import image4 from "../assets/image-4.jpg";
 
 const LoginForm = ({ onLogin }) => {
   const [username, setUsername] = useState("");
@@ -26,7 +29,6 @@ const LoginForm = ({ onLogin }) => {
   const { t, i18n } = useTranslation(); // Hook for translation
   const [selectedLanguage, setSelectedLanguage] = useState("en"); // Default language
 
-  // Load language from localStorage when the component mounts
   useEffect(() => {
     const savedLanguage = localStorage.getItem("language");
     if (savedLanguage) {
@@ -69,15 +71,48 @@ const LoginForm = ({ onLogin }) => {
     localStorage.setItem("language", newLanguage); // Save the selected language in localStorage
   };
 
-  // Slider settings for react-slick
-  const settings = {
-    dots: true,
-    infinite: true,
-    speed: 500,
-    slidesToShow: 1,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 3000,
+  const images = [image1, image2, image3, image4];
+
+  // Mobile-friendly CSS for background and layout
+  const styles = {
+    container: {
+      height: "100vh",
+      width: "100vw",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative",
+    },
+    image: {
+      objectFit: "cover",
+      height: "100%",
+      width: "100%",
+      position: "absolute",
+      top: 0,
+      left: 0,
+      zIndex: -1,
+      opacity: 0.6,
+    },
+    textOverlay: {
+      padding: "20px",
+      textAlign: "center",
+      maxWidth: "700px",
+      backgroundColor: "rgba(0, 0, 0, 0.6)",
+      color: "#fff",
+      borderRadius: "10px",
+    },
+    paper: {
+      maxWidth: "400px",
+      padding: "20px",
+      backgroundColor: "#f0f0f0",
+    },
+    buttonGroup: {
+      display: "flex",
+      justifyContent: "center",
+      gap: "10px",
+      marginTop: "20px",
+    },
   };
 
   return (
@@ -97,21 +132,23 @@ const LoginForm = ({ onLogin }) => {
         </Toolbar>
       </AppBar>
 
-      {/* Full-page scrolling background images */}
-      <Slider {...settings}>
-        <div>
-          <img src="../assets/image_1.jpg" alt="Image 1" />
-        </div>
-        <div>
-          <img src="../assets/image_2.jpg" alt="Image 2" />
-        </div>
-        <div>
-          <img src="../assets/image_3.jpg" alt="Image 3" />
-        </div>
-        <div>
-          <img src="../assets/image_4.jpg" alt="Image 4" />
-        </div>
-      </Slider>
+      {/* Full-page background image */}
+      <Box sx={styles.container}>
+        <img src={images[0]} alt="Background" style={styles.image} />
+
+        {/* Text Overlay with ERP description */}
+        <Paper elevation={3} sx={styles.textOverlay}>
+          <Typography variant="h4" gutterBottom>
+            Streamline Your Retail Operations with Our Advanced ERP System
+          </Typography>
+          <Typography variant="body1" gutterBottom>
+            Our cutting-edge ERP solution is designed specifically for supermarkets and bakeries, offering an all-in-one platform to manage every aspect of your business with efficiency and ease.
+          </Typography>
+          <Typography variant="body2">
+            <strong>Key Features:</strong> AI-Powered Stock Management, POS Integration, Smart Reporting, Centralized Stock Management, Automated Invoicing, Seamless E-commerce Integration, and Workflow Automation.
+          </Typography>
+        </Paper>
+      </Box>
 
       {/* Modal for login and signup */}
       <Modal
@@ -120,20 +157,19 @@ const LoginForm = ({ onLogin }) => {
         aria-labelledby="auth-modal-title"
         aria-describedby="auth-modal-description"
       >
-        <Paper
-          elevation={3}
+        <Box
           sx={{
             position: "absolute",
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            padding: 4,
-            maxWidth: 400,
-            backgroundColor: "#f0f0f0",
+            backgroundColor: "white",
+            padding: "20px",
+            borderRadius: "8px",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-            <Typography variant="h4" id="auth-modal-title">
+            <Typography variant="h4">
               {isSignUp ? t("signup") : t("login")}
             </Typography>
             <IconButton onClick={() => setModalOpen(false)}>
@@ -141,7 +177,6 @@ const LoginForm = ({ onLogin }) => {
             </IconButton>
           </Box>
 
-          {/* Render Sign Up or Login form based on isSignUp state */}
           {isSignUp ? (
             <SignUpForm onSignUp={() => setModalOpen(false)} />
           ) : (
@@ -161,12 +196,7 @@ const LoginForm = ({ onLogin }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                fullWidth
-              >
+              <Button type="submit" variant="contained" color="primary" fullWidth>
                 {t("login")}
               </Button>
             </form>
@@ -174,7 +204,7 @@ const LoginForm = ({ onLogin }) => {
 
           {/* Language Selector */}
           <Select
-            value={selectedLanguage} // Current language state
+            value={selectedLanguage}
             onChange={handleLanguageChange}
             fullWidth
             sx={{ marginTop: 2 }}
@@ -188,7 +218,7 @@ const LoginForm = ({ onLogin }) => {
             <MenuItem value="kn">ಕನ್ನಡ</MenuItem>
             <MenuItem value="te">తెలుగు</MenuItem>
           </Select>
-        </Paper>
+        </Box>
       </Modal>
     </Box>
   );
