@@ -150,10 +150,10 @@ const SignUpForm = ({ onSignUp }) => {
       elevation={3}
       sx={{
         padding: 4,
-        maxWidth: 400,
         margin: "auto",
         marginTop: 8,
         backgroundColor: "#f0f0f0",
+        width: { xs: "90%", sm: "400px" }, // Full width for mobile, max width for larger screens
       }}
     >
       <Typography variant="h4" gutterBottom>
