@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Box, Button, TextField, Typography, Paper } from "@mui/material";
-import Select from "react-select";
-import moment from "moment-timezone"; // Optional for loading time zones
 
 const SignUpForm = ({ onSignUp }) => {
   const [companyName, setCompanyName] = useState("");
@@ -10,52 +8,14 @@ const SignUpForm = ({ onSignUp }) => {
   const [mobileNumber, setMobileNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [countries, setCountries] = useState([]);
-  const [selectedCountry, setSelectedCountry] = useState(null);
-  const [timezones, setTimezones] = useState([]);
-  const [selectedTimezone, setSelectedTimezone] = useState(null);
   const [error, setError] = useState({
     general: "",
     companyName: "",
     username: "",
-    country: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
-
-  useEffect(() => {
-    fetchCountries();
-    fetchTimezones();
-  }, []);
-
-  const fetchCountries = async () => {
-    try {
-      const response = await fetch("https://restcountries.com/v3.1/all");
-      if (!response.ok) {
-        throw new Error("Failed to fetch countries");
-      }
-      const data = await response.json();
-      const formattedCountries = data.map((country) => ({
-        label: country.name.common,
-        value: country.cca2,
-      }));
-      setCountries(formattedCountries);
-    } catch (error) {
-      console.error("Error fetching countries:", error);
-    }
-  };
-
-  const fetchTimezones = () => {
-    const timezoneNames = moment.tz.names();
-    const formattedTimezones = timezoneNames.map((tz) => ({
-      label: tz,
-      value: tz,
-    }));
-    setTimezones(formattedTimezones);
-    const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    setSelectedTimezone({ label: localTimezone, value: localTimezone });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,7 +31,6 @@ const SignUpForm = ({ onSignUp }) => {
       general: "",
       companyName: "",
       username: "",
-      country: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -126,12 +85,6 @@ const SignUpForm = ({ onSignUp }) => {
       formHasErrors = true;
     }
 
-    // Validate country selection
-    if (!selectedCountry) {
-      setError((prev) => ({ ...prev, country: "Please select a country." }));
-      formHasErrors = true;
-    }
-
     // Validate password (min 3 chars, no spaces)
     if (!passwordRegex.test(password)) {
       setError((prev) => ({
@@ -160,8 +113,8 @@ const SignUpForm = ({ onSignUp }) => {
       email,
       mobileNumber,
       password,
-      country: selectedCountry ? selectedCountry.label : null,
-      timezone: selectedTimezone ? selectedTimezone.value : null,
+      country: "India", // Default country
+      timezone: "Asia/Kolkata", // Default timezone
     };
 
     try {
@@ -190,15 +143,6 @@ const SignUpForm = ({ onSignUp }) => {
         general: "An error occurred. Please try again later.",
       }));
     }
-  };
-
-  const handleCountryChange = (selectedOption) => {
-    setSelectedCountry(selectedOption);
-    setError((prev) => ({ ...prev, country: "" }));
-  };
-
-  const handleTimezoneChange = (selectedOption) => {
-    setSelectedTimezone(selectedOption);
   };
 
   return (
@@ -272,27 +216,6 @@ const SignUpForm = ({ onSignUp }) => {
             {error.general}
           </Typography>
         )}
-        <Select
-          options={countries}
-          value={selectedCountry}
-          onChange={handleCountryChange}
-          placeholder="Select Country"
-          isClearable
-          styles={{ menu: (provided) => ({ ...provided, zIndex: 9999 }) }}
-        />
-        {error.country && (
-          <Typography color="error" variant="body2">
-            {error.country}
-          </Typography>
-        )}
-        <Select
-          options={timezones}
-          value={selectedTimezone}
-          onChange={handleTimezoneChange}
-          placeholder="Select Timezone"
-          isClearable
-          styles={{ menu: (provided) => ({ ...provided, zIndex: 9999 }) }}
-        />
         <TextField
           label="Password"
           type="password"
