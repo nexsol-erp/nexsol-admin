@@ -227,7 +227,7 @@ const PurchaseEntryForm = () => {
         <FormControl fullWidth margin="normal">
           <InputLabel>Supplier</InputLabel>
           <Select
-            value={supplier}
+            value={supplierName}
             onChange={(e) => setSupplierName(e.target.value)}
           >
             {suppliers.map((supplier) => (
