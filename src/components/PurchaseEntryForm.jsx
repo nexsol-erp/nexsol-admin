@@ -88,7 +88,7 @@ const PurchaseEntryForm = () => {
     setItems([
       ...items,
       {
-        itemName: selectedItem,
+        itemName: selectedItem, // Correct field name here
         rateBeforeTax: parseFloat(rateBeforeTax),
         rateIncludingTax: parseFloat(rateIncludingTax),
         quantity: parseFloat(quantity),
@@ -162,7 +162,7 @@ const PurchaseEntryForm = () => {
       supplierName,
       voucherNumber,
       voucherDate,
-      items,
+      items, // Ensure this contains the correct fields
     };
 
     try {
@@ -193,7 +193,7 @@ const PurchaseEntryForm = () => {
       supplierName,
       voucherNumber,
       voucherDate,
-      items,
+      items, // Ensure this contains the correct fields
     };
 
     try {
@@ -277,7 +277,7 @@ const PurchaseEntryForm = () => {
             <TableBody>
               {items.map((item, index) => (
                 <TableRow key={index}>
-                  <TableCell>{item.itemName}</TableCell>
+                  <TableCell>{item.itemName}</TableCell> {/* Correct field */}
                   <TableCell>{item.rateBeforeTax.toFixed(2)}</TableCell>
                   <TableCell>{item.rateIncludingTax.toFixed(2)}</TableCell>
                   <TableCell>{item.quantity.toFixed(2)}</TableCell>
