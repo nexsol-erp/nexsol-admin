@@ -49,21 +49,31 @@ const PurchaseEntryForm = () => {
   useEffect(() => {
     const fetchSuppliers = async () => {
       try {
+        const token = localStorage.getItem("jwtToken");
         const tenancyId = localStorage.getItem("tenancyId");
-        const response = await fetch(`/api/${tenancyId}/suppliers`);
+  
+        const response = await fetch(`/api/${tenancyId}/suppliers`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // Add the JWT token here
+          },
+        });
+  
         if (!response.ok) {
           throw new Error("Failed to fetch suppliers");
         }
+  
         const data = await response.json();
         setSuppliers(data);
       } catch (error) {
         console.error("Error fetching suppliers:", error);
       }
     };
-
+  
     fetchSuppliers();
-  }, []);
-
+  }, []); // The empty dependency array ensures this runs once when the component mounts
+  
   const calculateTotalAmount = (rate, qty, tax) => {
     const parsedRate = parseFloat(rate) || 0;
     const parsedQty = parseFloat(qty) || 0;
