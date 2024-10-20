@@ -32,7 +32,7 @@ const PurchaseEntryForm = () => {
   const [filteredItemList, setFilteredItemList] = useState([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [itemList, setItemList] = useState([]);
-
+  
   useEffect(() => {
     fetchItems();
   }, []);
@@ -46,6 +46,7 @@ const PurchaseEntryForm = () => {
       console.error("Error fetching salesDetails:", error);
     }
   };
+
   useEffect(() => {
     const fetchSuppliers = async () => {
       try {
@@ -84,7 +85,7 @@ const PurchaseEntryForm = () => {
   };
 
   const calculateGrandTotal = () =>
-    items.reduce((total, item) => total + item.totalAmount, 0).toFixed(2);
+    items.reduce((total, item) => total + (item.totalAmount || 0), 0).toFixed(2);
 
   const handlePartialSave = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
@@ -209,7 +210,7 @@ const PurchaseEntryForm = () => {
                 <TableRow key={index}>
                   <TableCell>{item.itemName}</TableCell>
                   <TableCell>{(item.standardPrice || 0).toFixed(2)}</TableCell>
-                  <TableCell>{(item.rateIncludingTax || 0).toFixed(2)}</TableCell>
+                  <TableCell>{((item.standardPrice * (1 + item.taxRate / 100)) || 0).toFixed(2)}</TableCell>
                   <TableCell>{(item.quantity || 0).toFixed(2)}</TableCell>
                   <TableCell>{(item.taxRate || 0).toFixed(2)}%</TableCell>
                   <TableCell>{(item.totalAmount || 0).toFixed(2)}</TableCell>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -10,9 +10,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  IconButton,
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
 
 const AddItemDialog = ({ open, onClose, onAddItem, itemList }) => {
   const [selectedItem, setSelectedItem] = useState(null);
@@ -49,11 +47,11 @@ const AddItemDialog = ({ open, onClose, onAddItem, itemList }) => {
       barcode,
       standardPrice: parseFloat(standardPrice) || 0,
       taxRate: parseFloat(taxRate) || 0,
-      qty: parseFloat(qty) || 0,
-      amount: parseFloat(amount) || 0,
+      quantity: parseFloat(qty) || 0, // Ensure quantity is passed
+      totalAmount: parseFloat(amount) || 0, // Ensure total amount is passed
     };
 
-    onAddItem(newItem);
+    onAddItem(newItem); // Pass newItem to the parent component
     resetFields();
   };
 
@@ -71,30 +69,11 @@ const AddItemDialog = ({ open, onClose, onAddItem, itemList }) => {
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Add Item</DialogTitle>
       <DialogContent>
-        <TextField
-          label="Barcode"
-          fullWidth
-          margin="normal"
-          value={barcode}
-          onChange={(e) => setBarcode(e.target.value)}
-          onKeyPress={(event) => {
-            if (event.key === "Enter") {
-              const fetchedItem = itemList.find((item) => item.barcode === barcode);
-              if (fetchedItem) {
-                handleItemSelect(fetchedItem);
-              } else {
-                alert("Item not found");
-              }
-            }
-          }}
-        />
         <FormControl fullWidth margin="normal">
           <InputLabel>Item Name</InputLabel>
           <Select
             value={selectedItem?.itemName || ""}
-            onChange={(e) =>
-              handleItemSelect(itemList.find(item => item.itemName === e.target.value))
-            }
+            onChange={(e) => handleItemSelect(itemList.find(item => item.itemName === e.target.value))}
           >
             {itemList.map((item) => (
               <MenuItem key={item.item_id} value={item.itemName}>
@@ -104,26 +83,12 @@ const AddItemDialog = ({ open, onClose, onAddItem, itemList }) => {
           </Select>
         </FormControl>
         <TextField
-          label="Standard Price"
-          fullWidth
-          margin="normal"
-          value={standardPrice}
-          disabled
-        />
-        <TextField
-          label="Tax Rate"
-          fullWidth
-          margin="normal"
-          value={taxRate}
-          disabled
-        />
-        <TextField
           label="Quantity"
           type="number"
           fullWidth
           margin="normal"
           value={qty}
-          onChange={(e) => handleQuantityChange(e.target.value)}
+          onChange={(e) => handleQuantityChange(e.target.value)} // Call handleQuantityChange when quantity is entered
         />
         <TextField
           label="Total Amount"
