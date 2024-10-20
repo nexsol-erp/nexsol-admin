@@ -37,7 +37,6 @@ const PurchaseEntryForm = () => {
   const [rateBeforeTax, setRateBeforeTax] = useState("");
   const [rateIncludingTax, setRateIncludingTax] = useState("");
   const [quantity, setQuantity] = useState("");
-  const [taxRate, setTaxRate] = useState("");
   const [totalAmount, setTotalAmount] = useState("");
 
   useEffect(() => {
@@ -51,7 +50,7 @@ const PurchaseEntryForm = () => {
       try {
         const token = localStorage.getItem("jwtToken");
         const tenancyId = localStorage.getItem("tenancyId");
-  
+
         const response = await fetch(`/api/${tenancyId}/suppliers`, {
           method: "GET",
           headers: {
@@ -63,17 +62,17 @@ const PurchaseEntryForm = () => {
         if (!response.ok) {
           throw new Error("Failed to fetch suppliers");
         }
-  
+
         const data = await response.json();
         setSuppliers(data);
       } catch (error) {
         console.error("Error fetching suppliers:", error);
       }
     };
-  
+
     fetchSuppliers();
   }, []); // The empty dependency array ensures this runs once when the component mounts
-  
+
   const calculateTotalAmount = (rate, qty, tax) => {
     const parsedRate = parseFloat(rate) || 0;
     const parsedQty = parseFloat(qty) || 0;
@@ -84,12 +83,13 @@ const PurchaseEntryForm = () => {
     return (baseAmount + taxAmount).toFixed(2);
   };
 
-  // Update the selected item and tax rate when an item is selected
   const handleItemSelect = (value) => {
     const selectedItemObj = itemList.find((item) => item.item_name === value);
     if (selectedItemObj) {
       setSelectedItem(selectedItemObj.item_name);
+      setRateBeforeTax(selectedItemObj.standardPrice); // Set the standard price as rate before tax
       setTaxRate(selectedItemObj.taxRate); // Automatically set the tax rate based on the selected item
+      setTotalAmount(calculateTotalAmount(selectedItemObj.standardPrice, quantity, selectedItemObj.taxRate));
     }
   };
 
@@ -97,7 +97,7 @@ const PurchaseEntryForm = () => {
     setItems([
       ...items,
       {
-        itemName: selectedItem, // Correct field name here
+        itemName: selectedItem,
         rateBeforeTax: parseFloat(rateBeforeTax),
         rateIncludingTax: parseFloat(rateIncludingTax),
         quantity: parseFloat(quantity),
@@ -110,7 +110,6 @@ const PurchaseEntryForm = () => {
     setRateBeforeTax("");
     setRateIncludingTax("");
     setQuantity("");
-    setTaxRate("");
     setTotalAmount("");
   };
 
@@ -124,21 +123,9 @@ const PurchaseEntryForm = () => {
     setTotalAmount(calculateTotalAmount(value, quantity, taxRate));
   };
 
-  const handleRateIncludingTaxChange = (value) => {
-    const parsedRate = parseFloat(value) || 0;
-    const parsedTax = parseFloat(taxRate) || 0;
-
-    const rateWithoutTax = (parsedRate / (1 + parsedTax / 100)).toFixed(2);
-    setRateIncludingTax(value);
-    setRateBeforeTax(rateWithoutTax);
-    setTotalAmount(calculateTotalAmount(rateWithoutTax, quantity, taxRate));
-  };
-
-  const handleInputChange = (setter, value, calculationField) => {
-    setter(value);
-    if (calculationField === "totalAmount") {
-      setTotalAmount(calculateTotalAmount(rateBeforeTax, quantity, taxRate));
-    }
+  const handleQuantityChange = (value) => {
+    setQuantity(value);
+    setTotalAmount(calculateTotalAmount(rateBeforeTax, value, taxRate));
   };
 
   const handleDeleteItem = (index) => {
@@ -147,23 +134,6 @@ const PurchaseEntryForm = () => {
 
   const calculateGrandTotal = () =>
     items.reduce((total, item) => total + item.totalAmount, 0).toFixed(2);
-
-  const calculateTaxByRate = () => {
-    const taxByRate = items.reduce((acc, item) => {
-      const baseAmount = item.rateBeforeTax * item.quantity;
-      const taxAmount = (baseAmount * item.taxRate) / 100;
-      if (!acc[item.taxRate]) {
-        acc[item.taxRate] = 0;
-      }
-      acc[item.taxRate] += taxAmount;
-      return acc;
-    }, {});
-
-    return Object.entries(taxByRate).map(([rate, amount]) => ({
-      rate,
-      amount: amount.toFixed(2),
-    }));
-  };
 
   const handlePartialSave = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
@@ -286,7 +256,7 @@ const PurchaseEntryForm = () => {
             <TableBody>
               {items.map((item, index) => (
                 <TableRow key={index}>
-                  <TableCell>{item.itemName}</TableCell> {/* Correct field */}
+                  <TableCell>{item.itemName}</TableCell>
                   <TableCell>{item.rateBeforeTax.toFixed(2)}</TableCell>
                   <TableCell>{item.rateIncludingTax.toFixed(2)}</TableCell>
                   <TableCell>{item.quantity.toFixed(2)}</TableCell>
@@ -310,16 +280,6 @@ const PurchaseEntryForm = () => {
                   {calculateGrandTotal()}
                 </TableCell>
               </TableRow>
-              {calculateTaxByRate().map((tax) => (
-                <TableRow key={tax.rate}>
-                  <TableCell colSpan={5} sx={{ fontWeight: "bold" }}>
-                    Total Tax at {tax.rate}%
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }}>
-                    {tax.amount}
-                  </TableCell>
-                </TableRow>
-              ))}
             </TableBody>
           </Table>
         </TableContainer>
@@ -367,7 +327,7 @@ const PurchaseEntryForm = () => {
             fullWidth
             margin="normal"
             value={rateIncludingTax}
-            onChange={(e) => handleRateIncludingTaxChange(e.target.value)}
+            disabled
           />
           <TextField
             label="Quantity"
@@ -375,19 +335,7 @@ const PurchaseEntryForm = () => {
             fullWidth
             margin="normal"
             value={quantity}
-            onChange={(e) =>
-              handleInputChange(setQuantity, e.target.value, "totalAmount")
-            }
-          />
-          <TextField
-            label="Tax Rate"
-            type="number"
-            fullWidth
-            margin="normal"
-            value={taxRate}
-            onChange={(e) =>
-              handleInputChange(setTaxRate, e.target.value, "totalAmount")
-            }
+            onChange={(e) => handleQuantityChange(e.target.value)}
           />
           <TextField
             label="Total Amount"
