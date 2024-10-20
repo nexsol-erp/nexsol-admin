@@ -20,6 +20,7 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useWebSocket } from "./WebSocketContext"; 
 import AddItemDialog from "./AddItemDialog"; // Import AddItemDialog component
+import { getItems, saveSalesTransaction } from "../services/apiservice";
 
 const PurchaseEntryForm = () => {
   const { data } = useWebSocket(); 
@@ -32,11 +33,18 @@ const PurchaseEntryForm = () => {
   const [itemList, setItemList] = useState([]);
 
   useEffect(() => {
-    if (data.items) {
-      setItemList(data.items);
-    }
-  }, [data.items]);
+    fetchItems();
+  }, []);
 
+  const fetchItems = async () => {
+    try {
+      const response = await getItems();
+      setItemList(response.data);
+      setFilteredItemList(response.data);
+    } catch (error) {
+      console.error("Error fetching salesDetails:", error);
+    }
+  };
   useEffect(() => {
     const fetchSuppliers = async () => {
       try {
