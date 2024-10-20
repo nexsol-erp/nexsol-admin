@@ -42,13 +42,17 @@ const AddItemDialog = ({ open, onClose, onAddItem, itemList }) => {
   };
 
   const handleAddItem = () => {
+    const rateIncludingTax = parseFloat(standardPrice) || 0;
+  const taxRateValue = parseFloat(taxRate) || 0;
+  const rateBeforeTax = rateIncludingTax / (1 + taxRateValue / 100);
     const newItem = {
       itemName,
       barcode,
-      standardPrice: parseFloat(standardPrice) || 0,
+      rateIncludingTax: parseFloat(standardPrice) || 0,
       taxRate: parseFloat(taxRate) || 0,
       quantity: parseFloat(qty) || 0, // Ensure quantity is passed
       totalAmount: parseFloat(amount) || 0, // Ensure total amount is passed
+      rateBeforeTax: rateBeforeTax.toFixed(2) // Set rateBeforeTax with two decimal places 
     };
 
     onAddItem(newItem); // Pass newItem to the parent component
