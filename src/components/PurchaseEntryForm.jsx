@@ -37,6 +37,7 @@ const PurchaseEntryForm = () => {
   const [rateBeforeTax, setRateBeforeTax] = useState("");
   const [rateIncludingTax, setRateIncludingTax] = useState("");
   const [quantity, setQuantity] = useState("");
+  const [taxRate, setTaxRate] = useState(""); // Added taxRate state
   const [totalAmount, setTotalAmount] = useState("");
 
   useEffect(() => {
@@ -110,6 +111,7 @@ const PurchaseEntryForm = () => {
     setRateBeforeTax("");
     setRateIncludingTax("");
     setQuantity("");
+    setTaxRate(""); // Reset taxRate
     setTotalAmount("");
   };
 
