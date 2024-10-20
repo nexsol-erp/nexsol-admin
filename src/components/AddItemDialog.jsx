@@ -73,6 +73,23 @@ const AddItemDialog = ({ open, onClose, onAddItem, itemList }) => {
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Add Item</DialogTitle>
       <DialogContent>
+      <TextField
+          label="Barcode"
+          fullWidth
+          margin="normal"
+          value={barcode}
+          onChange={(e) => setBarcode(e.target.value)}
+          onKeyPress={(event) => {
+            if (event.key === "Enter") {
+              const fetchedItem = itemList.find((item) => item.barcode === barcode);
+              if (fetchedItem) {
+                handleItemSelect(fetchedItem);
+              } else {
+                alert("Item not found");
+              }
+            }
+          }}
+        />
         <FormControl fullWidth margin="normal">
           <InputLabel>Item Name</InputLabel>
           <Select
@@ -86,6 +103,20 @@ const AddItemDialog = ({ open, onClose, onAddItem, itemList }) => {
             ))}
           </Select>
         </FormControl>
+        <TextField
+          label="Standard Price"
+          fullWidth
+          margin="normal"
+          value={standardPrice}
+           
+        />
+        <TextField
+          label="Tax Rate"
+          fullWidth
+          margin="normal"
+          value={taxRate}
+           
+        />
         <TextField
           label="Quantity"
           type="number"
