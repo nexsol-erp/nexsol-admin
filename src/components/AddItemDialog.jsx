@@ -36,11 +36,20 @@ const AddItemDialog = ({ open, onClose, onAddItem, itemList }) => {
     return (parsedPrice * parsedQty).toFixed(2);
   };
 
+  
+  const handleTaxRateChange = (value) => {
+    setTaxRate(value);
+    setTotalAmount(calculateTotalAmount(standardPrice, value));
+  };
+  const handleStandardPriceChange = (value) => {
+    setStandardPrice(value);
+    setTotalAmount(calculateTotalAmount(standardPrice, value));
+  };
+
   const handleQuantityChange = (value) => {
     setQuantity(value);
     setTotalAmount(calculateTotalAmount(standardPrice, value));
   };
-
   const handleAddItem = () => {
     const rateIncludingTax = parseFloat(standardPrice) || 0;
   const taxRateValue = parseFloat(taxRate) || 0;
@@ -108,6 +117,7 @@ const AddItemDialog = ({ open, onClose, onAddItem, itemList }) => {
           fullWidth
           margin="normal"
           value={standardPrice}
+          onChange={(e) => handleStandardPriceChange(e.target.value)} // Call handleStandardPriceChange when quantity is entered
            
         />
         <TextField
@@ -115,7 +125,8 @@ const AddItemDialog = ({ open, onClose, onAddItem, itemList }) => {
           fullWidth
           margin="normal"
           value={taxRate}
-           
+          onChange={(e) => handleTaxRateChange(e.target.value)} // Call handleStandardPriceChange when quantity is entered
+        
         />
         <TextField
           label="Quantity"
