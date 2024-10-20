@@ -53,7 +53,7 @@ const AddItemDialog = ({ open, onClose, onAddItem, itemList }) => {
   const handleAddItem = () => {
     const rateIncludingTax = parseFloat(standardPrice) || 0;
   const taxRateValue = parseFloat(taxRate) || 0;
-  const rateBeforeTax = rateIncludingTax / (1 + taxRateValue / 100);
+  const rateBeforeTax =( rateIncludingTax *100 )/ (100 + taxRateValue);
     const newItem = {
       itemName,
       barcode,
