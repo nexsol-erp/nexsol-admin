@@ -5,10 +5,6 @@ import {
   TextField,
   Typography,
   Paper,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Table,
   TableBody,
   TableCell,
@@ -22,10 +18,11 @@ import {
   IconButton,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { useWebSocket } from "./WebSocketContext"; // Adjust the import path as needed
+import { useWebSocket } from "./WebSocketContext"; 
+import AddItemDialog from "./AddItemDialog"; // Import AddItemDialog component
 
 const PurchaseEntryForm = () => {
-  const { data } = useWebSocket(); // Use WebSocket context to get the data
+  const { data } = useWebSocket(); 
   const [supplierName, setSupplierName] = useState("");
   const [suppliers, setSuppliers] = useState([]);
   const [voucherNumber, setVoucherNumber] = useState("");
@@ -33,12 +30,6 @@ const PurchaseEntryForm = () => {
   const [items, setItems] = useState([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [itemList, setItemList] = useState([]);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [rateBeforeTax, setRateBeforeTax] = useState("");
-  const [rateIncludingTax, setRateIncludingTax] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [taxRate, setTaxRate] = useState(""); // Added taxRate state
-  const [totalAmount, setTotalAmount] = useState("");
 
   useEffect(() => {
     if (data.items) {
@@ -56,7 +47,7 @@ const PurchaseEntryForm = () => {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // Add the JWT token here
+            Authorization: `Bearer ${token}`,
           },
         });
 
@@ -72,62 +63,11 @@ const PurchaseEntryForm = () => {
     };
 
     fetchSuppliers();
-  }, []); // The empty dependency array ensures this runs once when the component mounts
+  }, []);
 
-  const calculateTotalAmount = (rate, qty, tax) => {
-    const parsedRate = parseFloat(rate) || 0;
-    const parsedQty = parseFloat(qty) || 0;
-    const parsedTax = parseFloat(tax) || 0;
-
-    const baseAmount = parsedRate * parsedQty;
-    const taxAmount = (baseAmount * parsedTax) / 100;
-    return (baseAmount + taxAmount).toFixed(2);
-  };
-
-  const handleItemSelect = (value) => {
-    const selectedItemObj = itemList.find((item) => item.item_name === value);
-    if (selectedItemObj) {
-      setSelectedItem(selectedItemObj.item_name);
-      setRateBeforeTax(selectedItemObj.standardPrice); // Set the standard price as rate before tax
-      setTaxRate(selectedItemObj.taxRate); // Automatically set the tax rate based on the selected item
-      setTotalAmount(calculateTotalAmount(selectedItemObj.standardPrice, quantity, selectedItemObj.taxRate));
-    }
-  };
-
-  const handleAddItem = () => {
-    setItems([
-      ...items,
-      {
-        itemName: selectedItem,
-        rateBeforeTax: parseFloat(rateBeforeTax),
-        rateIncludingTax: parseFloat(rateIncludingTax),
-        quantity: parseFloat(quantity),
-        taxRate: parseFloat(taxRate),
-        totalAmount: parseFloat(totalAmount),
-      },
-    ]);
+  const handleAddItem = (newItem) => {
+    setItems([...items, newItem]);
     setItemDialogOpen(false);
-    setSelectedItem(null);
-    setRateBeforeTax("");
-    setRateIncludingTax("");
-    setQuantity("");
-    setTaxRate(""); // Reset taxRate
-    setTotalAmount("");
-  };
-
-  const handleRateBeforeTaxChange = (value) => {
-    const parsedRate = parseFloat(value) || 0;
-    const parsedTax = parseFloat(taxRate) || 0;
-
-    const rateWithTax = (parsedRate * (1 + parsedTax / 100)).toFixed(2);
-    setRateBeforeTax(value);
-    setRateIncludingTax(rateWithTax);
-    setTotalAmount(calculateTotalAmount(value, quantity, taxRate));
-  };
-
-  const handleQuantityChange = (value) => {
-    setQuantity(value);
-    setTotalAmount(calculateTotalAmount(rateBeforeTax, value, taxRate));
   };
 
   const handleDeleteItem = (index) => {
@@ -143,7 +83,7 @@ const PurchaseEntryForm = () => {
       supplierName,
       voucherNumber,
       voucherDate,
-      items, // Ensure this contains the correct fields
+      items,
     };
 
     try {
@@ -164,7 +104,7 @@ const PurchaseEntryForm = () => {
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("An error occurred during partial save. Please try again later.");
+      alert("An error occurred during partial save.");
     }
   };
 
@@ -174,7 +114,7 @@ const PurchaseEntryForm = () => {
       supplierName,
       voucherNumber,
       voucherDate,
-      items, // Ensure this contains the correct fields
+      items,
     };
 
     try {
@@ -195,7 +135,7 @@ const PurchaseEntryForm = () => {
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("An error occurred during final save. Please try again later.");
+      alert("An error occurred during final save.");
     }
   };
 
@@ -259,7 +199,7 @@ const PurchaseEntryForm = () => {
               {items.map((item, index) => (
                 <TableRow key={index}>
                   <TableCell>{item.itemName}</TableCell>
-                  <TableCell>{item.rateBeforeTax.toFixed(2)}</TableCell>
+                  <TableCell>{item.standardPrice.toFixed(2)}</TableCell>
                   <TableCell>{item.rateIncludingTax.toFixed(2)}</TableCell>
                   <TableCell>{item.quantity.toFixed(2)}</TableCell>
                   <TableCell>{item.taxRate.toFixed(2)}%</TableCell>
@@ -299,72 +239,12 @@ const PurchaseEntryForm = () => {
         </Box>
       </Paper>
 
-      <Dialog open={itemDialogOpen} onClose={() => setItemDialogOpen(false)}>
-        <DialogTitle>Add Item</DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Item Name</InputLabel>
-            <Select
-              value={selectedItem}
-              onChange={(e) => handleItemSelect(e.target.value)} // Update item selection handler
-            >
-              {itemList.map((item) => (
-                <MenuItem key={item.item_id} value={item.item_name}>
-                  {item.item_name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            label="Rate before tax"
-            type="number"
-            fullWidth
-            margin="normal"
-            value={rateBeforeTax}
-            onChange={(e) => handleRateBeforeTaxChange(e.target.value)}
-          />
-          <TextField
-            label="Rate including Tax"
-            type="number"
-            fullWidth
-            margin="normal"
-            value={rateIncludingTax}
-            disabled
-          />
-          <TextField
-            label="Tax Rate"
-            type="number"
-            fullWidth
-            margin="normal"
-            value={taxRate} // Display the tax rate
-            disabled // Keep this disabled if it's auto-calculated from the item
-          />
-          <TextField
-            label="Quantity"
-            type="number"
-            fullWidth
-            margin="normal"
-            value={quantity}
-            onChange={(e) => handleQuantityChange(e.target.value)}
-          />
-          <TextField
-            label="Total Amount"
-            type="number"
-            fullWidth
-            margin="normal"
-            value={totalAmount}
-            disabled
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setItemDialogOpen(false)} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={handleAddItem} color="primary">
-            Add Item
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <AddItemDialog
+        open={itemDialogOpen}
+        onClose={() => setItemDialogOpen(false)}
+        onAddItem={handleAddItem}
+        itemList={itemList}
+      />
     </Box>
   );
 };
