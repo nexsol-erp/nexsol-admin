@@ -209,8 +209,8 @@ const PurchaseEntryForm = () => {
               {items.map((item, index) => (
                 <TableRow key={index}>
                   <TableCell>{item.itemName}</TableCell>
-                  <TableCell>{(item.standardPrice || 0).toFixed(2)}</TableCell>
-                  <TableCell>{((item.standardPrice * (1 + item.taxRate / 100)) || 0).toFixed(2)}</TableCell>
+                  <TableCell>{(item.rateIncludingTax || 0).toFixed(2)}</TableCell>
+                  <TableCell>{((item.rateBeforeTax * (1 + item.taxRate / 100)) || 0).toFixed(2)}</TableCell>
                   <TableCell>{(item.quantity || 0).toFixed(2)}</TableCell>
                   <TableCell>{(item.taxRate || 0).toFixed(2)}%</TableCell>
                   <TableCell>{(item.totalAmount || 0).toFixed(2)}</TableCell>
