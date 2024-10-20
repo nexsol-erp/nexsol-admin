@@ -29,6 +29,7 @@ const PurchaseEntryForm = () => {
   const [voucherNumber, setVoucherNumber] = useState("");
   const [voucherDate, setVoucherDate] = useState("");
   const [items, setItems] = useState([]);
+  const [filteredItemList, setFilteredItemList] = useState([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [itemList, setItemList] = useState([]);
 
