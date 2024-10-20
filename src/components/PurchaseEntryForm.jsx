@@ -84,6 +84,15 @@ const PurchaseEntryForm = () => {
     return (baseAmount + taxAmount).toFixed(2);
   };
 
+  // Update the selected item and tax rate when an item is selected
+  const handleItemSelect = (value) => {
+    const selectedItemObj = itemList.find((item) => item.item_name === value);
+    if (selectedItemObj) {
+      setSelectedItem(selectedItemObj.item_name);
+      setTaxRate(selectedItemObj.taxRate); // Automatically set the tax rate based on the selected item
+    }
+  };
+
   const handleAddItem = () => {
     setItems([
       ...items,
@@ -101,7 +110,7 @@ const PurchaseEntryForm = () => {
     setRateBeforeTax("");
     setRateIncludingTax("");
     setQuantity("");
-    setTaxRate(item.taxRate);
+    setTaxRate("");
     setTotalAmount("");
   };
 
@@ -335,7 +344,7 @@ const PurchaseEntryForm = () => {
             <InputLabel>Item Name</InputLabel>
             <Select
               value={selectedItem}
-              onChange={(e) => setSelectedItem(e.target.value)}
+              onChange={(e) => handleItemSelect(e.target.value)} // Update item selection handler
             >
               {itemList.map((item) => (
                 <MenuItem key={item.item_id} value={item.item_name}>
