@@ -332,6 +332,14 @@ const PurchaseEntryForm = () => {
             disabled
           />
           <TextField
+            label="Tax Rate"
+            type="number"
+            fullWidth
+            margin="normal"
+            value={taxRate} // Display the tax rate
+            disabled // Keep this disabled if it's auto-calculated from the item
+          />
+          <TextField
             label="Quantity"
             type="number"
             fullWidth
