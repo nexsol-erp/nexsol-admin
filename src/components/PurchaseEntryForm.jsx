@@ -101,7 +101,7 @@ const PurchaseEntryForm = () => {
     setRateBeforeTax("");
     setRateIncludingTax("");
     setQuantity("");
-    setTaxRate("");
+    setTaxRate(item.taxRate);
     setTotalAmount("");
   };
 
