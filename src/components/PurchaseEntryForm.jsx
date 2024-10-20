@@ -208,11 +208,11 @@ const PurchaseEntryForm = () => {
               {items.map((item, index) => (
                 <TableRow key={index}>
                   <TableCell>{item.itemName}</TableCell>
-                  <TableCell>{item.standardPrice.toFixed(2)}</TableCell>
-                  <TableCell>{item.rateIncludingTax.toFixed(2)}</TableCell>
-                  <TableCell>{item.quantity.toFixed(2)}</TableCell>
-                  <TableCell>{item.taxRate.toFixed(2)}%</TableCell>
-                  <TableCell>{item.totalAmount.toFixed(2)}</TableCell>
+                  <TableCell>{(item.standardPrice || 0).toFixed(2)}</TableCell>
+                  <TableCell>{(item.rateIncludingTax || 0).toFixed(2)}</TableCell>
+                  <TableCell>{(item.quantity || 0).toFixed(2)}</TableCell>
+                  <TableCell>{(item.taxRate || 0).toFixed(2)}%</TableCell>
+                  <TableCell>{(item.totalAmount || 0).toFixed(2)}</TableCell>
                   <TableCell>
                     <IconButton
                       onClick={() => handleDeleteItem(index)}
