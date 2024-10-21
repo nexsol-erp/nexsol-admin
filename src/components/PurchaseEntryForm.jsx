@@ -26,8 +26,8 @@ const PurchaseEntryForm = () => {
   const { data } = useWebSocket(); 
   const [supplierName, setSupplierName] = useState("");
   const [suppliers, setSuppliers] = useState([]);
-  const [voucherNumber, setVoucherNumber] = useState("");
-  const [voucherDate, setVoucherDate] = useState("");
+  const [supplierInvNo, setSupplierInvNo] = useState("");
+  const [supplierInvDate, setSupplierInvDate] = useState("");
   const [items, setItems] = useState([]);
   const [filteredItemList, setFilteredItemList] = useState([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
@@ -91,8 +91,8 @@ const PurchaseEntryForm = () => {
     const tenancyId = localStorage.getItem("tenancyId");
     const payload = {
       supplierName,
-      voucherNumber,
-      voucherDate,
+      voucherNumber: supplierInvNo,
+      voucherDate: supplierInvDate,
       items,
     };
 
@@ -122,8 +122,8 @@ const PurchaseEntryForm = () => {
     const tenancyId = localStorage.getItem("tenancyId");
     const payload = {
       supplierName,
-      voucherNumber,
-      voucherDate,
+      supplierVoucherNumber: supplierInvNo,
+      supplierVoucherDate: supplierInvDate,
       items,
     };
 
@@ -172,8 +172,8 @@ const PurchaseEntryForm = () => {
           label="Supplier Voucher Number"
           fullWidth
           margin="normal"
-          value={voucherNumber}
-          onChange={(e) => setVoucherNumber(e.target.value)}
+          value={supplierInvNo}
+          onChange={(e) => setSupplierInvNo(e.target.value)}
         />
         <TextField
           label="Voucher Date"
@@ -181,8 +181,8 @@ const PurchaseEntryForm = () => {
           fullWidth
           margin="normal"
           InputLabelProps={{ shrink: true }}
-          value={voucherDate}
-          onChange={(e) => setVoucherDate(e.target.value)}
+          value={supplierInvDate}
+          onChange={(e) => setSupplierInvDate(e.target.value)}
         />
         <Button
           variant="contained"
@@ -209,8 +209,8 @@ const PurchaseEntryForm = () => {
               {items.map((item, index) => (
                 <TableRow key={index}>
                   <TableCell>{item.itemName}</TableCell>
+                  <TableCell>{(parseFloat(item.rateBeforeTax) || 0).toFixed(2)}</TableCell>
                   <TableCell>{(item.rateIncludingTax || 0).toFixed(2)}</TableCell>
-                  <TableCell>{((item.rateBeforeTax * (1 + item.taxRate / 100)) || 0).toFixed(2)}</TableCell>
                   <TableCell>{(item.quantity || 0).toFixed(2)}</TableCell>
                   <TableCell>{(item.taxRate || 0).toFixed(2)}%</TableCell>
                   <TableCell>{(item.totalAmount || 0).toFixed(2)}</TableCell>

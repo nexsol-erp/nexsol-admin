@@ -220,8 +220,8 @@ const PurchaseDetail = () => {
             {purchaseData.map((row, index) => (
               <TableRow key={index}>
                 <TableCell>{row.supplier_name}</TableCell>
-                <TableCell>{row.supplier_inv_no}</TableCell>
-                <TableCell>{row.supplier_inv_date}</TableCell>
+                <TableCell>{row.supplier_voucher_number}</TableCell>
+                <TableCell>{row.supplier_voucher_date}</TableCell>
                 <TableCell>{row.item_name}</TableCell>
                 <TableCell align="right">{row.qty}</TableCell>
                 <TableCell align="right">{row.purchase_rate}</TableCell>
