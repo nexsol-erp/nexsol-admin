@@ -243,6 +243,23 @@ const Sidebar = ({ mode, setMode, roles }) => {
           link: "/seasonalreport",
           roles: ["admin"],
         },
+        {
+          label: t("Stock Turnover Report"),
+          link: "/stock-turnover",
+          roles: ["user","admin"],
+        },
+        {
+          label: t("Item Sales Report"),
+          link: "/item-sales",
+          roles: ["user","admin"],
+        },
+        {
+          label: t("Documents List"),
+          link: "/documents-list",
+          roles: ["user","admin"],
+        },
+        
+
       ],
     },
 

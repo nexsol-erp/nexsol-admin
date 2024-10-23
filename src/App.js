@@ -32,6 +32,10 @@ import Invoicedesigner from "./components/InvoiceDesigner";
 import CreateItemMaster from "./components/CreateItemMaster";
 import SalesSummaryReport from "./components/SalesSummaryReport";
 import WorkflowDesigner from "./components/WorkflowDesigner";
+import StockTurnoverReport from "./components/StockTurnoverReport";
+import ItemSalesReport from "./components/ItemSalesReport";
+import DocumentList  from "./components/DocumentList";
+
 import "./i18n"; // Import i18n configuration
 
 const App = () => {
@@ -160,6 +164,10 @@ const App = () => {
                 <Route path="/login" element={<LoginForm />} />
                 <Route path="/invoicedesigner" element={<Invoicedesigner />} />
                 <Route path="/workflowdesign" element={<WorkflowDesigner />} />
+                <Route path="/stock-turnover" component={StockTurnoverReport} />
+                <Route path="/item-sales" component={ItemSalesReport} />
+                <Route path="/documents-list" component={DocumentList} />
+                
               </Routes>
             </WebSocketProvider>
           </Box>
