@@ -164,9 +164,9 @@ const App = () => {
                 <Route path="/login" element={<LoginForm />} />
                 <Route path="/invoicedesigner" element={<Invoicedesigner />} />
                 <Route path="/workflowdesign" element={<WorkflowDesigner />} />
-                <Route path="/stock-turnover" component={StockTurnoverReport} />
-                <Route path="/item-sales" component={ItemSalesReport} />
-                <Route path="/documents-list" component={DocumentList} />
+                <Route path="/stock-turnover"  element={<StockTurnoverReport />} />     
+                <Route path="/item-sales" element={<ItemSalesReport />} />  
+                <Route path="/documents-list"  element={<DocumentList />} />  
                 
               </Routes>
             </WebSocketProvider>
