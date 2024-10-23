@@ -1,17 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { TextField, Button, Typography, CircularProgress, List, ListItem, ListItemText, Paper, Container } from '@mui/material';
-import axios from 'axios';
 
 const DocumentList = () => {
-  // State for Voucher and Document Data
   const [voucher, setVoucher] = useState('');
   const [documents, setDocuments] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
- 
-
-   
 
   const fetchDocuments = async () => {
     if (!voucher) {
@@ -23,7 +17,7 @@ const DocumentList = () => {
     setLoading(true);
 
     const jwtToken = localStorage.getItem('jwtToken');
-    const tenancyId = localStorage.getItem("tenancyId");
+    const tenancyId = localStorage.getItem('tenancyId');
 
     try {
       const response = await fetch(`/api/${tenancyId}/${voucher}`, {
@@ -37,7 +31,16 @@ const DocumentList = () => {
       }
 
       const data = await response.json();
-      setDocuments(data);
+
+      // Parse the charSequenceValue field inside fields array for each document
+      const parsedDocuments = data.map((doc) => {
+        const parsedFields = doc.fields.map((field) => {
+          return JSON.parse(field.charSequenceValue); // Parse the JSON string
+        });
+        return { ...doc, parsedFields }; // Attach parsed fields
+      });
+
+      setDocuments(parsedDocuments);
     } catch (error) {
       console.error('Error fetching documents:', error);
       setError('Failed to fetch documents');
@@ -98,7 +101,13 @@ const DocumentList = () => {
             <List>
               {documents.map((doc, index) => (
                 <ListItem key={index}>
-                  <ListItemText primary={doc.name} secondary={doc.description} />
+                  {doc.parsedFields.map((parsedField, i) => (
+                    <ListItemText
+                      key={i}
+                      primary={`Action: ${parsedField.action}, Voucher Number: ${parsedField.voucher_number}`}
+                      secondary={`Voucher Type: ${parsedField.voucher_type}, File Path: ${parsedField.filePath}`}
+                    />
+                  ))}
                 </ListItem>
               ))}
             </List>
