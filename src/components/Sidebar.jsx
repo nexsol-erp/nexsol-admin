@@ -125,6 +125,13 @@ const Sidebar = ({ mode, setMode, roles }) => {
       link: "/hsnsales",
       roles: ["admin", "user"],
     },
+    
+    {
+      label: t("HSN wise Purchase"),
+      icon: <Pages sx={{ color: "#ffe3a3" }} />,
+      link: "/hsnwise-purchase-report",
+      roles: ["admin", "user"],
+    },
     {
       label: t("Purchase"),
       icon: <Luggage sx={{ color: "#ffe3a3" }} />,

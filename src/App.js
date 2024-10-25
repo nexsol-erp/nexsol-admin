@@ -35,6 +35,7 @@ import WorkflowDesigner from "./components/WorkflowDesigner";
 import StockTurnoverReport from "./components/StockTurnoverReport";
 import ItemSalesReport from "./components/ItemSalesReport";
 import DocumentList  from "./components/DocumentList";
+import HSNWisePurchaseReport from "./components/HSNWisePurchaseReport";
 
 import "./i18n"; // Import i18n configuration
 
@@ -167,6 +168,8 @@ const App = () => {
                 <Route path="/stock-turnover"  element={<StockTurnoverReport />} />     
                 <Route path="/item-sales" element={<ItemSalesReport />} />  
                 <Route path="/documents-list"  element={<DocumentList />} />  
+                <Route path="/hsnwise-purchase-report"  element={<HSNWisePurchaseReport />} />  
+                
                 
               </Routes>
             </WebSocketProvider>
