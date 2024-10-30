@@ -28,9 +28,7 @@ import { saveAs } from "file-saver";
 const HSNSalesDetail = () => {
   const [branch, setBranch] = useState("");
   const [branches, setBranches] = useState([]);
-  const [fromDate, setFromDate] = useState(
-    dayjs().subtract(30, "day").format("YYYY-MM-DD")
-  );
+  const [fromDate, setFromDate] = useState(dayjs().subtract(30, "day").format("YYYY-MM-DD"));
   const [toDate, setToDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [salesData, setSalesData] = useState([]);
   const [open, setOpen] = useState(false);
@@ -60,7 +58,7 @@ const HSNSalesDetail = () => {
           { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
         );
         const data = await response.json();
-        setSalesData(data.data); // Ensure data structure matches backend response
+        setSalesData(data.data);
       } catch (error) {
         console.error("Error fetching sales data:", error);
       }
@@ -132,23 +130,31 @@ const HSNSalesDetail = () => {
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell>Branch Code</TableCell>
+              <TableCell>Item Name</TableCell>
               <TableCell>HSN Code</TableCell>
+              <TableCell>Unit Name</TableCell>
               <TableCell align="right">Quantity</TableCell>
-              <TableCell align="right">Standard Price</TableCell>
+              <TableCell align="right">Tax Rate (%)</TableCell>
+              <TableCell align="right">Rate</TableCell>
               <TableCell align="right">Amount</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {salesData.map((row, index) => (
               <TableRow key={index}>
+                <TableCell>{row.branch_code}</TableCell>
+                <TableCell>{row.item_name}</TableCell>
                 <TableCell>{row.hsn_code}</TableCell>
+                <TableCell>{row.unit_name}</TableCell>
                 <TableCell align="right">{row.quantity}</TableCell>
-                <TableCell align="right">{row.standard_price}</TableCell>
-                <TableCell align="right">{row.amount}</TableCell>
+                <TableCell align="right">{parseFloat(row.tax_rate).toFixed(2)}</TableCell>
+                <TableCell align="right">{parseFloat(row.rate).toFixed(2)}</TableCell>
+                <TableCell align="right">{parseFloat(row.amount).toFixed(2)}</TableCell>
               </TableRow>
             ))}
             <TableRow>
-              <TableCell colSpan={3} sx={{ fontWeight: "bold" }}>Total</TableCell>
+              <TableCell colSpan={7} sx={{ fontWeight: "bold" }}>Total</TableCell>
               <TableCell align="right" sx={{ fontWeight: "bold" }}>{totalAmount.toFixed(2)}</TableCell>
             </TableRow>
           </TableBody>
