@@ -111,7 +111,7 @@ const Sidebar = ({ mode, setMode, roles }) => {
       label: t("Dashboard"),
       icon: <Home sx={{ color: "#ffe3a3" }} />,
       link: "/dashboard",
-      roles: ["admin", "user"],
+      roles: ["super-user"],
     },
     {
       label: t("Sales Entry"),
@@ -239,6 +239,12 @@ const Sidebar = ({ mode, setMode, roles }) => {
           link: "/stockmovementreport",
           roles: ["admin", "user", "manager"],
         },
+        {
+          label: t("Item Stock Report"),
+          link: "/item-stock-report",
+          roles: ["admin", "user", "manager"],
+        },
+        
         {
           label: t("Bill Series Report"),
           link: "/billseriesreport",
