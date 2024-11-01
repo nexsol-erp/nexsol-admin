@@ -90,7 +90,7 @@ const HSNSalesDetail = () => {
   const totalAmount = salesData.reduce((total, item) => total + parseFloat(item.amount), 0);
 
   return (
-    <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
+    <Box sx={{ padding: 3 }}>
       <FormControl fullWidth margin="normal" sx={{ mb: 3 }}>
         <InputLabel id="branch-label">Branch</InputLabel>
         <Select labelId="branch-label" value={branch} onChange={handleBranchChange}>

@@ -90,8 +90,12 @@ const HSNWisePurchaseReport = () => {
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell>Branch Code</TableCell>
+                <TableCell>Item Name</TableCell>
                 <TableCell>HSN Code</TableCell>
+                <TableCell>Unit Name</TableCell>
                 <TableCell align="right">Quantity</TableCell>
+                <TableCell align="right">Tax Rate (%)</TableCell>
                 <TableCell align="right">Purchase Rate</TableCell>
                 <TableCell align="right">Amount</TableCell>
               </TableRow>
@@ -99,15 +103,19 @@ const HSNWisePurchaseReport = () => {
             <TableBody>
               {reportData.map((row, index) => (
                 <TableRow key={index}>
+                  <TableCell>{row.branchCode}</TableCell>
+                  <TableCell>{row.itemName}</TableCell>
                   <TableCell>{row.hsnCode}</TableCell>
+                  <TableCell>{row.unitName}</TableCell>
                   <TableCell align="right">{row.quantity}</TableCell>
+                  <TableCell align="right">{row.taxRate}</TableCell>
                   <TableCell align="right">{row.purchaseRate}</TableCell>
                   <TableCell align="right">{parseFloat(row.amount).toFixed(2)}</TableCell>
                 </TableRow>
               ))}
               {/* Summary Row for Total Amount */}
               <TableRow>
-                <TableCell colSpan={3} sx={{ fontWeight: 'bold' }}>Total</TableCell>
+                <TableCell colSpan={7} sx={{ fontWeight: 'bold' }}>Total</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 'bold' }}>{totalAmount}</TableCell>
               </TableRow>
             </TableBody>
