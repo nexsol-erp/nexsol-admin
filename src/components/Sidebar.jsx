@@ -114,6 +114,12 @@ const Sidebar = ({ mode, setMode, roles }) => {
       roles: ["super-user"],
     },
     {
+      label: t("POS"),
+      icon: <Home sx={{ color: "#ffe3a3" }} />,
+      link: "/pos",
+      roles: ["admin1","user1"],
+    },
+    {
       label: t("Sales Entry"),
       icon: <Pages sx={{ color: "#ffe3a3" }} />,
       link: "/salesentryform",
