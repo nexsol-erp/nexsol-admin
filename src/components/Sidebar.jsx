@@ -14,6 +14,7 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  Button,
 } from "@mui/material";
 import {
   Home,
@@ -29,6 +30,7 @@ import {
   AccountTree,
   Category,
   ExitToApp,
+  Refresh,
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -106,6 +108,14 @@ const Sidebar = ({ mode, setMode, roles }) => {
     console.log("User logged out");
   };
 
+  const handleRefresh = () => {
+    
+      localStorage.removeItem('items');
+      localStorage.removeItem('categories');
+      console.log('Cache cleared and refresh request sent.');
+    window.location.reload(); 
+    console.log("Page refreshed");
+  };
   const menuItems = [
     {
       label: t("Dashboard"),
@@ -351,6 +361,17 @@ const Sidebar = ({ mode, setMode, roles }) => {
           </FormControl>
         </ListItem>
    
+        <ListItem>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<Refresh />}
+          onClick={handleRefresh}
+          sx={{ width: "100%", backgroundColor: "#21295c", color: "#ffe3a3" }}
+        >
+          {t("Refresh")}
+        </Button>
+      </ListItem>
 
       {/* Other Menu Items */}
       {menuItems.map((item, index) => {
