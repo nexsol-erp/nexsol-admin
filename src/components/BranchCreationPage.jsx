@@ -8,7 +8,7 @@ import {
   CircularProgress,
   Grid,
 } from "@mui/material";
-
+import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 const BranchCreationPage = () => {
   const [branchCode, setBranchCode] = useState("");
   const [branchName, setBranchName] = useState("");
@@ -69,7 +69,7 @@ const BranchCreationPage = () => {
       setLoading(false);
       if (data.success) {
         alert("Branch created successfully!");
-        setBranchCode("");
+        //setBranchCode("");
         setBranchName("");
         setBranchState("");
         setBranchBuildingAddress("");
@@ -89,6 +89,38 @@ const BranchCreationPage = () => {
     }
   };
 
+  const handleDownload = async () => {
+    const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
+    const fileName = "nexsol-pos.zip";
+    const url = `/api/download/${tenancyId}/${branchCode}/${fileName}`;
+
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/octet-stream",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to download file");
+      }
+
+      const blob = await response.blob();
+      const link = document.createElement("a");
+      link.href = window.URL.createObjectURL(blob);
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+    }
+  };
+
+   
   return (
     <Box
       sx={{
@@ -216,10 +248,23 @@ const BranchCreationPage = () => {
               variant="contained"
               color="primary"
               fullWidth
-              disabled={loading}
+              disabled={loading} 
+              sx={{ mb: 2 }} // Add bottom margin
             >
               {loading ? <CircularProgress size={24} /> : "Create Branch"}
             </Button>
+            <Button 
+            variant="contained"
+            color="primary"
+            fullWidth
+            startIcon={<CloudDownloadIcon />}
+            onClick={handleDownload}
+            disabled={!branchCode}
+            sx={{ mb: 2 }} // Add bottom margin
+          >
+            Download Client Application
+          </Button>
+         
           </Box>
         </form>
       </Paper>
