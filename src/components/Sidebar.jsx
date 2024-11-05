@@ -104,7 +104,7 @@ const Sidebar = ({ mode, setMode, roles }) => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("branchCode");
     // Navigate to the login page
-    navigate("/login");
+    window.location.reload(); 
     console.log("User logged out");
   };
 
