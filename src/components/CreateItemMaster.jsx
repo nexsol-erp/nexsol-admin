@@ -24,7 +24,16 @@ import { Delete, Edit } from "@mui/icons-material"; // Import MUI Icons for dele
 import { useTranslation } from "react-i18next"; // Import the useTranslation hook for translations
 
 const CreateItemMaster = () => {
-  const { t } = useTranslation();  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const [totalItems, setTotalItems] = useState(0); // Total number of items for pagination
+  const [sortOrder, setSortOrder] = useState("asc"); // Sorting order
+  const [sortField, setSortField] = useState("itemName"); // Field to sort by
+
+
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     itemName: "",
     unitName: "",
@@ -43,7 +52,7 @@ const CreateItemMaster = () => {
 
   useEffect(() => {
     fetchItems();
-  }, []);
+  }, [searchQuery, page, rowsPerPage, sortOrder, sortField]);
 
   const fetchItems = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
@@ -51,18 +60,52 @@ const CreateItemMaster = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/${tenancyId}/items`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      setItems(data);
+      const response = await fetch(
+        `/api/${tenancyId}/items-search?query=${searchQuery}&page=${page}&size=${rowsPerPage}&sort=${sortField},${sortOrder}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Error: ", response.statusText);
+        setItems([]);
+        setTotalItems(0);
+        return;
+      }
+
+      const data = await response.json(); // Parse JSON only if response is ok
+      setItems(data.content); // Set the content array as items
+      setTotalItems(data.totalElements); // Set the total number of items
     } catch (error) {
       console.error("Error fetching items:", error);
+      setItems([]);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setPage(0); // Reset to the first page when a new search is performed
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0); // Reset to the first page
+  };
+
+  const handleSort = (field) => {
+    const isAsc = sortField === field && sortOrder === "asc";
+    setSortOrder(isAsc ? "desc" : "asc");
+    setSortField(field);
   };
 
   const handleDelete = async (itemId) => {
@@ -224,6 +267,19 @@ const CreateItemMaster = () => {
       <form onSubmit={handleSubmit}>
         <Grid container spacing={3}>
           <Grid item xs={12}>
+
+
+              {/* Search Field for Searching Items */}
+              <TextField
+              fullWidth
+              label="Search Items"
+              placeholder="Type to search by name or code"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              variant="outlined"
+              sx={{ my: 3 }}
+            />
+            {/* Form Field for Creating/Editing Items */}
             <TextField
               fullWidth
               label={t("itemName")}
@@ -231,7 +287,12 @@ const CreateItemMaster = () => {
               value={formData.itemName}
               onChange={handleChange}
               required
+              variant="outlined"
+              sx={{ mb: 3 }}
             />
+
+           
+
           </Grid>
 
           <Grid item xs={12}>
