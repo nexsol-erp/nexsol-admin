@@ -31,7 +31,7 @@ const ItemSearchPage = () => {
   const fetchItems = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
     const token = localStorage.getItem("jwtToken");
-
+  
     setLoading(true);
     try {
       const response = await fetch(
@@ -42,14 +42,23 @@ const ItemSearchPage = () => {
           },
         }
       );
-      const data = await response.json();
+  
+      if (!response.ok) {
+        console.error("Error: ", response.statusText);
+        setItems([]); // Fallback to an empty list if the response fails
+        return;
+      }
+  
+      const data = await response.json(); // Parse JSON only if response is ok
       setItems(data);
     } catch (error) {
       console.error("Error fetching items:", error);
+      setItems([]); // Fallback to an empty list on error
     } finally {
       setLoading(false);
     }
   };
+  
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -91,33 +100,42 @@ const ItemSearchPage = () => {
         <CircularProgress />
       ) : (
         <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell onClick={() => handleSort("itemName")}>
-                  Item Name
-                </TableCell>
-                <TableCell onClick={() => handleSort("unitName")}>
-                  Unit Name
-                </TableCell>
-                <TableCell onClick={() => handleSort("standardPrice")}>
-                  Standard Price
-                </TableCell>
-                <TableCell>Item Code</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {items.map((item) => (
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell onClick={() => handleSort("itemName")} style={{ cursor: "pointer" }}>
+                Item Name {sortField === "itemName" && (sortOrder === "asc" ? "↑" : "↓")}
+              </TableCell>
+              <TableCell onClick={() => handleSort("unitName")} style={{ cursor: "pointer" }}>
+                Unit Name {sortField === "unitName" && (sortOrder === "asc" ? "↑" : "↓")}
+              </TableCell>
+              <TableCell onClick={() => handleSort("standardPrice")} style={{ cursor: "pointer" }}>
+                Standard Price {sortField === "standardPrice" && (sortOrder === "asc" ? "↑" : "↓")}
+              </TableCell>
+              <TableCell>Item Code</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {items.length > 0 ? (
+              items.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>{item.itemName}</TableCell>
                   <TableCell>{item.unitName}</TableCell>
                   <TableCell>{item.standardPrice}</TableCell>
                   <TableCell>{item.itemCode}</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={4} align="center">
+                  No items found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      
       )}
 
       <TablePagination
