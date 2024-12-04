@@ -27,14 +27,22 @@ export const WebSocketProvider = ({ children }) => {
         const cachedCategories = localStorage.getItem("categories");
 
         if (cachedItems) {
-          console.log("Items found in local storage");
-          setData((prevData) => ({ ...prevData, items: JSON.parse(cachedItems) }));
+          try {
+            const parsedItems = JSON.parse(cachedItems);
+            console.log("Items found in local storage:", parsedItems);
+            setData((prevData) => ({ ...prevData, items: parsedItems }));
+          } catch (error) {
+            console.error("Error parsing cached items from local storage:", cachedItems, error);
+            // Optionally remove corrupted data
+            localStorage.removeItem("items");
+          }
         } else {
           // Fetch items if not found in local storage
           const getItemsMessage = { action: "GET_ITEMS" };
           console.log("Items not found in local storage. Sending GET_ITEMS action:", getItemsMessage);
           websocket.send(JSON.stringify(getItemsMessage));
         }
+        
 
         if (cachedCategories) {
           console.log("Categories found in local storage");
@@ -49,23 +57,51 @@ export const WebSocketProvider = ({ children }) => {
 
       websocket.onmessage = (event) => {
         console.log("WebSocket message received:", event.data);
-        const message = JSON.parse(event.data);
-        if (message.action === "ITEM_MST") {
-          const items = JSON.parse(message.message).items;
-          console.log("Received ITEM_MST action, items:", items);
-          localStorage.setItem("items", JSON.stringify(items)); // Cache items in local storage
-          setData((prevData) => ({ ...prevData, items }));
-        } else if (message.action === "CATEGORIES_LIST") {
-          const categories = message.message.categories;
-          console.log("Received CATEGORIES_LIST action, categories:", categories);
-          localStorage.setItem("categories", JSON.stringify(categories)); // Cache categories in local storage
-          setData((prevData) => ({ ...prevData, categories }));
-        } else {
-          console.log("Received other message action:", message);
-          setData((prevData) => ({ ...prevData, ...message }));
+      
+        // Safely parse the JSON message
+        let message;
+        try {
+          message = JSON.parse(event.data);
+        } catch (error) {
+          console.error("Error parsing WebSocket message as JSON:", event.data, error);
+          return; // Exit early if parsing fails
+        }
+      
+        if (!message || !message.action) {
+          console.warn("Received message is invalid or missing action:", message);
+          return;
+        }
+      
+        switch (message.action) {
+          case "ITEM_MST":
+            try {
+              const items = JSON.parse(message.message)?.items || [];
+              console.log("Received ITEM_MST action, items:", items);
+              localStorage.setItem("items", JSON.stringify(items)); // Cache items in local storage
+              setData((prevData) => ({ ...prevData, items }));
+            } catch (error) {
+              console.error("Error processing ITEM_MST action:", message.message, error);
+            }
+            break;
+      
+          case "CATEGORIES_LIST":
+            try {
+              const categories = message.message?.categories || [];
+              console.log("Received CATEGORIES_LIST action, categories:", categories);
+              localStorage.setItem("categories", JSON.stringify(categories)); // Cache categories in local storage
+              setData((prevData) => ({ ...prevData, categories }));
+            } catch (error) {
+              console.error("Error processing CATEGORIES_LIST action:", message.message, error);
+            }
+            break;
+      
+          default:
+            console.log("Received other message action:", message.action, message);
+            setData((prevData) => ({ ...prevData, ...message }));
+            break;
         }
       };
-
+      
       websocket.onclose = (event) => {
         console.log("WebSocket disconnected", event);
         setWs(null);
