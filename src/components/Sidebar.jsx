@@ -207,10 +207,16 @@ const Sidebar = ({ mode, setMode, roles }) => {
       hasSubmenu: true,
       submenu: [
         {
+          label: t("Item Search"),
+          link: "/itemsearch",
+          roles: ["admin"],
+        },
+        {
           label: t("Item Creation"),
           link: "/createitemmaster",
           roles: ["admin"],
         },
+        
         {
           label: t("Category Type"),
           link: "/categorytypemaster",
