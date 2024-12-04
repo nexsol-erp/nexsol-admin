@@ -16,11 +16,12 @@ import {
 
 const ItemSearchPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState([]); // Holds the items to display
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+  const [totalItems, setTotalItems] = useState(0); // Total number of items for pagination
   const [sortOrder, setSortOrder] = useState("asc"); // Sorting order
   const [sortField, setSortField] = useState("itemName"); // Field to sort by
 
@@ -31,7 +32,7 @@ const ItemSearchPage = () => {
   const fetchItems = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
     const token = localStorage.getItem("jwtToken");
-  
+
     setLoading(true);
     try {
       const response = await fetch(
@@ -42,23 +43,25 @@ const ItemSearchPage = () => {
           },
         }
       );
-  
+
       if (!response.ok) {
         console.error("Error: ", response.statusText);
-        setItems([]); // Fallback to an empty list if the response fails
+        setItems([]);
+        setTotalItems(0);
         return;
       }
-  
+
       const data = await response.json(); // Parse JSON only if response is ok
-      setItems(data);
+      setItems(data.content); // Set the content array as items
+      setTotalItems(data.totalElements); // Set the total number of items
     } catch (error) {
       console.error("Error fetching items:", error);
-      setItems([]); // Fallback to an empty list on error
+      setItems([]);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
   };
-  
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -100,47 +103,46 @@ const ItemSearchPage = () => {
         <CircularProgress />
       ) : (
         <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell onClick={() => handleSort("itemName")} style={{ cursor: "pointer" }}>
-                Item Name {sortField === "itemName" && (sortOrder === "asc" ? "↑" : "↓")}
-              </TableCell>
-              <TableCell onClick={() => handleSort("unitName")} style={{ cursor: "pointer" }}>
-                Unit Name {sortField === "unitName" && (sortOrder === "asc" ? "↑" : "↓")}
-              </TableCell>
-              <TableCell onClick={() => handleSort("standardPrice")} style={{ cursor: "pointer" }}>
-                Standard Price {sortField === "standardPrice" && (sortOrder === "asc" ? "↑" : "↓")}
-              </TableCell>
-              <TableCell>Item Code</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {items.length > 0 ? (
-              items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.itemName}</TableCell>
-                  <TableCell>{item.unitName}</TableCell>
-                  <TableCell>{item.standardPrice}</TableCell>
-                  <TableCell>{item.itemCode}</TableCell>
-                </TableRow>
-              ))
-            ) : (
+          <Table>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={4} align="center">
-                  No items found.
+                <TableCell onClick={() => handleSort("itemName")} style={{ cursor: "pointer" }}>
+                  Item Name {sortField === "itemName" && (sortOrder === "asc" ? "↑" : "↓")}
                 </TableCell>
+                <TableCell onClick={() => handleSort("unitName")} style={{ cursor: "pointer" }}>
+                  Unit Name {sortField === "unitName" && (sortOrder === "asc" ? "↑" : "↓")}
+                </TableCell>
+                <TableCell onClick={() => handleSort("standardPrice")} style={{ cursor: "pointer" }}>
+                  Standard Price {sortField === "standardPrice" && (sortOrder === "asc" ? "↑" : "↓")}
+                </TableCell>
+                <TableCell>Item Code</TableCell>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      
+            </TableHead>
+            <TableBody>
+              {items.length > 0 ? (
+                items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.itemName}</TableCell>
+                    <TableCell>{item.unitName}</TableCell>
+                    <TableCell>{item.standardPrice}</TableCell>
+                    <TableCell>{item.itemCode}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} align="center">
+                    No items found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
 
       <TablePagination
         component="div"
-        count={items.length} // Total number of items
+        count={totalItems} // Total number of items from the API response
         page={page}
         onPageChange={handleChangePage}
         rowsPerPage={rowsPerPage}
