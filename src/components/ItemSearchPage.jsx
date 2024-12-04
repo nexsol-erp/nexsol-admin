@@ -35,7 +35,7 @@ const ItemSearchPage = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/${tenancyId}/items?query=${searchQuery}&page=${page}&size=${rowsPerPage}&sort=${sortField},${sortOrder}`,
+        `/api/${tenancyId}/items-search?query=${searchQuery}&page=${page}&size=${rowsPerPage}&sort=${sortField},${sortOrder}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
