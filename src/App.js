@@ -38,6 +38,7 @@ import DocumentList  from "./components/DocumentList";
 import HSNWisePurchaseReport from "./components/HSNWisePurchaseReport";
 import StockReport from "./components/StockReport";
 import POS from "./components/POS";
+import ItemSearchPage from "./components/ItemSearchPage";
 
 import "./i18n"; // Import i18n configuration
 
@@ -173,6 +174,7 @@ const App = () => {
                 <Route path="/hsnwise-purchase-report"  element={<HSNWisePurchaseReport />} /> 
                 <Route path="/item-stock-report"  element={<StockReport />} />   
                 <Route path="/pos"  element={<POS />} />   
+                <Route path="/itemsearch"  element={<ItemSearchPage />} />   
                 
                 
                 
