@@ -7,6 +7,7 @@ import {
   Paper,
   CircularProgress,
   Grid,
+  StepIcon,
 } from "@mui/material";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 const BranchCreationPage = () => {
@@ -121,6 +122,30 @@ const BranchCreationPage = () => {
   };
 
    
+  const handlePublisBranch = async () => {
+    const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
+    const fileName = "nexsol-pos.zip";
+    const url = `/api/${tenancyId}/publish-branch`;
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/octet-stream",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to publish branch ");
+      }
+
+    } catch (error) {
+      console.error("Error downloading file:", error);
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -265,6 +290,18 @@ const BranchCreationPage = () => {
             Download Client Application
           </Button>
          
+          
+            <Button 
+            variant="contained"
+            color="primary"
+            fullWidth
+            startIcon={<StepIcon />}
+            onClick={handlePublisBranch}
+             
+            sx={{ mb: 2 }} // Add bottom margin
+          >
+            Publish Branch
+          </Button>
           </Box>
         </form>
       </Paper>
