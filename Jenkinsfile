@@ -6,9 +6,11 @@ pipeline {
         DEPLOY_DIR = '/var/www/html'  
         SERVICE_NAME = 'nginx'  
         STATIC_RESOURCES_DIR = 'src/main/resources/static'
+
         CI = ''  
         REMOTE_SERVER = 'root@161.35.111.127' // Set your remote server IP and SSH username
         SSH_KEY_PATH = '/root/.ssh/id_rsa'  // Path to the private SSH key to use for authentication 
+        GIT_SSH_COMMAND = 'ssh -o StrictHostKeyChecking=no'
     }
 
     tools {
