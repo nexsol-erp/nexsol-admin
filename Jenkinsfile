@@ -3,10 +3,13 @@ pipeline {
 
     environment {
         REACT_REPO = 'https://github.com/nexsol-erp/nexsol-admin.git'
-        DEPLOY_DIR = '/var/www/html' // Directory served by Nginx
-        SERVICE_NAME = 'nginx' // Assuming Nginx service is managed here
+        DEPLOY_DIR = '/var/www/html'  
+        SERVICE_NAME = 'nginx'  
         STATIC_RESOURCES_DIR = 'src/main/resources/static'
-        CI = ''  // Unset the CI environment variable
+
+        CI = ''  
+        REMOTE_SERVER = 'root@161.35.111.127' // Set your remote server IP and SSH username
+        SSH_KEY_PATH = '/root/.ssh/id_rsa'  // Path to the private SSH key to use for authentication 
         GIT_SSH_COMMAND = 'ssh -o StrictHostKeyChecking=no'
     }
 
@@ -32,11 +35,26 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy to Local Server') {
             steps {
                 script {
                     sh 'sudo cp -r react-project/build/* ${DEPLOY_DIR}'
                     sh 'sudo systemctl reload ${SERVICE_NAME}' // Reload Nginx configuration
+                }
+            }
+        }
+
+         stage('Deploy to Remote Server') {
+            steps {
+                script {
+                     // Ensure the deploy directory exists on the remote server
+                    sh "ssh -i ${SSH_KEY_PATH} ${REMOTE_SERVER} 'mkdir -p ${DEPLOY_DIR}'"
+                   
+                    // Copy build files to the remote server
+                    sh "scp -i ${SSH_KEY_PATH} -r react-project/build/* ${REMOTE_SERVER}:${DEPLOY_DIR}"
+
+                    // Reload Nginx configuration on the remote server
+                    sh "ssh -i ${SSH_KEY_PATH} ${REMOTE_SERVER} 'sudo systemctl reload ${SERVICE_NAME}'"
                 }
             }
         }
