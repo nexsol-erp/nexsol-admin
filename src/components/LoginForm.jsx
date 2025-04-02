@@ -181,43 +181,105 @@ const LoginForm = ({ onLogin }) => {
             <SignUpForm onSignUp={() => setModalOpen(false)} />
           ) : (
             <form onSubmit={handleSubmit}>
-              <TextField
-                label={t("username")}
-                fullWidth
-                margin="normal"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-              <TextField
-                label={t("password")}
-                type="password"
-                fullWidth
-                margin="normal"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+             <TextField
+  label={t("username")}
+  fullWidth
+  margin="normal"
+  value={username}
+  onChange={(e) => setUsername(e.target.value)}
+  variant="outlined"
+  sx={{
+    input: {
+      fontFamily: "Arial, sans-serif !important",
+     
+      color: "#000",                         // Ensure text is visible
+    },
+    "& .MuiOutlinedInput-root": {
+      "& fieldset": {
+        borderColor: "#ccc", // Default border
+      },
+      "&:hover fieldset": {
+        borderColor: "#999", // On hover
+      },
+      "&.Mui-focused fieldset": {
+        borderColor: "#1976d2", // On focus
+      },
+    },
+  }}
+/>
+
+
+
+<TextField
+  label={t("password")}
+  type="password"
+  fullWidth
+  margin="normal"
+  value={password}
+  onChange={(e) => setPassword(e.target.value)}
+  variant="outlined"
+  InputProps={{
+    sx: {
+      input: {
+        fontFamily: "Arial, sans-serif !important",
+        WebkitTextSecurity: "disc !important", // Ensures bullets in WebKit browsers
+        MozTextSecurity: "disc",               // For Firefox (though mostly unnecessary)
+        textSecurity: "disc",                  // Standard fallback
+        color: "#000",                         // Ensure text is visible
+      },
+    },
+  }}
+  sx={{
+    "& .MuiOutlinedInput-root": {
+      "& fieldset": {
+        borderColor: "#ccc",
+      },
+      "&:hover fieldset": {
+        borderColor: "#999",
+      },
+      "&.Mui-focused fieldset": {
+        borderColor: "#1976d2",
+      },
+    },
+  }}
+/>
+
+
+
               <Button type="submit" variant="contained" color="primary" fullWidth>
                 {t("login")}
               </Button>
             </form>
           )}
 
-          {/* Language Selector */}
-          <Select
-            value={selectedLanguage}
-            onChange={handleLanguageChange}
-            fullWidth
-            sx={{ marginTop: 2 }}
-          >
-            <MenuItem value="en">English</MenuItem>
-            <MenuItem value="ar">العربية</MenuItem>
-            <MenuItem value="fr">Français</MenuItem>
-            <MenuItem value="ml">മലയാളം</MenuItem>
-            <MenuItem value="hi">हिन्दी</MenuItem>
-            <MenuItem value="ta">தமிழ்</MenuItem>
-            <MenuItem value="kn">ಕನ್ನಡ</MenuItem>
-            <MenuItem value="te">తెలుగు</MenuItem>
-          </Select>
+<Select
+  value={selectedLanguage}
+  onChange={handleLanguageChange}
+  fullWidth
+  displayEmpty
+  sx={{
+    marginTop: 2,
+    color: "#000", // Text color inside Select
+    '.MuiSelect-icon': { color: "#000" }, // Dropdown arrow color
+    '.MuiOutlinedInput-notchedOutline': { borderColor: '#ccc' },
+    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#999' },
+    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#1976d2' },
+    backgroundColor: "#fff"
+  }}
+>
+  <MenuItem disabled value="">
+    <em>{t("selectLanguage") || "Select Language"}</em>
+  </MenuItem>
+  <MenuItem value="en">English</MenuItem>
+  <MenuItem value="ar">العربية</MenuItem>
+  <MenuItem value="fr">Français</MenuItem>
+  <MenuItem value="ml">മലയാളം</MenuItem>
+  <MenuItem value="hi">हिन्दी</MenuItem>
+  <MenuItem value="ta">தமிழ்</MenuItem>
+  <MenuItem value="kn">ಕನ್ನಡ</MenuItem>
+  <MenuItem value="te">తెలుగు</MenuItem>
+</Select>
+
         </Box>
       </Modal>
     </Box>

@@ -38,7 +38,7 @@ import { useNavigate } from "react-router-dom";
 
 import axios from "axios";
 
-const Sidebar = ({ mode, setMode, roles }) => {
+const Sidebar = ({ mode, setMode, roles = []}) => {
    const { t } = useTranslation(); 
 
   const [mobileOpen, setMobileOpen] = useState(false);

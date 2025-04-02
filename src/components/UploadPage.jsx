@@ -160,6 +160,7 @@ const UploadPage = () => {
           >
             <MenuItem value="ITEM_MASTER">ITEM_MASTER</MenuItem>
             <MenuItem value="OPENING_STOCK">OPENING_STOCK</MenuItem>
+            <MenuItem value="SUPPLIER_MST">SUPPLIER_MST</MenuItem>
             <MenuItem value="INI">INI</MenuItem>
           </Select>
         </FormControl>
