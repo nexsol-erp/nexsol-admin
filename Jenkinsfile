@@ -8,7 +8,7 @@ pipeline {
         STATIC_RESOURCES_DIR = 'src/main/resources/static'
 
         CI = ''  
-        REMOTE_SERVER = 'root@161.35.111.127' // Set your remote server IP and SSH username
+        
         SSH_KEY_PATH = '/root/.ssh/id_rsa'  // Path to the private SSH key to use for authentication 
         GIT_SSH_COMMAND = 'ssh -o StrictHostKeyChecking=no'
     }
@@ -44,20 +44,7 @@ pipeline {
             }
         }
 
-         stage('Deploy to Remote Server') {
-            steps {
-                script {
-                     // Ensure the deploy directory exists on the remote server
-                    sh "ssh -i ${SSH_KEY_PATH} ${REMOTE_SERVER} 'mkdir -p ${DEPLOY_DIR}'"
-                   
-                    // Copy build files to the remote server
-                    sh "scp -i ${SSH_KEY_PATH} -r react-project/build/* ${REMOTE_SERVER}:${DEPLOY_DIR}"
-
-                    // Reload Nginx configuration on the remote server
-                    sh "ssh -i ${SSH_KEY_PATH} ${REMOTE_SERVER} 'sudo systemctl reload ${SERVICE_NAME}'"
-                }
-            }
-        }
+        
     }
 
     post {
