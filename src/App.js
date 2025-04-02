@@ -1,8 +1,15 @@
 import React, { useState, useEffect, Suspense } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useNavigate,
+} from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { CssBaseline, Box, CircularProgress } from "@mui/material";
 import { useTranslation } from "react-i18next";
+
+// Components
 import LoginForm from "./components/LoginForm";
 import Dashboard from "./components/Dashboard";
 import SalesDetail from "./components/SalesDetail";
@@ -34,30 +41,99 @@ import SalesSummaryReport from "./components/SalesSummaryReport";
 import WorkflowDesigner from "./components/WorkflowDesigner";
 import StockTurnoverReport from "./components/StockTurnoverReport";
 import ItemSalesReport from "./components/ItemSalesReport";
-import DocumentList  from "./components/DocumentList";
+import DocumentList from "./components/DocumentList";
 import HSNWisePurchaseReport from "./components/HSNWisePurchaseReport";
 import StockReport from "./components/StockReport";
 import POS from "./components/POS";
 import ItemSearchPage from "./components/ItemSearchPage";
+import MainLayout from "./components/MainLayout";
 
-import "./i18n"; // Import i18n configuration
+import "./i18n"; // i18n config
 
+// ========================
+// AUTH WRAPPER COMPONENT
+// ========================
+const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
+  const navigate = useNavigate();
+
+  const handleLogin = (roles) => {
+    localStorage.setItem("roles", JSON.stringify(roles));
+    setRoles(roles);
+    navigate("/main");
+  };
+
+  const isAuthenticated = !!roles.length;
+
+  if (!isAuthenticated) {
+    return <LoginForm onLogin={handleLogin} />;
+  }
+
+  return (
+    <>
+      <Sidebar mode={mode} setMode={setMode} roles={roles} />
+      <Box sx={{ display: "flex", flexGrow: 1, ml: { xs: 0, sm: "240px" }, mt: 8 }}>
+        <WebSocketProvider>
+          <Routes>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/sales" element={<SalesDetail />} />
+            <Route path="/hsnsales" element={<HSNSalesDetail />} />
+            <Route path="/purchasereport" element={<PurchaseDetail />} />
+            <Route path="/weighbridge" element={<WeighBridge />} />
+            <Route path="/branchcreationpage" element={<BranchCreationPage />} />
+            <Route path="/usercreationpage" element={<UserCreationPage />} />
+            <Route path="/schemepage" element={<SchemePage />} />
+            <Route path="/publishschemepage" element={<PublishSchemePage />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/download" element={<DownloadPage />} />
+            <Route path="/help" element={<HelpPage />} />
+            <Route path="/seasonalreport" element={<SeasonalReport />} />
+            <Route path="/categorytypemaster" element={<CategoryTypeMaster />} />
+            <Route path="/categorynamemaster" element={<CategoryNameMaster />} />
+            <Route path="/suppliercreation" element={<SupplierCreationForm />} />
+            <Route path="/purchaseentry" element={<PurchaseEntryForm />} />
+            <Route path="/salesentryform" element={<SalesEntryForm />} />
+            <Route path="/billseriesreport" element={<BillSeriesReport />} />
+            <Route path="/uploadpage" element={<UploadPage />} />
+            <Route path="/createitemmaster" element={<CreateItemMaster />} />
+            <Route path="/salessummaryreport" element={<SalesSummaryReport />} />
+            <Route path="/stockmovementreport" element={<StockMovementReport />} />
+            <Route path="/invoicedesigner" element={<Invoicedesigner />} />
+            <Route path="/workflowdesign" element={<WorkflowDesigner />} />
+            <Route path="/stock-turnover" element={<StockTurnoverReport />} />
+            <Route path="/item-sales" element={<ItemSalesReport />} />
+            <Route path="/documents-list" element={<DocumentList />} />
+            <Route path="/hsnwise-purchase-report" element={<HSNWisePurchaseReport />} />
+            <Route path="/item-stock-report" element={<StockReport />} />
+            <Route path="/pos" element={<POS />} />
+            <Route path="/itemsearch" element={<ItemSearchPage />} />
+            <Route path="/main" element={<MainLayout mode={mode} setMode={setMode} roles={roles} />} />
+          </Routes>
+        </WebSocketProvider>
+      </Box>
+    </>
+  );
+};
+
+// ========================
+// ROOT APP
+// ========================
 const App = () => {
-  const { i18n } = useTranslation(); // Access the i18n instance for language changes
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { i18n } = useTranslation();
   const [mode, setMode] = useState("dark");
   const [roles, setRoles] = useState([]);
-  const [language, setLanguage] = useState("en"); // Default language is set to English
+  const [language, setLanguage] = useState("en");
 
-  // Load the language from localStorage on component mount
+  // Language preference
   useEffect(() => {
     const storedLanguage = localStorage.getItem("language");
     if (storedLanguage) {
-      i18n.changeLanguage(storedLanguage); // Change the language in i18next
-      setLanguage(storedLanguage); // Update the state
+      i18n.changeLanguage(storedLanguage);
+      setLanguage(storedLanguage);
     }
   }, [i18n]);
 
+  // Theme setup
   const theme = createTheme({
     typography: {
       fontSize: 12,
@@ -65,122 +141,20 @@ const App = () => {
       h2: { fontSize: "1.75rem" },
       h3: { fontSize: "1.5rem" },
     },
-    palette: {
-      mode,
-    },
+    palette: { mode },
   });
-
-  const defaultRoles = ["admin", "user"]; // Add default roles as per your requirement
-
-  // Mock authentication for development environment
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      setIsAuthenticated(false); // Automatically mark as authenticated in development
-      setRoles(defaultRoles); // Set default roles for development
-    }
-  }, []);
-
-  const handleLogin = (roles) => {
-    setIsAuthenticated(true);
-    setRoles(roles);
-  };
-
-  const changeLanguage = (lang) => {
-    i18n.changeLanguage(lang); // Change the language using i18next
-    setLanguage(lang); // Update the state
-    localStorage.setItem("language", lang); // Store the selected language in localStorage
-  };
-
-  if (!isAuthenticated) {
-    return <LoginForm onLogin={handleLogin} />;
-  }
 
   return (
     <Suspense fallback={<CircularProgress />}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <Router>
-          <Sidebar mode={mode} setMode={setMode} roles={roles} />
-          <Box
-            sx={{
-              display: "flex",
-              flexGrow: 1,
-              ml: { xs: 0, sm: "240px" },
-              mt: 8,
-            }}
-          >
-            <WebSocketProvider>
-              <Routes>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/sales" element={<SalesDetail />} />
-                <Route path="/hsnsales" element={<HSNSalesDetail />} />
-                <Route path="/purchasereport" element={<PurchaseDetail />} />
-                <Route path="/weighbridge" element={<WeighBridge />} />
-                <Route
-                  path="/branchcreationpage"
-                  element={<BranchCreationPage />}
-                />
-                <Route
-                  path="/usercreationpage"
-                  element={<UserCreationPage />}
-                />
-                <Route path="/schemepage" element={<SchemePage />} />
-                <Route
-                  path="/publishschemepage"
-                  element={<PublishSchemePage />}
-                />
-                <Route path="/about" element={<About />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/download" element={<DownloadPage />} />
-                <Route path="/help" element={<HelpPage />} />
-                <Route path="/seasonalreport" element={<SeasonalReport />} />
-                <Route
-                  path="/categorytypemaster"
-                  element={<CategoryTypeMaster />}
-                />
-                <Route
-                  path="/categorynamemaster"
-                  element={<CategoryNameMaster />}
-                />
-                <Route
-                  path="/suppliercreation"
-                  element={<SupplierCreationForm />}
-                />
-                <Route path="/purchaseentry" element={<PurchaseEntryForm />} />
-                <Route path="/salesentryform" element={<SalesEntryForm />} />
-                <Route
-                  path="/billseriesreport"
-                  element={<BillSeriesReport />}
-                />
-                <Route path="/uploadpage" element={<UploadPage />} />
-                <Route
-                  path="/createitemmaster"
-                  element={<CreateItemMaster />}
-                />
-                <Route
-                  path="/salessummaryreport"
-                  element={<SalesSummaryReport />}
-                />
-                <Route
-                  path="/stockmovementreport"
-                  element={<StockMovementReport />}
-                />
-                <Route path="/login" element={<LoginForm />} />
-                <Route path="/invoicedesigner" element={<Invoicedesigner />} />
-                <Route path="/workflowdesign" element={<WorkflowDesigner />} />
-                <Route path="/stock-turnover"  element={<StockTurnoverReport />} />     
-                <Route path="/item-sales" element={<ItemSalesReport />} />  
-                <Route path="/documents-list"  element={<DocumentList />} />  
-                <Route path="/hsnwise-purchase-report"  element={<HSNWisePurchaseReport />} /> 
-                <Route path="/item-stock-report"  element={<StockReport />} />   
-                <Route path="/pos"  element={<POS />} />   
-                <Route path="/itemsearch"  element={<ItemSearchPage />} />   
-                
-                
-                
-              </Routes>
-            </WebSocketProvider>
-          </Box>
+          <AuthenticatedApp
+            mode={mode}
+            setMode={setMode}
+            roles={roles}
+            setRoles={setRoles}
+          />
         </Router>
       </ThemeProvider>
     </Suspense>
