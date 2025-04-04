@@ -9,6 +9,8 @@ import {
   Grid,
   StepIcon,
 } from "@mui/material";
+import { Select, MenuItem, InputLabel, FormControl } from "@mui/material";
+
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 const BranchCreationPage = () => {
   const [branchCode, setBranchCode] = useState("");
@@ -22,6 +24,9 @@ const BranchCreationPage = () => {
   const [branchInvoicePrefix, setBranchInvoicePrefix] = useState("");
   const [isControlBranch, setIsControlBranch] = useState("");
   
+  const [branchType, setBranchType] = useState("");
+  const [clientDbType, setClientDbType] = useState("");
+
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -49,6 +54,8 @@ const BranchCreationPage = () => {
       branchGst,
       branchInvoicePrefix, // include the new field
       isControlBranch,
+      branchType,
+      clientDbType,
     };
 
     setLoading(true);
@@ -80,6 +87,10 @@ const BranchCreationPage = () => {
         setBranchGst("");
         setBranchInvoicePrefix(""); // reset the new field
         setIsControlBranch("");
+        setBranchType("");
+        setClientDbType("");
+
+
       } else {
         setError(data.message);
       }
@@ -257,15 +268,53 @@ const BranchCreationPage = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                label="Is Control Branch(Y/N)"
-                fullWidth
-                margin="normal"
-                value={isControlBranch}
-                onChange={(e) => setIsControlBranch(e.target.value)}
-                required
-              />
-            </Grid>
+  <FormControl fullWidth margin="normal" required>
+    <InputLabel id="is-control-branch-label">Is Control Branch</InputLabel>
+    <Select
+      labelId="is-control-branch-label"
+      value={isControlBranch}
+      label="Is Control Branch"
+      onChange={(e) => setIsControlBranch(e.target.value)}
+    >
+      <MenuItem value="Y">Y</MenuItem>
+      <MenuItem value="N">N</MenuItem>
+    </Select>
+  </FormControl>
+</Grid>
+<Grid item xs={12} sm={6}>
+  <FormControl fullWidth margin="normal" required>
+    <InputLabel id="branch-type-label">Branch Type</InputLabel>
+    <Select
+      labelId="branch-type-label"
+      value={branchType}
+      label="Branch Type"
+      onChange={(e) => setBranchType(e.target.value)}
+    >
+      <MenuItem value="BAKERY_OUTLET">Bakery Outlet</MenuItem>
+      <MenuItem value="BAKERY_BO">Bakery Back Office</MenuItem>
+      <MenuItem value="BAKERY_CGN">Bakery Central Godown</MenuItem>
+      <MenuItem value="BAKERY_PROD">Bakery Production</MenuItem>
+      <MenuItem value="WB">Weigh Bridge</MenuItem>
+    </Select>
+  </FormControl>
+</Grid>
+
+<Grid item xs={12} sm={6}>
+  <FormControl fullWidth margin="normal" required>
+    <InputLabel id="client-db-type-label">Client DB Type</InputLabel>
+    <Select
+      labelId="client-db-type-label"
+      value={clientDbType}
+      label="Client DB Type"
+      onChange={(e) => setClientDbType(e.target.value)}
+    >
+      <MenuItem value="MULTI_USER">Multi User</MenuItem>
+      <MenuItem value="SINGLE_USER">Single User</MenuItem>
+    </Select>
+  </FormControl>
+</Grid>
+
+
           </Grid>
           <Box mt={2}>
             <Button
