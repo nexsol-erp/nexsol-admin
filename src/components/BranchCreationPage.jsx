@@ -105,7 +105,7 @@ const BranchCreationPage = () => {
     const tenancyId = localStorage.getItem("tenancyId");
     const token = localStorage.getItem("jwtToken");
     const fileName = "nexsol-pos.zip";
-    const url = `/api/download/${tenancyId}/${branchCode}/${fileName}`;
+    const url = `/api/${tenancyId}/download/${branchCode}/${fileName}`;
 
     try {
       const response = await fetch(url, {
