@@ -76,7 +76,7 @@ const DownloadPage = () => {
     const tenancyId = localStorage.getItem("tenancyId");
     const token = localStorage.getItem("jwtToken");
     const fileName = "nexsol-pos-upgrade.zip";
-    const url = `/api/${tenancyId}/upgrade/${branch}/upgrade/${fileName}`;
+    const url = `/api/${tenancyId}/upgrade/${branch}/${fileName}`;
 
     try {
       const response = await fetch(url, {
