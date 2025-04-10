@@ -10,7 +10,7 @@ export const WebSocketProvider = ({ children }) => {
 
   useEffect(() => {
     const tenancyId = localStorage.getItem("tenancyId");
-    const branchId = "WEB";
+    const branchId = `WEB-${tenancyId}`;
     console.log("WebSocket useEffect triggered with tenancyId:", tenancyId);
 
     if (tenancyId) {
