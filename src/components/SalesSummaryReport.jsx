@@ -29,8 +29,37 @@ const SalesSummaryReport = () => {
 
   // Filters
   const [voucherNumber, setVoucherNumber] = useState("");
-   
 
+  const handlePOSPrint = (voucherNumber, voucherDate) => {
+    const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
+    const branchCode = localStorage.getItem("branchCode");
+  
+    axios
+      .post(
+        `/api/${tenancyId}/sales/reprintvoucher`,
+        {
+          branchCode: branchCode,
+          voucherNumber: voucherNumber,
+          voucherDate: voucherDate,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+      .then((response) => {
+        console.log("Reprint request successful", response.data);
+        alert("Print sent to POS successfully!");
+      })
+      .catch((error) => {
+        console.error("Error printing in POS:", error);
+        alert("Failed to print in POS.");
+      });
+  };
+
+  
   const fetchSalesSummary = (page = 0) => {
     setLoadingSummary(true);
     const tenancyId = localStorage.getItem("tenancyId");
@@ -113,7 +142,7 @@ const SalesSummaryReport = () => {
             value={voucherNumber}
             onChange={(e) => setVoucherNumber(e.target.value)}
           />
-          
+
           <Button
             variant="contained"
             color="primary"
@@ -155,20 +184,32 @@ const SalesSummaryReport = () => {
                       </TableCell>
                       <TableCell>{sale.totalAmount}</TableCell>
                       <TableCell>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          onClick={() =>
-                            handlePrint(sale.voucherNumber, sale.voucherDate)
-                          }
-                          disabled={isLoading}
-                        >
-                          {isLoading ? (
-                            <CircularProgress size={24} color="inherit" />
-                          ) : (
-                            "Generate Invoice"
-                          )}
-                        </Button>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() =>
+                              handlePrint(sale.voucherNumber, sale.voucherDate)
+                            }
+                            disabled={isLoading}
+                          >
+                            {isLoading ? (
+                              <CircularProgress size={24} color="inherit" />
+                            ) : (
+                              "Generate Invoice"
+                            )}
+                          </Button>
+
+                          <Button
+                            variant="outlined"
+                            color="secondary"
+                            onClick={() =>
+                              handlePOSPrint(sale.voucherNumber, sale.voucherDate)
+                            }
+                          >
+                            Print IN POS
+                          </Button>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))
@@ -180,6 +221,7 @@ const SalesSummaryReport = () => {
                   </TableRow>
                 )}
               </TableBody>
+
             </Table>
 
             {/* Pagination Controls */}
