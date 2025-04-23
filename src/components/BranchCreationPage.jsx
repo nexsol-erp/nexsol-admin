@@ -69,6 +69,7 @@ const BranchCreationPage = () => {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+          "X-Tenant-ID": `${tenancyId}`, // <-- Set tenantId in header
         },
         body: JSON.stringify(formData),
       });

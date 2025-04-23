@@ -50,6 +50,8 @@ const CreateItemMaster = () => {
   const [items, setItems] = useState([]);
   const [editingItemId, setEditingItemId] = useState(null);
 
+
+  
   useEffect(() => {
     fetchItems();
   }, [searchQuery, page, rowsPerPage, sortOrder, sortField]);
@@ -108,6 +110,7 @@ const CreateItemMaster = () => {
     setSortField(field);
   };
 
+  
   const handleDelete = async (itemId) => {
     const tenancyId = localStorage.getItem("tenancyId");
     const token = localStorage.getItem("jwtToken");
@@ -155,7 +158,7 @@ const CreateItemMaster = () => {
   };
 
   const validateForm = () => {
-    if (!formData.itemName || !formData.unitName) {
+    if (!formData.itemName || !formData.unitName || !formData.hsnCode || !formData.barcode || !formData.unitName) {
       setErrorMessage(t("requiredFields")); // Translate the error message
       return false;
     }
@@ -281,6 +284,7 @@ const CreateItemMaster = () => {
             />
             {/* Form Field for Creating/Editing Items */}
             <TextField
+              
               fullWidth
               label={t("itemName")}
               name="itemName"
@@ -315,6 +319,7 @@ const CreateItemMaster = () => {
 
           <Grid item xs={12}>
             <TextField
+              required
               fullWidth
               label={t("standardPrice")}
               name="standardPrice"
@@ -327,6 +332,7 @@ const CreateItemMaster = () => {
 
           <Grid item xs={12}>
             <TextField
+              required
               fullWidth
               label={t("barcode")}
               name="barcode"
@@ -346,6 +352,7 @@ const CreateItemMaster = () => {
 
           <Grid item xs={12}>
             <TextField
+              required
               fullWidth
               label={t("taxRate")}
               name="taxRate"
@@ -357,6 +364,7 @@ const CreateItemMaster = () => {
           </Grid>
           <Grid item xs={12}>
             <TextField
+            required
               fullWidth
               label={t("hsnCode")}
               name="hsnCode"
