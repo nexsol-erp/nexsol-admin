@@ -310,9 +310,11 @@ const CreateItemMaster = () => {
                 required
               >
                 <MenuItem value="NOS">NOS</MenuItem>
-                <MenuItem value="LTR">LTR</MenuItem>
+                <MenuItem value="LTRS">LTRS</MenuItem>
                 <MenuItem value="KGS">KGS</MenuItem>
-                <MenuItem value="PACKET">PACKET</MenuItem>
+                <MenuItem value="PKT">PKT</MenuItem>
+                <MenuItem value="BTL">BTL</MenuItem>
+                <MenuItem value="GM">GM</MenuItem>
               </Select>
             </FormControl>
           </Grid>
