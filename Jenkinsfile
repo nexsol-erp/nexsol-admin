@@ -27,10 +27,21 @@ pipeline {
         }
         
         stage('Build React Project') {
-            steps {
+           steps {
                 dir('react-project') {
-                    sh 'npm install'
-                    sh 'npm run build'
+                sh 'npm install'
+
+                // Heartbeat wrapper to prevent Jenkins timeout
+                sh '''
+                #!/bin/bash
+                echo "Starting React build with heartbeat..."
+                while sleep 30; do echo "[Heartbeat] Still building..."; done &
+                HEARTBEAT_PID=$!
+                npm run build
+                BUILD_RESULT=$?
+                kill $HEARTBEAT_PID
+                exit $BUILD_RESULT
+                '''
                 }
             }
         }
