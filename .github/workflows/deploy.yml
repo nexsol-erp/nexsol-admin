@@ -11,7 +11,7 @@ jobs:
 
     env:
       DEPLOY_DIR: /var/www/html
-      TEMP_DEPLOY_DIR: /home/github/tmp-deploy
+      TEMP_DEPLOY_DIR: /home/deploy/tmp-deploy
       SERVICE_NAME: nginx
 
     steps:
