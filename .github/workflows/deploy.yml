@@ -1,0 +1,54 @@
+name: Build and Deploy React App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      DEPLOY_DIR: /var/www/html
+      SERVICE_NAME: nginx
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'  # Change if needed
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build React project with heartbeat
+        run: |
+          echo "Starting React build with heartbeat..."
+          while sleep 30; do echo "[Heartbeat] Still building..."; done &
+          HEARTBEAT_PID=$!
+          npm run build
+          BUILD_RESULT=$?
+          kill $HEARTBEAT_PID
+          exit $BUILD_RESULT
+
+      - name: Deploy to local server via SCP
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "build/*"
+          target: ${{ env.DEPLOY_DIR }}
+
+      - name: Reload Nginx via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo systemctl reload ${{ env.SERVICE_NAME }}
