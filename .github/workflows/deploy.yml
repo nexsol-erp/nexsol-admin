@@ -3,7 +3,7 @@ name: Build and Deploy React App
 on:
   push:
     branches:
-      - main
+      - main  # Adjust this if your main branch is different
 
 jobs:
   build-and-deploy:
@@ -11,6 +11,7 @@ jobs:
 
     env:
       DEPLOY_DIR: /var/www/html
+      TEMP_DEPLOY_DIR: /home/github/tmp-deploy
       SERVICE_NAME: nginx
 
     steps:
@@ -20,7 +21,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'  # Change if needed
+          node-version: '18'  # Change to your preferred version
 
       - name: Install dependencies
         run: npm install
@@ -35,20 +36,26 @@ jobs:
           kill $HEARTBEAT_PID
           exit $BUILD_RESULT
 
-      - name: Deploy to local server via SCP
+      - name: Deploy build to temporary folder on server
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "build/*"
-          target: ${{ env.DEPLOY_DIR }}
+          target: "${{ env.TEMP_DEPLOY_DIR }}/"
+          strip_components: 0
+          overwrite: true
 
-      - name: Reload Nginx via SSH
+      - name: Move build to /var/www/html and reload nginx
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            sudo systemctl reload ${{ env.SERVICE_NAME }}
+            echo "Deploying to $DEPLOY_DIR..."
+            sudo mkdir -p $DEPLOY_DIR
+            sudo rm -rf $DEPLOY_DIR/*
+            sudo cp -r $TEMP_DEPLOY_DIR/* $DEPLOY_DIR/
+            sudo systemctl reload $SERVICE_NAME
