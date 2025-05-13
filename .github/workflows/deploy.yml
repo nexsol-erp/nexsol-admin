@@ -30,7 +30,7 @@ jobs:
           echo "Starting React build with heartbeat..."
           while sleep 30; do echo "[Heartbeat] Still building..."; done &
           HEARTBEAT_PID=$!
-          npm run build
+          CI='' npm run build
           BUILD_RESULT=$?
           kill $HEARTBEAT_PID
           exit $BUILD_RESULT
