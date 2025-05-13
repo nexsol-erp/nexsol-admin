@@ -56,5 +56,5 @@ jobs:
           script: |
             sudo mkdir -p /var/www/html
             sudo rm -rf /var/www/html/*
-            sudo cp -r /home/deploy/tmp-deploy/* /var/www/html/
+            sudo cp -r /home/deploy/tmp-deploy/build/* /var/www/html/
             sudo systemctl reload nginx
