@@ -54,8 +54,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            echo "Deploying to $DEPLOY_DIR..."
-            sudo mkdir -p $DEPLOY_DIR
-            sudo rm -rf $DEPLOY_DIR/*
-            sudo cp -r $TEMP_DEPLOY_DIR/* $DEPLOY_DIR/
-            sudo systemctl reload $SERVICE_NAME
+            sudo mkdir -p /var/www/html
+            sudo rm -rf /var/www/html/*
+            sudo cp -r /home/github/tmp-deploy/* /var/www/html/
+            sudo systemctl reload nginx
