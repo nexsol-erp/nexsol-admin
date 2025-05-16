@@ -47,9 +47,12 @@ const ItemCategoryMapping = () => {
     }
   };
 
+ 
   const fetchMappings = async () => {
+    if (!preselectedItem?.id) return;
+  
     try {
-      const res = await fetch(`/api/${tenancyId}/item-category-map`, {
+      const res = await fetch(`/api/${tenancyId}/item-category-map/by-item/${preselectedItem.id}`, {
         headers: authHeaders,
       });
       const data = await res.json();
