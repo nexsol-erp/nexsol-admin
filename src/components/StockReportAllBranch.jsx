@@ -1,4 +1,3 @@
-//StockReportAllBranch
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -45,12 +44,8 @@ const StockReportAllBranch = () => {
     fetchStockData();
   }, []);
 
-  const handleClickOpen = () => {
-    setOpen(true);
-  };
-  const handleClose = () => {
-    setOpen(false);
-  };
+  const handleClickOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
 
   const handleExport = () => {
     const worksheet = XLSX.utils.json_to_sheet(stockData);
@@ -60,6 +55,13 @@ const StockReportAllBranch = () => {
     saveAs(new Blob([buffer], { type: "application/octet-stream" }), fileName);
     setOpen(false);
   };
+
+  // Determine branch columns dynamically (excluding itemName and Total)
+  const branchColumns = stockData.length > 0
+    ? Object.keys(stockData[0])
+        .filter((key) => key !== "itemName")
+        .sort((a, b) => a.localeCompare(b))
+    : [];
 
   return (
     <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
@@ -75,9 +77,7 @@ const StockReportAllBranch = () => {
       <Dialog open={open} onClose={handleClose}>
         <DialogTitle>Export to Excel</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            Enter file name for the Excel file:
-          </DialogContentText>
+          <DialogContentText>Enter file name for the Excel file:</DialogContentText>
           <TextField
             autoFocus
             margin="dense"
@@ -98,20 +98,27 @@ const StockReportAllBranch = () => {
           <TableHead>
             <TableRow>
               <TableCell>Item Name</TableCell>
-              <TableCell align="right">CGN</TableCell>
-              <TableCell align="right">KDRH</TableCell>
-              <TableCell align="right">FGS</TableCell>
+              {branchColumns.map((branch) => (
+                <TableCell key={branch} align="right">{branch}</TableCell>
+              ))}
+              <TableCell align="right">Total Stock</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {stockData.map((row, index) => (
-              <TableRow key={index}>
-                <TableCell>{row.itemName}</TableCell>
-                <TableCell align="right">{row.cgn?.toFixed(2)}</TableCell>
-                <TableCell align="right">{row.kdrh?.toFixed(2)}</TableCell>
-                <TableCell align="right">{row.fgs?.toFixed(2)}</TableCell>
-              </TableRow>
-            ))}
+            {stockData.map((row, index) => {
+              const total = branchColumns.reduce((sum, branch) => sum + (parseFloat(row[branch]) || 0), 0);
+              return (
+                <TableRow key={index}>
+                  <TableCell>{row.itemName}</TableCell>
+                  {branchColumns.map((branch) => (
+                    <TableCell key={branch} align="right">
+                      {row[branch] !== undefined ? row[branch].toFixed(2) : "0.00"}
+                    </TableCell>
+                  ))}
+                  <TableCell align="right">{total.toFixed(2)}</TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>
