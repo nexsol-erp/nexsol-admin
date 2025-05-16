@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   TextField,
@@ -13,24 +13,25 @@ import {
   Paper,
   TablePagination,
   CircularProgress,
+  Tooltip,
 } from "@mui/material";
 
 const ItemSearchPage = () => {
   const navigate = useNavigate();
 
-  const handleItemSelect = (item) => {
+  const handleItemSelect = useCallback((item) => {
     navigate("/item-category-linking", { state: { selectedItem: item } });
-  };
+  }, [navigate]);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [items, setItems] = useState([]); // Holds the items to display
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const [totalItems, setTotalItems] = useState(0); // Total number of items for pagination
-  const [sortOrder, setSortOrder] = useState("asc"); // Sorting order
-  const [sortField, setSortField] = useState("itemName"); // Field to sort by
+  const [totalItems, setTotalItems] = useState(0);
+  const [sortOrder, setSortOrder] = useState("asc");
+  const [sortField, setSortField] = useState("itemName");
 
   useEffect(() => {
     fetchItems();
@@ -58,9 +59,9 @@ const ItemSearchPage = () => {
         return;
       }
 
-      const data = await response.json(); // Parse JSON only if response is ok
-      setItems(data.content); // Set the content array as items
-      setTotalItems(data.totalElements); // Set the total number of items
+      const data = await response.json();
+      setItems(data.content || []);
+      setTotalItems(data.totalElements || 0);
     } catch (error) {
       console.error("Error fetching items:", error);
       setItems([]);
@@ -72,7 +73,7 @@ const ItemSearchPage = () => {
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
-    setPage(0); // Reset to the first page when a new search is performed
+    setPage(0);
   };
 
   const handleChangePage = (event, newPage) => {
@@ -81,7 +82,7 @@ const ItemSearchPage = () => {
 
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0); // Reset to the first page
+    setPage(0);
   };
 
   const handleSort = (field) => {
@@ -112,14 +113,23 @@ const ItemSearchPage = () => {
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
-              <TableRow >
-                <TableCell onClick={() => handleSort("itemName")} style={{ cursor: "pointer" }}>
+              <TableRow>
+                <TableCell
+                  onClick={() => handleSort("itemName")}
+                  style={{ cursor: "pointer" }}
+                >
                   Item Name {sortField === "itemName" && (sortOrder === "asc" ? "↑" : "↓")}
                 </TableCell>
-                <TableCell onClick={() => handleSort("unitName")} style={{ cursor: "pointer" }}>
+                <TableCell
+                  onClick={() => handleSort("unitName")}
+                  style={{ cursor: "pointer" }}
+                >
                   Unit Name {sortField === "unitName" && (sortOrder === "asc" ? "↑" : "↓")}
                 </TableCell>
-                <TableCell onClick={() => handleSort("standardPrice")} style={{ cursor: "pointer" }}>
+                <TableCell
+                  onClick={() => handleSort("standardPrice")}
+                  style={{ cursor: "pointer" }}
+                >
                   Standard Price {sortField === "standardPrice" && (sortOrder === "asc" ? "↑" : "↓")}
                 </TableCell>
                 <TableCell>Item Code</TableCell>
@@ -128,16 +138,18 @@ const ItemSearchPage = () => {
             <TableBody>
               {items.length > 0 ? (
                 items.map((item) => (
-                  <TableRow key={item.id}
-                  hover
-                  style={{ cursor: "pointer" }}
-                  onClick={() => handleItemSelect(item)}
-                  >
-                    <TableCell>{item.itemName}</TableCell>
-                    <TableCell>{item.unitName}</TableCell>
-                    <TableCell>{item.standardPrice}</TableCell>
-                    <TableCell>{item.itemCode}</TableCell>
-                  </TableRow>
+                  <Tooltip key={item.id} title="Click to link category" arrow>
+                    <TableRow
+                      hover
+                      style={{ cursor: "pointer" }}
+                      onClick={() => handleItemSelect(item)}
+                    >
+                      <TableCell>{item.itemName}</TableCell>
+                      <TableCell>{item.unitName}</TableCell>
+                      <TableCell>{item.standardPrice}</TableCell>
+                      <TableCell>{item.itemCode}</TableCell>
+                    </TableRow>
+                  </Tooltip>
                 ))
               ) : (
                 <TableRow>
@@ -153,7 +165,7 @@ const ItemSearchPage = () => {
 
       <TablePagination
         component="div"
-        count={totalItems} // Total number of items from the API response
+        count={totalItems}
         page={page}
         onPageChange={handleChangePage}
         rowsPerPage={rowsPerPage}
