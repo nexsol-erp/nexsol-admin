@@ -47,6 +47,7 @@ import StockReport from "./components/StockReport";
 import POS from "./components/POS";
 import ItemSearchPage from "./components/ItemSearchPage";
 import MainLayout from "./components/MainLayout";
+import ItemCategoryMapping from "./components/ItemCategoryMapping"
 
 import "./i18n"; // i18n config
 
@@ -108,6 +109,8 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/pos" element={<POS />} />
             <Route path="/itemsearch" element={<ItemSearchPage />} />
             <Route path="/main" element={<MainLayout mode={mode} setMode={setMode} roles={roles} />} />
+            <Route path="/item-category-linking" element={<ItemCategoryMapping />} />
+
           </Routes>
         </WebSocketProvider>
       </Box>

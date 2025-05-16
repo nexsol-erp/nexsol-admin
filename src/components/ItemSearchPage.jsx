@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   TextField,
   Container,
@@ -15,6 +16,12 @@ import {
 } from "@mui/material";
 
 const ItemSearchPage = () => {
+  const navigate = useNavigate();
+
+  const handleItemSelect = (item) => {
+    navigate("/item-category-linking", { state: { selectedItem: item } });
+  };
+
   const [searchQuery, setSearchQuery] = useState("");
   const [items, setItems] = useState([]); // Holds the items to display
   const [loading, setLoading] = useState(false);
@@ -105,7 +112,7 @@ const ItemSearchPage = () => {
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
-              <TableRow>
+              <TableRow >
                 <TableCell onClick={() => handleSort("itemName")} style={{ cursor: "pointer" }}>
                   Item Name {sortField === "itemName" && (sortOrder === "asc" ? "↑" : "↓")}
                 </TableCell>
@@ -121,7 +128,11 @@ const ItemSearchPage = () => {
             <TableBody>
               {items.length > 0 ? (
                 items.map((item) => (
-                  <TableRow key={item.id}>
+                  <TableRow key={item.id}
+                  hover
+                  style={{ cursor: "pointer" }}
+                  onClick={() => handleItemSelect(item)}
+                  >
                     <TableCell>{item.itemName}</TableCell>
                     <TableCell>{item.unitName}</TableCell>
                     <TableCell>{item.standardPrice}</TableCell>
