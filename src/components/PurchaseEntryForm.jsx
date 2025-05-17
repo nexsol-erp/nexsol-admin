@@ -18,21 +18,24 @@ import {
   IconButton,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { useWebSocket } from "./WebSocketContext"; 
-import AddItemDialog from "./AddItemDialog"; // Import AddItemDialog component
-import { getItems, saveSalesTransaction } from "../services/apiservice";
+import { useWebSocket } from "./WebSocketContext";
+import AddItemDialog from "./AddItemDialog";
+import { getItems } from "../services/apiservice";
 
 const PurchaseEntryForm = () => {
-  const { data } = useWebSocket(); 
+  const { data } = useWebSocket();
   const [supplierName, setSupplierName] = useState("");
   const [suppliers, setSuppliers] = useState([]);
   const [supplierInvNo, setSupplierInvNo] = useState("");
-  const [supplierInvDate, setSupplierInvDate] = useState("");
+  const [supplierInvDate, setSupplierInvDate] = useState(() => {
+    const today = new Date().toISOString().split("T")[0];
+    return today;
+  });
   const [items, setItems] = useState([]);
   const [filteredItemList, setFilteredItemList] = useState([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [itemList, setItemList] = useState([]);
-  
+
   useEffect(() => {
     fetchItems();
   }, []);
@@ -43,7 +46,7 @@ const PurchaseEntryForm = () => {
       setItemList(response.data);
       setFilteredItemList(response.data);
     } catch (error) {
-      console.error("Error fetching salesDetails:", error);
+      console.error("Error fetching items:", error);
     }
   };
 
@@ -61,9 +64,7 @@ const PurchaseEntryForm = () => {
           },
         });
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch suppliers");
-        }
+        if (!response.ok) throw new Error("Failed to fetch suppliers");
 
         const data = await response.json();
         setSuppliers(data);
@@ -87,12 +88,18 @@ const PurchaseEntryForm = () => {
   const calculateGrandTotal = () =>
     items.reduce((total, item) => total + (item.totalAmount || 0), 0).toFixed(2);
 
+  const formatDateTime = (dateStr) => {
+    return dateStr ? `${dateStr}T00:00:00` : null;
+  };
+
   const handlePartialSave = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
+    const formattedDate = formatDateTime(supplierInvDate);
+
     const payload = {
       supplierName,
       voucherNumber: supplierInvNo,
-      voucherDate: supplierInvDate,
+      voucherDate: formattedDate,
       items,
     };
 
@@ -120,10 +127,12 @@ const PurchaseEntryForm = () => {
 
   const handleFinalSave = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
+    const formattedDate = formatDateTime(supplierInvDate);
+
     const payload = {
       supplierName,
       supplierVoucherNumber: supplierInvNo,
-      supplierVoucherDate: supplierInvDate,
+      supplierVoucherDate: formattedDate,
       items,
     };
 
@@ -209,8 +218,12 @@ const PurchaseEntryForm = () => {
               {items.map((item, index) => (
                 <TableRow key={index}>
                   <TableCell>{item.itemName}</TableCell>
-                  <TableCell>{(parseFloat(item.rateBeforeTax) || 0).toFixed(2)}</TableCell>
-                  <TableCell>{(item.rateIncludingTax || 0).toFixed(2)}</TableCell>
+                  <TableCell>
+                    {(parseFloat(item.rateBeforeTax) || 0).toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    {(item.rateIncludingTax || 0).toFixed(2)}
+                  </TableCell>
                   <TableCell>{(item.quantity || 0).toFixed(2)}</TableCell>
                   <TableCell>{(item.taxRate || 0).toFixed(2)}%</TableCell>
                   <TableCell>{(item.totalAmount || 0).toFixed(2)}</TableCell>
@@ -236,11 +249,7 @@ const PurchaseEntryForm = () => {
           </Table>
         </TableContainer>
         <Box mt={2} display="flex" justifyContent="space-between">
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handlePartialSave}
-          >
+          <Button variant="contained" color="primary" onClick={handlePartialSave}>
             Partial Save
           </Button>
           <Button variant="contained" color="primary" onClick={handleFinalSave}>
