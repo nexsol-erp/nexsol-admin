@@ -23,26 +23,33 @@ const SalesReportAllBranch = () => {
   const [salesData, setSalesData] = useState([]);
   const [open, setOpen] = useState(false);
   const [fileName, setFileName] = useState("SalesReport.xlsx");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const fetchSalesData = async () => {
     try {
       const tenancyId = localStorage.getItem("tenancyId");
       const token = localStorage.getItem("jwtToken");
-      const response = await fetch(`/api/${tenancyId}/reports/sales-report/pivot`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+
+      const queryParams = new URLSearchParams({
+        start: startDate,
+        end: endDate,
       });
+
+      const response = await fetch(
+        `/api/${tenancyId}/reports/sales-report/pivot?${queryParams}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       const data = await response.json();
       setSalesData(data);
     } catch (error) {
       console.error("Error fetching sales report:", error);
     }
   };
-
-  useEffect(() => {
-    fetchSalesData();
-  }, []);
 
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -56,7 +63,6 @@ const SalesReportAllBranch = () => {
     setOpen(false);
   };
 
-  // Determine branch columns (excluding itemName and standardPrice)
   const branchColumns = salesData.length > 0
     ? Object.keys(salesData[0])
         .filter((key) => key !== "itemName" && key !== "standardPrice")
@@ -65,7 +71,21 @@ const SalesReportAllBranch = () => {
 
   return (
     <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+      <Box sx={{ display: "flex", gap: 2, mb: 3, alignItems: "center" }}>
+        <TextField
+          type="date"
+          label="Start Date"
+          InputLabelProps={{ shrink: true }}
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+        />
+        <TextField
+          type="date"
+          label="End Date"
+          InputLabelProps={{ shrink: true }}
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+        />
         <Button variant="contained" color="primary" onClick={fetchSalesData}>
           Fetch Sales Report
         </Button>
