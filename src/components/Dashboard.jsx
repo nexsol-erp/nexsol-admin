@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {  Button, Box } from '@mui/material';
+import { Button, Box } from '@mui/material';
 import { useWebSocket } from './WebSocketContext';
 import Feed from './Feed';
 import Layout from './Layout';
@@ -15,6 +15,31 @@ const Dashboard = () => {
       setDashboardData(data.payload);
     }
   }, [data]);
+
+  const handlePublish = async () => {
+    try {
+      const tenancyId = localStorage.getItem("tenancyId");
+      const token = localStorage.getItem("jwtToken");
+
+      const response = await fetch(`/api/${tenancyId}/item-category-map/publish`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        alert("✅ Item categories published successfully!");
+      } else {
+        alert("❌ Failed to publish item categories.");
+      }
+    } catch (error) {
+      console.error("Error publishing:", error);
+      alert("⚠️ An error occurred while publishing item categories.");
+    }
+  };
+
 
   return (
     <Box
@@ -33,6 +58,9 @@ const Dashboard = () => {
           onClick={() => navigate('/main')}
         >
           Back to Home
+        </Button>
+        <Button variant="contained" color="primary" onClick={handlePublish}>
+          Publish Item Categories
         </Button>
       </Box>
 
