@@ -50,6 +50,9 @@ import MainLayout from "./components/MainLayout";
 import ItemCategoryMapping from "./components/ItemCategoryMapping"
 import StockReportAllBranch from "./components/StockReportAllBranch"
 
+import SalesReportAllBranch from "./components/SalesReportAllBranch"
+
+
 import "./i18n"; // i18n config
 
 // ========================
@@ -112,7 +115,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/main" element={<MainLayout mode={mode} setMode={setMode} roles={roles} />} />
             <Route path="/item-category-linking" element={<ItemCategoryMapping />} />
             <Route path="/stock-report-all-branch" element={<StockReportAllBranch />} />
-
+            <Route path="/sales-report-all-branch" element={<SalesReportAllBranch />} />
           </Routes>
         </WebSocketProvider>
       </Box>
