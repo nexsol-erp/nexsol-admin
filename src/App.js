@@ -51,7 +51,7 @@ import ItemCategoryMapping from "./components/ItemCategoryMapping"
 import StockReportAllBranch from "./components/StockReportAllBranch"
 
 import SalesReportAllBranch from "./components/SalesReportAllBranch"
-
+import WeighBridgeEngageReport from "./components/WeighBridgeEngageReport";
 
 import "./i18n"; // i18n config
 
@@ -116,6 +116,9 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/item-category-linking" element={<ItemCategoryMapping />} />
             <Route path="/stock-report-all-branch" element={<StockReportAllBranch />} />
             <Route path="/sales-report-all-branch" element={<SalesReportAllBranch />} />
+            <Route path="/bridge-count" element={<WeighBridgeEngageReport />} />
+
+            
           </Routes>
         </WebSocketProvider>
       </Box>

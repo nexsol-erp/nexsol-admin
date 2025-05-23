@@ -169,6 +169,14 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       roles: ["WB"],
     },
     {
+      label: t("Weight-Count"),
+      icon: <Luggage sx={{ color: "#ffe3a3" }} />,
+      link: "/bridge-count",
+      roles: ["WB"],
+    },
+    
+
+    {
       label: t("Branch Creation"),
       icon: <Luggage sx={{ color: "#ffe3a3" }} />,
       link: "/branchcreationpage",
