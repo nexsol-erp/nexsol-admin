@@ -52,6 +52,7 @@ const UserCreationPage = () => {
     try {
         const token = localStorage.getItem("jwtToken");
        // const tenancyId = localStorage.getItem("tenancyId");
+       const tenancyId = localStorage.getItem("tenancyId");
       const response = await fetch(`/api/createbranchuser`, {
         method: "POST",
         headers: {
