@@ -121,7 +121,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("Dashboard"),
       icon: <Home sx={{ color: "#ffe3a3" }} />,
       link: "/dashboard",
-      roles: ["admin","user"],
+      roles: ["admin"],
     },
     {
       label: t("POS"),
@@ -133,26 +133,26 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("Sales Entry"),
       icon: <Pages sx={{ color: "#ffe3a3" }} />,
       link: "/salesentryform",
-      roles: ["user"],
+      roles: ["admin"],
     },
     {
       label: t("HSN wise Sales"),
       icon: <Pages sx={{ color: "#ffe3a3" }} />,
       link: "/hsnsales",
-      roles: ["admin", "user"],
+      roles: ["admin"],
     },
     
     {
       label: t("HSN wise Purchase"),
       icon: <Pages sx={{ color: "#ffe3a3" }} />,
       link: "/hsnwise-purchase-report",
-      roles: ["admin", "user"],
+      roles: ["admin"],
     },
     {
       label: t("Purchase"),
       icon: <Luggage sx={{ color: "#ffe3a3" }} />,
       link: "",
-      roles: ["user", "manager"],
+      roles: ["admin", "manager"],
       hasSubmenu: true,
       submenu: [
         {
@@ -211,34 +211,34 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("Masters"),
       icon: <Category sx={{ color: "#ffe3a3" }} />,
       link: "",
-      roles: ["admin"],
+      roles: ["admin","user"],
       hasSubmenu: true,
       submenu: [
         {
           label: t("Item Search"),
           link: "/itemsearch",
-          roles: ["admin"],
+          roles: ["admin","user"],
         },
         {
           label: t("Item Creation"),
           link: "/createitemmaster",
-          roles: ["admin"],
+          roles: ["admin","user"],
         },
         
         {
           label: t("Category Type"),
           link: "/categorytypemaster",
-          roles: ["admin"],
+          roles: ["admin","user"],
         },
         {
           label: t("Category Name"),
           link: "/categorynamemaster",
-          roles: ["admin"],
+          roles: ["admin","user"],
         },
         {
           label: t("Supplier Creation"),
           link: "/suppliercreation",
-          roles: ["admin"],
+          roles: ["admin","user"],
         },
       ],
     },
@@ -246,7 +246,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("Reports"),
       icon: <Assessment sx={{ color: "#ffe3a3" }} />,
       link: "",
-      roles: ["admin", "user", "manager"],
+      roles: ["admin", "manager"],
       hasSubmenu: true,
       submenu: [
         {
