@@ -52,6 +52,7 @@ import StockReportAllBranch from "./components/StockReportAllBranch"
 
 import SalesReportAllBranch from "./components/SalesReportAllBranch"
 import WeighBridgeEngageReport from "./components/WeighBridgeEngageReport";
+import WeighbridgeUsageReport from "./components/WeighbridgeUsageReport";
 
 import "./i18n"; // i18n config
 
@@ -117,6 +118,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/stock-report-all-branch" element={<StockReportAllBranch />} />
             <Route path="/sales-report-all-branch" element={<SalesReportAllBranch />} />
             <Route path="/bridge-count" element={<WeighBridgeEngageReport />} />
+            <Route path="/weighbridgeusage" element={<WeighbridgeUsageReport />} />
 
             
           </Routes>

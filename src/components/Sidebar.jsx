@@ -174,6 +174,12 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       link: "/bridge-count",
       roles: ["WB"],
     },
+    {
+      label: t("WeighBridge Usage"),
+      icon: <Luggage sx={{ color: "#ffe3a3" }} />,
+      link: "/weighbridgeusage",
+      roles: ["WB"],
+    },
     
 
     {
