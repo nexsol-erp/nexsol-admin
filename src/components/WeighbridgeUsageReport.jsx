@@ -108,7 +108,7 @@ const WeighbridgeUsageReport = () => {
             </tr>
           </thead>
           <tbody>
-            {Object.entries(summary.usageSummary).map(([date, count]) => (
+            {Object.entries(summary.usage_summary).map(([date, count]) => (
               <tr key={date}>
                 <td>{date}</td>
                 <td>{count}</td>
