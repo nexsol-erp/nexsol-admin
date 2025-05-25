@@ -66,7 +66,7 @@ const Dashboard = () => {
 
       {/* Main Layout and Feed */}
       <Layout>
-        <Feed />
+      <Feed />
       </Layout>
     </Box>
   );

@@ -16,6 +16,7 @@ const Feed = () => {
   const [revenue, setRevenue] = useState("Loading...");
   const [totalUsers, setTotalUsers] = useState("Loading...");
   const [topUsers, setTopUsers] = useState([]);
+ 
 
   useEffect(() => {
     // Send commands to fetch initial data once
@@ -70,12 +71,9 @@ const Feed = () => {
           />
         </Stack>
 
-        <Stack direction={{ xs: "column", md: "row" }} spacing={4}>
-          <MediaControlCard topUsers={topUsers} />
-          <ProgressLine />
-        </Stack>
+   
 
-        <Chart />
+        <Chart topUsers={topUsers} />
 
         <Stack direction={{ xs: "column", md: "row" }} spacing={4}>
           <Progress />
