@@ -230,7 +230,19 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
           link: "/createitemmaster",
           roles: ["admin","user"],
         },
+        {
+          label: t("Manage AccountHeads"),
+          link: "/manage-account-heads",
+          roles: ["admin","user"],
+        },
         
+        {
+          label: t("Statement Of Account"),
+          link: "/statement-of-account",
+          roles: ["admin","user"],
+        },
+        
+       
         {
           label: t("Category Type"),
           link: "/categorytypemaster",

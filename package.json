@@ -22,6 +22,7 @@
     "file-saver": "^2.0.5",
     "formik": "^2.4.6",
     "html2canvas": "^1.4.1",
+    "html2pdf.js": "^0.10.3",
     "i18next": "^23.14.0",
     "i18next-http-backend": "^2.6.1",
     "jspdf": "^2.5.1",
