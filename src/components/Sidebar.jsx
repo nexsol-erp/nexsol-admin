@@ -121,7 +121,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("Dashboard"),
       icon: <Home sx={{ color: "#ffe3a3" }} />,
       link: "/dashboard",
-      roles: ["admin"],
+      roles: ["admin","user","manager"],
     },
     {
       label: t("POS"),
