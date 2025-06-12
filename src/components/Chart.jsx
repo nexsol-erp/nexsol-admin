@@ -5,7 +5,8 @@ import MediaControlCard from "./Card1";
 import { UserData } from '../Data';
 import { Card, Stack } from '@mui/material';
 
-const Chart = ({ topUsers }) => {
+const Chart = ({ topUsers, branchSalesData = [] }) => {
+  // Chart data for Users Lost
   const [userData2, setUserData2] = useState({
     labels: UserData.map((data) => data.year),
     datasets: [
@@ -20,25 +21,34 @@ const Chart = ({ topUsers }) => {
     ],
   });
 
+  // Chart data for Branch-wise Sales
+  const branchSalesChartData = {
+    labels: branchSalesData.map(branch => branch.branchName),
+    datasets: [
+      {
+        label: "Sales",
+        data: branchSalesData.map(branch => branch.totalSales),
+        backgroundColor: "#90caf9",
+        borderColor: "#fff",
+        borderWidth: 2,
+      },
+    ],
+  };
+
   return (
     <div>
-      <Stack direction={{ xs: "column", md: "row" }} spacing={4}>
-        {/* Online Status card using MediaControlCard */}
+      <Stack direction={{ xs: "column", md: "row" }} spacing={4} flexWrap="wrap">
+        {/* Top Users Card */}
         <MediaControlCard topUsers={topUsers} />
-        
-        {/* Users Lost Bar Chart */}
-        <Card sx={{ width: 310, backgroundColor: "#21295c" }}>
-          <div style={{ width: 300, padding: 5 }}>
-            <BarChart chartData={userData2} />
-          </div>
-        </Card>
-
-        {/* Pie Chart */}
-        <Card sx={{ width: 310, backgroundColor: "#21295c" }}>
-          <div style={{ width: 300 }}>
-            <PieChart chartData={userData2} />
-          </div>
-        </Card>
+ 
+        {/* Branch-wise Sales Summary Chart */}
+        {branchSalesData.length > 0 && (
+          <Card sx={{ width: 310, backgroundColor: "#21295c" }}>
+            <div style={{ width: 300, padding: 5 }}>
+              <BarChart chartData={branchSalesChartData} />
+            </div>
+          </Card>
+        )}
       </Stack>
     </div>
   );
