@@ -38,13 +38,10 @@ const Chart = ({ topUsers, branchSalesData = [] }) => {
   return (
     <div>
       <Stack direction={{ xs: "column", md: "row" }} spacing={4} flexWrap="wrap">
-        {/* Top Users Card */}
         <MediaControlCard topUsers={topUsers} />
- 
-        {/* Branch-wise Sales Summary Chart */}
         {branchSalesData.length > 0 && (
-          <Card sx={{ width: 310, backgroundColor: "#21295c" }}>
-            <div style={{ width: 300, padding: 5 }}>
+          <Card sx={{ width: 620, backgroundColor: "#21295c" }}>
+            <div style={{ width: 600, padding: 10 }}>
               <BarChart chartData={branchSalesChartData} />
             </div>
           </Card>
