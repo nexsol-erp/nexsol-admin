@@ -23,7 +23,7 @@ const Chart = ({ topUsers, branchSalesData = [] }) => {
 
   // Chart data for Branch-wise Sales
   const branchSalesChartData = {
-    labels: branchSalesData.map(branch => branch.branchName),
+    labels: branchSalesData.map(branch => branch.branchCode),
     datasets: [
       {
         label: "Sales",

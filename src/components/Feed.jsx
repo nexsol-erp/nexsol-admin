@@ -48,7 +48,7 @@ const Feed = () => {
         try {
           const parsed = JSON.parse(parsedData.BRANCH_SALES_SUMMARY);
           setBranchSalesData(parsed);
-          setBranchSalesLoadedViaSocket(true); // ✅ WebSocket succeeded
+          setBranchSalesLoadedViaSocket(true);  
         } catch (err) {
           console.error("Failed to parse branch sales summary:", err);
         }
