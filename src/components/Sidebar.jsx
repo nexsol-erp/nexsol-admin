@@ -217,18 +217,18 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("Masters"),
       icon: <Category sx={{ color: "#ffe3a3" }} />,
       link: "",
-      roles: ["admin","user"],
+      roles: ["admin","user","cgn"],
       hasSubmenu: true,
       submenu: [
         {
           label: t("Item Search"),
           link: "/itemsearch",
-          roles: ["admin","user"],
+          roles: ["admin","user","cgn"],
         },
         {
           label: t("Item Creation"),
           link: "/createitemmaster",
-          roles: ["admin","user"],
+          roles: ["admin","user","cgn"],
         },
         {
           label: t("Manage AccountHeads"),
@@ -256,7 +256,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
         {
           label: t("Supplier Creation"),
           link: "/suppliercreation",
-          roles: ["admin","user"],
+          roles: ["admin","user","cgn"],
         },
       ],
     },

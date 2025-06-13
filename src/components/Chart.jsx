@@ -1,57 +1,59 @@
-import React, { useState } from 'react';
-import BarChart from './BarChart';
-import PieChart from './PieChart';
-import MediaControlCard from "./Card1";
-import { UserData } from '../Data';
-import { Card, Stack } from '@mui/material';
+import React from 'react';
+import { Bar } from 'react-chartjs-2';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
 
-const Chart = ({ topUsers, branchSalesData = [] }) => {
-  // Chart data for Users Lost
-  const [userData2, setUserData2] = useState({
-    labels: UserData.map((data) => data.year),
-    datasets: [
-      {
-        label: "Users Lost",
-        data: UserData.map((data) => data.Lost),
-        backgroundColor: ["#fff", "#ffe3a3", "#ffd166", "#ffda85", "#cca752"],
-        borderColor: "white",
-        borderWidth: 2,
-        color: "white",
-      },
-    ],
-  });
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ChartDataLabels // Register the datalabels plugin
+);
 
-  // Chart data for Branch-wise Sales
-  const branchSalesChartData = {
-    labels: branchSalesData.map(branch => branch.branchName),
-    datasets: [
-      {
-        label: "Sales",
-        data: branchSalesData.map(branch => branch.totalSales),
-        backgroundColor: "#90caf9",
-        borderColor: "#fff",
-        borderWidth: 2,
+const BarChart = ({ chartData }) => {
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        display: false,
       },
-    ],
+      datalabels: {
+        anchor: 'end',
+        align: 'end',
+        color: '#fff',
+        font: {
+          weight: 'bold',
+        },
+        formatter: (value) => `₹${value}`,
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          color: '#fff',
+        },
+      },
+      x: {
+        ticks: {
+          color: '#fff',
+        },
+      },
+    },
   };
 
-  return (
-    <div>
-      <Stack direction={{ xs: "column", md: "row" }} spacing={4} flexWrap="wrap">
-        {/* Top Users Card */}
-        <MediaControlCard topUsers={topUsers} />
- 
-        {/* Branch-wise Sales Summary Chart */}
-        {branchSalesData.length > 0 && (
-          <Card sx={{ width: 310, backgroundColor: "#21295c" }}>
-            <div style={{ width: 300, padding: 5 }}>
-              <BarChart chartData={branchSalesChartData} />
-            </div>
-          </Card>
-        )}
-      </Stack>
-    </div>
-  );
+  return <Bar data={chartData} options={options} />;
 };
 
-export default Chart;
+export default BarChart;
