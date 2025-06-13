@@ -8,7 +8,7 @@ import {
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
 } from 'chart.js';
 
 ChartJS.register(
@@ -18,10 +18,14 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  ChartDataLabels // Register the datalabels plugin
+  ChartDataLabels
 );
 
 const BarChart = ({ chartData }) => {
+  if (!chartData || !chartData.labels || !chartData.datasets) {
+    return <div>Loading chart...</div>;
+  }
+
   const options = {
     responsive: true,
     plugins: {
@@ -41,14 +45,10 @@ const BarChart = ({ chartData }) => {
     scales: {
       y: {
         beginAtZero: true,
-        ticks: {
-          color: '#fff',
-        },
+        ticks: { color: '#fff' },
       },
       x: {
-        ticks: {
-          color: '#fff',
-        },
+        ticks: { color: '#fff' },
       },
     },
   };
