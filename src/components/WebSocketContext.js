@@ -31,7 +31,16 @@ export const WebSocketProvider = ({ children }) => {
           try {
             const parsedItems = JSON.parse(cachedItems);
             console.log("Items found in local storage:", parsedItems);
-            setData((prevData) => ({ ...prevData, items: parsedItems }));
+
+            if (Array.isArray(parsedItems) && parsedItems.length === 0) {
+              // Fetch if items are empty
+              console.log("Cached items are empty. Fetching from server...");
+              websocket.send(JSON.stringify({ action: "GET_ITEMS" }));
+            } else {
+              setData((prevData) => ({ ...prevData, items: parsedItems }));
+            }
+
+             
           } catch (error) {
             console.error("Error parsing cached items from local storage:", cachedItems, error);
             // Optionally remove corrupted data
