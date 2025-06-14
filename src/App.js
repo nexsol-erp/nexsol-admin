@@ -55,6 +55,9 @@ import WeighBridgeEngageReport from "./components/WeighBridgeEngageReport";
 import WeighbridgeUsageReport from "./components/WeighbridgeUsageReport";
 import ManageAccountHeads from "./components/ManageAccountHeads";
 import StatementOfAccount from "./components/StatementOfAccount";
+import BranchRequestList from "./components/BranchRequestList";
+import ReprocessVoucherForm from "./components/ReprocessVoucherForm"
+
 
 import "./i18n"; // i18n config
 
@@ -123,9 +126,8 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/weighbridgeusage" element={<WeighbridgeUsageReport />} />
             <Route path="/manage-account-heads" element={<ManageAccountHeads />} />
             <Route path="/statement-of-account" element={<StatementOfAccount />} />
-
-            
-
+            <Route path="/branch-request-list" element={<BranchRequestList />} />
+            <Route path="/reprocess-voucher-form" element={<ReprocessVoucherForm />} />
             
           </Routes>
         </WebSocketProvider>

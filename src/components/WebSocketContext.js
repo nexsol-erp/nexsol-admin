@@ -14,8 +14,8 @@ export const WebSocketProvider = ({ children }) => {
     console.log("WebSocket useEffect triggered with tenancyId:", tenancyId);
 
     if (tenancyId) {
-      //const wsUrl = `ws://localhost:8081/ws?company=${tenancyId}&branch=${branchId}`;
-      const wsUrl = `wss://tradelink247.com/ws?company=${tenancyId}&branch=${branchId}`;
+      const wsUrl = `ws://localhost:8081/ws?company=${tenancyId}&branch=${branchId}`;
+      //const wsUrl = `wss://tradelink247.com/ws?company=${tenancyId}&branch=${branchId}`;
       console.log(`Attempting to connect to WebSocket at ${wsUrl}`);
       const websocket = new WebSocket(wsUrl);
 

@@ -124,6 +124,20 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       roles: ["admin","user","manager"],
     },
     {
+      label: t("Message Request"),
+      icon: <Home sx={{ color: "#ffe3a3" }} />,
+      link: "/branch-request-list",
+      roles: ["admin"],
+    },
+    {
+      label: t("Reprocess Voucher"),
+      icon: <Home sx={{ color: "#ffe3a3" }} />,
+      link: "/reprocess-voucher-form",
+      roles: ["admin"],
+    },
+    
+    
+    {
       label: t("POS"),
       icon: <Home sx={{ color: "#ffe3a3" }} />,
       link: "/pos",
