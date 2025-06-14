@@ -1,15 +1,29 @@
 import React, { useState } from 'react';
-import { TextField, Button, Typography, CircularProgress, List, ListItem, ListItemText, Paper, Container } from '@mui/material';
-import { useMediaQuery } from '@mui/material'; // Import useMediaQuery for responsiveness
+import {
+  TextField,
+  Button,
+  Typography,
+  CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  Paper,
+  Container,
+  Box,
+} from '@mui/material';
+import { useMediaQuery } from '@mui/material';
 
 const DocumentList = () => {
   const [voucher, setVoucher] = useState('');
   const [documents, setDocuments] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [processing, setProcessing] = useState(null);
+  const [processMessage, setProcessMessage] = useState('');
 
-  // Detect if the screen is small (mobile)
   const isMobile = useMediaQuery('(max-width:600px)');
+  const jwtToken = localStorage.getItem('jwtToken');
+  const tenancyId = localStorage.getItem('tenancyId');
 
   const fetchDocuments = async () => {
     if (!voucher) {
@@ -20,23 +34,16 @@ const DocumentList = () => {
     setError('');
     setLoading(true);
 
-    const jwtToken = localStorage.getItem('jwtToken');
-    const tenancyId = localStorage.getItem('tenancyId');
-
     try {
       const response = await fetch(`/api/${tenancyId}/document/search/${voucher}`, {
         headers: {
-          'Authorization': `Bearer ${jwtToken}`, // Pass JWT Token in the header
-        }
+          Authorization: `Bearer ${jwtToken}`,
+        },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch documents');
-      }
+      if (!response.ok) throw new Error('Failed to fetch documents');
 
       const data = await response.json();
-
-      // Set the returned documents directly
       setDocuments(data);
     } catch (error) {
       console.error('Error fetching documents:', error);
@@ -47,113 +54,158 @@ const DocumentList = () => {
   };
 
   const downloadDocument = async (filename) => {
-    const jwtToken = localStorage.getItem('jwtToken');
-    const tenancyId = localStorage.getItem('tenancyId');
-
     try {
       const response = await fetch(`/api/${tenancyId}/document/download`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${jwtToken}`, // Pass JWT Token in the header
-          'Content-Type': 'application/json',   // Set content type to JSON
+          Authorization: `Bearer ${jwtToken}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ filename }),      // Send filename in the body
+        body: JSON.stringify({ filename }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to download document');
-      }
+      if (!response.ok) throw new Error('Failed to download document');
 
-      // Create a blob from the response data and trigger download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', filename); // Set the filename for download
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
-      link.parentNode.removeChild(link);
+      link.remove();
     } catch (error) {
       console.error('Error downloading document:', error);
       setError('Failed to download document');
     }
   };
 
+  const reprocessDocument = async (filename) => {
+    setProcessing(filename);
+    setProcessMessage('');
+
+    try {
+      const fileResponse = await fetch(`/api/${tenancyId}/document/download`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${jwtToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ filename }),
+      });
+
+      if (!fileResponse.ok) throw new Error('Failed to fetch file content');
+
+      const fileText = await fileResponse.text();
+
+      const res = await fetch(`/api/${tenancyId}/vouchers/reprocess`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${jwtToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: fileText,
+      });
+
+      const result = await res.text();
+
+      if (res.ok) {
+        setProcessMessage(`✔ Reprocessed: ${filename}`);
+      } else {
+        throw new Error(result);
+      }
+    } catch (err) {
+      setProcessMessage(`❌ Error: ${err.message}`);
+    } finally {
+      setProcessing(null);
+    }
+  };
+
   return (
-    <Container maxWidth="md" style={isMobile ? { padding: '10px' } : { padding: '20px' }}>
-      <Paper elevation={3} style={{ padding: isMobile ? '10px' : '20px', marginTop: isMobile ? '10px' : '20px' }}>
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <Paper elevation={3} sx={{ p: 3 }}>
         <Typography variant={isMobile ? 'h6' : 'h5'} gutterBottom>
-          Document List
+          Search and Reprocess Documents
         </Typography>
 
-        {/* Voucher Input Field */}
         <TextField
           label="Voucher"
           variant="outlined"
           fullWidth
           value={voucher}
           onChange={(e) => setVoucher(e.target.value)}
-          placeholder="Enter Voucher"
+          placeholder="Enter Voucher Number"
           margin="normal"
-          style={{ fontSize: isMobile ? '14px' : '16px' }} // Adjust font size for mobile
         />
 
-        {/* Button to trigger the API call */}
         <Button
           variant="contained"
           color="primary"
           fullWidth
           onClick={fetchDocuments}
-          style={{ marginTop: isMobile ? '10px' : '20px', fontSize: isMobile ? '14px' : '16px' }} // Adjust margin and font size
+          sx={{ mt: 2 }}
         >
           Fetch Documents
         </Button>
 
-        {/* Loading Indicator */}
         {loading && (
-          <div style={{ textAlign: 'center', marginTop: '20px' }}>
+          <Box sx={{ textAlign: 'center', mt: 3 }}>
             <CircularProgress />
-          </div>
+          </Box>
         )}
 
-        {/* Error Message */}
         {error && (
-          <Typography variant="body1" color="error" style={{ marginTop: '20px' }}>
+          <Typography color="error" sx={{ mt: 3 }}>
             {error}
           </Typography>
         )}
 
-        {/* Document List Display */}
+        {processMessage && (
+          <Typography color="secondary" sx={{ mt: 2 }}>
+            {processMessage}
+          </Typography>
+        )}
+
         {documents.length > 0 && (
-          <div style={{ marginTop: '20px' }}>
-            <Typography variant={isMobile ? 'h6' : 'h6'} gutterBottom>
-              Documents:
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              Matching Documents:
             </Typography>
             <List>
               {documents.map((doc, index) => (
-                <ListItem key={index}>
+                <ListItem key={index} divider>
                   <ListItemText
-                    primary={<span dangerouslySetInnerHTML={{ __html: doc.snippet }} />}  // Display snippet (contains bold tags)
+                    primary={
+                      <span
+                        dangerouslySetInnerHTML={{ __html: doc.snippet }}
+                      />
+                    }
                     secondary={
-                      doc.filePath ? (
+                      <Box sx={{ mt: 1, display: 'flex', gap: 2 }}>
                         <Button
-                          variant="contained"
+                          variant="outlined"
                           color="primary"
-                          size={isMobile ? 'small' : 'medium'}
+                          size="small"
                           onClick={() => downloadDocument(doc.filePath)}
                         >
-                          Download Document
+                          Download
                         </Button>
-                      ) : (
-                        <span>No document available</span>  // Fallback if filePath is null
-                      )
+                        <Button
+                          variant="contained"
+                          color="success"
+                          size="small"
+                          onClick={() => reprocessDocument(doc.filePath)}
+                          disabled={processing === doc.filePath}
+                        >
+                          {processing === doc.filePath ? 'Processing...' : 'Reprocess'}
+                        </Button>
+                      </Box>
                     }
-                    style={{ fontSize: isMobile ? '12px' : '14px' }} // Adjust font size for mobile
                   />
                 </ListItem>
               ))}
             </List>
-          </div>
+          </Box>
         )}
       </Paper>
     </Container>
