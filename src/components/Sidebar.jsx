@@ -129,6 +129,13 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       link: "/branch-request-list",
       roles: ["admin"],
     },
+    {
+      label: t("Reprocess Voucher"),
+      icon: <Home sx={{ color: "#ffe3a3" }} />,
+      link: "/reprocess-voucher-form",
+      roles: ["admin"],
+    },
+    
     
     {
       label: t("POS"),
