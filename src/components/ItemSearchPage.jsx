@@ -14,7 +14,11 @@ import {
   TablePagination,
   CircularProgress,
   Tooltip,
+  Button,
 } from "@mui/material";
+
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const ItemSearchPage = () => {
   const navigate = useNavigate();
@@ -91,6 +95,50 @@ const ItemSearchPage = () => {
     setSortField(field);
   };
 
+
+
+const handleExportToExcel = async () => {
+  const tenancyId = localStorage.getItem("tenancyId");
+  const token = localStorage.getItem("jwtToken");
+
+  try {
+    const response = await fetch(
+      `/api/${tenancyId}/items-search?query=${searchQuery}&page=0&size=10000&sort=${sortField},${sortOrder}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Failed to fetch items for Excel export");
+      return;
+    }
+
+    const data = await response.json();
+    const itemsToExport = data.content || [];
+
+    const worksheetData = itemsToExport.map((item) => ({
+      "Item Name": item.itemName,
+      "Unit Name": item.unitName,
+      "Standard Price": item.standardPrice,
+      "Item Code": item.itemCode,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Items");
+
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const fileData = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(fileData, "Item_List.xlsx");
+  } catch (error) {
+    console.error("Error exporting to Excel:", error);
+  }
+};
+
+
   return (
     <Container maxWidth="lg">
       <Typography variant="h4" align="center" gutterBottom>
@@ -106,6 +154,13 @@ const ItemSearchPage = () => {
         variant="outlined"
         sx={{ mb: 3 }}
       />
+<Button
+  variant="outlined"
+  onClick={handleExportToExcel}
+  sx={{ mb: 2 }}
+>
+  Export to Excel
+</Button>
 
       {loading ? (
         <CircularProgress />
