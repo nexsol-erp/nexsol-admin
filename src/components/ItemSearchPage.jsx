@@ -122,9 +122,17 @@ const handleExportToExcel = async () => {
     const worksheetData = itemsToExport.map((item) => ({
       "Item Name": item.itemName,
       "Unit Name": item.unitName,
-      "Standard Price": item.standardPrice,
+      "Unit ID": item.unitId,
       "Item Code": item.itemCode,
+      "Item ID": item.itemId,
+      "HSN Code": item.hsnCode,
+      "Barcode": item.barcode,
+      "Standard Price": item.standardPrice,
+      "Purchase Rate": item.purchaseRate,
+      "Tax Rate": item.taxRate,
+      "Cess Rate": item.cessRate,
     }));
+    
 
     const worksheet = XLSX.utils.json_to_sheet(worksheetData);
     const workbook = XLSX.utils.book_new();
@@ -167,53 +175,54 @@ const handleExportToExcel = async () => {
       ) : (
         <TableContainer component={Paper}>
           <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell
-                  onClick={() => handleSort("itemName")}
-                  style={{ cursor: "pointer" }}
-                >
-                  Item Name {sortField === "itemName" && (sortOrder === "asc" ? "↑" : "↓")}
-                </TableCell>
-                <TableCell
-                  onClick={() => handleSort("unitName")}
-                  style={{ cursor: "pointer" }}
-                >
-                  Unit Name {sortField === "unitName" && (sortOrder === "asc" ? "↑" : "↓")}
-                </TableCell>
-                <TableCell
-                  onClick={() => handleSort("standardPrice")}
-                  style={{ cursor: "pointer" }}
-                >
-                  Standard Price {sortField === "standardPrice" && (sortOrder === "asc" ? "↑" : "↓")}
-                </TableCell>
-                <TableCell>Item Code</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {items.length > 0 ? (
-                items.map((item) => (
-                  <Tooltip key={item.id} title="Click to link category" arrow>
-                    <TableRow
-                      hover
-                      style={{ cursor: "pointer" }}
-                      onClick={() => handleItemSelect(item)}
-                    >
-                      <TableCell>{item.itemName}</TableCell>
-                      <TableCell>{item.unitName}</TableCell>
-                      <TableCell>{item.standardPrice}</TableCell>
-                      <TableCell>{item.itemCode}</TableCell>
-                    </TableRow>
-                  </Tooltip>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} align="center">
-                    No items found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
+          <TableHead>
+  <TableRow>
+    <TableCell onClick={() => handleSort("itemName")}>Item Name</TableCell>
+    <TableCell>Unit Name</TableCell>
+    <TableCell>Unit ID</TableCell>
+    <TableCell>Item Code</TableCell>
+    <TableCell>Item ID</TableCell>
+    <TableCell>HSN Code</TableCell>
+    <TableCell>Barcode</TableCell>
+    <TableCell>Standard Price</TableCell>
+    <TableCell>Purchase Rate</TableCell>
+    <TableCell>Tax Rate</TableCell>
+    <TableCell>Cess Rate</TableCell>
+  </TableRow>
+</TableHead>
+
+<TableBody>
+  {items.length > 0 ? (
+    items.map((item) => (
+      <Tooltip key={item.id} title="Click to link category" arrow>
+        <TableRow
+          hover
+          style={{ cursor: "pointer" }}
+          onClick={() => handleItemSelect(item)}
+        >
+          <TableCell>{item.itemName}</TableCell>
+          <TableCell>{item.unitName}</TableCell>
+          <TableCell>{item.unitId}</TableCell>
+          <TableCell>{item.itemCode}</TableCell>
+          <TableCell>{item.itemId}</TableCell>
+          <TableCell>{item.hsnCode}</TableCell>
+          <TableCell>{item.barcode}</TableCell>
+          <TableCell>{item.standardPrice}</TableCell>
+          <TableCell>{item.purchaseRate}</TableCell>
+          <TableCell>{item.taxRate}</TableCell>
+          <TableCell>{item.cessRate}</TableCell>
+        </TableRow>
+      </Tooltip>
+    ))
+  ) : (
+    <TableRow>
+      <TableCell colSpan={11} align="center">
+        No items found.
+      </TableCell>
+    </TableRow>
+  )}
+</TableBody>
+
           </Table>
         </TableContainer>
       )}
