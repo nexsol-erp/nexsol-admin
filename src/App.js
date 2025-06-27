@@ -57,6 +57,7 @@ import ManageAccountHeads from "./components/ManageAccountHeads";
 import StatementOfAccount from "./components/StatementOfAccount";
 import BranchRequestList from "./components/BranchRequestList";
 import ReprocessVoucherForm from "./components/ReprocessVoucherForm"
+import BranchStockReport from "./components/BranchStockReport"
 
 
 import "./i18n"; // i18n config
@@ -128,6 +129,8 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/statement-of-account" element={<StatementOfAccount />} />
             <Route path="/branch-request-list" element={<BranchRequestList />} />
             <Route path="/reprocess-voucher-form" element={<ReprocessVoucherForm />} />
+            <Route path="/branch-stock-report" element={<BranchStockReport />} />
+            
             
           </Routes>
         </WebSocketProvider>
