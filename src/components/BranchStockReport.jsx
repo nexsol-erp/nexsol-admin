@@ -107,7 +107,7 @@ useEffect(() => {
   getOptionLabel={(option) =>
     typeof option === 'string'
       ? option
-      : `${option.branchName} (${option.branchCode})`
+      : `(${option.branchCode})${option.branchName} `
   }
   value={branchList.find((b) => b.branchCode === selectedBranch) || null}
   onChange={(event, newValue) => {
