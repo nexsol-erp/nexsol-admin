@@ -59,6 +59,8 @@ useEffect(() => {
   };
 
   const deleteRow = async (itemId) => {
+    const confirmed = window.confirm("Are you sure you want to delete stock of this item?");
+    if (!confirmed) return;
     const tenancyId = localStorage.getItem("tenancyId");
     const jwtToken = localStorage.getItem("jwtToken");
 
@@ -74,6 +76,10 @@ useEffect(() => {
   };
 
   const clearStock = async () => {
+
+    const confirmed = window.confirm("Are you sure you want delete all stock for this branch?");
+    if (!confirmed) return;
+
     const tenancyId = localStorage.getItem("tenancyId");
     const jwtToken = localStorage.getItem("jwtToken");
 
