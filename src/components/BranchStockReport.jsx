@@ -102,21 +102,27 @@ useEffect(() => {
       <Typography variant="h4" gutterBottom>Branch Stock Report</Typography>
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 2 }}>
-        <Autocomplete
-          options={branchList}
-          getOptionLabel={(option) => typeof option === 'string' ? option : option.branchName || option.branchCode}
-          value={selectedBranch}
-          onInputChange={(event, newInputValue) => setSelectedBranch(newInputValue)}
-          freeSolo
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label="Select Branch"
-              variant="outlined"
-              sx={{ width: '30ch' }}
-            />
-          )}
-        />
+      <Autocomplete
+  options={branchList}
+  getOptionLabel={(option) =>
+    typeof option === 'string'
+      ? option
+      : `${option.branchName} (${option.branchCode})`
+  }
+  value={branchList.find((b) => b.branchCode === selectedBranch) || null}
+  onChange={(event, newValue) => {
+    setSelectedBranch(newValue?.branchCode || '');
+  }}
+  renderInput={(params) => (
+    <TextField
+      {...params}
+      label="Select Branch"
+      variant="outlined"
+      sx={{ width: '30ch' }}
+    />
+  )}
+/>
+
         <Button
           variant="contained"
           color="primary"
