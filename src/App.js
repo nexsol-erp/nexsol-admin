@@ -44,7 +44,7 @@ import ItemSalesReport from "./components/ItemSalesReport";
 import DocumentList from "./components/DocumentList";
 import HSNWisePurchaseReport from "./components/HSNWisePurchaseReport";
 import StockReport from "./components/StockReport";
-import POS from "./components/POS";
+import POSEntry from "./components/POSEntry";
 import ItemSearchPage from "./components/ItemSearchPage";
 import MainLayout from "./components/MainLayout";
 import ItemCategoryMapping from "./components/ItemCategoryMapping"
@@ -117,7 +117,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/documents-list" element={<DocumentList />} />
             <Route path="/hsnwise-purchase-report" element={<HSNWisePurchaseReport />} />
             <Route path="/item-stock-report" element={<StockReport />} />
-            <Route path="/pos" element={<POS />} />
+            <Route path="/pos" element={<POSEntry />} />
             <Route path="/itemsearch" element={<ItemSearchPage />} />
             <Route path="/main" element={<MainLayout mode={mode} setMode={setMode} roles={roles} />} />
             <Route path="/item-category-linking" element={<ItemCategoryMapping />} />

@@ -191,7 +191,7 @@ const StockMovementReport = () => {
               <TableRow key={index}>
                 <TableCell>{row.itemName}</TableCell>
                 <TableCell align="right">{row.openingStock}</TableCell>
-                <TableCell align="right">{row.closingStock}</TableCell>
+                <TableCell align="right">{row.closingStock?.toFixed(3)}</TableCell>
                 <TableCell>
                   {row.transactions.length > 0 ? (
                     <Table size="small" sx={{ width: "100%" }}>
@@ -220,7 +220,7 @@ const StockMovementReport = () => {
                               {transaction.outwardQty}
                             </TableCell>
                             <TableCell align="right">
-                              {transaction.closingQty}
+                              {transaction.closingQty?.toFixed(3)}
                             </TableCell>
                           </TableRow>
                         ))}

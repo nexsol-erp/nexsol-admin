@@ -141,7 +141,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("POS"),
       icon: <Home sx={{ color: "#ffe3a3" }} />,
       link: "/pos",
-      roles: ["admin1","user1"],
+      roles: ["admin","user"],
     },
     {
       label: t("Sales Entry"),
@@ -242,7 +242,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
         {
           label: t("Item Creation"),
           link: "/createitemmaster",
-          roles: ["admin","user","cgn"],
+          roles: ["admin","user"],
         },
         {
           label: t("Manage AccountHeads"),
