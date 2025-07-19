@@ -1,230 +1,150 @@
 import React, { useState, useEffect } from "react";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-import InvoiceGenerator from "./InvoiceGenerator";
 import {
-  Box,
-  Button,
-  TextField,
-  Typography,
-  Paper,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  IconButton,
-} from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
-import DeleteIcon from "@mui/icons-material/Delete";
-import { useWebSocket } from "./WebSocketContext";
-import { getItems, saveSalesTransaction } from "../services/apiservice";
-import { useTranslation } from "react-i18next"; // Import useTranslation hook
+  Form, Input, Button, Select, Table, Typography, Space, InputNumber, message,
+} from "antd";
+import { DeleteOutlined } from "@ant-design/icons";
+import { getItems } from "../services/apiservice";
+import InvoiceGenerator from "./InvoiceGenerator";
+import { useTranslation } from "react-i18next";
+
+const { Title } = Typography;
 
 const SalesEntryForm = () => {
-  const { t } = useTranslation(); // Initialize translation hook
-
-  const [savedSalesEntry, setSavedSalesEntry] = useState(null);
-  const [showInvoice, setShowInvoice] = useState(false);
-
-  const { data } = useWebSocket();
-  const [customer, setCustomer] = useState("");
+  const { t } = useTranslation();
+  const [form] = Form.useForm();
   const [customers, setCustomers] = useState([]);
-  const [customerAddress, setCustomerAddress] = useState("");
-  const [customerGST, setCustomerGST] = useState("");
-  const [salesDetails, setItems] = useState([]);
-  const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [itemList, setItemList] = useState([]);
-  const [filteredItemList, setFilteredItemList] = useState([]);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [itemName, setItemName] = useState("");
-  const [barcode, setBarcode] = useState("");
-  const [standardPrice, setStandardPrice] = useState("");
-  const [taxRate, setTaxRate] = useState("");
-  const [qty, setQuantity] = useState("");
-  const [amount, setTotalAmount] = useState("");
-  const [newCustomerDialogOpen, setNewCustomerDialogOpen] = useState(false);
-  const [newCustomerName, setNewCustomerName] = useState("");
-  const [newCustomerAddress, setNewCustomerAddress] = useState("");
-  const [newCustomerGST, setNewCustomerGST] = useState("");
+  const [filteredItems, setFilteredItems] = useState([]);
+  const [salesDetails, setSalesDetails] = useState([]);
+  const [savedSalesEntry, setSavedSalesEntry] = useState(null);
 
   useEffect(() => {
     fetchItems();
+    fetchCustomers();
   }, []);
 
   const fetchItems = async () => {
     try {
       const response = await getItems();
       setItemList(response.data);
-      setFilteredItemList(response.data);
-    } catch (error) {
-      console.error("Error fetching salesDetails:", error);
+      setFilteredItems(response.data);
+    } catch (err) {
+      message.error("Error fetching items");
     }
   };
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const token = localStorage.getItem("jwtToken");
-        const tenancyId = localStorage.getItem("tenancyId");
-        const response = await fetch(`/api/${tenancyId}/customers`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        if (!response.ok) {
-          throw new Error("Failed to fetch customers");
-        }
-        const data = await response.json();
-        setCustomers(data);
-      } catch (error) {
-        console.error("Error fetching customers:", error);
-      }
-    };
+  const fetchCustomers = async () => {
+    try {
+      const token = localStorage.getItem("jwtToken");
+      const tenancyId = localStorage.getItem("tenancyId");
+      const response = await fetch(`/api/${tenancyId}/customers`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      setCustomers(data);
+    } catch {
+      message.error("Error fetching customers");
+    }
+  };
 
-    fetchCustomers();
-  }, []);
+  const handleCustomerChange = (value) => {
+    const cust = customers.find(c => c.name === value);
+    form.setFieldsValue({
+      customer: value,
+      customerAddress: cust?.address || "",
+      customerGST: cust?.gst || "",
+    });
+  };
 
-  const handleCustomerChange = (event) => {
-    const selectedCustomer = customers.find(
-      (cust) => cust.name === event.target.value
+  const handleItemSearch = (val) => {
+    const filtered = itemList.filter(item =>
+      item.itemName.toLowerCase().includes(val.toLowerCase())
     );
-    setCustomer(event.target.value);
-    setCustomerAddress(selectedCustomer?.address || "");
-    setCustomerGST(selectedCustomer?.gst || "");
+    setFilteredItems(filtered);
+  };
+
+  const handleItemSelect = (itemName) => {
+    const item = itemList.find(i => i.itemName === itemName);
+    if (item) {
+      form.setFieldsValue({
+        barcode: item.barcode,
+        standardPrice: item.standardPrice,
+        taxRate: item.taxRate,
+        quantity: 1,
+        amount: item.standardPrice,
+      });
+    }
+  };
+
+  const handleBarcodeEnter = (e) => {
+    if (e.key === "Enter") {
+      const found = itemList.find(i => i.barcode === e.target.value);
+      if (found) {
+        form.setFieldsValue({
+          itemName: found.itemName,
+          barcode: found.barcode,
+          standardPrice: found.standardPrice,
+          taxRate: found.taxRate,
+          quantity: 1,
+          amount: found.standardPrice,
+        });
+      } else {
+        message.warning("Item not found");
+      }
+    }
+  };
+
+  const handleQuantityChange = (qty) => {
+    const price = form.getFieldValue("standardPrice") || 0;
+    const amount = (qty * price).toFixed(2);
+    form.setFieldsValue({ amount });
   };
 
   const handleAddItem = () => {
+    const values = form.getFieldsValue([
+      "itemName", "barcode", "standardPrice", "taxRate", "quantity", "amount",
+    ]);
+
+    if (!values.itemName || !values.quantity || !values.standardPrice) {
+      return message.warning("Please fill all item details");
+    }
+
     const newItem = {
-      itemName,
-      barcode,
-      standardPrice: parseFloat(standardPrice) || 0,
-      taxRate: parseFloat(taxRate) || 0,
-      qty: parseFloat(qty) || 0,
-      amount: parseFloat(amount) || 0,
+      itemName: values.itemName,
+      barcode: values.barcode,
+      standardPrice: parseFloat(values.standardPrice),
+      taxRate: parseFloat(values.taxRate),
+      qty: parseFloat(values.quantity),
+      amount: parseFloat(values.amount),
     };
 
-    setItems([...salesDetails, newItem]);
-    setItemDialogOpen(false);
-    setItemName("");
-    setBarcode("");
-    setStandardPrice("");
-    setTaxRate("");
-    setQuantity("");
-    setTotalAmount("");
-  };
-
-  const calculateTotalAmount = (price, qty) => {
-    const parsedPrice = parseFloat(price) || 0;
-    const parsedQty = parseFloat(qty) || 0;
-    return (parsedPrice * parsedQty).toFixed(2);
-  };
-
-  const handleQuantityChange = (value) => {
-    setQuantity(value);
-    setTotalAmount(calculateTotalAmount(standardPrice, value));
+    setSalesDetails([...salesDetails, newItem]);
+    form.resetFields(["itemName", "barcode", "standardPrice", "taxRate", "quantity", "amount"]);
   };
 
   const handleDeleteItem = (index) => {
-    setItems(salesDetails.filter((_, i) => i !== index));
+    const updated = salesDetails.filter((_, i) => i !== index);
+    setSalesDetails(updated);
   };
 
-  const calculateGrandTotal = () =>
-    salesDetails.reduce((total, item) => total + item.amount, 0).toFixed(2);
-
-  const handleItemSearch = (value) => {
-    setItemName(value);
-    const filteredItems = itemList.filter((item) =>
-      item.itemName.toLowerCase().includes(value.toLowerCase())
-    );
-    setFilteredItemList(filteredItems);
-  };
-
-  const handleNewCustomerSubmit = async () => {
-    const newCustomer = {
-      name: newCustomerName,
-      address: newCustomerAddress,
-      gst: newCustomerGST,
-    };
-
-    const tenancyId = localStorage.getItem("tenancyId");
-    const token = localStorage.getItem("jwtToken");
+  const handleSave = async (values) => {
     try {
-      const response = await fetch(`/api/${tenancyId}/customers`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+      const salesEntry = {
+        customer: {
+          name: values.customer,
+          address: values.customerAddress,
+          gst: values.customerGST,
         },
-        body: JSON.stringify(newCustomer),
-      });
+        branch_code: localStorage.getItem("branchCode") || "WEB",
+        voucher_date: new Date().toISOString(),
+        salesDetails,
+      };
 
-      if (response.ok) {
-        setCustomers([...customers, newCustomer]);
-        setNewCustomerDialogOpen(false);
-        setNewCustomerName("");
-        setNewCustomerAddress("");
-        setNewCustomerGST("");
-      } else {
-        alert("Failed to create new customer");
-      }
-    } catch (error) {
-      console.error("Error creating new customer:", error);
-      alert("An error occurred while creating new customer.");
-    }
-  };
+      const tenancyId = localStorage.getItem("tenancyId");
+      const token = localStorage.getItem("jwtToken");
 
-  const handleItemSelect = (item) => {
-    setSelectedItem(item);
-    setItemName(item.itemName);
-    setBarcode(item.barcode);
-    setStandardPrice(item.standardPrice);
-    setTaxRate(item.taxRate);
-    setTotalAmount(calculateTotalAmount(item.standardPrice, qty));
-  };
-
-  const handleBarcodeKeyPress = (event) => {
-    if (event.key === "Enter") {
-      const fetchedItem = itemList.find((item) => item.barcode === barcode);
-      if (fetchedItem) {
-        handleItemSelect(fetchedItem);
-      } else {
-        alert("Item not found");
-      }
-    }
-  };
-
-  const handleSave = async () => {
-    let branchCode = localStorage.getItem("branchCode");
-    if (!branchCode) {
-      branchCode = "WEB"; // Set default branch code to 'WEB'
-      localStorage.setItem("branchCode", branchCode); // Save it to local storage
-    }
-    const salesEntry = {
-      customer: {
-        name: customer,
-        address: customerAddress,
-        gst: customerGST,
-      },
-      branch_code: branchCode,
-      voucher_date: new Date().toISOString(),
-      salesDetails,
-    };
-
-    const tenancyId = localStorage.getItem("tenancyId");
-    const token = localStorage.getItem("jwtToken");
-    try {
       const response = await fetch(`/api/${tenancyId}/sales`, {
         method: "POST",
         headers: {
@@ -235,256 +155,135 @@ const SalesEntryForm = () => {
       });
 
       if (response.ok) {
-        alert(t("salesEntrySuccess"));
-
-        const responseData = await response.json();
-        const salesEntryWithInvoice = {
-          ...salesEntry,
-          invoiceNumber: responseData.invoiceNumber,
-          invoiceDate: responseData.invoiceDate,
-          items: responseData.items,
-        };
-
-        setSavedSalesEntry(salesEntryWithInvoice); // Save the entry data
-        setShowInvoice(true); // Show InvoiceGenerator after saving
-
-        setCustomer("");
-        setCustomerAddress("");
-        setCustomerGST("");
-        setItems([]);
+        const result = await response.json();
+        const invoice = { ...salesEntry, ...result };
+        setSavedSalesEntry(invoice);
+        form.resetFields();
+        setSalesDetails([]);
+        message.success(t("salesEntrySuccess"));
       } else {
-        alert(t("salesEntryFailure"));
+        message.error(t("salesEntryFailure"));
       }
-    } catch (error) {
-      console.error("Error saving sales entry:", error);
-      alert(t("salesEntryError"));
+    } catch (err) {
+      console.error(err);
+      message.error(t("salesEntryError"));
     }
   };
 
-  const handleCloseInvoice = () => {
-    setShowInvoice(false); // Close the popup
-  };
+  const columns = [
+    { title: t("itemName"), dataIndex: "itemName" },
+    { title: t("barcode"), dataIndex: "barcode" },
+    { title: t("standardPrice"), dataIndex: "standardPrice" },
+    { title: t("taxRate"), dataIndex: "taxRate" },
+    { title: t("quantity"), dataIndex: "qty" },
+    { title: t("totalAmount"), dataIndex: "amount" },
+    {
+      title: t("actions"),
+      render: (_, __, index) => (
+        <Button icon={<DeleteOutlined />} danger onClick={() => handleDeleteItem(index)} />
+      ),
+    },
+  ];
 
   return (
-    <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
-      <Paper elevation={3} sx={{ padding: 4, maxWidth: 800 }}>
-        <Typography variant="h4" gutterBottom>
-          {t("salesEntry")}
-        </Typography>
-        <FormControl fullWidth margin="normal">
-          <InputLabel>{t("customer")}</InputLabel>
-          <Select value={customer} onChange={handleCustomerChange}>
+    <div style={{ padding: 24, maxWidth: 900, margin: "auto" }}>
+      <Title level={3}>{t("salesEntry")}</Title>
+
+      <Form layout="vertical" form={form} onFinish={handleSave}>
+        <Form.Item name="customer" label={t("customer")} rules={[{ required: true }]}> 
+          <Select onChange={handleCustomerChange} showSearch>
             {customers.map((cust) => (
-              <MenuItem key={cust.id} value={cust.name}>
+              <Select.Option key={cust.id} value={cust.name}>
                 {cust.name}
-              </MenuItem>
+              </Select.Option>
             ))}
           </Select>
-        </FormControl>
-        <TextField
-          label={t("customerAddress")}
-          fullWidth
-          margin="normal"
-          value={customerAddress}
-          disabled
+        </Form.Item>
+
+        <Form.Item name="customerAddress" label={t("customerAddress")}>
+          <Input.TextArea autoSize readOnly />
+        </Form.Item>
+
+        <Form.Item name="customerGST" label={t("customerGST")}>
+          <Input readOnly />
+        </Form.Item>
+
+        <Title level={5}>{t("addItem")}</Title>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          <Input
+            placeholder={t("barcode")}
+            onKeyDown={handleBarcodeEnter}
+            style={{ width: 120 }}
+            value={form.getFieldValue("barcode")}
+            onChange={e => form.setFieldsValue({ barcode: e.target.value })}
+          />
+          <Select
+            placeholder={t("itemName")}
+            showSearch
+            style={{ width: 160 }}
+            onSearch={handleItemSearch}
+            onSelect={handleItemSelect}
+            filterOption={false}
+            value={form.getFieldValue("itemName")}
+            onChange={val => form.setFieldsValue({ itemName: val })}
+          >
+            {filteredItems.map((item) => (
+              <Select.Option key={item.item_id} value={item.itemName}>
+                {item.itemName}
+              </Select.Option>
+            ))}
+          </Select>
+          <InputNumber
+            placeholder={t("standardPrice")}
+            disabled
+            style={{ width: 100 }}
+            value={form.getFieldValue("standardPrice")}
+          />
+          <InputNumber
+            placeholder={t("taxRate")}
+            disabled
+            style={{ width: 80 }}
+            value={form.getFieldValue("taxRate")}
+          />
+          <InputNumber
+            placeholder={t("quantity")}
+            min={1}
+            style={{ width: 80 }}
+            value={form.getFieldValue("quantity")}
+            onChange={handleQuantityChange}
+          />
+          <Input
+            placeholder={t("totalAmount")}
+            disabled
+            style={{ width: 100 }}
+            value={form.getFieldValue("amount")}
+          />
+          <Button type="primary" onClick={handleAddItem}>
+            {t("addItem")}
+          </Button>
+        </div>
+
+        <Table
+          style={{ marginTop: 20 }}
+          columns={columns}
+          dataSource={salesDetails}
+          pagination={false}
+          rowKey={(_, index) => index}
+          footer={() => (
+            <div style={{ textAlign: "right", fontWeight: "bold" }}>
+              {t("grandTotal")}: ₹{salesDetails.reduce((sum, i) => sum + (i.amount || 0), 0).toFixed(2)}
+            </div>
+          )}
         />
-        <TextField
-          label={t("customerGST")}
-          fullWidth
-          margin="normal"
-          value={customerGST}
-          disabled
-        />
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => setNewCustomerDialogOpen(true)}
-          sx={{ mb: 3 }}
-        >
-          {t("createCustomer")}
-        </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => setItemDialogOpen(true)}
-          sx={{ mb: 3 }}
-        >
-          {t("addItem")}
-        </Button>
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>{t("itemName")}</TableCell>
-                <TableCell>{t("barcode")}</TableCell>
-                <TableCell>{t("standardPrice")}</TableCell>
-                <TableCell>{t("taxRate")}</TableCell>
-                <TableCell>{t("quantity")}</TableCell>
-                <TableCell>{t("totalAmount")}</TableCell>
-                <TableCell>{t("actions")}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {salesDetails.map((item, index) => (
-                <TableRow key={index}>
-                  <TableCell>{item.itemName}</TableCell>
-                  <TableCell>{item.barcode}</TableCell>
-                  <TableCell>{item.standardPrice.toFixed(2)}</TableCell>
-                  <TableCell>{item.taxRate}</TableCell>
-                  <TableCell>{item.qty}</TableCell>
-                  <TableCell>{(item.amount || 0).toFixed(2)}</TableCell>
-                  <TableCell>
-                    <IconButton
-                      onClick={() => handleDeleteItem(index)}
-                      color="secondary"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-              <TableRow>
-                <TableCell colSpan={5} sx={{ fontWeight: "bold" }}>
-                  {t("grandTotal")}
-                </TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>
-                  {calculateGrandTotal()}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </TableContainer>
-        {/* Box for Save and Print Invoice Buttons */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", mt: 3 }}>
-          <Button variant="contained" color="primary" onClick={handleSave}>
+
+        <Space style={{ marginTop: 24 }}>
+          <Button type="primary" htmlType="submit">
             {t("save")}
           </Button>
           {savedSalesEntry && <InvoiceGenerator salesEntry={savedSalesEntry} />}
-        </Box>
-      </Paper>
-
-      <Dialog open={itemDialogOpen} onClose={() => setItemDialogOpen(false)}>
-        <DialogTitle>{t("addItem")}</DialogTitle>
-        <DialogContent>
-          <TextField
-            label={t("barcode")}
-            fullWidth
-            margin="normal"
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            onKeyPress={handleBarcodeKeyPress}
-          />
-          <FormControl fullWidth margin="normal">
-            <InputLabel>{t("itemName")}</InputLabel>
-            <TextField
-              value={itemName}
-              onChange={(e) => handleItemSearch(e.target.value)}
-              InputProps={{
-                endAdornment: (
-                  <IconButton onClick={() => setItemDialogOpen(true)}>
-                    <SearchIcon />
-                  </IconButton>
-                ),
-              }}
-            />
-            <Select
-              value={selectedItem?.itemName || ""}
-              onChange={(e) =>
-                handleItemSelect(
-                  filteredItemList.find(
-                    (item) => item.itemName === e.target.value
-                  )
-                )
-              }
-            >
-              {filteredItemList.map((item) => (
-                <MenuItem key={item.item_id} value={item.itemName}>
-                  {item.itemName}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            label={t("standardPrice")}
-            fullWidth
-            margin="normal"
-            value={standardPrice}
-            disabled
-          />
-          <TextField
-            label={t("taxRate")}
-            fullWidth
-            margin="normal"
-            value={taxRate}
-            disabled
-          />
-          <TextField
-            label={t("quantity")}
-            type="number"
-            fullWidth
-            margin="normal"
-            value={qty}
-            onChange={(e) => handleQuantityChange(e.target.value)}
-          />
-          <TextField
-            label={t("totalAmount")}
-            fullWidth
-            margin="normal"
-            value={amount}
-            disabled
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setItemDialogOpen(false)} color="primary">
-            {t("cancel")}
-          </Button>
-          <Button onClick={handleAddItem} color="primary">
-            {t("addItem")}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={newCustomerDialogOpen}
-        onClose={() => setNewCustomerDialogOpen(false)}
-      >
-        <DialogTitle>{t("createCustomer")}</DialogTitle>
-        <DialogContent>
-          <TextField
-            label={t("customerName")}
-            fullWidth
-            margin="normal"
-            value={newCustomerName}
-            onChange={(e) => setNewCustomerName(e.target.value)}
-          />
-          <TextField
-            label={t("customerAddress")}
-            fullWidth
-            margin="normal"
-            value={newCustomerAddress}
-            onChange={(e) => setNewCustomerAddress(e.target.value)}
-          />
-          <TextField
-            label={t("customerGST")}
-            fullWidth
-            margin="normal"
-            value={newCustomerGST}
-            onChange={(e) => setNewCustomerGST(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setNewCustomerDialogOpen(false)}
-            color="primary"
-          >
-            {t("cancel")}
-          </Button>
-          <Button onClick={handleNewCustomerSubmit} color="primary">
-            {t("createCustomer")}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+        </Space>
+      </Form>
+    </div>
   );
 };
 
