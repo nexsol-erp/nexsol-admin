@@ -124,7 +124,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       roles: ["admin","user","manager"],
     },
     {
-      label: t("Message Request"),
+      label: t("Admin Page"),
       icon: <Home sx={{ color: "#ffe3a3" }} />,
       link: "/branch-request-list",
       roles: ["admin"],
