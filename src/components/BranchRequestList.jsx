@@ -233,7 +233,7 @@ useEffect(() => {
 <Stack direction="row" spacing={2} alignItems="center" mb={2}>
   <Autocomplete
     options={branches}
-    getOptionLabel={(option) => option.branchName || option.branchCode}
+    getOptionLabel={(option) => option.branchCode}
     value={selectedKafkaBranch}
     onChange={(e, newValue) => setSelectedKafkaBranch(newValue)}
     sx={{ width: 300 }}
