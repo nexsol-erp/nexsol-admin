@@ -169,7 +169,7 @@ useEffect(() => {
       <Stack direction="row" spacing={2} alignItems="center" mb={3}>
         <Autocomplete
           options={branches}
-          getOptionLabel={(option) => option.branchName || option.branchCode}
+          getOptionLabel={(option) =>  option.branchCode}
           value={selectedBranch}
           onChange={(e, newValue) => setSelectedBranch(newValue)}
           sx={{ width: 300 }}
