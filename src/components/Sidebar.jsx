@@ -349,6 +349,11 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
           link: "/documents-list",
           roles: ["user","admin"],
         },
+        {
+          label: t("Branch Stock Diff Report"),
+          link: "/branch-stock-diff-report",
+          roles: ["admin"],
+        },
         
 
       ],
