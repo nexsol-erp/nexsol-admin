@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
 import {
   TextField,
   Container,
@@ -13,32 +12,24 @@ import {
   Paper,
   TablePagination,
   CircularProgress,
-  Tooltip,
   Button,
 } from "@mui/material";
-
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 const ItemSearchPage = () => {
-  const navigate = useNavigate();
-
-  const handleItemSelect = useCallback((item) => {
-    navigate("/item-category-linking", { state: { selectedItem: item } });
-  }, [navigate]);
-
   const [searchQuery, setSearchQuery] = useState("");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-
   const [totalItems, setTotalItems] = useState(0);
   const [sortOrder, setSortOrder] = useState("asc");
   const [sortField, setSortField] = useState("itemName");
 
   useEffect(() => {
     fetchItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, page, rowsPerPage, sortOrder, sortField]);
 
   const fetchItems = async () => {
@@ -47,27 +38,25 @@ const ItemSearchPage = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `/api/${tenancyId}/items-search?query=${searchQuery}&page=${page}&size=${rowsPerPage}&sort=${sortField},${sortOrder}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const res = await fetch(
+        `/api/${tenancyId}/items-search?query=${encodeURIComponent(
+          searchQuery
+        )}&page=${page}&size=${rowsPerPage}&sort=${sortField},${sortOrder}`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (!response.ok) {
-        console.error("Error: ", response.statusText);
+      if (!res.ok) {
+        console.error("Error: ", res.statusText);
         setItems([]);
         setTotalItems(0);
         return;
       }
 
-      const data = await response.json();
+      const data = await res.json();
       setItems(data.content || []);
       setTotalItems(data.totalElements || 0);
-    } catch (error) {
-      console.error("Error fetching items:", error);
+    } catch (err) {
+      console.error("Error fetching items:", err);
       setItems([]);
       setTotalItems(0);
     } finally {
@@ -80,12 +69,10 @@ const ItemSearchPage = () => {
     setPage(0);
   };
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
+  const handleChangePage = (_e, newPage) => setPage(newPage);
 
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
+  const handleChangeRowsPerPage = (e) => {
+    setRowsPerPage(parseInt(e.target.value, 10));
     setPage(0);
   };
 
@@ -95,57 +82,48 @@ const ItemSearchPage = () => {
     setSortField(field);
   };
 
+  const handleExportToExcel = async () => {
+    const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
 
-
-const handleExportToExcel = async () => {
-  const tenancyId = localStorage.getItem("tenancyId");
-  const token = localStorage.getItem("jwtToken");
-
-  try {
-    const response = await fetch(
-      `/api/${tenancyId}/items-search?query=${searchQuery}&page=0&size=10000&sort=${sortField},${sortOrder}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    try {
+      const res = await fetch(
+        `/api/${tenancyId}/items-search?query=${encodeURIComponent(
+          searchQuery
+        )}&page=0&size=10000&sort=${sortField},${sortOrder}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) {
+        console.error("Failed to fetch items for Excel export");
+        return;
       }
-    );
+      const data = await res.json();
+      const itemsToExport = data.content || [];
 
-    if (!response.ok) {
-      console.error("Failed to fetch items for Excel export");
-      return;
+      const worksheetData = itemsToExport.map((item) => ({
+        "Item Name": item.itemName,
+        "Unit Name": item.unitName,
+        "Unit ID": item.unitId,
+        "Item Code": item.itemCode,
+        "Item ID": item.itemId,
+        "HSN Code": item.hsnCode,
+        Barcode: item.barcode,
+        "Standard Price": item.standardPrice,
+        "Purchase Rate": item.purchaseRate,
+        "Tax Rate": item.taxRate,
+        "Cess Rate": item.cessRate,
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(worksheetData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Items");
+      const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const fileData = new Blob([buf], { type: "application/octet-stream" });
+      saveAs(fileData, "Item_List.xlsx");
+    } catch (err) {
+      console.error("Error exporting to Excel:", err);
     }
-
-    const data = await response.json();
-    const itemsToExport = data.content || [];
-
-    const worksheetData = itemsToExport.map((item) => ({
-      "Item Name": item.itemName,
-      "Unit Name": item.unitName,
-      "Unit ID": item.unitId,
-      "Item Code": item.itemCode,
-      "Item ID": item.itemId,
-      "HSN Code": item.hsnCode,
-      "Barcode": item.barcode,
-      "Standard Price": item.standardPrice,
-      "Purchase Rate": item.purchaseRate,
-      "Tax Rate": item.taxRate,
-      "Cess Rate": item.cessRate,
-    }));
-    
-
-    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Items");
-
-    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-    const fileData = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(fileData, "Item_List.xlsx");
-  } catch (error) {
-    console.error("Error exporting to Excel:", error);
-  }
-};
-
+  };
 
   return (
     <Container maxWidth="lg">
@@ -162,67 +140,59 @@ const handleExportToExcel = async () => {
         variant="outlined"
         sx={{ mb: 3 }}
       />
-<Button
-  variant="outlined"
-  onClick={handleExportToExcel}
-  sx={{ mb: 2 }}
->
-  Export to Excel
-</Button>
+
+      <Button variant="outlined" onClick={handleExportToExcel} sx={{ mb: 2 }}>
+        Export to Excel
+      </Button>
 
       {loading ? (
         <CircularProgress />
       ) : (
         <TableContainer component={Paper}>
           <Table>
-          <TableHead>
-  <TableRow>
-    <TableCell onClick={() => handleSort("itemName")}>Item Name</TableCell>
-    <TableCell>Unit Name</TableCell>
-    <TableCell>Unit ID</TableCell>
-    <TableCell>Item Code</TableCell>
-    <TableCell>Item ID</TableCell>
-    <TableCell>HSN Code</TableCell>
-    <TableCell>Barcode</TableCell>
-    <TableCell>Standard Price</TableCell>
-    <TableCell>Purchase Rate</TableCell>
-    <TableCell>Tax Rate</TableCell>
-    <TableCell>Cess Rate</TableCell>
-  </TableRow>
-</TableHead>
+            <TableHead>
+              <TableRow>
+                <TableCell onClick={() => handleSort("itemName")} sx={{ cursor: "pointer" }}>
+                  Item Name
+                </TableCell>
+                <TableCell>Unit Name</TableCell>
+                <TableCell>Unit ID</TableCell>
+                <TableCell>Item Code</TableCell>
+                <TableCell>Item ID</TableCell>
+                <TableCell>HSN Code</TableCell>
+                <TableCell>Barcode</TableCell>
+                <TableCell>Standard Price</TableCell>
+                <TableCell>Purchase Rate</TableCell>
+                <TableCell>Tax Rate</TableCell>
+                <TableCell>Cess Rate</TableCell>
+              </TableRow>
+            </TableHead>
 
-<TableBody>
-  {items.length > 0 ? (
-    items.map((item) => (
-      <Tooltip key={item.id} title="Click to link category" arrow>
-        <TableRow
-          hover
-          style={{ cursor: "pointer" }}
-          onClick={() => handleItemSelect(item)}
-        >
-          <TableCell>{item.itemName}</TableCell>
-          <TableCell>{item.unitName}</TableCell>
-          <TableCell>{item.unitId}</TableCell>
-          <TableCell>{item.itemCode}</TableCell>
-          <TableCell>{item.itemId}</TableCell>
-          <TableCell>{item.hsnCode}</TableCell>
-          <TableCell>{item.barcode}</TableCell>
-          <TableCell>{item.standardPrice}</TableCell>
-          <TableCell>{item.purchaseRate}</TableCell>
-          <TableCell>{item.taxRate}</TableCell>
-          <TableCell>{item.cessRate}</TableCell>
-        </TableRow>
-      </Tooltip>
-    ))
-  ) : (
-    <TableRow>
-      <TableCell colSpan={11} align="center">
-        No items found.
-      </TableCell>
-    </TableRow>
-  )}
-</TableBody>
-
+            <TableBody>
+              {items.length > 0 ? (
+                items.map((item, idx) => (
+                  <TableRow hover key={item.itemId || item.id || idx}>
+                    <TableCell>{item.itemName}</TableCell>
+                    <TableCell>{item.unitName}</TableCell>
+                    <TableCell>{item.unitId}</TableCell>
+                    <TableCell>{item.itemCode}</TableCell>
+                    <TableCell>{item.itemId}</TableCell>
+                    <TableCell>{item.hsnCode}</TableCell>
+                    <TableCell>{item.barcode}</TableCell>
+                    <TableCell>{item.standardPrice}</TableCell>
+                    <TableCell>{item.purchaseRate}</TableCell>
+                    <TableCell>{item.taxRate}</TableCell>
+                    <TableCell>{item.cessRate}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={11} align="center">
+                    No items found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
           </Table>
         </TableContainer>
       )}
@@ -231,7 +201,7 @@ const handleExportToExcel = async () => {
         component="div"
         count={totalItems}
         page={page}
-        onPageChange={handleChangePage}
+        onPageChange={(_e, np) => setPage(np)}
         rowsPerPage={rowsPerPage}
         onRowsPerPageChange={handleChangeRowsPerPage}
       />

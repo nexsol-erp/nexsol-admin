@@ -59,6 +59,7 @@ import BranchRequestList from "./components/BranchRequestList";
 import ReprocessVoucherForm from "./components/ReprocessVoucherForm"
 import BranchStockReport from "./components/BranchStockReport"
 import BranchStockDiffReport  from "./components/BranchStockDiffReport";
+import ItemCategoryLinker from "./components/ItemCategoryLinker";
 
 
 import "./i18n"; // i18n config
@@ -132,6 +133,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/reprocess-voucher-form" element={<ReprocessVoucherForm />} />
             <Route path="/branch-stock-report" element={<BranchStockReport />} />
             <Route path="/branch-stock-diff-report" element={<BranchStockDiffReport />} />
+                    <Route path="/item-category-linker" element={<ItemCategoryLinker />} />
             
 
             
