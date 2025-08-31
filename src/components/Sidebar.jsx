@@ -275,6 +275,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
           link: "/categorynamemaster",
           roles: ["admin","user"],
         },
+        
         {
           label: t("Supplier Creation"),
           link: "/suppliercreation",
