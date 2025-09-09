@@ -6,7 +6,8 @@ import Keypad from "./Keypad";
 import Checkout from "./Checkout";
 import "./POS.css"; // Optional styling
 import SearchAndAddItem from "./SearchAndAddItem"; 
-import { Box, Typography, Grid } from '@mui/material'; // Ensure Grid is imported here
+import { Table, Input, Button, Form, Modal, Select, Spin, Typography, message } from 'antd';
+
 
 const POS = () => {
   const [cart, setCart] = useState([]);

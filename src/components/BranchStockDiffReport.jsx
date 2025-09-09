@@ -111,6 +111,26 @@ const BranchStockDiffReport = () => {
     }
   };
 
+    const handleRefresh = async () => {
+    setLoading(true);
+    setError(null);
+    const tenancyId = localStorage.getItem("tenancyId");
+    const jwtToken = localStorage.getItem("jwtToken");
+
+    try {
+      const res = await axios.get(`/api/${tenancyId}/inventory/refresh-branch-diff`, {
+        headers: { Authorization: `Bearer ${jwtToken}` },
+        params: { branchCode: selectedBranch },
+      });
+      setDiffData(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to fetch branch diff.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Apply filter: only rows with diff !== 0
   const displayData = onlyNonZero
     ? diffData.filter((r) => Math.abs(computeDiff(r).diff) > EPS)
@@ -155,6 +175,15 @@ const BranchStockDiffReport = () => {
           )}
         />
 
+   <Button
+          variant="contained"
+          color="secondary"
+          onClick={handleRefresh}
+          disabled={loading || !selectedBranch.trim()}
+        >
+          Refresh
+        </Button>
+
         <Button
           variant="contained"
           color="primary"
@@ -182,6 +211,8 @@ const BranchStockDiffReport = () => {
         >
           Export to Excel
         </Button>
+
+       
       </Box>
 
       {error && (
