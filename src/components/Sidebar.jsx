@@ -281,6 +281,17 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
           link: "/suppliercreation",
           roles: ["admin","user","cgn"],
         },
+            {
+          label: t("Tax Update Manager"),
+          link: "/tax-update-manager",
+          roles: ["admin","user"],
+        },
+          {
+          label: t("Tax Update Preview"),
+          link: "/tax-update-preview",
+          roles: ["admin","user"],
+        },
+        
       ],
     },
     {

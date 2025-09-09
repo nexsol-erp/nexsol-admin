@@ -90,6 +90,7 @@ const POSEntry = () => {
   const [syncing, setSyncing] = useState(false);
 
   const barcodeInputRef = useRef();
+  const qtyRef = useRef(null);
   const printTriggerRef = useRef();
   const printContentRef = useRef();
 
@@ -134,11 +135,21 @@ const POSEntry = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    barcodeInputRef.current?.focus(); // one-time initial focus only
+  }, []);
+
   /* ------------- Barcode focus (scanner friendly) ------------- */
   useEffect(() => {
-    const focus = () => barcodeInputRef.current?.focus();
-    focus();
-    const onKey = () => focus();
+    const onKey = (e) => {
+      const el = e.target;
+      const tag = (el.tagName || "").toLowerCase();
+      const isEditable =
+        el.isContentEditable || tag === "input" || tag === "textarea" || tag === "select";
+      if (isEditable) return; // let the user type normally
+      barcodeInputRef.current?.focus(); // otherwise keep scanner focus
+    };
+
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
@@ -192,7 +203,7 @@ const POSEntry = () => {
       qty: 1,
     });
     setSearchOpen(false);
-    setTimeout(() => document.getElementById("qty-input")?.focus(), 0);
+    setTimeout(() => qtyRef.current?.focus?.(), 0);
   };
 
   const itemOptions = useMemo(() => {
@@ -235,7 +246,7 @@ const POSEntry = () => {
       qty: 1,
     });
     setBarcode("");
-    setTimeout(() => document.getElementById("qty-input")?.focus(), 0);
+    setTimeout(() => qtyRef.current?.focus?.(), 0);
   };
 
   /* ------------- Add / Remove items ------------- */
@@ -314,7 +325,14 @@ const POSEntry = () => {
           boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
         }}
       >
-        <Form layout="vertical" form={form} onFinish={handleFinish}>
+        <Form
+          layout="vertical"
+          form={form}
+          onFinish={handleFinish}
+          initialValues={{
+            voucherDate: new Date().toISOString().slice(0, 10), // default today
+          }}
+        >
           <div
             style={{
               display: "flex",
@@ -338,12 +356,8 @@ const POSEntry = () => {
 
           <Row gutter={12}>
             <Col span={8}>
-              <Form.Item
-                name="customer"
-                label="Customer"
-                rules={[{ required: true }]}
-              >
-                <Input placeholder="Customer name" />
+              <Form.Item name="customer" label="Customer">
+                <Input placeholder="Customer name (optional)" />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -356,11 +370,7 @@ const POSEntry = () => {
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item
-                name="voucherNo"
-                label="Voucher No"
-                rules={[{ required: true }]}
-              >
+              <Form.Item name="voucherNo" label="Voucher No">
                 <Input placeholder="Auto or manual" />
               </Form.Item>
             </Col>
@@ -386,89 +396,92 @@ const POSEntry = () => {
             aria-hidden
           />
 
-          <Divider>Item Entry</Divider>
-          <Row gutter={12} align="middle">
-            <Col span={10}>
-              {/* Local-cache backed autocomplete */}
-              <AutoComplete
-                id="item-search"
-                style={{ width: "100%" }}
-                placeholder="Search item (F2 for popup)"
-                value={selectedItem.itemName}
-                options={itemOptions}
-                onSearch={(txt) =>
-                  setSelectedItem((s) => ({ ...s, itemName: txt }))
-                }
-                onSelect={(_, opt) =>
-                  setSelectedItem((s) => ({
-                    ...s,
-                    itemName: opt.data?.name ?? opt.label,
-                    rate: opt.data?.rate ?? s.rate,
-                    id: opt.data?.id ?? null,
-                  }))
-                }
-                filterOption={false}
-              >
-                <Input onPressEnter={handleAddItem} />
-              </AutoComplete>
-            </Col>
-            <Col span={4}>
-              <InputNumber
-                id="qty-input"
-                placeholder="Qty"
-                value={selectedItem.qty}
-                min={1}
-                style={{ width: "100%" }}
-                onChange={(qty) => setSelectedItem((s) => ({ ...s, qty }))}
-                onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
-              />
-            </Col>
-            <Col span={4}>
-              <InputNumber
-                placeholder="Rate"
-                value={selectedItem.rate}
-                min={0}
-                style={{ width: "100%" }}
-                onChange={(rate) => setSelectedItem((s) => ({ ...s, rate }))}
-                onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
-              />
-            </Col>
-            <Col span={6} style={{ display: "flex", gap: 8 }}>
-              <Button type="primary" onClick={handleAddItem} style={{ flex: 1 }}>
-                Add (Enter)
-              </Button>
-              {/* Optional: allow adding a quick item into local cache */}
-              <Button
-                onClick={() => {
-                  const name = (selectedItem.itemName || "").trim();
-                  const rate = Number(selectedItem.rate) || 0;
-                  if (!name) return message.error("Enter item name to add to cache");
-                  const newItem = {
-                    id: crypto.randomUUID(),
-                    name,
-                    barcode: "",
-                    rate,
-                  };
-                  const next = [newItem, ...(cache || [])];
-                  setCache(next);
-                  saveCache(next);
-                  message.success("Item added to local cache");
-                }}
-              >
-                + Cache
-              </Button>
-            </Col>
-          </Row>
+          <div style={{ maxHeight: "calc(100vh - 420px)", overflowY: "auto" }}>
+            <Divider>Item Entry</Divider>
+            <Row gutter={12} align="middle">
+              <Col span={10}>
+                {/* Local-cache backed autocomplete */}
+                <AutoComplete
+                  id="item-search"
+                  style={{ width: "100%" }}
+                  placeholder="Search item (F2 for popup)"
+                  value={selectedItem.itemName}
+                  options={itemOptions}
+                  onSearch={(txt) =>
+                    setSelectedItem((s) => ({ ...s, itemName: txt }))
+                  }
+                  onSelect={(_, opt) => {
+                    setSelectedItem((s) => ({
+                      ...s,
+                      itemName: opt.data?.name ?? opt.label,
+                      rate: opt.data?.rate ?? s.rate,
+                      id: opt.data?.id ?? null,
+                    }));
+                    setTimeout(() => qtyRef.current?.focus?.(), 0);
+                  }}
+                  filterOption={false}
+                >
+                  <Input onPressEnter={handleAddItem} />
+                </AutoComplete>
+              </Col>
+              <Col span={4}>
+                <InputNumber
+                  ref={qtyRef}
+                  placeholder="Qty"
+                  value={selectedItem.qty}
+                  min={1}
+                  style={{ width: "100%" }}
+                  onChange={(qty) => setSelectedItem((s) => ({ ...s, qty }))}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
+                />
+              </Col>
+              <Col span={4}>
+                <InputNumber
+                  placeholder="Rate"
+                  value={selectedItem.rate}
+                  min={0}
+                  style={{ width: "100%" }}
+                  onChange={(rate) => setSelectedItem((s) => ({ ...s, rate }))}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
+                />
+              </Col>
+              <Col span={6} style={{ display: "flex", gap: 8 }}>
+                <Button type="primary" onClick={handleAddItem} style={{ flex: 1 }}>
+                  Add (Enter)
+                </Button>
+                {/* Optional: allow adding a quick item into local cache */}
+                <Button
+                  onClick={() => {
+                    const name = (selectedItem.itemName || "").trim();
+                    const rate = Number(selectedItem.rate) || 0;
+                    if (!name) return message.error("Enter item name to add to cache");
+                    const newItem = {
+                      id: (crypto?.randomUUID && crypto.randomUUID()) || String(Date.now()),
+                      name,
+                      barcode: "",
+                      rate,
+                    };
+                    const next = [newItem, ...(cache || [])];
+                    setCache(next);
+                    saveCache(next);
+                    message.success("Item added to local cache");
+                  }}
+                >
+                  + Cache
+                </Button>
+              </Col>
+            </Row>
 
-          <Table
-            style={{ marginTop: 16 }}
-            columns={columns}
-            dataSource={items}
-            pagination={false}
-            bordered
-            size="small"
-            rowKey="key"
-          />
+            <Table
+              style={{ marginTop: 16 }}
+              columns={columns}
+              dataSource={items}
+              pagination={false}
+              bordered
+              size="small"
+              rowKey="key"
+            />
+          </div>
 
           <Divider>Summary</Divider>
           <Row gutter={12}>
@@ -483,7 +496,15 @@ const POSEntry = () => {
                 label="Amount Tendered"
                 rules={[{ required: true }]}
               >
-                <InputNumber min={0} style={{ width: "100%" }} />
+                <InputNumber
+                  min={0}
+                  precision={2}
+                  style={{ width: "100%" }}
+                  formatter={(v) =>
+                    `₹ ${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                  }
+                  parser={(v) => (v || "").replace(/[₹\s,]*/g, "")}
+                />
               </Form.Item>
             </Col>
             <Col span={6}>
