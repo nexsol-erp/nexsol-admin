@@ -336,7 +336,14 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
           link: "/sales-report-all-branch",
           roles: ["admin", "user", "manager"],
         },
+         {
+          label: t("All Branch Categorywise Sales Report"),
+          link: "/sales-category-wise-report-all-branch",
+          roles: ["admin", "user", "manager"],
+        },
         
+        
+
         {
           label: t("Item Stock Report"),
           link: "/item-stock-report",
