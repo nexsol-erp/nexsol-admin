@@ -51,7 +51,7 @@ const StockReport = () => {
   };
 
   // Calculate total stock
-  const totalStock = reportData.reduce((sum, row) => sum + parseFloat(row.totalStock), 0).toFixed(2);
+  const totalQty = reportData.reduce((sum, row) => sum + parseFloat(row.totalQty), 0).toFixed(2);
 
   const handleExportToExcel = () => {
     const worksheet = XLSX.utils.json_to_sheet(reportData);
@@ -121,13 +121,13 @@ const StockReport = () => {
                 <TableRow key={index}>
                   <TableCell>{row.branchCode}</TableCell>
                   <TableCell>{row.itemName}</TableCell>
-                  <TableCell align="right">{parseFloat(row.totalStock).toFixed(2)}</TableCell>
+                  <TableCell align="right">{parseFloat(row.totalQty).toFixed(2)}</TableCell>
                 </TableRow>
               ))}
               {/* Summary Row for Total Stock */}
               <TableRow>
                 <TableCell colSpan={2} sx={{ fontWeight: 'bold' }}>Total Stock</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 'bold' }}>{totalStock}</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold' }}>{totalQty}</TableCell>
               </TableRow>
             </TableBody>
           </Table>

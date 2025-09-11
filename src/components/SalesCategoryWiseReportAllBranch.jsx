@@ -117,7 +117,7 @@ const SalesCategoryWiseReportAllBranch = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Item Name</TableCell>
+              <TableCell>Category Name</TableCell>
               <TableCell align="right">Amount</TableCell>
               {branchColumns.map((branch) => (
                 <TableCell key={branch} align="right">{branch}</TableCell>
