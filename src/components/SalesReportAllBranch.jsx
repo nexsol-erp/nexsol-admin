@@ -38,14 +38,10 @@ const SalesReportAllBranch = () => {
 
       const response = await fetch(
         `/api/${tenancyId}/reports/sales-report/pivot?${queryParams}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await response.json();
-      setSalesData(data);
+      setSalesData(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching sales report:", error);
     }
@@ -63,11 +59,15 @@ const SalesReportAllBranch = () => {
     setOpen(false);
   };
 
-  const branchColumns = salesData.length > 0
-    ? Object.keys(salesData[0])
-        .filter((key) => key !== "itemName" && key !== "standardPrice")
-        .sort((a, b) => a.localeCompare(b))
-    : [];
+  // Exclude non-branch columns (now also excluding "category")
+  const branchColumns =
+    salesData.length > 0
+      ? Object.keys(salesData[0])
+          .filter(
+            (key) => key !== "itemName" && key !== "category" && key !== "standardPrice"
+          )
+          .sort((a, b) => a.localeCompare(b))
+      : [];
 
   return (
     <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
@@ -118,26 +118,35 @@ const SalesReportAllBranch = () => {
           <TableHead>
             <TableRow>
               <TableCell>Item Name</TableCell>
+              <TableCell>Category</TableCell>
               <TableCell align="right">Standard Price</TableCell>
               {branchColumns.map((branch) => (
-                <TableCell key={branch} align="right">{branch}</TableCell>
+                <TableCell key={branch} align="right">
+                  {branch}
+                </TableCell>
               ))}
               <TableCell align="right">Total Sales</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {salesData.map((row, index) => {
-              const total = branchColumns.reduce((sum, branch) => sum + (parseFloat(row[branch]) || 0), 0);
+              const total = branchColumns.reduce(
+                (sum, branch) => sum + (parseFloat(row[branch]) || 0),
+                0
+              );
               return (
                 <TableRow key={index}>
                   <TableCell>{row.itemName}</TableCell>
-                  <TableCell align="right">{row.standardPrice?.toFixed(2)}</TableCell>
+                  <TableCell>{row.category ?? "-"}</TableCell>
+                  <TableCell align="right">
+                    {Number(row.standardPrice ?? 0).toFixed(2)}
+                  </TableCell>
                   {branchColumns.map((branch) => (
                     <TableCell key={branch} align="right">
-                      {row[branch] !== undefined ? row[branch].toFixed(2) : "0.00"}
+                      {Number(row[branch] ?? 0).toFixed(2)}
                     </TableCell>
                   ))}
-                  <TableCell align="right">{total.toFixed(2)}</TableCell>
+                  <TableCell align="right">{Number(total).toFixed(2)}</TableCell>
                 </TableRow>
               );
             })}
