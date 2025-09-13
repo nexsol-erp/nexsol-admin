@@ -18,6 +18,13 @@ import {
   TableRow,
   TextField,
   Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -27,7 +34,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 /**
- * Shows server-side preview (item_mst ⨝ item_tax_updates) and exports to Excel.
+ * Shows server-side preview (item_mst ⨝ item_tax_updates) and exports/applies to server.
  * Displays both current and proposed rates for the selected effective date.
  */
 const TaxUpdatePreview = () => {
@@ -35,7 +42,7 @@ const TaxUpdatePreview = () => {
 
   // Filters
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [taxFilterEnabled, setTaxFilterEnabled] = useState(false);
+  const [taxFilterEnabled] = useState(false); // kept for payload compatibility
   const [taxFilterValue, setTaxFilterValue] = useState("");
   const [search, setSearch] = useState("");
   const [limit, setLimit] = useState(200);
@@ -46,6 +53,11 @@ const TaxUpdatePreview = () => {
   const [error, setError] = useState(null);
   const [preview, setPreview] = useState(null); // { count, limited, items: [...] }
 
+  // Apply flow
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [toast, setToast] = useState({ open: false, msg: "", sev: "success" });
+
   const tenancyId = localStorage.getItem("tenancyId");
   const jwtToken = localStorage.getItem("jwtToken");
 
@@ -55,6 +67,7 @@ const TaxUpdatePreview = () => {
 
   const CATEGORIES_ENDPOINT = `/api/${tenancyId}/categoriesNames`;
   const PREVIEW_ENDPOINT = `/api/${tenancyId}/tax-updates/preview`;
+  const APPLY_ENDPOINT = `/api/${tenancyId}/tax-updates/apply`;
 
   const nnum = (v) => (v == null || v === "" ? 0 : Number(v));
 
@@ -135,8 +148,79 @@ const TaxUpdatePreview = () => {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Tax Preview");
     const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
     const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(blob, `Tax_Preview_${eff}${categoryFilter ? `_${categoryFilter}` : ""}.xlsx`);
+    const fname = `Tax_Preview_${eff}${categoryFilter ? `_${categoryFilter}` : ""}.xlsx`;
+    saveAs(blob, fname);
   };
+
+  // Build apply payload from preview
+  const buildApplyPayload = () => {
+    const eff = effectiveDate ? dayjs(effectiveDate).format("YYYY-MM-DD") : null;
+    if (!preview || !Array.isArray(preview.items) || preview.items.length === 0 || !eff) {
+      return null;
+    }
+    // Only include items that actually have any proposed change
+    const items = preview.items
+      .map((r) => ({
+        itemId: r.itemId ?? r.id,
+        proposedTaxRate: r.proposedTaxRate,
+        proposedCessRate: r.proposedCessRate,
+      }))
+      .filter(
+        (x) =>
+          x.itemId != null &&
+          (x.proposedTaxRate != null || x.proposedCessRate != null)
+      );
+
+    return {
+      effectiveDate: eff,
+      items,
+      // Optional: include filters for auditing at server side
+      meta: {
+        category: categoryFilter || null,
+        search: search || null,
+        limit: Number(limit) || 200,
+      },
+    };
+  };
+
+  const handleApply = async () => {
+    const payload = buildApplyPayload();
+    if (!payload || payload.items.length === 0) {
+      setToast({
+        open: true,
+        msg: "Nothing to apply. No proposed changes found.",
+        sev: "error",
+      });
+      setConfirmOpen(false);
+      return;
+    }
+    try {
+      setApplying(true);
+      const res = await api.post(APPLY_ENDPOINT, payload);
+      setToast({
+        open: true,
+        msg:
+          (res && res.data && res.data.message) ||
+          `Applied ${payload.items.length} change(s) for ${payload.effectiveDate}.`,
+        sev: "success",
+      });
+      // Optional: refresh the preview after apply
+      await loadPreview();
+    } catch (e) {
+      console.error(e);
+      const msg =
+        (e && e.response && e.response.data && e.response.data.message) ||
+        e?.message ||
+        "Failed to apply tax updates.";
+      setToast({ open: true, msg, sev: "error" });
+    } finally {
+      setApplying(false);
+      setConfirmOpen(false);
+    }
+  };
+
+  const applyDisabled =
+    !preview || !Array.isArray(preview.items) || preview.items.length === 0 || loading;
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -210,6 +294,15 @@ const TaxUpdatePreview = () => {
           >
             Export to Excel
           </Button>
+
+          <Button
+            color="success"
+            variant="contained"
+            onClick={() => setConfirmOpen(true)}
+            disabled={applyDisabled || applying}
+          >
+            {applying ? <CircularProgress size={20} /> : "Apply Changes"}
+          </Button>
         </Stack>
 
         {error && (
@@ -247,7 +340,7 @@ const TaxUpdatePreview = () => {
                     const pid = r.itemId ?? r.id ?? "";
                     const cats = r.categories ?? r.category ?? r.categoryName ?? "-";
                     return (
-                      <TableRow key={pid}>
+                      <TableRow key={pid || Math.random()}>
                         <TableCell>{pid}</TableCell>
                         <TableCell>{r.itemName}</TableCell>
                         <TableCell>{cats}</TableCell>
@@ -278,12 +371,49 @@ const TaxUpdatePreview = () => {
           {preview && (
             <Box sx={{ p: 1.5 }}>
               <Typography variant="body2" color="text.secondary">
-                Total matches: <strong>{preview.count ?? preview.items?.length ?? 0}</strong>
+                Total matches: <strong>{preview.count ?? (preview.items?.length ?? 0)}</strong>
                 {preview.limited ? " (showing first batch)" : ""}.
               </Typography>
             </Box>
           )}
         </Paper>
+
+        {/* Confirm Apply Dialog */}
+        <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} fullWidth maxWidth="sm">
+          <DialogTitle>Apply Tax/Cess Changes</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              This will apply the proposed tax/cess rates for{" "}
+              <strong>{effectiveDate ? dayjs(effectiveDate).format("YYYY-MM-DD") : "-"}</strong>.
+              Only rows with proposed values will be sent. Do you want to proceed?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setConfirmOpen(false)} disabled={applying}>
+              Cancel
+            </Button>
+            <Button onClick={handleApply} color="success" variant="contained" disabled={applying}>
+              {applying ? <CircularProgress size={20} /> : "Yes, Apply"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Toast */}
+        <Snackbar
+          open={toast.open}
+          autoHideDuration={4000}
+          onClose={() => setToast((t) => ({ ...t, open: false }))}
+          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        >
+          <Alert
+            onClose={() => setToast((t) => ({ ...t, open: false }))}
+            severity={toast.sev}
+            variant="filled"
+            sx={{ width: "100%" }}
+          >
+            {toast.msg}
+          </Alert>
+        </Snackbar>
       </Box>
     </LocalizationProvider>
   );
