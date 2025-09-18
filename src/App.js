@@ -64,6 +64,8 @@ import TaxUpdateManager from "./components/TaxUpdateManager";
 import TaxUpdatePreview from "./components/TaxUpdatePreview";
 
 import SalesCategoryWiseReportAllBranch from "./components/SalesCategoryWiseReportAllBranch";
+import BpmnEditor from "./components/BpmnEditor";
+
 
 
 import "./i18n"; // i18n config
@@ -141,6 +143,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
                           <Route path="/tax-update-manager" element={<TaxUpdateManager />} />
   <Route path="/tax-update-preview" element={<TaxUpdatePreview />} />
    <Route path="/sales-category-wise-report-all-branch" element={<SalesCategoryWiseReportAllBranch />} />
+ <Route path="/bpmn-editorr" element={<BpmnEditor />} />
 
             
 

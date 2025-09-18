@@ -11,3 +11,12 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+/* Reduce connection thickness on hover */
+.bjs-container .djs-connection-hover path {
+  stroke-width: 2 !important;  /* lower than the default 4 */
+}
+
+/* Reduce the outline thickness when hovering over shapes */
+.bjs-container .djs-element-hover .djs-outline {
+  stroke-width: 2 !important;  /* adjust to your preference */
+}
