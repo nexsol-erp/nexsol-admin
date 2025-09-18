@@ -347,7 +347,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
         {
           label: t("Item Stock Report"),
           link: "/item-stock-report",
-          roles: ["admin", "user", "manager"],
+          roles: ["admin", "user", "manager", "cgn"],
         },
         
         {
@@ -407,7 +407,8 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
     {
       label: t("Workflow Designer"),
       icon: <Settings sx={{ color: "#ffe3a3" }} />,
-      link: "/workflowdesign",
+      link: "/bpmn-editorr",
+ 
       roles: ["user", "admin", "manager"],
     },
 
