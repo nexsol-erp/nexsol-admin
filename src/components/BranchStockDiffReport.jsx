@@ -146,6 +146,9 @@ const BranchStockDiffReport = () => {
         "Server Qty": server,
         Difference: diff,
         Date: r.inventoryDate ?? "",
+        "Unit": r.unit ?? "",
+        "Hsn": r.hsn ?? "",
+        "Standard Price": r.mrp != null ? parseFloat(r.mrp) : 0,
       };
     });
     const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -231,6 +234,9 @@ const BranchStockDiffReport = () => {
                 <TableCell align="right">Snapshot Qty</TableCell>
                 <TableCell align="right">Server Qty</TableCell>
                 <TableCell align="right">Difference</TableCell>
+                <TableCell align="right">Unit</TableCell>
+                 <TableCell align="right">HSN</TableCell>
+                   <TableCell align="right">MRP</TableCell>
                 <TableCell align="center">Action</TableCell>
               </TableRow>
             </TableHead>
@@ -247,6 +253,9 @@ const BranchStockDiffReport = () => {
                     <TableCell align="right" sx={{ color, fontWeight: "bold" }}>
                       {diff.toFixed(2)}
                     </TableCell>
+                     <TableCell>{row.unit || ""}</TableCell>
+                      <TableCell>{row.hsn || ""}</TableCell>
+                       <TableCell>{row.mrp || ""}</TableCell>
                     <TableCell align="center">
                       <Button
                         variant="contained"
