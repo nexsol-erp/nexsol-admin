@@ -298,7 +298,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("Reports"),
       icon: <Assessment sx={{ color: "#ffe3a3" }} />,
       link: "",
-      roles: ["admin", "manager"],
+      roles: ["admin", "manager","cgn"],
       hasSubmenu: true,
       submenu: [
         {
@@ -324,7 +324,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
         {
           label: t("All Branch Stock Report"),
           link: "/stock-report-all-branch",
-          roles: ["admin", "user", "manager"],
+          roles: ["admin", "user", "manager","cgn"],
         },
         {
           label: t("Branch Stock Management"),
