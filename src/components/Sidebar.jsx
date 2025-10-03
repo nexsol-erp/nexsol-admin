@@ -298,7 +298,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("Reports"),
       icon: <Assessment sx={{ color: "#ffe3a3" }} />,
       link: "",
-      roles: ["admin", "manager","cgn"],
+      roles: ["admin", "manager","cgn","user"],
       hasSubmenu: true,
       submenu: [
         {
