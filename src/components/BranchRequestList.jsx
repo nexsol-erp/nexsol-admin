@@ -118,6 +118,34 @@ useEffect(() => {
     }
   };
 
+  const handleReject = async (id) => {
+    try {
+      const requestToApprove = requests.find(req => req.id === id);
+      const updatedRequest = {
+        ...requestToApprove,
+        approveStatus: 1,
+        forwardStatus: 1,
+      };
+
+      const response = await fetch(`/api/${tenancyId}/branch-requests`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedRequest),
+      });
+
+      if (response.ok) {
+        fetchNotForwarded();
+      } else {
+        console.error('Failed to approve');
+      }
+    } catch (error) {
+      console.error('Approval error:', error);
+    }
+  };
+
   const handleSendFetchMessage = async () => {
     if (!selectedBranch) {
       alert('Please select a branch');
@@ -211,6 +239,13 @@ useEffect(() => {
                     onClick={() => handleApprove(row.id)}
                   >
                     Approve
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => handleReject(row.id)}
+                  >
+                    Reject
                   </Button>
                 </TableCell>
               </TableRow>
