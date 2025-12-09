@@ -1,3 +1,4 @@
+// StockTransferOutReport.jsx
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -24,6 +25,7 @@ import dayjs from "dayjs";
 import "dayjs/locale/en";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import { useNavigate } from "react-router-dom";
 
 const StockTransferOutReport = () => {
   const [fromBranch, setFromBranch] = useState("ALL");
@@ -36,6 +38,8 @@ const StockTransferOutReport = () => {
   const [transferData, setTransferData] = useState([]);
   const [open, setOpen] = useState(false);
   const [fileName, setFileName] = useState("StockTransferOut.xlsx");
+
+  const navigate = useNavigate();
 
   const fetchBranches = async () => {
     try {
@@ -142,6 +146,14 @@ const StockTransferOutReport = () => {
       )
     : 0;
 
+  // 🔴 IMPORTANT:
+  // Replace `row.transId` with your actual header id field
+  // e.g. row.id, row.parentId, row.stockTransHdrId etc.
+  const handleRowClick = (row) => {
+    navigate(`/stock-transfer-out/invoice/${row.voucherNumber}`);
+  };
+
+  
   return (
     <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
       {/* From Branch & To Branch */}
@@ -265,7 +277,12 @@ const StockTransferOutReport = () => {
           </TableHead>
           <TableBody>
             {transferData.map((row, index) => (
-              <TableRow key={index}>
+              <TableRow
+                key={index}
+                hover
+                sx={{ cursor: "pointer" }}
+                onClick={() => handleRowClick(row)}
+              >
                 <TableCell>{row.voucherNumber}</TableCell>
                 <TableCell>{row.voucherDate}</TableCell>
                 <TableCell>{row.branchCode}</TableCell>

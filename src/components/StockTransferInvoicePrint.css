@@ -1,0 +1,183 @@
+.invoice-container {
+  padding: 16px;
+  background: #f5f5f5;
+}
+
+.toolbar {
+  margin-bottom: 12px;
+}
+
+.toolbar button {
+  padding: 8px 16px;
+  border: 1px solid #333;
+  background: white;
+  cursor: pointer;
+}
+
+.invoice-a4 {
+  background: white;
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 16mm 12mm;
+  box-sizing: border-box;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.25);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 12px;
+  color: #000;
+}
+
+.invoice-header {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #000;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.company-block h1 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+}
+
+.title-block h2 {
+  margin: 0;
+  font-size: 16px;
+  text-transform: uppercase;
+}
+
+.invoice-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.meta-column > div {
+  margin-bottom: 2px;
+}
+
+.party-blocks {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.party-card {
+  flex: 1;
+  border: 1px solid #000;
+  padding: 6px;
+}
+
+.party-card h3 {
+  margin: 0 0 4px 0;
+  font-size: 13px;
+  border-bottom: 1px solid #000;
+  padding-bottom: 2px;
+}
+
+.invoice-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.invoice-table th,
+.invoice-table td {
+  border: 1px solid #000;
+  padding: 2px 4px;
+}
+
+.invoice-table th {
+  text-align: center;
+  font-size: 11px;
+}
+
+.invoice-table td {
+  font-size: 11px;
+}
+
+.invoice-table tfoot td {
+  font-weight: bold;
+}
+
+.summary-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.summary-left {
+  flex: 2;
+}
+
+.summary-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.declaration {
+  margin-top: 4px;
+  border: 1px solid #000;
+  padding: 4px;
+}
+
+.declaration p {
+  margin: 2px 0 0 0;
+  font-size: 11px;
+}
+
+.totals-box {
+  border: 1px solid #000;
+  padding: 4px;
+}
+
+.totals-box > div {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2px;
+  font-size: 11px;
+}
+
+.totals-box .grand-total span:first-child {
+  font-weight: bold;
+}
+
+.sign-block {
+  margin-top: 16px;
+  text-align: right;
+  font-size: 11px;
+}
+
+.invoice-footer {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 10px;
+}
+
+@media print {
+  body {
+    margin: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .invoice-container {
+    padding: 0;
+    background: white;
+  }
+
+  .invoice-a4 {
+    box-shadow: none;
+    margin: 0;
+    width: auto;
+    min-height: auto;
+    padding: 10mm;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

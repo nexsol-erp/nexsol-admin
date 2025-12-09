@@ -66,7 +66,9 @@ import TaxUpdatePreview from "./components/TaxUpdatePreview";
 import SalesCategoryWiseReportAllBranch from "./components/SalesCategoryWiseReportAllBranch";
 import BpmnEditor from "./components/BpmnEditor";
 import StockTransferOutReport from "./components/StockTransferOutReport";
-
+import BranchAssignment from "./components/BranchAssignment";
+import StockTransferInvoicePrint from "./components/StockTransferInvoicePrint";
+import StockTransferOutInvoice from "./components/StockTransferOutInvoice";
 
 
 import "./i18n"; // i18n config
@@ -146,10 +148,14 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/sales-category-wise-report-all-branch" element={<SalesCategoryWiseReportAllBranch />} />
             <Route path="/bpmn-editorr" element={<BpmnEditor />} />
             <Route path="/stocktransfer-out-report" element={<StockTransferOutReport />} />
+ <Route path="/branchassingment" element={<BranchAssignment />} />
+ 
+ 
 
-
-
-
+<Route
+  path="/stock-transfer-out/invoice/:voucherNumber"
+  element={<StockTransferOutInvoice />}
+/>
 
 
 
