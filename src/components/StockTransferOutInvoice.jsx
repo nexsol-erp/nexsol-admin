@@ -20,6 +20,7 @@ const StockTransferOutInvoice = () => {
   console.log("[Invoice] Rendered with voucherNumber:", voucherNumber);
 
   const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [discountPercent, setDiscountPercent] = useState(""); // NEW
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -29,10 +30,20 @@ const StockTransferOutInvoice = () => {
 
   const handleGenerateInvoice = async () => {
     console.log("[Invoice] Generate clicked. invoiceNumber =", invoiceNumber);
+    console.log("[Invoice] Discount percent =", discountPercent);
 
     if (!invoiceNumber) {
       setError("Please enter an invoice number");
       console.warn("[Invoice] No invoice number entered");
+      return;
+    }
+
+    // Optional: basic validation for discount
+    const parsedDiscount =
+      discountPercent === "" ? 0 : Number(discountPercent);
+    if (Number.isNaN(parsedDiscount) || parsedDiscount < 0) {
+      setError("Please enter a valid discount percent (0 or above)");
+      console.warn("[Invoice] Invalid discount percent");
       return;
     }
 
@@ -43,7 +54,9 @@ const StockTransferOutInvoice = () => {
       const tenancyId = localStorage.getItem("tenancyId");
       const token = localStorage.getItem("jwtToken");
 
-      const url = `/api/${tenancyId}/stock-transfers/out/${voucherNumber}/convert-and-invoice`;
+      // NOTE: backend should be mapped as
+      // @PostMapping("/{voucherNumber}/{discountPercent}/convert-and-invoice")
+      const url = `/api/${tenancyId}/stock-transfers/out/${voucherNumber}/${parsedDiscount}/convert-and-invoice`;
       console.log("[Invoice] Calling backend:", url);
 
       const res = await fetch(url, {
@@ -287,6 +300,13 @@ const StockTransferOutInvoice = () => {
           size="small"
           value={invoiceNumber}
           onChange={(e) => setInvoiceNumber(e.target.value)}
+        />
+        <TextField
+          label="Discount %"
+          size="small"
+          value={discountPercent}
+          onChange={(e) => setDiscountPercent(e.target.value)}
+          helperText="Leave blank for 0%"
         />
         <Button
           variant="contained"
