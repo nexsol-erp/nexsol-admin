@@ -62,21 +62,21 @@ const UserCreationPage = () => {
         body: JSON.stringify(formData),
       });
   const data = await response.json();
-      const response2 = await fetch(`/api/${tenancyId}/createbranchusertenancy`, {
+      /*const response2 = await fetch(`/api/${tenancyId}/createbranchusertenancy`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
-      });
+      });*/
 
-      const data2 = await response2.json();
-      if (data.success && data2.success) {
+      //const data2 = await response2.json();
+      if (data.success) {
         alert("User created successfully!");
         // Optionally redirect or perform other actions after successful user creation
       } else {
-        alert(data.message || data2.message || "Failed to create user.");
+        alert(data.message || "Failed to create user.");
       }
     } catch (error) {
       console.error("Error:", error);
