@@ -392,7 +392,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
         {
           label: t("Item Stock Report"),
           link: "/item-stock-report",
-          roles: ["admin", "user", "manager", "cgn","franchiseeuser"],
+          roles: ["admin", "user", "manager", "cgn"],
         },
         
         {
