@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect ,useMemo } from "react";
 import {
   Box,
   List,
@@ -47,32 +47,72 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
   const [openMasters, setOpenMasters] = useState(false);
   const [openPurchase, setOpenPurchase] = useState(false);
   const [branches, setBranches] = useState([]);
+    const [branch, setBranch] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
   const navigate = useNavigate(); // Initialize navigate
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    // Fetch branches from the backend API
-    const fetchBranches = async () => {
+
+    const allowedBranches = useMemo(() => {
       try {
-        const token = localStorage.getItem("jwtToken");
-        const tenancyId = localStorage.getItem("tenancyId");
-        const response = await fetch(`/api/${tenancyId}/branches`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        const data = await response.json();
-        setBranches(data.branches);
-      } catch (error) {
-        console.error("Error fetching branches:", error);
+        const raw = localStorage.getItem("allowedBranches");
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list : [];
+      } catch {
+        return [];
       }
-    };
+    }, []);
+  const fetchBranches = async () => {
+    try {
+      setError("");
+      const tenancyId = localStorage.getItem("tenancyId");
+      const token = localStorage.getItem("jwtToken");
 
-    fetchBranches();
-  }, []);
+      const response = await fetch(`/api/${tenancyId}/branches`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
+      if (!response.ok) throw new Error("Failed to fetch branches");
+
+      const data = await response.json();
+
+      // Normalize: support {branches:[...]} or {data:[...]} or [...]
+      const list = Array.isArray(data) ? data : data.branches || data.data || [];
+
+      // ✅ Filter branches by allowedBranches list
+      const filtered = allowedBranches.length
+        ? list.filter((b) => allowedBranches.includes(b.branchCode))
+        : [];
+
+      setBranches(filtered);
+
+      // ✅ Auto-select if only one branch allowed
+      if (!branch && filtered.length === 1) {
+        setBranch(filtered[0].branchCode);
+      }
+
+      // ✅ If current selection is not allowed anymore, clear it
+      if (branch && !filtered.some((b) => b.branchCode === branch)) {
+        setBranch("");
+      }
+    } catch (e) {
+      console.error("Error fetching branches:", e);
+      setError("Failed to load branches.");
+      setBranches([]);
+      setBranch("");
+    }
+  };
+
+  
+    useEffect(() => {
+      fetchBranches();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+  
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
@@ -153,14 +193,14 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("HSN wise Sales"),
       icon: <Pages sx={{ color: "#ffe3a3" }} />,
       link: "/hsnsales",
-      roles: ["admin"],
+      roles: ["admin","franchiseeuser"],
     },
     
     {
       label: t("HSN wise Purchase"),
       icon: <Pages sx={{ color: "#ffe3a3" }} />,
       link: "/hsnwise-purchase-report",
-      roles: ["admin"],
+      roles: ["admin","franchiseeuser"],
     },
     {
       label: t("Purchase"),
@@ -231,13 +271,13 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("Masters"),
       icon: <Category sx={{ color: "#ffe3a3" }} />,
       link: "",
-      roles: ["admin","user","cgn"],
+      roles: ["admin","user","cgn","franchiseeuser"],
       hasSubmenu: true,
       submenu: [
         {
           label: t("Item Search"),
           link: "/itemsearch",
-          roles: ["admin","user","cgn"],
+          roles: ["admin","user","cgn","franchiseeuser"],
         },
         {
           label: t("Item Creation"),
@@ -291,6 +331,11 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
           link: "/tax-update-preview",
           roles: ["admin","user"],
         },
+         {
+          label: t("Branch Assignment"),
+          link: "/branchassingment",
+          roles: ["admin"],
+        },
         
       ],
     },
@@ -298,28 +343,28 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("Reports"),
       icon: <Assessment sx={{ color: "#ffe3a3" }} />,
       link: "",
-      roles: ["admin", "manager","cgn","user"],
+      roles: ["admin", "manager","cgn","user","franchiseeuser"],
       hasSubmenu: true,
       submenu: [
         {
           label: t("Sales  Re Print"),
           link: "/salessummaryreport",
-          roles: ["admin", "user", "manager"],
+          roles: ["admin", "user", "manager","franchiseeuser"],
         },
         {
           label: t("Sales Report"),
           link: "/sales",
-          roles: ["admin", "user", "manager"],
+          roles: ["admin", "user", "manager","franchiseeuser"],
         },
         {
           label: t("Purchase Report"),
           link: "/purchasereport",
-          roles: ["admin", "user", "manager"],
+          roles: ["admin", "user", "manager","franchiseeuser"],
         },
         {
           label: t("Stock Movement Report"),
           link: "/stockmovementreport",
-          roles: ["admin", "user", "manager"],
+          roles: ["admin", "user", "manager","franchiseeuser"],
         },
         {
           label: t("All Branch Stock Report"),
@@ -327,7 +372,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
           roles: ["admin", "user", "manager","cgn"],
         },
         {
-          label: t("Branch Stock Management"),
+          label: t("Branch Stock Management","franchiseeuser"),
           link: "/branch-stock-report",
           roles: ["admin"],
         },
@@ -347,7 +392,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
         {
           label: t("Item Stock Report"),
           link: "/item-stock-report",
-          roles: ["admin", "user", "manager", "cgn"],
+          roles: ["admin", "user", "manager", "cgn","franchiseeuser"],
         },
         
         {
@@ -364,12 +409,12 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
         {
           label: t("Stock Turnover Report"),
           link: "/stock-turnover",
-          roles: ["user","admin"],
+          roles: ["user","admin","franchiseeuser"],
         },
         {
           label: t("Item Sales Report"),
           link: "/item-sales",
-          roles: ["user","admin"],
+          roles: ["user","admin","franchiseeuser"],
         },
         {
           label: t("Documents List"),
@@ -388,11 +433,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
           roles: ["admin"],
         },
           
-        {
-          label: t("Branch Assignment"),
-          link: "/branchassingment",
-          roles: ["admin"],
-        },
+       
         
 
       ],
