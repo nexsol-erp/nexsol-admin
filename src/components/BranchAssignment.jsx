@@ -94,13 +94,11 @@ const BranchAssignmentPage = () => {
         const list =
           Array.isArray(data) ? data : data.users || data.data || [];
 
-        // Force id to string so Select value matches exactly
-        setUsers(
-          list.map((u) => ({
-            ...u,
-            id: String(u.id),
-          }))
-        );
+          const normalized = list
+  .filter((u) => u && u.username != null)     // ✅ drop users without id
+  .map((u) => ({ ...u, username: String(u.username) }));
+
+       setUsers(normalized);
       } catch (e) {
         console.error(e);
         setError("Failed to load users");
@@ -248,7 +246,7 @@ const BranchAssignmentPage = () => {
                 </MenuItem>
               ) : (
                 users.map((u) => (
-                  <MenuItem key={u.id} value={u.id}>
+                  <MenuItem key={u.username} value={u.username}>
                     {u.username}
                   </MenuItem>
                 ))
