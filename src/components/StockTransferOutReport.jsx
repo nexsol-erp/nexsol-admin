@@ -149,10 +149,14 @@ const StockTransferOutReport = () => {
   // 🔴 IMPORTANT:
   // Replace `row.transId` with your actual header id field
   // e.g. row.id, row.parentId, row.stockTransHdrId etc.
-  const handleRowClick = (row) => {
-    navigate(`/stock-transfer-out/invoice/${row.voucherNumber}`);
-  };
+const handleRowClick = (row) => {
+  const qs = new URLSearchParams({
+    fromBranch: row.branchCode,          // from branch
+    voucherDate: row.voucherDate,        // voucher date
+  }).toString();
 
+  navigate(`/stock-transfer-out/invoice/${row.voucherNumber}?${qs}`);
+};
   
   return (
     <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>

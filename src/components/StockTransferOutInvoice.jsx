@@ -13,13 +13,19 @@ import {
   Divider,
   TextField,
 } from "@mui/material";
-import { useParams } from "react-router-dom";
+import { useParams ,useSearchParams } from "react-router-dom";
 
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 const StockTransferOutInvoice = () => {
   const { voucherNumber } = useParams(); // stock transfer voucher from URL
+  
+const [searchParams] = useSearchParams();
+
+const fromBranch = searchParams.get("fromBranch") || "";
+const voucherDate = searchParams.get("voucherDate") || "";
+
   console.log("[Invoice] Rendered with voucherNumber:", voucherNumber);
 
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -98,9 +104,14 @@ const StockTransferOutInvoice = () => {
       const tenancyId = localStorage.getItem("tenancyId");
       const token = localStorage.getItem("jwtToken");
 
+      const params = new URLSearchParams({
+  fromBranch,
+  voucherDate,
+});
+
       // backend mapping:
       // @PostMapping("/{voucherNumber}/{discountPercent}/convert-and-invoice")
-      const url = `/api/${tenancyId}/stock-transfers/out/${voucherNumber}/${parsedDiscount}/convert-and-invoice`;
+      const url = `/api/${tenancyId}/stock-transfers/out/${voucherNumber}/${parsedDiscount}/convert-and-invoice?`+params.toString();
       console.log("[Invoice] Calling backend:", url);
 
       const res = await fetch(url, {
