@@ -285,6 +285,12 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
           roles: ["admin","user"],
         },
 
+            {
+          label: t("Price Edit Category Wise"),
+          link: "/category-price-edit",
+          roles: ["admin","user"],
+        },
+        
           {
           label: t("Category Link"),
           link: "/item-category-linker",
