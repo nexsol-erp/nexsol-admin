@@ -1,49 +1,86 @@
 import React, { forwardRef } from "react";
-import { Typography, Table } from "antd";
-import "./invoice.css"; // Custom CSS for 80mm
-
-const { Title, Text } = Typography;
+import "./invoice.css";
 
 const InvoicePrint = forwardRef(({ bill }, ref) => {
-  const columns = [
-    { title: "Item", dataIndex: "itemName", key: "itemName" },
-    { title: "Qty", dataIndex: "qty", key: "qty", width: 40 },
-    { title: "Rate", dataIndex: "rate", key: "rate", width: 60 },
-    { title: "Amount", dataIndex: "amount", key: "amount", width: 70 },
-  ];
+  if (!bill) return null;
 
   return (
     <div className="receipt-container" ref={ref}>
+      {/* Header */}
       <div className="receipt-header">
-        <img src="/logo.png" alt="Logo" className="receipt-logo" />
-        <Title level={5} style={{ marginBottom: 0 }}>My Store</Title>
-        <Text>123 Main Street</Text><br />
-        <Text>GSTIN: 1234567890</Text>
+        <h2 style={{ margin: 0, fontSize: '18px' }}>MY STORE</h2>
+        <div>123 Main Street, Market Area</div>
+        <div>New Delhi - 110001</div>
+        <div>Ph: +91-9876543210</div>
+        {bill.gstin && <div>GSTIN: {bill.gstin}</div>}
       </div>
 
+      <div className="receipt-divider" />
+
+      {/* Meta Data */}
       <div className="receipt-info">
-        <Text>Customer: {bill.customer}</Text><br />
-        <Text>Date: {bill.voucherDate}</Text><br />
-        <Text>Voucher #: {bill.voucherNo}</Text>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Bill No: {bill.voucherNumber || 'N/A'}</span>
+            <span>{bill.voucherDate}</span>
+        </div>
+        <div>Customer: <span className="uppercase">{bill.customer.name || 'Walk-In'}</span></div>
       </div>
 
-      <Table
-        dataSource={bill.items}
-        columns={columns}
-        pagination={false}
-        size="small"
-        bordered
-        className="receipt-table"
-      />
+      <div className="receipt-divider" />
 
-      <div className="receipt-summary">
-        <Text strong>Total: ₹{bill.totalAmount.toFixed(2)}</Text><br />
-        <Text>Tendered: ₹{bill.tendered}</Text><br />
-        <Text>Balance: ₹{(bill.tendered - bill.totalAmount).toFixed(2)}</Text>
+      {/* Items Table */}
+      <table className="receipt-table">
+        <thead>
+          <tr>
+            <th style={{ width: '45%' }}>ITEM</th>
+            <th className="text-right" style={{ width: '15%' }}>QTY</th>
+            <th className="text-right" style={{ width: '20%' }}>RATE</th>
+            <th className="text-right" style={{ width: '20%' }}>AMT</th>
+          </tr>
+        </thead>
+        <tbody>
+          {bill.salesDetails?.map((item, index) => (
+            <tr key={index}>
+              <td style={{ paddingRight: 5 }}>
+                {item.itemName}
+                {/* Optional: Print barcode or ID below name */}
+                {/* <div style={{fontSize: '9px', color: '#555'}}>{item.id}</div> */}
+              </td>
+              <td className="text-right">{item.qty}</td>
+              <td className="text-right">{Number(item.rate).toFixed(2)}</td>
+              <td className="text-right">{Number(item.amount).toFixed(2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="receipt-divider" />
+
+      {/* Totals */}
+      <div className="receipt-summary text-bold" style={{ fontSize: '14px' }}>
+        <span>TOTAL:</span>
+        <span>Rs. {bill.totalAmount?.toFixed(2)}</span>
       </div>
+      
+      {bill.tendered > 0 && (
+        <>
+            <div className="receipt-summary">
+                <span>Cash Tendered:</span>
+                <span>{Number(bill.tendered).toFixed(2)}</span>
+            </div>
+            <div className="receipt-summary">
+                <span>Change Due:</span>
+                <span>{(Number(bill.tendered) - bill.totalAmount).toFixed(2)}</span>
+            </div>
+        </>
+      )}
 
+      <div className="receipt-divider" />
+
+      {/* Footer */}
       <div className="receipt-footer">
-        <Text>Thank you! Visit Again</Text>
+        <div>** THANK YOU VISIT AGAIN **</div>
+        <div style={{ marginTop: 5 }}>software by Maple ERP</div>
       </div>
     </div>
   );

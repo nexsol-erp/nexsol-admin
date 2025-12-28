@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  Form, Input, Button, Select, Table, Typography, Space, InputNumber, message,
+  Form, Input, Button, Select, Table, Typography, Space, InputNumber, message, Spin
 } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import { getItems } from "../services/apiservice";
@@ -17,8 +17,11 @@ const SalesEntryForm = () => {
   const [filteredItems, setFilteredItems] = useState([]);
   const [salesDetails, setSalesDetails] = useState([]);
   const [savedSalesEntry, setSavedSalesEntry] = useState(null);
+  const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
+  const [loading, setLoading] = useState(false); // For loading state
 
   useEffect(() => {
+    setLoading(true);
     fetchItems();
     fetchCustomers();
   }, []);
@@ -30,6 +33,8 @@ const SalesEntryForm = () => {
       setFilteredItems(response.data);
     } catch (err) {
       message.error("Error fetching items");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -51,11 +56,52 @@ const SalesEntryForm = () => {
 
   const handleCustomerChange = (value) => {
     const cust = customers.find(c => c.name === value);
-    form.setFieldsValue({
-      customer: value,
-      customerAddress: cust?.address || "",
-      customerGST: cust?.gst || "",
-    });
+    if (cust) {
+      form.setFieldsValue({
+        customer: value,
+        customerAddress: cust?.address || "",
+        customerGST: cust?.gst || "",
+      });
+      setIsCreatingCustomer(false);
+    } else {
+      setIsCreatingCustomer(true);
+      form.setFieldsValue({
+        customerAddress: "",
+        customerGST: "",
+      });
+    }
+  };
+
+  const handleCreateCustomer = async () => {
+    setLoading(true);
+    try {
+      const { customer, customerAddress, customerGST } = form.getFieldsValue();
+      const token = localStorage.getItem("jwtToken");
+      const tenancyId = localStorage.getItem("tenancyId");
+
+      const response = await fetch(`/api/${tenancyId}/customers`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: customer, address: customerAddress, gst: customerGST }),
+      });
+
+      if (response.ok) {
+        const newCustomer = await response.json();
+        setCustomers([...customers, newCustomer]);
+        message.success("Customer created successfully");
+        setIsCreatingCustomer(false);
+      } else {
+        message.error("Failed to create customer");
+      }
+    } catch (err) {
+      console.error(err);
+      message.error("Error creating customer");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleItemSearch = (val) => {
@@ -130,6 +176,7 @@ const SalesEntryForm = () => {
   };
 
   const handleSave = async (values) => {
+    setLoading(true);
     try {
       const salesEntry = {
         customer: {
@@ -167,6 +214,8 @@ const SalesEntryForm = () => {
     } catch (err) {
       console.error(err);
       message.error(t("salesEntryError"));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -186,12 +235,12 @@ const SalesEntryForm = () => {
   ];
 
   return (
-    <div style={{ padding: 24, maxWidth: 900, margin: "auto" }}>
-      <Title level={3}>{t("salesEntry")}</Title>
+    <div style={{ padding: 24, maxWidth: 900, margin: "auto", background: '#f5f5f5', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' }}>
+      <Title level={3} style={{ textAlign: 'center', marginBottom: 24 }}>{t("salesEntry")}</Title>
 
       <Form layout="vertical" form={form} onFinish={handleSave}>
         <Form.Item name="customer" label={t("customer")} rules={[{ required: true }]}> 
-          <Select onChange={handleCustomerChange} showSearch>
+          <Select onChange={handleCustomerChange} showSearch placeholder={t("selectCustomer")}>
             {customers.map((cust) => (
               <Select.Option key={cust.id} value={cust.name}>
                 {cust.name}
@@ -199,6 +248,21 @@ const SalesEntryForm = () => {
             ))}
           </Select>
         </Form.Item>
+
+        {isCreatingCustomer && (
+          <>
+            <Form.Item name="customerAddress" label={t("customerAddress")}>
+              <Input placeholder={t("enterAddress")} />
+            </Form.Item>
+
+            <Form.Item name="customerGST" label={t("customerGST")}>
+              <Input placeholder={t("enterGST")} />
+            </Form.Item>
+            <Button type="primary" onClick={handleCreateCustomer}>
+              {t("createCustomer")}
+            </Button>
+          </>
+        )}
 
         <Form.Item name="customerAddress" label={t("customerAddress")}>
           <Input.TextArea autoSize readOnly />
@@ -277,11 +341,13 @@ const SalesEntryForm = () => {
         />
 
         <Space style={{ marginTop: 24 }}>
-          <Button type="primary" htmlType="submit">
+          <Button type="primary" htmlType="submit" loading={loading}>
             {t("save")}
           </Button>
           {savedSalesEntry && <InvoiceGenerator salesEntry={savedSalesEntry} />}
         </Space>
+
+        {loading && <Spin style={{ display: 'block', margin: '20px auto' }} />}
       </Form>
     </div>
   );

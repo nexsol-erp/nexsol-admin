@@ -1,18 +1,46 @@
+// src/components/POSEntry.jsx
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
-  Form, Input, InputNumber, Button, AutoComplete, Table,
-  Row, Col, Divider, Typography, message, Modal, List,
+  Form,
+  Input,
+  InputNumber,
+  Button,
+  AutoComplete,
+  Table,
+  Row,
+  Col,
+  Divider,
+  Typography,
+  message,
+  List,
+  Card,
+  Tag,
+  Tooltip,
+  Space,
+  Modal,
+  Spin,
 } from "antd";
-import ReactToPrint from "react-to-print";
+import {
+  BarcodeOutlined,
+  PrinterOutlined,
+  SyncOutlined,
+  UserOutlined,
+  SearchOutlined,
+  DeleteOutlined,
+  PlusOutlined,
+  ShoppingCartOutlined,
+  FileTextOutlined,
+  SaveOutlined,
+  CameraOutlined,
+} from "@ant-design/icons";
+import { useReactToPrint } from "react-to-print";
 import InvoicePrint from "./InvoicePrint";
+import BarcodeScannerModal from "./BarcodeScannerModal";
 
-const { Title } = Typography;
-
-/* ---------------- Normalization & Cache ---------------- */
+const { Title, Text } = Typography;
 
 const LS_CACHE_KEY = "pos-item-cache-v1";
 
-// Normalize a single API item into a consistent shape
 function normalizeItem(it) {
   return {
     id:
@@ -21,12 +49,7 @@ function normalizeItem(it) {
       it.code ??
       it.itemCode ??
       String(it.barcode ?? it.name ?? it.itemName ?? ""),
-    name:
-      it.itemName ??
-      it.name ??
-      it.title ??
-      it.description ??
-      String(it.id ?? ""),
+    name: it.itemName ?? it.name ?? it.title ?? it.description ?? String(it.id ?? ""),
     barcode: it.barcode ?? it.barCode ?? it.qr ?? "",
     rate:
       Number(
@@ -42,38 +65,35 @@ function normalizeItem(it) {
   };
 }
 
-function normalizeItems(arr) {
-  if (!Array.isArray(arr)) return [];
-  return arr.map(normalizeItem);
-}
-
 function loadCache() {
   try {
     const raw = localStorage.getItem(LS_CACHE_KEY);
     const data = raw ? JSON.parse(raw) : [];
-    const arr = Array.isArray(data) ? data : [];
-    const looksNormalized = arr.length === 0 || ("name" in arr[0] && "rate" in arr[0]);
-    return looksNormalized ? arr : normalizeItems(arr);
+    return Array.isArray(data) ? data : [];
   } catch {
     return [];
   }
 }
 
-function saveCache(items) {
-  try {
-    localStorage.setItem(LS_CACHE_KEY, JSON.stringify(items));
-  } catch {}
-}
-
-/* ---------------- Component ---------------- */
-
 const POSEntry = () => {
   const [form] = Form.useForm();
-  const [cache, setCache] = useState(loadCache); // normalized items cache
 
-  const [items, setItems] = useState([]); // invoice lines
+  // Scanner
+  const [scanOpen, setScanOpen] = useState(false);
+
+  // Item cache (local)
+  const [cache, setCache] = useState(loadCache());
+
+  // Cart + totals
+  const [items, setItems] = useState([]);
   const [totalAmount, setTotalAmount] = useState(0);
 
+  // Inputs / refs
+  const barcodeInputRef = useRef(null); // hidden barcode input
+  const qtyRef = useRef(null);
+  const printContentRef = useRef(null);
+
+  // UI state
   const [selectedItem, setSelectedItem] = useState({
     itemName: "",
     qty: 1,
@@ -88,112 +108,111 @@ const POSEntry = () => {
 
   const [billToPrint, setBillToPrint] = useState(null);
   const [syncing, setSyncing] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const barcodeInputRef = useRef();
-  const qtyRef = useRef(null);
-  const printTriggerRef = useRef();
-  const printContentRef = useRef();
+  // --- Printing (react-to-print v3.2.0 uses contentRef) ---
+  const handlePrint = useReactToPrint({
+    contentRef: printContentRef,
+    copyStyles: true,
+    // Thermal page tuning
+    pageStyle: `
+      @page { size: 80mm auto; margin: 0; }
+      html, body { width: 80mm; margin: 0 !important; padding: 0 !important; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    `,
+    onBeforePrint: async () => {
+      if (!billToPrint) throw new Error("Nothing to print");
+      if (!printContentRef.current) throw new Error("Print DOM not mounted");
+    },
+    onAfterPrint: () => {
+      setBillToPrint(null);
+      setPreviewOpen(false);
+    },
+  });
 
-  /* ------------- Sync from API → local cache ------------- */
+  // --- Sync items (stub) ---
   const syncItems = async () => {
     try {
       setSyncing(true);
-      const tenancyId = localStorage.getItem("tenancyId");
-      const token = localStorage.getItem("jwtToken");
 
-      const res = await fetch(`/api/${tenancyId}/items`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (!Array.isArray(data)) throw new Error("API did not return an array");
+      // TODO: Replace with real API call
+      // Example:
+       const tenancyId = localStorage.getItem("tenancyId");
+        const token = localStorage.getItem("jwtToken");
+       const res = await fetch(`/api/${tenancyId}/items`, { headers: { Authorization: `Bearer ${token}` }});
+        const rawItems = await res.json();
+       const normalized = rawItems.map(normalizeItem);
+       localStorage.setItem(LS_CACHE_KEY, JSON.stringify(normalized));
+       setCache(normalized);
 
-      const mapped = normalizeItems(data);
-      setCache(mapped);
-      saveCache(mapped);
-      message.success(`Synced ${mapped.length} items`);
+      await new Promise((r) => setTimeout(r, 600));
+      message.success("Synced items successfully");
     } catch (err) {
       console.error(err);
       message.error("Failed to sync items from API");
     } finally {
       setSyncing(false);
+      barcodeInputRef.current?.focus?.();
     }
   };
 
-  // Auto-sync once if cache empty; migrate old cache if needed
+  // --- Initial focus + optional first sync ---
   useEffect(() => {
-    if (!cache || cache.length === 0) {
-      syncItems();
-    } else if (!cache[0]?.name || cache[0].name === cache[0].id) {
-      const fixed = normalizeItems(cache);
-      setCache(fixed);
-      saveCache(fixed);
-    }
+    if (!cache || cache.length === 0) syncItems();
+    barcodeInputRef.current?.focus?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    barcodeInputRef.current?.focus(); // one-time initial focus only
-  }, []);
-
-  /* ------------- Barcode focus (scanner friendly) ------------- */
+  // --- Hotkeys (F2 / Ctrl+K for lookup) ---
   useEffect(() => {
     const onKey = (e) => {
-      const el = e.target;
-      const tag = (el.tagName || "").toLowerCase();
-      const isEditable =
-        el.isContentEditable || tag === "input" || tag === "textarea" || tag === "select";
-      if (isEditable) return; // let the user type normally
-      barcodeInputRef.current?.focus(); // otherwise keep scanner focus
-    };
-
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  /* ------------- Global hotkeys ------------- */
-  useEffect(() => {
-    const onKey = (e) => {
-      const meta = e.ctrlKey || e.metaKey;
-      if (e.key === "F2" || (meta && e.key.toLowerCase() === "k")) {
+      if (e.key === "F2" || (e.ctrlKey && e.key.toLowerCase() === "k")) {
         e.preventDefault();
         setSearchOpen(true);
-        setTimeout(() => document.getElementById("search-input")?.focus(), 0);
-      }
-      if (meta && e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        form.submit();
-      }
-      if (meta && e.key.toLowerCase() === "n") {
-        e.preventDefault();
-        handleAddItem();
+        setTimeout(() => document.getElementById("search-input")?.focus(), 50);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [form, selectedItem]);
+  }, []);
 
-  /* ------------- Totals ------------- */
+  // --- Total calculation ---
   useEffect(() => {
     setTotalAmount(items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0));
   }, [items]);
 
-  /* ------------- Local-cache search (popup + autocomplete) ------------- */
+  // --- Search filter list in modal ---
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return (cache || []).slice(0, 50);
-    return (cache || [])
+    if (!q) return cache.slice(0, 50);
+
+    return cache
       .filter(
         (it) =>
           it.name?.toLowerCase().includes(q) ||
           String(it.id)?.toLowerCase().includes(q) ||
           String(it.barcode)?.toLowerCase().includes(q)
       )
-      .slice(0, 100);
+      .slice(0, 50);
   }, [searchQuery, cache]);
+
+  // --- Autocomplete options ---
+  const itemOptions = useMemo(() => {
+    const v = (selectedItem.itemName || "").trim().toLowerCase();
+    const list = v
+      ? (cache || []).filter(
+          (it) =>
+            it.name?.toLowerCase().includes(v) || String(it.barcode || "").toLowerCase().includes(v)
+        )
+      : cache || [];
+
+    return list.slice(0, 20).map((it) => ({
+      value: it.id,
+      label: it.name,
+      data: it,
+    }));
+  }, [cache, selectedItem.itemName]);
 
   const selectFromCache = (it) => {
     setSelectedItem({
@@ -203,377 +222,643 @@ const POSEntry = () => {
       qty: 1,
     });
     setSearchOpen(false);
-    setTimeout(() => qtyRef.current?.focus?.(), 0);
+    setTimeout(() => qtyRef.current?.focus?.(), 50);
   };
 
-  const itemOptions = useMemo(() => {
-    const v = (selectedItem.itemName || "").trim().toLowerCase();
-    const src = cache || [];
-    const list = v
-      ? src.filter(
-          (it) =>
-            it.name?.toLowerCase().includes(v) ||
-            String(it.id)?.toLowerCase().includes(v) ||
-            String(it.barcode)?.toLowerCase().includes(v)
-        )
-      : src;
-    return list.slice(0, 50).map((it) => ({
-      value: it.id,
-      label: it.name,
-      data: it,
-    }));
-  }, [cache, selectedItem.itemName]);
+  // --- Core add logic: Merge by (itemName + rate) ---
+  const addLineMerge = ({ id, itemName, rate, qtyToAdd = 1 }) => {
+    const addQty = Number(qtyToAdd) || 1;
+    const addRate = Number(rate) || 0;
+    const addName = String(itemName || "").trim();
 
-  /* ------------- Barcode handling ------------- */
-  const handleBarcodeEnter = () => {
-    const code = (barcode || "").trim().toLowerCase();
+    if (!addName || addQty <= 0) return;
+
+    setItems((prev) => {
+      const idx = prev.findIndex(
+        (r) =>
+          String(r.itemName || "").trim().toLowerCase() === addName.toLowerCase() &&
+          Number(r.rate) === Number(addRate)
+      );
+
+      if (idx >= 0) {
+        const next = [...prev];
+        const row = next[idx];
+        const newQty = (Number(row.qty) || 0) + addQty;
+        next[idx] = {
+          ...row,
+          qty: newQty,
+          amount: Math.round(newQty * Number(row.rate) * 100) / 100,
+        };
+        return next;
+      }
+
+      const newItem = {
+        key: Date.now(),
+        id,
+        itemName: addName,
+        qty: addQty,
+        rate: addRate,
+        amount: Math.round(addQty * addRate * 100) / 100,
+      };
+
+      // Append by default (barcode flow). If you want insert-first, call differently.
+      return [...prev, newItem];
+    });
+  };
+
+  // --- Add by barcode string (used by Enter & camera scan) ---
+  const addByBarcode = (rawCode) => {
+    const code = String(rawCode || "").trim().toLowerCase();
     if (!code) return;
-    const src = cache || [];
-    const it = src.find(
+
+    const it = cache.find(
       (x) =>
-        String(x.barcode)?.toLowerCase() === code ||
-        String(x.id)?.toLowerCase() === code
+        String(x.barcode || "").toLowerCase() === code || String(x.id || "").toLowerCase() === code
+       
     );
+    console.log("cache", cache);
+    console.log("Add by barcode:", code);
+
+
     if (!it) {
-      message.error("Item not found for barcode");
-      setBarcode("");
+      message.error("Item not found");
       return;
     }
-    setSelectedItem({
-      id: it.id,
-      itemName: it.name,
-      rate: Number(it.rate) || 0,
-      qty: 1,
-    });
-    setBarcode("");
-    setTimeout(() => qtyRef.current?.focus?.(), 0);
+
+    addLineMerge({ id: it.id, itemName: it.name, rate: it.rate, qtyToAdd: 1 });
+    message.success(`${it.name} added`);
+    barcodeInputRef.current?.focus?.();
   };
 
-  /* ------------- Add / Remove items ------------- */
+  // --- Barcode enter (hidden input) ---
+  const handleBarcodeEnter = () => {
+    if (!barcode) return;
+    addByBarcode(barcode);
+    setBarcode("");
+  };
+
+  // --- Manual add button (Autocomplete) ---
   const handleAddItem = () => {
     const { itemName, qty, rate, id } = selectedItem;
-    if (!itemName || !(Number(qty) > 0) || !(Number(rate) >= 0)) {
-      return message.error("Fill item, qty, rate");
+
+    if (!itemName || !(Number(qty) > 0)) {
+      return message.warning("Please enter item and quantity");
     }
-    const amount = Number(qty) * Number(rate);
-    const newItem = {
-      key: Date.now(),
-      id,
-      itemName,
-      qty: Number(qty),
-      rate: Number(rate),
-      amount: Math.round(amount * 100) / 100,
-    };
-    setItems((prev) => [...prev, newItem]);
+
+    // Merge-in-place (same name + same rate)
+    addLineMerge({ id, itemName, rate, qtyToAdd: qty });
+
+    // reset
     setSelectedItem({ itemName: "", qty: 1, rate: 0, id: null });
-    setTimeout(() => document.getElementById("item-search")?.focus(), 0);
+
+    setTimeout(() => {
+      const el = document.querySelector("#item-search input");
+      el?.focus?.();
+    }, 50);
   };
 
   const handleRemoveItem = (key) => {
     setItems((prev) => prev.filter((it) => it.key !== key));
   };
 
-  /* ------------- Submit & Print ------------- */
-  const handleFinish = (values) => {
-    if (!items.length) return message.error("Add at least one item");
-    const bill = { ...values, items, totalAmount };
-    setBillToPrint(bill);
-    setTimeout(() => {
-      printTriggerRef.current?.click();
-    }, 100);
-    message.success("Invoice ready to print");
-    // reset
-    form.resetFields();
-    setItems([]);
-    setSelectedItem({ itemName: "", qty: 1, rate: 0, id: null });
+  // --- Save bill to backend ---
+  const saveBillToDatabase = async (billData) => {
+    const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
+
+    const salesTransHdr = {
+      customer: {
+        id: billData.customerId || "001",
+        name: billData.customerName || "POS",
+        address: null,
+        gst: null,
+        mobile: billData.customerMobile || null,
+        state: null,
+        country: null,
+      },
+      voucherNumber: billData.voucherNo || null,
+      voucherDate: new Date().toISOString(),
+
+      NumericVoucherNumber: billData.NumericVoucherNumber || null,
+      salesManName: billData.salesManName || null,
+      customerMobile: billData.customerMobile || null,
+      voucherPrefix: billData.voucherPrefix || "INV",
+      voucherSufix: billData.voucherSufix || null,
+      isSynched: 0,
+
+      salesDetails: items.map((item) => ({
+        itemId: item.id,
+        itemName: item.itemName,
+        qty: item.qty,
+        rate: item.rate,
+        amount: item.amount,
+        barcode: item.barcode || null,
+        batch: item.batch || null,
+        expiryDate: item.expiryDate || null,
+        standardPrice: item.standardPrice || item.rate,
+        taxRate: item.taxRate || 0,
+        cessRate: item.cessRate || 0,
+        unit: item.unit || null,
+        description: item.description || null,
+        itemCode: item.itemCode || null,
+        hsnCode: item.hsnCode || null,
+        cgst: item.cgst || 0,
+        sgst: item.sgst || 0,
+        cgstAmount: item.cgstAmount || 0,
+        sgstAmount: item.sgstAmount || 0,
+        igstAmount: item.igstAmount || 0,
+        totalTaxAmount: item.totalTaxAmount || 0,
+      })),
+    };
+
+    const response = await fetch(`/api/${tenancyId}/sales`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(salesTransHdr),
+    });
+
+    if (!response.ok) {
+      let errMsg = "Failed to save invoice";
+      try {
+        const errorData = await response.json();
+        errMsg = errorData?.message || errMsg;
+      } catch {}
+      throw new Error(errMsg);
+    }
+
+    return response.json();
   };
 
-  /* ------------- Table ------------- */
+  const handleFinish = async (values) => {
+    if (!items.length) return message.error("Cart is empty");
+    setSaving(true);
+
+    try {
+      const billData = {
+        ...values,
+        customerId: values.customerId || null,
+        customerName: values.customer || "",
+        items,
+        totalAmount,
+        tendered: values.tendered || 0,
+        createdAt: new Date().toISOString(),
+      };
+
+      message.loading({ content: "Saving invoice...", key: "saving" });
+      const savedResult = await saveBillToDatabase(billData);
+
+      if (!savedResult || !savedResult.voucherNumber) {
+        throw new Error("Invalid response from server");
+      }
+
+      message.success({ content: "Saved successfully!", key: "saving", duration: 1.5 });
+
+      // show preview
+      setBillToPrint(savedResult);
+      setPreviewOpen(true);
+    } catch (error) {
+      console.error(error);
+      message.error({ content: `Failed: ${error.message}`, duration: 5 });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleConfirmPrint = async () => {
+    if (!billToPrint) return message.error("Invoice not ready to print");
+
+    // allow DOM commit for hidden print component
+    await new Promise((r) => setTimeout(r, 150));
+
+    if (!printContentRef.current) {
+      message.error("Print content not mounted yet.");
+      return;
+    }
+
+    handlePrint();
+
+    // reset after print trigger
+    setTimeout(() => {
+      form.resetFields();
+      setItems([]);
+      setSelectedItem({ itemName: "", qty: 1, rate: 0, id: null });
+      setTotalAmount(0);
+      barcodeInputRef.current?.focus?.();
+    }, 500);
+  };
+
   const columns = [
-    { title: "Item", dataIndex: "itemName" },
-    { title: "Qty", dataIndex: "qty", align: "right" },
-    { title: "Rate", dataIndex: "rate", align: "right" },
-    { title: "Amount", dataIndex: "amount", align: "right" },
     {
-      title: "Action",
+      title: "Item Name",
+      dataIndex: "itemName",
+      render: (text) => <Text strong>{text}</Text>,
+    },
+    {
+      title: "Qty",
+      dataIndex: "qty",
+      width: 80,
+      align: "center",
+      render: (v) => <Tag color="blue">{v}</Tag>,
+    },
+    {
+      title: "Rate",
+      dataIndex: "rate",
+      width: 100,
+      align: "right",
+      render: (v) => `₹${Number(v || 0).toFixed(2)}`,
+    },
+    {
+      title: "Total",
+      dataIndex: "amount",
+      width: 120,
+      align: "right",
+      render: (v) => (
+        <Text type="success" strong>
+          ₹{Number(v || 0).toFixed(2)}
+        </Text>
+      ),
+    },
+    {
+      title: "",
+      width: 60,
       render: (_, r) => (
-        <Button danger size="small" onClick={() => handleRemoveItem(r.key)}>
-          Remove
-        </Button>
+        <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveItem(r.key)} />
       ),
     },
   ];
 
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "flex-start",
-        minHeight: "100vh",
-        padding: 24,
-        backgroundColor: "#f5f6f8",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 980,
-          background: "#fff",
-          padding: 20,
-          borderRadius: 10,
-          boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
+    <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: 20 }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ background: "#1890ff", color: "#fff", padding: "5px 10px", borderRadius: 4 }}>
+            <ShoppingCartOutlined style={{ fontSize: 20 }} />
+          </div>
+          <Title level={4} style={{ margin: 0, color: "#001529" }}>
+            POS Terminal
+          </Title>
+        </div>
+
+        <Space>
+          <Tag icon={<BarcodeOutlined />} color="processing">
+            Ready to Scan
+          </Tag>
+
+          <Button icon={<CameraOutlined />} onClick={() => setScanOpen(true)}>
+            Scan
+          </Button>
+
+          <Tooltip title="F2 / Ctrl+K">
+            <Button icon={<SearchOutlined />} onClick={() => setSearchOpen(true)}>
+              Lookup
+            </Button>
+          </Tooltip>
+
+          <Button icon={<SyncOutlined spin={syncing} />} onClick={syncItems}>
+            Sync DB
+          </Button>
+        </Space>
+      </div>
+
+      {/* Main form */}
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleFinish}
+        initialValues={{
+          voucherDate: new Date().toISOString().slice(0, 10),
+          customer: "POS",
         }}
       >
-        <Form
-          layout="vertical"
-          form={form}
-          onFinish={handleFinish}
-          initialValues={{
-            voucherDate: new Date().toISOString().slice(0, 10), // default today
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 8,
-            }}
-          >
-            <Title level={4} style={{ margin: 0 }}>
-              POS Entry
-            </Title>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <small style={{ color: "#888" }}>
-                F2/Ctrl+K: Search • Ctrl+S: Submit • Ctrl+N: Add line
-              </small>
-              <Button loading={syncing} onClick={syncItems} size="small">
-                Sync Items
-              </Button>
-            </div>
-          </div>
+        <Row gutter={16}>
+          {/* Left */}
+          <Col xs={24} lg={16}>
+            <Card
+              title={
+                <Space>
+                  <SearchOutlined /> Item Entry
+                </Space>
+              }
+              style={{ marginBottom: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
+              bodyStyle={{ padding: 16 }}
+            >
+              <Row gutter={10} align="middle">
+                <Col flex="auto">
+                  <AutoComplete
+                    id="item-search"
+                    style={{ width: "100%" }}
+                    placeholder="Type Item Name or Code"
+                    value={selectedItem.itemName}
+                    options={itemOptions}
+                    onSearch={(txt) => setSelectedItem((s) => ({ ...s, itemName: txt }))}
+                    onSelect={(_, opt) => {
+                      setSelectedItem((s) => ({
+                        ...s,
+                        itemName: opt.data?.name ?? opt.label,
+                        rate: opt.data?.rate ?? s.rate,
+                        id: opt.data?.id ?? null,
+                      }));
+                      setTimeout(() => qtyRef.current?.focus?.(), 0);
+                    }}
+                  >
+                    <Input size="large" prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />} />
+                  </AutoComplete>
+                </Col>
 
-          <Row gutter={12}>
-            <Col span={8}>
-              <Form.Item name="customer" label="Customer">
-                <Input placeholder="Customer name (optional)" />
+                <Col flex="80px">
+                  <InputNumber
+                    ref={qtyRef}
+                    size="large"
+                    placeholder="Qty"
+                    value={selectedItem.qty}
+                    min={1}
+                    style={{ width: "100%" }}
+                    onChange={(qty) => setSelectedItem((s) => ({ ...s, qty }))}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
+                  />
+                </Col>
+
+                <Col flex="100px">
+                  <InputNumber
+                    size="large"
+                    placeholder="Rate"
+                    prefix="₹"
+                    value={selectedItem.rate}
+                    min={0}
+                    style={{ width: "100%" }}
+                    onChange={(rate) => setSelectedItem((s) => ({ ...s, rate }))}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
+                  />
+                </Col>
+
+                <Col flex="none">
+                  <Button type="primary" size="large" icon={<PlusOutlined />} onClick={handleAddItem}>
+                    Add
+                  </Button>
+                </Col>
+              </Row>
+            </Card>
+
+            <Card style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }} bodyStyle={{ padding: 0 }}>
+              <Table
+                columns={columns}
+                dataSource={items}
+                pagination={false}
+                scroll={{ y: "calc(100vh - 350px)" }}
+                size="middle"
+                rowKey="key"
+                locale={{
+                  emptyText: (
+                    <div style={{ padding: 40, textAlign: "center", color: "#ccc" }}>
+                      <ShoppingCartOutlined style={{ fontSize: 40 }} />
+                      <p>Cart is empty</p>
+                    </div>
+                  ),
+                }}
+              />
+            </Card>
+          </Col>
+
+          {/* Right */}
+          <Col xs={24} lg={8}>
+            <Card title="Invoice Details" size="small" style={{ marginBottom: 16 }}>
+              <Row gutter={10}>
+                <Col span={12}>
+                  <Form.Item name="voucherNo" label="Voucher No" style={{ marginBottom: 12 }}>
+                    <Input prefix={<FileTextOutlined />} placeholder="Auto" />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="voucherDate"
+                    label="Date"
+                    rules={[{ required: true, message: "Date required" }]}
+                    style={{ marginBottom: 12 }}
+                  >
+                    <Input type="date" />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Form.Item name="customer" label="Customer" style={{ marginBottom: 8 }}>
+                <Input prefix={<UserOutlined />} placeholder="POS" />
               </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
-                name="voucherDate"
-                label="Voucher Date"
-                rules={[{ required: true }]}
-              >
-                <Input type="date" />
+
+              <Form.Item name="customerMobile" label="Mobile" style={{ marginBottom: 8 }}>
+                <Input placeholder="Customer Mobile" />
               </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item name="voucherNo" label="Voucher No">
-                <Input placeholder="Auto or manual" />
+
+              <Form.Item name="customerId" label="Customer ID" style={{ marginBottom: 0 }} hidden>
+                <Input />
               </Form.Item>
-            </Col>
-          </Row>
+            </Card>
 
-          {/* Hidden but focused barcode input */}
-          <input
-            ref={barcodeInputRef}
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleBarcodeEnter();
-            }}
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              opacity: 0,
-              width: 1,
-              height: 1,
-              zIndex: -1,
-            }}
-            aria-hidden
-          />
+            <Card
+              style={{ background: "#001529", color: "white", textAlign: "center", marginBottom: 16 }}
+              bodyStyle={{ padding: 24 }}
+            >
+              <div style={{ opacity: 0.8, fontSize: 14 }}>TOTAL PAYABLE</div>
+              <div style={{ fontSize: 42, fontWeight: "bold", color: "#fff", lineHeight: 1.2 }}>
+                <span style={{ fontSize: 24, verticalAlign: "top" }}>₹</span>
+                {totalAmount.toFixed(2)}
+              </div>
+            </Card>
 
-          <div style={{ maxHeight: "calc(100vh - 420px)", overflowY: "auto" }}>
-            <Divider>Item Entry</Divider>
-            <Row gutter={12} align="middle">
-              <Col span={10}>
-                {/* Local-cache backed autocomplete */}
-                <AutoComplete
-                  id="item-search"
-                  style={{ width: "100%" }}
-                  placeholder="Search item (F2 for popup)"
-                  value={selectedItem.itemName}
-                  options={itemOptions}
-                  onSearch={(txt) =>
-                    setSelectedItem((s) => ({ ...s, itemName: txt }))
-                  }
-                  onSelect={(_, opt) => {
-                    setSelectedItem((s) => ({
-                      ...s,
-                      itemName: opt.data?.name ?? opt.label,
-                      rate: opt.data?.rate ?? s.rate,
-                      id: opt.data?.id ?? null,
-                    }));
-                    setTimeout(() => qtyRef.current?.focus?.(), 0);
-                  }}
-                  filterOption={false}
-                >
-                  <Input onPressEnter={handleAddItem} />
-                </AutoComplete>
-              </Col>
-              <Col span={4}>
-                <InputNumber
-                  ref={qtyRef}
-                  placeholder="Qty"
-                  value={selectedItem.qty}
-                  min={1}
-                  style={{ width: "100%" }}
-                  onChange={(qty) => setSelectedItem((s) => ({ ...s, qty }))}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
-                />
-              </Col>
-              <Col span={4}>
-                <InputNumber
-                  placeholder="Rate"
-                  value={selectedItem.rate}
-                  min={0}
-                  style={{ width: "100%" }}
-                  onChange={(rate) => setSelectedItem((s) => ({ ...s, rate }))}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
-                />
-              </Col>
-              <Col span={6} style={{ display: "flex", gap: 8 }}>
-                <Button type="primary" onClick={handleAddItem} style={{ flex: 1 }}>
-                  Add (Enter)
-                </Button>
-                {/* Optional: allow adding a quick item into local cache */}
-                <Button
-                  onClick={() => {
-                    const name = (selectedItem.itemName || "").trim();
-                    const rate = Number(selectedItem.rate) || 0;
-                    if (!name) return message.error("Enter item name to add to cache");
-                    const newItem = {
-                      id: (crypto?.randomUUID && crypto.randomUUID()) || String(Date.now()),
-                      name,
-                      barcode: "",
-                      rate,
-                    };
-                    const next = [newItem, ...(cache || [])];
-                    setCache(next);
-                    saveCache(next);
-                    message.success("Item added to local cache");
-                  }}
-                >
-                  + Cache
-                </Button>
-              </Col>
-            </Row>
-
-            <Table
-              style={{ marginTop: 16 }}
-              columns={columns}
-              dataSource={items}
-              pagination={false}
-              bordered
-              size="small"
-              rowKey="key"
-            />
-          </div>
-
-          <Divider>Summary</Divider>
-          <Row gutter={12}>
-            <Col span={6}>
-              <Form.Item label="Total">
-                <Input value={totalAmount.toFixed(2)} readOnly />
-              </Form.Item>
-            </Col>
-            <Col span={6}>
+            <Card title="Payment" style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
               <Form.Item
                 name="tendered"
                 label="Amount Tendered"
-                rules={[{ required: true }]}
+                rules={[
+                  { required: true, message: "Enter Amount" },
+                  {
+                    validator: (_, value) =>
+                      value >= 0 ? Promise.resolve() : Promise.reject(new Error("Amount must be ≥ 0")),
+                  },
+                ]}
               >
                 <InputNumber
-                  min={0}
-                  precision={2}
+                  size="large"
                   style={{ width: "100%" }}
-                  formatter={(v) =>
-                    `₹ ${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                  }
-                  parser={(v) => (v || "").replace(/[₹\s,]*/g, "")}
+                  prefix="₹"
+                  min={0}
+                  step={1}
+                  precision={2}
+                  stringMode={false}
+                  inputMode="numeric"
+                  controls={false}
+                  placeholder="0.00"
+                  onKeyDown={(e) => {
+                    if (["e", "E", "+", "-", ","].includes(e.key)) e.preventDefault();
+                  }}
                 />
               </Form.Item>
-            </Col>
-            <Col span={6}>
+
               <Form.Item shouldUpdate>
                 {() => {
                   const tendered = form.getFieldValue("tendered") || 0;
                   const balance = (Number(tendered) || 0) - totalAmount;
+                  const isDue = balance < 0;
+
                   return (
-                    <Form.Item label="Balance">
-                      <Input value={balance.toFixed(2)} readOnly />
-                    </Form.Item>
+                    <div
+                      style={{
+                        background: isDue ? "#fff1f0" : "#f6ffed",
+                        padding: 15,
+                        borderRadius: 6,
+                        border: `1px solid ${isDue ? "#ffa39e" : "#b7eb8f"}`,
+                        textAlign: "center",
+                      }}
+                    >
+                      <div style={{ color: isDue ? "#cf1322" : "#389e0d", fontWeight: "bold" }}>
+                        {isDue ? "DUE AMOUNT" : "CHANGE TO RETURN"}
+                      </div>
+                      <div style={{ fontSize: 24, color: isDue ? "#cf1322" : "#389e0d", fontWeight: 600 }}>
+                        ₹{Math.abs(balance).toFixed(2)}
+                      </div>
+                    </div>
                   );
                 }}
               </Form.Item>
-            </Col>
-          </Row>
 
-          <Divider />
-          <Row gutter={12}>
-            <Col>
-              <Button type="primary" htmlType="submit">
-                Submit (Ctrl+S)
-              </Button>
-            </Col>
-            <Col>
-              <Button
-                onClick={() => {
-                  form.resetFields();
-                  setItems([]);
-                  setSelectedItem({ itemName: "", qty: 1, rate: 0, id: null });
-                  setTotalAmount(0);
-                }}
-              >
-                Reset
-              </Button>
-            </Col>
-          </Row>
-        </Form>
+              <Divider />
 
-        {/* Print section */}
-        {billToPrint && (
-          <>
-            <ReactToPrint
-              trigger={() => (
-                <button ref={printTriggerRef} style={{ display: "none" }}>
-                  Print
-                </button>
-              )}
-              content={() => printContentRef.current}
-            />
-            <div style={{ display: "none" }}>
-              <InvoicePrint ref={printContentRef} bill={billToPrint} />
-            </div>
-          </>
-        )}
+              <Row gutter={10}>
+                <Col span={12}>
+                  <Button
+                    block
+                    size="large"
+                    onClick={() => {
+                      form.resetFields();
+                      setItems([]);
+                      setTotalAmount(0);
+                    }}
+                  >
+                    Reset
+                  </Button>
+                </Col>
+                <Col span={12}>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    block
+                    size="large"
+                    icon={saving ? <SyncOutlined spin /> : <SaveOutlined />}
+                    loading={saving}
+                    disabled={saving}
+                    style={{ height: "100%" }}
+                  >
+                    {saving ? "Saving..." : "Save & Print"}
+                  </Button>
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+        </Row>
+      </Form>
+
+      {/* Hidden barcode input: hardware scanner or manual barcode typing */}
+      <input
+        ref={barcodeInputRef}
+        value={barcode}
+        onChange={(e) => setBarcode(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") handleBarcodeEnter();
+        }}
+        style={{ position: "fixed", top: 0, left: 0, opacity: 0, width: 1, zIndex: -1 }}
+        autoFocus
+      />
+
+      {/* Hidden Print DOM (must exist in DOM for react-to-print) */}
+      <div
+        style={{
+          position: "fixed",
+          left: "-10000px",
+          top: 0,
+          width: "80mm",
+          background: "white",
+          zIndex: -1,
+        }}
+      >
+        <InvoicePrint ref={printContentRef} bill={billToPrint} />
       </div>
 
-      {/* Popup Local Search (F2 / Ctrl+K) */}
+      {/* Invoice Preview */}
       <Modal
-        title="Search Items (Local Cache)"
+        title={
+          <Space>
+            <SaveOutlined />
+            Invoice Preview
+            {billToPrint?.voucherNumber && <Tag color="success">Bill: {billToPrint.voucherNumber}</Tag>}
+          </Space>
+        }
+        open={previewOpen}
+        onCancel={() => {
+          setPreviewOpen(false);
+          setBillToPrint(null);
+        }}
+        width={800}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={() => {
+              setPreviewOpen(false);
+              setBillToPrint(null);
+              form.resetFields();
+              setItems([]);
+              setSelectedItem({ itemName: "", qty: 1, rate: 0, id: null });
+              setTotalAmount(0);
+              barcodeInputRef.current?.focus?.();
+            }}
+          >
+            Close
+          </Button>,
+          <Button key="print" type="primary" icon={<PrinterOutlined />} onClick={handleConfirmPrint}>
+            Print Invoice
+          </Button>,
+        ]}
+      >
+        {billToPrint ? (
+          <div
+            style={{
+              maxHeight: "70vh",
+              overflow: "auto",
+              border: "1px solid #d9d9d9",
+              borderRadius: 4,
+              padding: 20,
+              background: "white",
+            }}
+          >
+            <InvoicePrint bill={billToPrint} />
+          </div>
+        ) : (
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <Spin size="large" />
+            <p style={{ marginTop: 16 }}>Loading invoice...</p>
+          </div>
+        )}
+      </Modal>
+
+      {/* Item Lookup */}
+      <Modal
+        title={
+          <Space>
+            <SearchOutlined /> Item Lookup
+          </Space>
+        }
         open={searchOpen}
         onCancel={() => setSearchOpen(false)}
         footer={null}
-        width={720}
-        bodyStyle={{ paddingTop: 8 }}
+        width={600}
       >
         <Input
           id="search-input"
-          placeholder="Type to search name / code / barcode"
+          placeholder="Start typing..."
+          prefix={<SearchOutlined />}
+          size="large"
           value={searchQuery}
           onChange={(e) => {
             setSearchQuery(e.target.value);
@@ -594,46 +879,46 @@ const POSEntry = () => {
             }
           }}
         />
-        <div
-          style={{
-            marginTop: 8,
-            maxHeight: 360,
-            overflow: "auto",
-            border: "1px solid #eee",
-            borderRadius: 6,
-          }}
-        >
-          <List
-            dataSource={filtered}
-            renderItem={(it, idx) => (
-              <List.Item
-                onClick={() => selectFromCache(it)}
-                style={{
-                  cursor: "pointer",
-                  background:
-                    idx === searchIndex ? "rgba(24,144,255,0.08)" : undefined,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    width: "100%",
-                  }}
-                >
-                  <div>
-                    <b>{it.name}</b>{" "}
-                    <span style={{ color: "#999" }}>({it.id})</span>
-                  </div>
-                  <div style={{ color: "#666" }}>
-                    ₹ {Number(it.rate || 0).toFixed(2)}
-                  </div>
-                </div>
-              </List.Item>
-            )}
-          />
-        </div>
+
+        <List
+          style={{ marginTop: 10, maxHeight: 300, overflow: "auto" }}
+          dataSource={filtered}
+          size="small"
+          bordered
+          renderItem={(it, idx) => (
+            <List.Item
+              onClick={() => selectFromCache(it)}
+              style={{
+                cursor: "pointer",
+                background: idx === searchIndex ? "#e6f7ff" : "white",
+                transition: "0.2s",
+              }}
+            >
+              <List.Item.Meta
+                title={<Text strong>{it.name}</Text>}
+                description={
+                  <Text type="secondary" style={{ fontSize: 11 }}>
+                    Code: {it.id} | Barcode: {it.barcode || "N/A"}
+                  </Text>
+                }
+              />
+              <div style={{ fontWeight: "bold" }}>₹{Number(it.rate).toFixed(2)}</div>
+            </List.Item>
+          )}
+        />
       </Modal>
+
+      {/* Camera Barcode Scan (Option A) */}
+      <BarcodeScannerModal
+        open={scanOpen}
+        onClose={() => {
+          setScanOpen(false);
+          barcodeInputRef.current?.focus?.();
+        }}
+        onDetected={(code) => {
+          addByBarcode(code);
+        }}
+      />
     </div>
   );
 };
