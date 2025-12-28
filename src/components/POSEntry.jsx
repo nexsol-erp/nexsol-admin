@@ -19,6 +19,7 @@ import {
   Space,
   Modal,
   Spin,
+  Grid,
 } from "antd";
 import {
   BarcodeOutlined,
@@ -38,6 +39,7 @@ import InvoicePrint from "./InvoicePrint";
 import BarcodeScannerModal from "./BarcodeScannerModal";
 
 const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 const LS_CACHE_KEY = "pos-item-cache-v1";
 
@@ -76,24 +78,21 @@ function loadCache() {
 }
 
 const POSEntry = () => {
+  const screens = useBreakpoint();
+  const isMobile = !screens.md; // < md => mobile/tablet
+
   const [form] = Form.useForm();
 
-  // Scanner
   const [scanOpen, setScanOpen] = useState(false);
-
-  // Item cache (local)
   const [cache, setCache] = useState(loadCache());
 
-  // Cart + totals
   const [items, setItems] = useState([]);
   const [totalAmount, setTotalAmount] = useState(0);
 
-  // Inputs / refs
-  const barcodeInputRef = useRef(null); // hidden barcode input
+  const barcodeInputRef = useRef(null);
   const qtyRef = useRef(null);
   const printContentRef = useRef(null);
 
-  // UI state
   const [selectedItem, setSelectedItem] = useState({
     itemName: "",
     qty: 1,
@@ -111,11 +110,9 @@ const POSEntry = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // --- Printing (react-to-print v3.2.0 uses contentRef) ---
   const handlePrint = useReactToPrint({
     contentRef: printContentRef,
     copyStyles: true,
-    // Thermal page tuning
     pageStyle: `
       @page { size: 80mm auto; margin: 0; }
       html, body { width: 80mm; margin: 0 !important; padding: 0 !important; }
@@ -131,40 +128,41 @@ const POSEntry = () => {
     },
   });
 
-  // --- Sync items (stub) ---
   const syncItems = async () => {
     try {
       setSyncing(true);
 
-      // TODO: Replace with real API call
-      // Example:
-       const tenancyId = localStorage.getItem("tenancyId");
-        const token = localStorage.getItem("jwtToken");
-       const res = await fetch(`/api/${tenancyId}/items`, { headers: { Authorization: `Bearer ${token}` }});
-        const rawItems = await res.json();
-       const normalized = rawItems.map(normalizeItem);
-       localStorage.setItem(LS_CACHE_KEY, JSON.stringify(normalized));
-       setCache(normalized);
+      // ✅ real API example (keep as-is)
+      const tenancyId = localStorage.getItem("tenancyId");
+      const token = localStorage.getItem("jwtToken");
 
-      await new Promise((r) => setTimeout(r, 600));
+      const res = await fetch(`/api/${tenancyId}/items`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch items");
+
+      const rawItems = await res.json();
+      const normalized = rawItems.map(normalizeItem);
+
+      localStorage.setItem(LS_CACHE_KEY, JSON.stringify(normalized));
+      setCache(normalized);
+
       message.success("Synced items successfully");
     } catch (err) {
       console.error(err);
-      message.error("Failed to sync items from API");
+      message.error(err?.message || "Failed to sync items from API");
     } finally {
       setSyncing(false);
       barcodeInputRef.current?.focus?.();
     }
   };
 
-  // --- Initial focus + optional first sync ---
   useEffect(() => {
     if (!cache || cache.length === 0) syncItems();
     barcodeInputRef.current?.focus?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- Hotkeys (F2 / Ctrl+K for lookup) ---
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "F2" || (e.ctrlKey && e.key.toLowerCase() === "k")) {
@@ -177,12 +175,10 @@ const POSEntry = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // --- Total calculation ---
   useEffect(() => {
     setTotalAmount(items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0));
   }, [items]);
 
-  // --- Search filter list in modal ---
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return cache.slice(0, 50);
@@ -197,13 +193,13 @@ const POSEntry = () => {
       .slice(0, 50);
   }, [searchQuery, cache]);
 
-  // --- Autocomplete options ---
   const itemOptions = useMemo(() => {
     const v = (selectedItem.itemName || "").trim().toLowerCase();
     const list = v
       ? (cache || []).filter(
           (it) =>
-            it.name?.toLowerCase().includes(v) || String(it.barcode || "").toLowerCase().includes(v)
+            it.name?.toLowerCase().includes(v) ||
+            String(it.barcode || "").toLowerCase().includes(v)
         )
       : cache || [];
 
@@ -225,7 +221,6 @@ const POSEntry = () => {
     setTimeout(() => qtyRef.current?.focus?.(), 50);
   };
 
-  // --- Core add logic: Merge by (itemName + rate) ---
   const addLineMerge = ({ id, itemName, rate, qtyToAdd = 1 }) => {
     const addQty = Number(qtyToAdd) || 1;
     const addRate = Number(rate) || 0;
@@ -261,24 +256,19 @@ const POSEntry = () => {
         amount: Math.round(addQty * addRate * 100) / 100,
       };
 
-      // Append by default (barcode flow). If you want insert-first, call differently.
       return [...prev, newItem];
     });
   };
 
-  // --- Add by barcode string (used by Enter & camera scan) ---
   const addByBarcode = (rawCode) => {
     const code = String(rawCode || "").trim().toLowerCase();
     if (!code) return;
 
     const it = cache.find(
       (x) =>
-        String(x.barcode || "").toLowerCase() === code || String(x.id || "").toLowerCase() === code
-       
+        String(x.barcode || "").toLowerCase() === code ||
+        String(x.id || "").toLowerCase() === code
     );
-    console.log("cache", cache);
-    console.log("Add by barcode:", code);
-
 
     if (!it) {
       message.error("Item not found");
@@ -290,25 +280,17 @@ const POSEntry = () => {
     barcodeInputRef.current?.focus?.();
   };
 
-  // --- Barcode enter (hidden input) ---
   const handleBarcodeEnter = () => {
     if (!barcode) return;
     addByBarcode(barcode);
     setBarcode("");
   };
 
-  // --- Manual add button (Autocomplete) ---
   const handleAddItem = () => {
     const { itemName, qty, rate, id } = selectedItem;
+    if (!itemName || !(Number(qty) > 0)) return message.warning("Please enter item and quantity");
 
-    if (!itemName || !(Number(qty) > 0)) {
-      return message.warning("Please enter item and quantity");
-    }
-
-    // Merge-in-place (same name + same rate)
     addLineMerge({ id, itemName, rate, qtyToAdd: qty });
-
-    // reset
     setSelectedItem({ itemName: "", qty: 1, rate: 0, id: null });
 
     setTimeout(() => {
@@ -317,11 +299,8 @@ const POSEntry = () => {
     }, 50);
   };
 
-  const handleRemoveItem = (key) => {
-    setItems((prev) => prev.filter((it) => it.key !== key));
-  };
+  const handleRemoveItem = (key) => setItems((prev) => prev.filter((it) => it.key !== key));
 
-  // --- Save bill to backend ---
   const saveBillToDatabase = async (billData) => {
     const tenancyId = localStorage.getItem("tenancyId");
     const token = localStorage.getItem("jwtToken");
@@ -338,45 +317,24 @@ const POSEntry = () => {
       },
       voucherNumber: billData.voucherNo || null,
       voucherDate: new Date().toISOString(),
-
       NumericVoucherNumber: billData.NumericVoucherNumber || null,
       salesManName: billData.salesManName || null,
       customerMobile: billData.customerMobile || null,
       voucherPrefix: billData.voucherPrefix || "INV",
       voucherSufix: billData.voucherSufix || null,
       isSynched: 0,
-
       salesDetails: items.map((item) => ({
         itemId: item.id,
         itemName: item.itemName,
         qty: item.qty,
         rate: item.rate,
         amount: item.amount,
-        barcode: item.barcode || null,
-        batch: item.batch || null,
-        expiryDate: item.expiryDate || null,
-        standardPrice: item.standardPrice || item.rate,
-        taxRate: item.taxRate || 0,
-        cessRate: item.cessRate || 0,
-        unit: item.unit || null,
-        description: item.description || null,
-        itemCode: item.itemCode || null,
-        hsnCode: item.hsnCode || null,
-        cgst: item.cgst || 0,
-        sgst: item.sgst || 0,
-        cgstAmount: item.cgstAmount || 0,
-        sgstAmount: item.sgstAmount || 0,
-        igstAmount: item.igstAmount || 0,
-        totalTaxAmount: item.totalTaxAmount || 0,
       })),
     };
 
     const response = await fetch(`/api/${tenancyId}/sales`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(salesTransHdr),
     });
 
@@ -388,7 +346,6 @@ const POSEntry = () => {
       } catch {}
       throw new Error(errMsg);
     }
-
     return response.json();
   };
 
@@ -410,18 +367,14 @@ const POSEntry = () => {
       message.loading({ content: "Saving invoice...", key: "saving" });
       const savedResult = await saveBillToDatabase(billData);
 
-      if (!savedResult || !savedResult.voucherNumber) {
-        throw new Error("Invalid response from server");
-      }
+      if (!savedResult || !savedResult.voucherNumber) throw new Error("Invalid response from server");
 
       message.success({ content: "Saved successfully!", key: "saving", duration: 1.5 });
-
-      // show preview
       setBillToPrint(savedResult);
       setPreviewOpen(true);
-    } catch (error) {
-      console.error(error);
-      message.error({ content: `Failed: ${error.message}`, duration: 5 });
+    } catch (e) {
+      console.error(e);
+      message.error({ content: `Failed: ${e.message}`, duration: 5 });
     } finally {
       setSaving(false);
     }
@@ -429,18 +382,11 @@ const POSEntry = () => {
 
   const handleConfirmPrint = async () => {
     if (!billToPrint) return message.error("Invoice not ready to print");
-
-    // allow DOM commit for hidden print component
     await new Promise((r) => setTimeout(r, 150));
-
-    if (!printContentRef.current) {
-      message.error("Print content not mounted yet.");
-      return;
-    }
+    if (!printContentRef.current) return message.error("Print content not mounted yet.");
 
     handlePrint();
 
-    // reset after print trigger
     setTimeout(() => {
       form.resetFields();
       setItems([]);
@@ -451,25 +397,9 @@ const POSEntry = () => {
   };
 
   const columns = [
-    {
-      title: "Item Name",
-      dataIndex: "itemName",
-      render: (text) => <Text strong>{text}</Text>,
-    },
-    {
-      title: "Qty",
-      dataIndex: "qty",
-      width: 80,
-      align: "center",
-      render: (v) => <Tag color="blue">{v}</Tag>,
-    },
-    {
-      title: "Rate",
-      dataIndex: "rate",
-      width: 100,
-      align: "right",
-      render: (v) => `₹${Number(v || 0).toFixed(2)}`,
-    },
+    { title: "Item Name", dataIndex: "itemName", render: (t) => <Text strong>{t}</Text> },
+    { title: "Qty", dataIndex: "qty", width: 80, align: "center", render: (v) => <Tag>{v}</Tag> },
+    { title: "Rate", dataIndex: "rate", width: 100, align: "right", render: (v) => `₹${Number(v || 0).toFixed(2)}` },
     {
       title: "Total",
       dataIndex: "amount",
@@ -490,41 +420,132 @@ const POSEntry = () => {
     },
   ];
 
-  return (
-    <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: 20 }}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ background: "#1890ff", color: "#fff", padding: "5px 10px", borderRadius: 4 }}>
-            <ShoppingCartOutlined style={{ fontSize: 20 }} />
+  // ✅ Mobile cart UI (cards instead of table)
+  const MobileCart = () => (
+    <div style={{ display: "grid", gap: 10 }}>
+      {items.map((it) => (
+        <Card key={it.key} size="small" bodyStyle={{ padding: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {it.itemName}
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>
+                Qty: <b>{it.qty}</b> &nbsp;|&nbsp; Rate: <b>₹{Number(it.rate).toFixed(2)}</b>
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontWeight: 800 }}>₹{Number(it.amount).toFixed(2)}</div>
+              <Button
+                type="text"
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+                onClick={() => handleRemoveItem(it.key)}
+              />
+            </div>
           </div>
-          <Title level={4} style={{ margin: 0, color: "#001529" }}>
+        </Card>
+      ))}
+      {!items.length && (
+        <div style={{ padding: 30, textAlign: "center", opacity: 0.6 }}>
+          <ShoppingCartOutlined style={{ fontSize: 34 }} />
+          <div style={{ marginTop: 8 }}>Cart is empty</div>
+        </div>
+      )}
+    </div>
+  );
+
+  // ✅ Sticky mobile bottom bar
+  const MobileBottomBar = () => (
+    <div
+      style={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: "rgba(255,255,255,0.98)",
+        borderTop: "1px solid #f0f0f0",
+        padding: "10px 12px",
+        zIndex: 999,
+      }}
+    >
+      <div style={{ display: "flex", gap: 8 }}>
+        <Button icon={<CameraOutlined />} onClick={() => setScanOpen(true)} block>
+          Scan
+        </Button>
+        <Button icon={<SearchOutlined />} onClick={() => setSearchOpen(true)} block>
+          Lookup
+        </Button>
+        <Button icon={<SyncOutlined spin={syncing} />} onClick={syncItems} block>
+          Sync
+        </Button>
+        <Button
+          type="primary"
+          icon={<SaveOutlined />}
+          onClick={() => form.submit()}
+          loading={saving}
+          block
+        >
+          Save
+        </Button>
+      </div>
+
+      <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+        <span>Total</span>
+        <b>₹{totalAmount.toFixed(2)}</b>
+      </div>
+    </div>
+  );
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#f0f2f5",
+        padding: isMobile ? 12 : 20,
+        paddingBottom: isMobile ? 90 : 20, // space for bottom bar
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 12,
+          flexWrap: "wrap",
+          gap: 8,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ background: "#1890ff", color: "#fff", padding: "6px 10px", borderRadius: 8 }}>
+            <ShoppingCartOutlined style={{ fontSize: 18 }} />
+          </div>
+          <Title level={isMobile ? 5 : 4} style={{ margin: 0, color: "#001529" }}>
             POS Terminal
           </Title>
         </div>
 
-        <Space>
-          <Tag icon={<BarcodeOutlined />} color="processing">
-            Ready to Scan
-          </Tag>
-
-          <Button icon={<CameraOutlined />} onClick={() => setScanOpen(true)}>
-            Scan
-          </Button>
-
-          <Tooltip title="F2 / Ctrl+K">
-            <Button icon={<SearchOutlined />} onClick={() => setSearchOpen(true)}>
-              Lookup
+        {!isMobile && (
+          <Space>
+            <Tag icon={<BarcodeOutlined />} color="processing">
+              Ready to Scan
+            </Tag>
+            <Button icon={<CameraOutlined />} onClick={() => setScanOpen(true)}>
+              Scan
             </Button>
-          </Tooltip>
-
-          <Button icon={<SyncOutlined spin={syncing} />} onClick={syncItems}>
-            Sync DB
-          </Button>
-        </Space>
+            <Tooltip title="F2 / Ctrl+K">
+              <Button icon={<SearchOutlined />} onClick={() => setSearchOpen(true)}>
+                Lookup
+              </Button>
+            </Tooltip>
+            <Button icon={<SyncOutlined spin={syncing} />} onClick={syncItems}>
+              Sync DB
+            </Button>
+          </Space>
+        )}
       </div>
 
-      {/* Main form */}
       <Form
         form={form}
         layout="vertical"
@@ -534,24 +555,25 @@ const POSEntry = () => {
           customer: "POS",
         }}
       >
-        <Row gutter={16}>
+        <Row gutter={isMobile ? 10 : 16}>
           {/* Left */}
           <Col xs={24} lg={16}>
             <Card
+              size={isMobile ? "small" : "default"}
               title={
                 <Space>
                   <SearchOutlined /> Item Entry
                 </Space>
               }
-              style={{ marginBottom: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
-              bodyStyle={{ padding: 16 }}
+              style={{ marginBottom: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
+              bodyStyle={{ padding: isMobile ? 12 : 16 }}
             >
               <Row gutter={10} align="middle">
-                <Col flex="auto">
+                <Col xs={24} sm={12} flex="auto">
                   <AutoComplete
                     id="item-search"
                     style={{ width: "100%" }}
-                    placeholder="Type Item Name or Code"
+                    placeholder="Type Item Name / Barcode"
                     value={selectedItem.itemName}
                     options={itemOptions}
                     onSearch={(txt) => setSelectedItem((s) => ({ ...s, itemName: txt }))}
@@ -565,11 +587,11 @@ const POSEntry = () => {
                       setTimeout(() => qtyRef.current?.focus?.(), 0);
                     }}
                   >
-                    <Input size="large" prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />} />
+                    <Input size={isMobile ? "large" : "large"} prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />} />
                   </AutoComplete>
                 </Col>
 
-                <Col flex="80px">
+                <Col xs={8} sm={4}>
                   <InputNumber
                     ref={qtyRef}
                     size="large"
@@ -582,7 +604,7 @@ const POSEntry = () => {
                   />
                 </Col>
 
-                <Col flex="100px">
+                <Col xs={10} sm={6}>
                   <InputNumber
                     size="large"
                     placeholder="Rate"
@@ -595,50 +617,41 @@ const POSEntry = () => {
                   />
                 </Col>
 
-                <Col flex="none">
-                  <Button type="primary" size="large" icon={<PlusOutlined />} onClick={handleAddItem}>
+                <Col xs={6} sm={4}>
+                  <Button type="primary" size="large" icon={<PlusOutlined />} onClick={handleAddItem} block>
                     Add
                   </Button>
                 </Col>
               </Row>
             </Card>
 
-            <Card style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }} bodyStyle={{ padding: 0 }}>
-              <Table
-                columns={columns}
-                dataSource={items}
-                pagination={false}
-                scroll={{ y: "calc(100vh - 350px)" }}
-                size="middle"
-                rowKey="key"
-                locale={{
-                  emptyText: (
-                    <div style={{ padding: 40, textAlign: "center", color: "#ccc" }}>
-                      <ShoppingCartOutlined style={{ fontSize: 40 }} />
-                      <p>Cart is empty</p>
-                    </div>
-                  ),
-                }}
-              />
+            <Card style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }} bodyStyle={{ padding: isMobile ? 12 : 0 }}>
+              {isMobile ? (
+                <MobileCart />
+              ) : (
+                <Table
+                  columns={columns}
+                  dataSource={items}
+                  pagination={false}
+                  scroll={{ y: "calc(100vh - 350px)" }}
+                  size="middle"
+                  rowKey="key"
+                />
+              )}
             </Card>
           </Col>
 
           {/* Right */}
           <Col xs={24} lg={8}>
-            <Card title="Invoice Details" size="small" style={{ marginBottom: 16 }}>
+            <Card title="Invoice Details" size="small" style={{ marginBottom: 12 }}>
               <Row gutter={10}>
                 <Col span={12}>
-                  <Form.Item name="voucherNo" label="Voucher No" style={{ marginBottom: 12 }}>
+                  <Form.Item name="voucherNo" label="Voucher No" style={{ marginBottom: 10 }}>
                     <Input prefix={<FileTextOutlined />} placeholder="Auto" />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item
-                    name="voucherDate"
-                    label="Date"
-                    rules={[{ required: true, message: "Date required" }]}
-                    style={{ marginBottom: 12 }}
-                  >
+                  <Form.Item name="voucherDate" label="Date" rules={[{ required: true }]} style={{ marginBottom: 10 }}>
                     <Input type="date" />
                   </Form.Item>
                 </Col>
@@ -648,25 +661,28 @@ const POSEntry = () => {
                 <Input prefix={<UserOutlined />} placeholder="POS" />
               </Form.Item>
 
-              <Form.Item name="customerMobile" label="Mobile" style={{ marginBottom: 8 }}>
+              <Form.Item name="customerMobile" label="Mobile" style={{ marginBottom: 0 }}>
                 <Input placeholder="Customer Mobile" />
               </Form.Item>
-
-              <Form.Item name="customerId" label="Customer ID" style={{ marginBottom: 0 }} hidden>
-                <Input />
-              </Form.Item>
             </Card>
 
-            <Card
-              style={{ background: "#001529", color: "white", textAlign: "center", marginBottom: 16 }}
-              bodyStyle={{ padding: 24 }}
-            >
-              <div style={{ opacity: 0.8, fontSize: 14 }}>TOTAL PAYABLE</div>
-              <div style={{ fontSize: 42, fontWeight: "bold", color: "#fff", lineHeight: 1.2 }}>
-                <span style={{ fontSize: 24, verticalAlign: "top" }}>₹</span>
-                {totalAmount.toFixed(2)}
-              </div>
-            </Card>
+            {!isMobile && (
+              <Card
+                style={{
+                  background: "#001529",
+                  color: "white",
+                  textAlign: "center",
+                  marginBottom: 12,
+                }}
+                bodyStyle={{ padding: 24 }}
+              >
+                <div style={{ opacity: 0.8, fontSize: 14 }}>TOTAL PAYABLE</div>
+                <div style={{ fontSize: 42, fontWeight: "bold", color: "#fff", lineHeight: 1.2 }}>
+                  <span style={{ fontSize: 24, verticalAlign: "top" }}>₹</span>
+                  {totalAmount.toFixed(2)}
+                </div>
+              </Card>
+            )}
 
             <Card title="Payment" style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
               <Form.Item
@@ -687,7 +703,6 @@ const POSEntry = () => {
                   min={0}
                   step={1}
                   precision={2}
-                  stringMode={false}
                   inputMode="numeric"
                   controls={false}
                   placeholder="0.00"
@@ -702,13 +717,12 @@ const POSEntry = () => {
                   const tendered = form.getFieldValue("tendered") || 0;
                   const balance = (Number(tendered) || 0) - totalAmount;
                   const isDue = balance < 0;
-
                   return (
                     <div
                       style={{
                         background: isDue ? "#fff1f0" : "#f6ffed",
-                        padding: 15,
-                        borderRadius: 6,
+                        padding: 12,
+                        borderRadius: 8,
                         border: `1px solid ${isDue ? "#ffa39e" : "#b7eb8f"}`,
                         textAlign: "center",
                       }}
@@ -716,7 +730,7 @@ const POSEntry = () => {
                       <div style={{ color: isDue ? "#cf1322" : "#389e0d", fontWeight: "bold" }}>
                         {isDue ? "DUE AMOUNT" : "CHANGE TO RETURN"}
                       </div>
-                      <div style={{ fontSize: 24, color: isDue ? "#cf1322" : "#389e0d", fontWeight: 600 }}>
+                      <div style={{ fontSize: 22, color: isDue ? "#cf1322" : "#389e0d", fontWeight: 700 }}>
                         ₹{Math.abs(balance).toFixed(2)}
                       </div>
                     </div>
@@ -724,69 +738,60 @@ const POSEntry = () => {
                 }}
               </Form.Item>
 
-              <Divider />
-
-              <Row gutter={10}>
-                <Col span={12}>
-                  <Button
-                    block
-                    size="large"
-                    onClick={() => {
-                      form.resetFields();
-                      setItems([]);
-                      setTotalAmount(0);
-                    }}
-                  >
-                    Reset
-                  </Button>
-                </Col>
-                <Col span={12}>
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    block
-                    size="large"
-                    icon={saving ? <SyncOutlined spin /> : <SaveOutlined />}
-                    loading={saving}
-                    disabled={saving}
-                    style={{ height: "100%" }}
-                  >
-                    {saving ? "Saving..." : "Save & Print"}
-                  </Button>
-                </Col>
-              </Row>
+              {!isMobile && (
+                <>
+                  <Divider />
+                  <Row gutter={10}>
+                    <Col span={12}>
+                      <Button
+                        block
+                        size="large"
+                        onClick={() => {
+                          form.resetFields();
+                          setItems([]);
+                          setTotalAmount(0);
+                        }}
+                      >
+                        Reset
+                      </Button>
+                    </Col>
+                    <Col span={12}>
+                      <Button
+                        type="primary"
+                        htmlType="submit"
+                        block
+                        size="large"
+                        icon={saving ? <SyncOutlined spin /> : <SaveOutlined />}
+                        loading={saving}
+                        disabled={saving}
+                      >
+                        {saving ? "Saving..." : "Save & Print"}
+                      </Button>
+                    </Col>
+                  </Row>
+                </>
+              )}
             </Card>
           </Col>
         </Row>
       </Form>
 
-      {/* Hidden barcode input: hardware scanner or manual barcode typing */}
+      {/* hidden barcode input */}
       <input
         ref={barcodeInputRef}
         value={barcode}
         onChange={(e) => setBarcode(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") handleBarcodeEnter();
-        }}
+        onKeyDown={(e) => e.key === "Enter" && handleBarcodeEnter()}
         style={{ position: "fixed", top: 0, left: 0, opacity: 0, width: 1, zIndex: -1 }}
         autoFocus
       />
 
-      {/* Hidden Print DOM (must exist in DOM for react-to-print) */}
-      <div
-        style={{
-          position: "fixed",
-          left: "-10000px",
-          top: 0,
-          width: "80mm",
-          background: "white",
-          zIndex: -1,
-        }}
-      >
+      {/* Hidden print DOM */}
+      <div style={{ position: "fixed", left: "-10000px", top: 0, width: "80mm", background: "white", zIndex: -1 }}>
         <InvoicePrint ref={printContentRef} bill={billToPrint} />
       </div>
 
-      {/* Invoice Preview */}
+      {/* Preview */}
       <Modal
         title={
           <Space>
@@ -800,20 +805,9 @@ const POSEntry = () => {
           setPreviewOpen(false);
           setBillToPrint(null);
         }}
-        width={800}
+        width={isMobile ? "95vw" : 800}
         footer={[
-          <Button
-            key="cancel"
-            onClick={() => {
-              setPreviewOpen(false);
-              setBillToPrint(null);
-              form.resetFields();
-              setItems([]);
-              setSelectedItem({ itemName: "", qty: 1, rate: 0, id: null });
-              setTotalAmount(0);
-              barcodeInputRef.current?.focus?.();
-            }}
-          >
+          <Button key="cancel" onClick={() => setPreviewOpen(false)}>
             Close
           </Button>,
           <Button key="print" type="primary" icon={<PrinterOutlined />} onClick={handleConfirmPrint}>
@@ -822,16 +816,7 @@ const POSEntry = () => {
         ]}
       >
         {billToPrint ? (
-          <div
-            style={{
-              maxHeight: "70vh",
-              overflow: "auto",
-              border: "1px solid #d9d9d9",
-              borderRadius: 4,
-              padding: 20,
-              background: "white",
-            }}
-          >
+          <div style={{ maxHeight: "70vh", overflow: "auto", border: "1px solid #d9d9d9", borderRadius: 6, padding: 12 }}>
             <InvoicePrint bill={billToPrint} />
           </div>
         ) : (
@@ -842,7 +827,7 @@ const POSEntry = () => {
         )}
       </Modal>
 
-      {/* Item Lookup */}
+      {/* Lookup */}
       <Modal
         title={
           <Space>
@@ -852,7 +837,7 @@ const POSEntry = () => {
         open={searchOpen}
         onCancel={() => setSearchOpen(false)}
         footer={null}
-        width={600}
+        width={isMobile ? "95vw" : 600}
       >
         <Input
           id="search-input"
@@ -879,9 +864,8 @@ const POSEntry = () => {
             }
           }}
         />
-
         <List
-          style={{ marginTop: 10, maxHeight: 300, overflow: "auto" }}
+          style={{ marginTop: 10, maxHeight: 350, overflow: "auto" }}
           dataSource={filtered}
           size="small"
           bordered
@@ -891,7 +875,6 @@ const POSEntry = () => {
               style={{
                 cursor: "pointer",
                 background: idx === searchIndex ? "#e6f7ff" : "white",
-                transition: "0.2s",
               }}
             >
               <List.Item.Meta
@@ -908,17 +891,18 @@ const POSEntry = () => {
         />
       </Modal>
 
-      {/* Camera Barcode Scan (Option A) */}
+      {/* Scanner */}
       <BarcodeScannerModal
         open={scanOpen}
         onClose={() => {
           setScanOpen(false);
           barcodeInputRef.current?.focus?.();
         }}
-        onDetected={(code) => {
-          addByBarcode(code);
-        }}
+        onDetected={(code) => addByBarcode(code)}
       />
+
+      {/* Mobile sticky bar */}
+      {isMobile && <MobileBottomBar />}
     </div>
   );
 };
