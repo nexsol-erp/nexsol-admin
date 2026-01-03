@@ -184,6 +184,12 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       roles: ["admin","user"],
     },
     {
+      label: t("KOT"),
+      icon: <Home sx={{ color: "#ffe3a3" }} />,
+      link: "/kot",
+      roles: ["admin","user"],
+    },
+    {
       label: t("Sales Entry"),
       icon: <Pages sx={{ color: "#ffe3a3" }} />,
       link: "/salesentryform",
@@ -375,7 +381,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
         {
           label: t("All Branch Stock Report"),
           link: "/stock-report-all-branch",
-          roles: ["admin", "user", "manager","cgn"],
+          roles: ["admin", "user", "manager","cgn","franchiseeuser"],
         },
         {
           label: t("Branch Stock Management","franchiseeuser"),

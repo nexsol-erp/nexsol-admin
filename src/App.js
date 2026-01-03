@@ -73,6 +73,7 @@ import CategoryPriceEditDialog from "./components/CategoryPriceEditDialog";
 
 
 import "./i18n"; // i18n config
+import KOTEntry from "./components/KOTEntry";
 
 // ========================
 // AUTH WRAPPER COMPONENT
@@ -151,7 +152,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/stocktransfer-out-report" element={<StockTransferOutReport />} />
             <Route path="/branchassingment" element={<BranchAssignment />} />
             <Route path="/category-price-edit" element={<CategoryPriceEditDialog />} />
-
+            <Route path="/kot" element={<KOTEntry />} />
 
 
 <Route
