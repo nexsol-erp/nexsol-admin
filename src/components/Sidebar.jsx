@@ -426,7 +426,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
         {
           label: t("Item Sales Report"),
           link: "/item-sales",
-          roles: ["user","admin","franchiseeuser"],
+          roles: ["user","admin"],
         },
         {
           label: t("Documents List"),
@@ -436,13 +436,13 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
         {
           label: t("Branch Stock Diff Report"),
           link: "/branch-stock-diff-report",
-          roles: ["admin","franchiseeuser"],
+          roles: ["admin"],
         },
         
         {
           label: t("Stock Transfer Out Report"),
           link: "/stocktransfer-out-report",
-          roles: ["admin","franchiseeuser"],
+          roles: ["admin"],
         },
           
        
