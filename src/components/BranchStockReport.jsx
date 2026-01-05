@@ -175,7 +175,7 @@ useEffect(() => {
                 <TableRow key={index}>
                   <TableCell>{row.itemId}</TableCell>
                   <TableCell>{row.itemName}</TableCell>
-                  <TableCell align="right">{parseFloat(row.totalStock).toFixed(2)}</TableCell>
+                  <TableCell align="right">{parseFloat(row.totalQty).toFixed(2)}</TableCell>
                   <TableCell align="center">
                     <Button variant="outlined" color="error" onClick={() => deleteRow(row.itemId)}>
                       Delete
