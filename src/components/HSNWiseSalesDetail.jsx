@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect , useMemo } from "react";
 import {
   Box,
   FormControl,
@@ -26,6 +26,9 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 const HSNSalesDetail = () => {
+
+  
+
   const [branch, setBranch] = useState("");
   const [branches, setBranches] = useState([]);
   const [fromDate, setFromDate] = useState(dayjs().subtract(30, "day").format("YYYY-MM-DD"));
@@ -33,18 +36,62 @@ const HSNSalesDetail = () => {
   const [salesData, setSalesData] = useState([]);
   const [open, setOpen] = useState(false);
   const [fileName, setFileName] = useState("HSNSalesData.xlsx");
+  const [error, setError] = useState("");
 
+  // ✅ Read allowed branches (stored during login from JWT claims)
+ 
+
+    const allowedBranches = useMemo(() => {
+      try {
+        const raw = localStorage.getItem("allowedBranches");
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list : [];
+      } catch {
+        return [];
+      }
+    }, []);
   const fetchBranches = async () => {
     try {
-      const token = localStorage.getItem("jwtToken");
+      setError("");
       const tenancyId = localStorage.getItem("tenancyId");
+      const token = localStorage.getItem("jwtToken");
+
       const response = await fetch(`/api/${tenancyId}/branches`, {
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       });
+
+      if (!response.ok) throw new Error("Failed to fetch branches");
+
       const data = await response.json();
-      setBranches(data.branches);
-    } catch (error) {
-      console.error("Error fetching branches:", error);
+
+      // Normalize: support {branches:[...]} or {data:[...]} or [...]
+      const list = Array.isArray(data) ? data : data.branches || data.data || [];
+
+      // ✅ Filter branches by allowedBranches list
+      const filtered = allowedBranches.length
+        ? list.filter((b) => allowedBranches.includes(b.branchCode))
+        : [];
+
+      setBranches(filtered);
+
+      // ✅ Auto-select if only one branch allowed
+      if (!branch && filtered.length === 1) {
+        setBranch(filtered[0].branchCode);
+      }
+
+      // ✅ If current selection is not allowed anymore, clear it
+      if (branch && !filtered.some((b) => b.branchCode === branch)) {
+        setBranch("");
+      }
+    } catch (e) {
+      console.error("Error fetching branches:", e);
+      setError("Failed to load branches.");
+      setBranches([]);
+      setBranch("");
     }
   };
 
