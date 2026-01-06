@@ -199,7 +199,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("HSN wise Sales"),
       icon: <Pages sx={{ color: "#ffe3a3" }} />,
       link: "/hsnsales",
-      roles: ["admin"],
+      roles: ["admin","franchiseeuser"],
     },
     
     {
