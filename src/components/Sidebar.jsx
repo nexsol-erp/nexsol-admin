@@ -436,7 +436,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
         {
           label: t("Branch Stock Diff Report"),
           link: "/branch-stock-diff-report",
-          roles: ["admin"],
+          roles: ["admin","franchiseeuser"],
         },
         
         {
