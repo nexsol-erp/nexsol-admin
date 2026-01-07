@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState , useMemo  } from "react";
 import {
   Box,
   Button,
@@ -23,6 +23,7 @@ import { saveAs } from "file-saver";
 const EPS = 1e-9; // guard tiny float noise
 
 const BranchStockDiffReport = () => {
+  const [branch, setBranch] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
   const [branchList, setBranches] = useState([]);
   const [diffData, setDiffData] = useState([]);
@@ -69,25 +70,62 @@ const BranchStockDiffReport = () => {
       setBusyItemId(null);
     }
   };
-
-  useEffect(() => {
-    const fetchBranches = async () => {
+ 
+    const allowedBranches = useMemo(() => {
       try {
-        const token = localStorage.getItem("jwtToken");
-        const tenancyId = localStorage.getItem("tenancyId");
-        const response = await fetch(`/api/${tenancyId}/branches`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        const data = await response.json();
-        setBranches(Array.isArray(data.branches) ? data.branches : []);
-      } catch (err) {
-        console.error("Error fetching branches:", err);
+        const raw = localStorage.getItem("allowedBranches");
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list : [];
+      } catch {
+        return [];
       }
-    };
+    }, []);
+  useEffect(() => {
+  const fetchBranches = async () => {
+    try {
+      setError("");
+      const tenancyId = localStorage.getItem("tenancyId");
+      const token = localStorage.getItem("jwtToken");
+
+      const response = await fetch(`/api/${tenancyId}/branches`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch branches");
+
+      const data = await response.json();
+
+      // Normalize: support {branches:[...]} or {data:[...]} or [...]
+      const list = Array.isArray(data) ? data : data.branches || data.data || [];
+
+      // ✅ Filter branches by allowedBranches list
+      const filtered = allowedBranches.length
+        ? list.filter((b) => allowedBranches.includes(b.branchCode))
+        : [];
+
+      setBranches(filtered);
+
+      // ✅ Auto-select if only one branch allowed
+      if (!branch && filtered.length === 1) {
+        setBranch(filtered[0].branchCode);
+      }
+
+      // ✅ If current selection is not allowed anymore, clear it
+      if (branch && !filtered.some((b) => b.branchCode === branch)) {
+        setBranch("");
+      }
+    } catch (e) {
+      console.error("Error fetching branches:", e);
+      setError("Failed to load branches.");
+      setBranches([]);
+          setBranch("");
+ 
+    }
+  };
     fetchBranches();
   }, []);
 
