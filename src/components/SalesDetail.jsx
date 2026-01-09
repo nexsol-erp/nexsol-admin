@@ -267,6 +267,7 @@ const SalesDetail = () => {
               <TableCell>Item Name</TableCell>
               <TableCell align="right">Quantity</TableCell>
               <TableCell align="right">Rate</TableCell>
+               <TableCell align="right">TaxRate</TableCell>
               <TableCell align="right">Amount</TableCell>
             </TableRow>
           </TableHead>
@@ -278,6 +279,7 @@ const SalesDetail = () => {
                 <TableCell>{row.item_name}</TableCell>
                 <TableCell align="right">{row.qty}</TableCell>
                 <TableCell align="right">{row.rate}</TableCell>
+                 <TableCell align="right">{row.tax_rate}</TableCell>
                 <TableCell align="right">{row.amount}</TableCell>
               </TableRow>
             ))}
