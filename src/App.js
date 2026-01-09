@@ -70,7 +70,7 @@ import BranchAssignment from "./components/BranchAssignment";
 import StockTransferInvoicePrint from "./components/StockTransferInvoicePrint";
 import StockTransferOutInvoice from "./components/StockTransferOutInvoice";
 import CategoryPriceEditDialog from "./components/CategoryPriceEditDialog";
-
+import StockTransferInReport from "./components/StockTransferInReport";
 
 import "./i18n"; // i18n config
 import KOTEntry from "./components/KOTEntry";
@@ -150,6 +150,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/sales-category-wise-report-all-branch" element={<SalesCategoryWiseReportAllBranch />} />
             <Route path="/bpmn-editorr" element={<BpmnEditor />} />
             <Route path="/stocktransfer-out-report" element={<StockTransferOutReport />} />
+            <Route path="/stocktransfer-in-report" element={<StockTransferInReport />} />
             <Route path="/branchassingment" element={<BranchAssignment />} />
             <Route path="/category-price-edit" element={<CategoryPriceEditDialog />} />
             <Route path="/kot" element={<KOTEntry />} />
