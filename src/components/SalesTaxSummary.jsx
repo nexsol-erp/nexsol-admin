@@ -26,7 +26,11 @@ import "dayjs/locale/en";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-const SalesDetail = () => {
+/**
+ * Tax-wise Sales Summary
+ * Groups salesData by tax_rate and shows totals.
+ */
+const SalesTaxSummary = () => {
   const [branch, setBranch] = useState("");
   const [branches, setBranches] = useState([]);
   const [fromDate, setFromDate] = useState(
@@ -35,7 +39,7 @@ const SalesDetail = () => {
   const [toDate, setToDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [salesData, setSalesData] = useState([]);
   const [open, setOpen] = useState(false);
-  const [fileName, setFileName] = useState("SalesData.xlsx");
+  const [fileName, setFileName] = useState("SalesTaxSummary.xlsx");
   const [error, setError] = useState("");
 
   // ✅ Read allowed branches (stored during login from JWT claims)
@@ -66,8 +70,6 @@ const SalesDetail = () => {
       if (!response.ok) throw new Error("Failed to fetch branches");
 
       const data = await response.json();
-
-      // Normalize: support {branches:[...]} or {data:[...]} or [...]
       const list = Array.isArray(data) ? data : data.branches || data.data || [];
 
       // ✅ Filter branches by allowedBranches list
@@ -120,8 +122,8 @@ const SalesDetail = () => {
 
         const data = await response.json();
         setSalesData(data.data || []);
-      } catch (error) {
-        console.error("Error fetching sales data:", error);
+      } catch (err) {
+        console.error("Error fetching sales data:", err);
         setError("Failed to fetch sales data.");
         setSalesData([]);
       }
@@ -135,54 +137,125 @@ const SalesDetail = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleBranchChange = (event) => setBranch(event.target.value);
-  const handleFromDateChange = (event) => setFromDate(event.target.value);
-  const handleToDateChange = (event) => setToDate(event.target.value);
+  // -----------------------------
+  // Grouping logic (tax-wise)
+  // -----------------------------
+  const groupedData = useMemo(() => {
+  const taxMap = new Map();
 
-  const handleClickOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  (salesData || []).forEach((row) => {
+    const taxRate = Number(row.tax_rate ?? 0);
+    const itemName = row.item_name || "UNKNOWN";
 
-const handleExport = () => {
-  // 1) Build export rows with correct types (numbers as numbers)
-  const exportRows = (Array.isArray(salesData) ? salesData : []).map((r) => ({
-    voucher_number: r.voucher_number ?? "",
-    voucher_date: r.voucher_date ?? "",
-    item_name: r.item_name ?? "",
-    qty: Number(r.qty ?? 0),              // ✅ number
-    rate: Number(r.rate ?? 0),            // ✅ number
-    tax_rate: Number(r.tax_rate ?? 0),    // ✅ number
-    amount: Number(r.amount ?? 0),        // ✅ number
-  }));
+    const qty = Number(row.qty ?? 0);
+    const amount = Number(row.amount ?? 0);
+
+    if (!taxMap.has(taxRate)) {
+      taxMap.set(taxRate, {
+        tax_rate: taxRate,
+        items: new Map(),
+        subtotal_qty: 0,
+        subtotal_amount: 0,
+      });
+    }
+
+    const taxGroup = taxMap.get(taxRate);
+
+    if (!taxGroup.items.has(itemName)) {
+      taxGroup.items.set(itemName, {
+        item_name: itemName,
+        qty: 0,
+        amount: 0,
+        lines: 0,
+      });
+    }
+
+    const item = taxGroup.items.get(itemName);
+    item.qty += qty;
+    item.amount += amount;
+    item.lines += 1;
+
+    taxGroup.subtotal_qty += qty;
+    taxGroup.subtotal_amount += amount;
+  });
+
+  return Array.from(taxMap.values())
+    .sort((a, b) => a.tax_rate - b.tax_rate)
+    .map((g) => ({
+      ...g,
+      items: Array.from(g.items.values()).sort((a, b) =>
+        a.item_name.localeCompare(b.item_name)
+      ),
+    }));
+}, [salesData]);
+
+
+const grandTotal = groupedData.reduce(
+  (acc, g) => {
+    acc.qty += g.subtotal_qty;
+    acc.amount += g.subtotal_amount;
+    return acc;
+  },
+  { qty: 0, amount: 0 }
+);
+
+  // -----------------------------
+  // Export grouped data
+  // -----------------------------
+  const handleExport = () => {
+  // Build rows with REAL numbers (not strings)
+  const exportRows = [];
+
+  groupedData.forEach((g) => {
+    g.items.forEach((item) => {
+      exportRows.push({
+        tax_rate: g.tax_rate,          // number
+        item_name: item.item_name,     // string
+        lines: item.lines,             // number
+        total_qty: item.qty,           // number ✅
+        total_amount: item.amount,     // number ✅
+      });
+    });
+
+    // Subtotal row (keep numeric columns numeric; text in tax_rate)
+    exportRows.push({
+      tax_rate: `${g.tax_rate}% SUBTOTAL`, // string label
+      item_name: "",
+      lines: null,
+      total_qty: g.subtotal_qty,          // number ✅
+      total_amount: g.subtotal_amount,    // number ✅
+    });
+  });
+
+  // Grand total row
+  exportRows.push({
+    tax_rate: "GRAND TOTAL",
+    item_name: "",
+    lines: null,
+    total_qty: grandTotal.qty,        // number ✅
+    total_amount: grandTotal.amount,  // number ✅
+  });
 
   const worksheet = XLSX.utils.json_to_sheet(exportRows);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Sales Data");
 
-  // 2) Optional: apply Excel number formats so it looks nice
-  // Columns: A voucher_number, B voucher_date, C item_name, D qty, E rate, F tax_rate, G amount
+  // ✅ Apply number formats (optional but nice)
+  // D = total_qty, E = total_amount (because columns are: A tax_rate, B item_name, C lines, D total_qty, E total_amount)
   const range = XLSX.utils.decode_range(worksheet["!ref"]);
   for (let r = range.s.r + 1; r <= range.e.r; r++) {
-    const qtyCell = XLSX.utils.encode_cell({ r, c: 3 });   // D
-    const rateCell = XLSX.utils.encode_cell({ r, c: 4 });  // E
-    const taxCell = XLSX.utils.encode_cell({ r, c: 5 });   // F
-    const amtCell = XLSX.utils.encode_cell({ r, c: 6 });   // G
-
+    const qtyCell = XLSX.utils.encode_cell({ r, c: 3 });    // D
+    const amtCell = XLSX.utils.encode_cell({ r, c: 4 });    // E
     if (worksheet[qtyCell] && typeof worksheet[qtyCell].v === "number") worksheet[qtyCell].z = "0.000";
-    if (worksheet[rateCell] && typeof worksheet[rateCell].v === "number") worksheet[rateCell].z = "0.00";
-    if (worksheet[taxCell] && typeof worksheet[taxCell].v === "number") worksheet[taxCell].z = "0.00";
     if (worksheet[amtCell] && typeof worksheet[amtCell].v === "number") worksheet[amtCell].z = "0.00";
   }
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Tax Summary");
 
   const excelBytes = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
 
   saveAs(new Blob([excelBytes], { type: "application/octet-stream" }), fileName);
   setOpen(false);
 };
-
-
-  const totalAmount = Array.isArray(salesData)
-    ? salesData.reduce((total, item) => total + parseFloat(item.amount || 0), 0)
-    : 0;
 
   return (
     <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
@@ -205,7 +278,7 @@ const handleExport = () => {
           labelId="branch-label"
           label="Branch"
           value={branch}
-          onChange={handleBranchChange}
+          onChange={(e) => setBranch(e.target.value)}
           disabled={branches.length === 0}
         >
           {branches.map((b) => (
@@ -221,7 +294,7 @@ const handleExport = () => {
           type="date"
           label="From Date"
           value={fromDate}
-          onChange={handleFromDateChange}
+          onChange={(e) => setFromDate(e.target.value)}
           InputLabelProps={{ shrink: true }}
           sx={{ flex: 1, mr: 2 }}
         />
@@ -229,7 +302,7 @@ const handleExport = () => {
           type="date"
           label="To Date"
           value={toDate}
-          onChange={handleToDateChange}
+          onChange={(e) => setToDate(e.target.value)}
           InputLabelProps={{ shrink: true }}
           sx={{ flex: 1 }}
         />
@@ -248,14 +321,14 @@ const handleExport = () => {
       <Button
         variant="contained"
         color="secondary"
-        onClick={handleClickOpen}
+        onClick={() => setOpen(true)}
         sx={{ mb: 3, ml: 2 }}
-        disabled={!salesData || salesData.length === 0}
+        
       >
         Export to Excel
       </Button>
 
-      <Dialog open={open} onClose={handleClose}>
+      <Dialog open={open} onClose={() => setOpen(false)}>
         <DialogTitle>Export to Excel</DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -272,7 +345,7 @@ const handleExport = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose} color="primary">
+          <Button onClick={() => setOpen(false)} color="primary">
             Cancel
           </Button>
           <Button onClick={handleExport} color="primary">
@@ -283,43 +356,63 @@ const handleExport = () => {
 
       <TableContainer component={Paper} sx={{ width: "100%", mt: 2 }}>
         <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Voucher Number</TableCell>
-              <TableCell>Voucher Date</TableCell>
-              <TableCell>Item Name</TableCell>
-              <TableCell align="right">Quantity</TableCell>
-              <TableCell align="right">Rate</TableCell>
-               <TableCell align="right">TaxRate</TableCell>
-              <TableCell align="right">Amount</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {salesData.map((row, index) => (
-              <TableRow key={index}>
-                <TableCell>{row.voucher_number}</TableCell>
-                <TableCell>{row.voucher_date}</TableCell>
-                <TableCell>{row.item_name}</TableCell>
-                <TableCell align="right">{row.qty}</TableCell>
-                <TableCell align="right">{row.rate}</TableCell>
-                 <TableCell align="right">{row.tax_rate}</TableCell>
-                <TableCell align="right">{row.amount}</TableCell>
-              </TableRow>
-            ))}
+        <TableHead>
+  <TableRow>
+    <TableCell>Tax %</TableCell>
+    <TableCell>Item Name</TableCell>
+    <TableCell align="right">Lines</TableCell>
+    <TableCell align="right">Total Qty</TableCell>
+    <TableCell align="right">Total Amount</TableCell>
+  </TableRow>
+</TableHead>
 
-            <TableRow>
-              <TableCell colSpan={5} sx={{ fontWeight: "bold" }}>
-                Total
-              </TableCell>
-              <TableCell align="right" sx={{ fontWeight: "bold" }}>
-                {totalAmount.toFixed(2)}
-              </TableCell>
-            </TableRow>
-          </TableBody>
+          <TableBody>
+  {groupedData.map((taxGroup) => (
+    <React.Fragment key={taxGroup.tax_rate}>
+      {/* Item rows */}
+      {taxGroup.items.map((item, idx) => (
+        <TableRow key={idx}>
+          <TableCell>{taxGroup.tax_rate.toFixed(2)}%</TableCell>
+          <TableCell>{item.item_name}</TableCell>
+          <TableCell align="right">{item.lines}</TableCell>
+          <TableCell align="right">{item.qty.toFixed(3)}</TableCell>
+          <TableCell align="right">{item.amount.toFixed(2)}</TableCell>
+        </TableRow>
+      ))}
+
+      {/* Subtotal row per tax % */}
+      <TableRow sx={{ backgroundColor: "#0b0101" }}>
+        <TableCell colSpan={3} sx={{ fontWeight: "bold" }}>
+          {taxGroup.tax_rate.toFixed(2)}% Subtotal
+        </TableCell>
+        <TableCell align="right" sx={{ fontWeight: "bold" }}>
+          {taxGroup.subtotal_qty.toFixed(3)}
+        </TableCell>
+        <TableCell align="right" sx={{ fontWeight: "bold" }}>
+          {taxGroup.subtotal_amount.toFixed(2)}
+        </TableCell>
+      </TableRow>
+    </React.Fragment>
+  ))}
+
+  {/* Grand total */}
+  <TableRow>
+    <TableCell colSpan={3} sx={{ fontWeight: "bold" }}>
+      Grand Total
+    </TableCell>
+    <TableCell align="right" sx={{ fontWeight: "bold" }}>
+      {grandTotal.qty.toFixed(3)}
+    </TableCell>
+    <TableCell align="right" sx={{ fontWeight: "bold" }}>
+      {grandTotal.amount.toFixed(2)}
+    </TableCell>
+  </TableRow>
+</TableBody>
+
         </Table>
       </TableContainer>
     </Box>
   );
 };
 
-export default SalesDetail;
+export default SalesTaxSummary;
