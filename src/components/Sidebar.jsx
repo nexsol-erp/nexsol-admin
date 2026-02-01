@@ -368,6 +368,12 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
           link: "/sales",
           roles: ["admin", "user", "manager","franchiseeuser"],
         },
+          {
+          label: t("Sales Tax Summary"),
+          link: "/salestaxsummary",
+          roles: ["admin", "user", "manager","franchiseeuser"],
+        },
+        
         {
           label: t("Purchase Report"),
           link: "/purchasereport",
