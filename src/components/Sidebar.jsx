@@ -199,14 +199,14 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("HSN wise Sales"),
       icon: <Pages sx={{ color: "#ffe3a3" }} />,
       link: "/hsnsales",
-      roles: ["admin","franchiseeuser"],
+      roles: ["admin","franchiseeuser","user"],
     },
     
     {
       label: t("HSN wise Purchase"),
       icon: <Pages sx={{ color: "#ffe3a3" }} />,
       link: "/hsnwise-purchase-report",
-      roles: ["admin"],
+      roles: ["admin","user"],
     },
     {
       label: t("Purchase"),
@@ -448,7 +448,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
         {
           label: t("Stock Transfer Out Report"),
           link: "/stocktransfer-out-report",
-          roles: ["admin"],
+          roles: ["admin","franchiseeuser"],
         },
           
        

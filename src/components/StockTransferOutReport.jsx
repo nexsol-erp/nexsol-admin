@@ -1,5 +1,5 @@
 // StockTransferOutReport.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect , useMemo} from "react";
 import {
   Box,
   FormControl,
@@ -31,6 +31,8 @@ const StockTransferOutReport = () => {
   const [fromBranch, setFromBranch] = useState("ALL");
   const [toBranch, setToBranch] = useState("ALL");
   const [branches, setBranches] = useState([]);
+    const [branch, setBranch] = useState("");
+
   const [fromDate, setFromDate] = useState(
     dayjs().subtract(30, "day").format("YYYY-MM-DD")
   );
@@ -38,13 +40,25 @@ const StockTransferOutReport = () => {
   const [transferData, setTransferData] = useState([]);
   const [open, setOpen] = useState(false);
   const [fileName, setFileName] = useState("StockTransferOut.xlsx");
-
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const fetchBranches = async () => {
+    const allowedBranches = useMemo(() => {
     try {
+      const raw = localStorage.getItem("allowedBranches");
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
+const fetchBranches = async () => {
+    try {
+      setError("");
       const tenancyId = localStorage.getItem("tenancyId");
       const token = localStorage.getItem("jwtToken");
+
       const response = await fetch(`/api/${tenancyId}/branches`, {
         method: "GET",
         headers: {
@@ -52,12 +66,38 @@ const StockTransferOutReport = () => {
           "Content-Type": "application/json",
         },
       });
+
+      if (!response.ok) throw new Error("Failed to fetch branches");
+
       const data = await response.json();
-      setBranches(data.branches || []);
-    } catch (error) {
-      console.error("Error fetching branches:", error);
+
+      // Normalize: support {branches:[...]} or {data:[...]} or [...]
+      const list = Array.isArray(data) ? data : data.branches || data.data || [];
+
+      // ✅ Filter branches by allowedBranches list
+      const filtered = allowedBranches.length
+        ? list.filter((b) => allowedBranches.includes(b.branchCode))
+        : [];
+
+      setBranches(filtered);
+
+      // ✅ Auto-select if only one branch allowed
+      if (!branch && filtered.length === 1) {
+        setBranch(filtered[0].branchCode);
+      }
+
+      // ✅ If current selection is not allowed anymore, clear it
+      if (branch && !filtered.some((b) => b.branchCode === branch)) {
+        setBranch("");
+      }
+    } catch (e) {
+      console.error("Error fetching branches:", e);
+      setError("Failed to load branches.");
+      setBranches([]);
+      setBranch("");
     }
   };
+
 
   const fetchTransferData = async () => {
     if (!fromDate || !toDate) return;
