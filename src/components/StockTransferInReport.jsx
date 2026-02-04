@@ -104,9 +104,21 @@ const fetchBranches = async () => {
       const tenancyId = localStorage.getItem("tenancyId");
       const token = localStorage.getItem("jwtToken");
 
+
+
+    const from = fromBranch || "ALL";
+const to = toBranch || "ALL";
+
+if (from === "ALL" && to === "ALL") {
+  alert("Please select at least one specific branch (From or To).");
+  return;
+}
+
+
+
       const params = new URLSearchParams({
-        fromBranch: fromBranch || "ALL",
-        toBranch: toBranch || "ALL",
+        fromBranch: from,
+        toBranch: to,
         fromDate,
         toDate,
       });
