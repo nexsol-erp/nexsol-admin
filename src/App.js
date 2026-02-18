@@ -72,6 +72,8 @@ import StockTransferOutInvoice from "./components/StockTransferOutInvoice";
 import CategoryPriceEditDialog from "./components/CategoryPriceEditDialog";
 import StockTransferInReport from "./components/StockTransferInReport";
 import SalesTaxSummary from "./components/SalesTaxSummary";
+import PhysicalStockEntryReport from "./components/PhysicalStockEntryReport";
+
 
 
 import "./i18n"; // i18n config
@@ -157,6 +159,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/category-price-edit" element={<CategoryPriceEditDialog />} />
             <Route path="/kot" element={<KOTEntry />} />
               <Route path="/salestaxsummary" element={<SalesTaxSummary />} />
+              <Route path="/physicalstockreport" element={<PhysicalStockEntryReport />} />
 
 
 <Route
