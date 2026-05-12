@@ -46,6 +46,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
   const [openScheme, setOpenScheme] = useState(false);
   const [openMasters, setOpenMasters] = useState(false);
   const [openPurchase, setOpenPurchase] = useState(false);
+  const [openProduction, setOpenProduction] = useState(false);
   const [branches, setBranches] = useState([]);
     const [branch, setBranch] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
@@ -138,6 +139,10 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
     setOpenPurchase(!openPurchase);
   };
 
+  const handleClickProduction = () => {
+    setOpenProduction(!openProduction);
+  };
+
   const handleLogout = () => {
     // Clear user session data or tokens here
     localStorage.removeItem("tenancyId");
@@ -218,7 +223,31 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
         {
           label: t("Purchase Entry"),
           link: "/purchaseentry",
-          roles: ["user", "manager"],
+          roles: ["user", "manager", "admin"],
+        },
+      ],
+    },
+    {
+      label: t("Production"),
+      icon: <Category sx={{ color: "#ffe3a3" }} />,
+      link: "",
+      roles: ["admin", "manager", "user"],
+      hasSubmenu: true,
+      submenu: [
+        {
+          label: t("Production Def"),
+          link: "/production-def",
+          roles: ["admin", "manager", "user"],
+        },
+        {
+          label: t("Production Planning"),
+          link: "/production-planning",
+          roles: ["admin", "manager", "user"],
+        },
+        {
+          label: t("Production Execution"),
+          link: "/production-execution",
+          roles: ["admin", "manager", "user"],
         },
       ],
     },
@@ -280,6 +309,11 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       roles: ["admin","user","cgn","franchiseeuser"],
       hasSubmenu: true,
       submenu: [
+        {
+          label: t("Financial Year Setup"),
+          link: "/financialyearpage",
+          roles: ["admin","franchiseeuser"],
+        },
         {
           label: t("Item Search"),
           link: "/itemsearch",
@@ -347,6 +381,11 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
           label: t("Branch Assignment"),
           link: "/branchassingment",
           roles: ["admin"],
+        },
+        {
+          label: t("Physical Stock Correction"),
+          link: "/physical-stock-correction",
+          roles: ["admin", "manager"],
         },
         
       ],
@@ -561,6 +600,8 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
                 ? openScheme
                 : item.label === "Masters"
                 ? openMasters
+                : item.label === "Production"
+                ? openProduction
                 : openPurchase;
             const handleClick =
               item.label === "Reports"
@@ -569,6 +610,8 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
                 ? handleClickScheme
                 : item.label === "Masters"
                 ? handleClickMasters
+                : item.label === "Production"
+                ? handleClickProduction
                 : handleClickPurchase;
 
             return (

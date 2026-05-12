@@ -74,6 +74,11 @@ import StockTransferInReport from "./components/StockTransferInReport";
 import SalesTaxSummary from "./components/SalesTaxSummary";
 import PhysicalStockEntryReport from "./components/PhysicalStockEntryReport";
 
+import FinancialYearPage from "./components/FinancialYearPage";
+import PhysicalStockCorrection from "./components/PhysicalStockCorrection";
+import ProductionDefPage from "./components/ProductionDefPage";
+import ProductionPlanningPage from "./components/ProductionPlanningPage";
+import ProductionExecutionPage from "./components/ProductionExecutionPage";
 
 
 import "./i18n"; // i18n config
@@ -160,12 +165,20 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/kot" element={<KOTEntry />} />
               <Route path="/salestaxsummary" element={<SalesTaxSummary />} />
               <Route path="/physicalstockreport" element={<PhysicalStockEntryReport />} />
-
+ <Route path="/financialyearpage" element={<FinancialYearPage />} />
 
 <Route
   path="/stock-transfer-out/invoice/:voucherNumber"
   element={<StockTransferOutInvoice />}
 />
+
+<Route
+  path="/physical-stock-correction"
+  element={<PhysicalStockCorrection />}
+/>
+<Route path="/production-def" element={<ProductionDefPage />} />
+<Route path="/production-planning" element={<ProductionPlanningPage />} />
+<Route path="/production-execution" element={<ProductionExecutionPage />} />
 
 
 
