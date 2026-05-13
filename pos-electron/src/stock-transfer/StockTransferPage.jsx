@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input, InputNumber, Modal, Radio, Select, Space, Table, Typography, message } from "antd";
 import ItemLookupModal from "../components/ItemLookupModal";
+import { apiUrl } from "../utils/apiUrl";
 
 const { Title, Text } = Typography;
 
@@ -86,8 +87,8 @@ export default function StockTransferPage({ onClose }) {
     if (!toBranchCode || !tenantId || !token) return;
     const run = async () => {
       const urls = [
-        `/api/${tenantId}/branches/${encodeURIComponent(toBranchCode)}`,
-        `/api/${tenantId}/branch/${encodeURIComponent(toBranchCode)}`,
+        apiUrl(`/api/${tenantId}/branches/${encodeURIComponent(toBranchCode)}`),
+        apiUrl(`/api/${tenantId}/branch/${encodeURIComponent(toBranchCode)}`),
       ];
 
       for (const url of urls) {
@@ -275,9 +276,9 @@ export default function StockTransferPage({ onClose }) {
     try {
       setSaving(true);
       const urls = [
-        `/api/${tenantId}/stock-transfers/out`,
-        `/api/${tenantId}/stock-transfer/out`,
-        `/api/${tenantId}/stock-transfer`,
+        apiUrl(`/api/${tenantId}/stock-transfers/out`),
+        apiUrl(`/api/${tenantId}/stock-transfer/out`),
+        apiUrl(`/api/${tenantId}/stock-transfer`),
       ];
 
       let result = null;

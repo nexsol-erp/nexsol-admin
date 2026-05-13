@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Button, Input, Space, Table, Typography, message } from "antd";
+import { apiUrl } from "../utils/apiUrl";
 
 const { Title, Text } = Typography;
 
@@ -79,8 +80,8 @@ export default function AcceptStockPage({ onClose }) {
     try {
       setLoading(true);
       const urls = [
-        `/api/${tenantId}/stock-transfer/${encodeURIComponent(branchCode)}`,
-        `/api/${tenantId}/stock-transfer?toBranch=${encodeURIComponent(branchCode)}`,
+        apiUrl(`/api/${tenantId}/stock-transfer/${encodeURIComponent(branchCode)}`),
+        apiUrl(`/api/${tenantId}/stock-transfer?toBranch=${encodeURIComponent(branchCode)}`),
       ];
 
       let result = null;
@@ -135,9 +136,9 @@ export default function AcceptStockPage({ onClose }) {
     try {
       setDetailLoading(true);
       const urls = [
-        `/api/${tenantId}/stock-transfer/${encodeURIComponent(record.id)}/details`,
-        `/api/${tenantId}/stock-transfer/details/${encodeURIComponent(record.id)}`,
-        `/api/${tenantId}/stock-transfer/${encodeURIComponent(record.id)}`,
+        apiUrl(`/api/${tenantId}/stock-transfer/${encodeURIComponent(record.id)}/details`),
+        apiUrl(`/api/${tenantId}/stock-transfer/details/${encodeURIComponent(record.id)}`),
+        apiUrl(`/api/${tenantId}/stock-transfer/${encodeURIComponent(record.id)}`),
       ];
 
       let result = null;
@@ -204,8 +205,8 @@ export default function AcceptStockPage({ onClose }) {
     try {
       setSaving(true);
       const urls = [
-        { method: "POST", url: `/api/${tenantId}/stock-transfer/accept` },
-        { method: "PUT", url: `/api/${tenantId}/stock-transfer/${encodeURIComponent(header.id)}/accept` },
+        { method: "POST", url: apiUrl(`/api/${tenantId}/stock-transfer/accept`) },
+        { method: "PUT", url: apiUrl(`/api/${tenantId}/stock-transfer/${encodeURIComponent(header.id)}/accept`) },
       ];
 
       let ok = false;
