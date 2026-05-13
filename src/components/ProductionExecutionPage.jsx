@@ -281,7 +281,7 @@ const ProductionExecutionPage = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        setMessage({ text: `Execution saved! Voucher: ${data.voucherNumber}. Stock updated in item_batch_dtl.`, severity: "success" });
+        setMessage({ text: `Execution saved! Voucher: ${data.voucherNumber}. Stock updated in inventroy.`, severity: "success" });
         setProductionRows([emptyRow()]);
         setRawMaterialDetails([]);
         setRawMaterialSummary([]);
@@ -301,9 +301,30 @@ const ProductionExecutionPage = () => {
 
   return (
     <Box sx={{ p: 2 }}>
-      <Typography variant="h5" gutterBottom fontWeight="bold">
-        Production Execution
-      </Typography>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+        <Typography variant="h5" fontWeight="bold">
+          Production Execution
+        </Typography>
+        <Box
+          sx={{
+            px: 2.5,
+            py: 0.75,
+            borderRadius: 2,
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
+          <Typography variant="caption" sx={{ opacity: 0.85, letterSpacing: 0.5, textTransform: "uppercase" }}>
+            Branch
+          </Typography>
+          <Typography variant="h6" fontWeight="bold" sx={{ letterSpacing: 1 }}>
+            {branchCode || "—"}
+          </Typography>
+        </Box>
+      </Stack>
 
       {message.text && (
         <Alert severity={message.severity} sx={{ mb: 2 }} onClose={() => setMessage({ text: "", severity: "info" })}>
