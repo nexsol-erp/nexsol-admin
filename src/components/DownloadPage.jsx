@@ -8,8 +8,10 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Chip,
 } from "@mui/material";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
+import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 
 const DownloadPage = () => {
   const [branch, setBranch] = useState("");
@@ -103,18 +105,58 @@ const DownloadPage = () => {
     }
   };
 
+  const handlePosDownload = () => {
+    const link = document.createElement("a");
+    link.href = "/downloads/TradeLink247-POS-Setup.exe";
+    link.setAttribute("download", "TradeLink247-POS-Setup.exe");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
+      {/* Cashier POS card */}
       <Paper
         elevation={3}
         sx={{ padding: 4, maxWidth: 600, margin: "auto", marginTop: 8 }}
       >
-        <Typography variant="h4" gutterBottom>
-          Download Desktop Application
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+          <PointOfSaleIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>
+            Cashier POS
+          </Typography>
+          <Chip label="Windows" size="small" color="primary" variant="outlined" />
+        </Box>
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          Desktop application for cashier billing, day-end, stock transfer, and
+          accept stock. Install on each cashier PC — branch and server are
+          configured at first login.
         </Typography>
-        <Typography variant="body1" gutterBottom>
-          Click the button below to download the latest version of our desktop
-          application.
+        <Box sx={{ mt: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            size="large"
+            startIcon={<CloudDownloadIcon />}
+            onClick={handlePosDownload}
+          >
+            Download Cashier POS Setup (.exe)
+          </Button>
+        </Box>
+      </Paper>
+
+      {/* Existing desktop application card */}
+      <Paper
+        elevation={3}
+        sx={{ padding: 4, maxWidth: 600, margin: "auto", marginTop: 4 }}
+      >
+        <Typography variant="h5" sx={{ fontWeight: 600 }} gutterBottom>
+          Desktop Application
+        </Typography>
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          Branch-specific desktop application. Select a branch to download the
+          full installer or latest patch.
         </Typography>
         <FormControl fullWidth sx={{ mt: 3 }}>
           <InputLabel id="branch-code-label">Branch Code</InputLabel>

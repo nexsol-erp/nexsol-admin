@@ -1,2 +1,9 @@
 node_modules
-node_modules
+build
+public/downloads/*.exe
+
+# pos-electron build artifacts (source files are committed, built outputs are not)
+pos-electron/node_modules
+pos-electron/dist
+pos-electron/release
+pos-electron/.electron-cache

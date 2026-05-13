@@ -1,34 +1,87 @@
-name: Build and Deploy React App
+name: Build and Deploy
 
 on:
   push:
     branches:
-      - main  # Adjust this if your main branch is different
+      - main
+  workflow_dispatch:
 
 jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-
-    env:
-      DEPLOY_DIR: /var/www/html
-      TEMP_DEPLOY_DIR: /home/deploy/tmp-deploy
-      SERVICE_NAME: nginx
+  # ── Job 1: Build the Cashier POS Electron installer on Windows ─────────────
+  build-pos:
+    runs-on: windows-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'  # Change to your preferred version
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: pos-electron/package-lock.json
+
+      - name: Configure API server in pos-config.json
+        if: ${{ vars.POS_API_SERVER != '' }}
+        shell: pwsh
+        run: |
+          $cfg = Get-Content pos-electron/pos-config.json | ConvertFrom-Json
+          $cfg.apiServer = "${{ vars.POS_API_SERVER }}"
+          $cfg | ConvertTo-Json | Set-Content pos-electron/pos-config.json
+          Write-Host "API server set to: ${{ vars.POS_API_SERVER }}"
+
+      - name: Install pos-electron dependencies
+        working-directory: pos-electron
+        run: npm install
+
+      - name: Build Cashier POS installer
+        working-directory: pos-electron
+        run: npm run dist:win
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pos-installer
+          path: pos-electron/release/*.exe
+          retention-days: 7
+
+  # ── Job 2: Build React admin app and deploy (depends on pos installer) ─────
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    needs: build-pos
+
+    env:
+      TEMP_DEPLOY_DIR: /home/deploy/tmp-deploy
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Download POS installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pos-installer
+          path: public/downloads/
+
+      - name: Rename installer to fixed filename
+        run: |
+          cd public/downloads
+          for f in *.exe; do mv "$f" TradeLink247-POS-Setup.exe; done
+          echo "POS installer ready: $(ls -lh public/downloads/)"
 
       - name: Install dependencies
         run: npm install
 
       - name: Build React project with heartbeat
         run: |
-          echo "Starting React build with heartbeat..."
+          echo "Starting React build..."
           while sleep 30; do echo "[Heartbeat] Still building..."; done &
           HEARTBEAT_PID=$!
           CI='' npm run build

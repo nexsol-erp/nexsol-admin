@@ -1,0 +1,53 @@
+{
+  "name": "tradelink247-pos",
+  "version": "1.0.0",
+  "description": "TradeLink247 POS desktop app",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev:ui": "vite",
+    "dev:electron": "wait-on http://localhost:5173 && node scripts/launch-electron.js",
+    "dev": "concurrently -k \"npm:dev:ui\" \"npm:dev:electron\"",
+    "build": "vite build",
+    "dist:win": "npm run build && electron-builder --win nsis",
+    "dist": "npm run dist:win"
+  },
+  "dependencies": {
+    "antd": "^6.3.3",
+    "concurrently": "^9.2.1",
+    "dayjs": "^1.11.20",
+    "dexie": "^4.3.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "wait-on": "^9.0.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "cross-env": "^7.0.3",
+    "electron": "^32.3.3",
+    "electron-builder": "^26.0.12",
+    "vite": "^6.4.1"
+  },
+  "build": {
+    "appId": "com.tradelink247.pos",
+    "productName": "TradeLink247 POS",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json"
+    ],
+    "extraFiles": [
+      { "from": "pos-config.json", "to": "pos-config.json" }
+    ],
+    "win": {
+      "target": "nsis",
+      "artifactName": "TradeLink247-POS-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

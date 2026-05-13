@@ -1,0 +1,150 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ---- CSS variables ---- */
+:root {
+  --accent: #1677ff;
+  --bg-body: #f0f2f5;
+  --muted: #6b7280;
+  --radius: 8px;
+  --text: #1f2937;
+}
+
+/* ---- Base reset ---- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #f0f2f5;
+  color: #1f2937;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ---- POS container (main sales screen) ---- */
+.pos-container {
+  background: #ffffff;
+  padding: 12px;
+}
+
+.pos-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pos-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- All inputs — visible white background, dark text ---- */
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-input-number-input,
+.ant-select:not(.ant-select-customize-input) .ant-select-selector,
+.ant-picker {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+.ant-input::placeholder,
+.ant-input-number-input::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Focus highlight — yellow tint ---- */
+.pos-container .ant-input:focus,
+.pos-container .ant-input-focused,
+.pos-container .ant-input:focus-visible,
+.pos-container .ant-input-number-focused,
+.pos-container .ant-input-number input:focus,
+.item-search-input:focus,
+.item-search-input.ant-input-focused {
+  background: #fff9c4 !important;
+}
+
+/* ---- Tables ---- */
+.ant-table {
+  background: #ffffff;
+  color: #1f2937;
+}
+
+.ant-table-thead > tr > th {
+  background: #f5f5f5 !important;
+  color: #374151 !important;
+  font-weight: 600;
+}
+
+.ant-table-tbody > tr > td {
+  color: #1f2937;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: #f0f7ff !important;
+}
+
+/* ---- POS item table (green-tinted) ---- */
+.pos-item-table .ant-table-container {
+  border: 1px solid #b7dfb9;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.pos-item-table .ant-table-thead > tr > th {
+  background: #dff3df !important;
+  color: #1f4d1f !important;
+}
+.pos-item-table .ant-table-tbody > tr > td {
+  background: #f6fcf6;
+  color: #1f2937;
+}
+.pos-item-table .ant-table-tbody > tr:hover > td {
+  background: #e1f3e1 !important;
+}
+.pos-item-table .ant-table-tbody > tr:focus-within > td {
+  background: #fff9c4 !important;
+}
+
+/* ---- Item lookup modal ---- */
+.lookup-row-selected td {
+  background: #dbeafe !important;
+  color: #1f2937 !important;
+  outline: 2px solid rgba(24, 144, 255, 0.5);
+  outline-offset: -1px;
+}
+
+.item-lookup-modal .ant-modal-title {
+  font-size: 14px;
+  color: #1f2937;
+}
+.item-lookup-modal .ant-table-thead > tr > th {
+  font-size: 12px !important;
+  padding: 6px 8px !important;
+}
+.item-lookup-modal .ant-table-tbody > tr > td {
+  font-size: 12px !important;
+  padding: 5px 8px !important;
+}
+
+/* ---- Ant Design Typography — always dark ---- */
+.ant-typography {
+  color: inherit;
+}
+
+/* ---- Menu bar ---- */
+.ant-menu-horizontal {
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+}
