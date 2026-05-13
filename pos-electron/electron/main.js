@@ -145,10 +145,15 @@ app.whenReady().then(() => {
   if (app.isPackaged) {
     const apiServer = getApiServer();
     console.log("API server:", apiServer);
+    // On Windows, fetch("/api/login") from a file:// page resolves to
+    // file:///C:/api/login (drive-relative), not file:///api/login.
+    // We match all file:// URLs and redirect any whose path contains /api/.
     session.defaultSession.webRequest.onBeforeRequest(
-      { urls: ["file:///api/*"] },
+      { urls: ["file:///*"] },
       (details, callback) => {
-        const suffix = details.url.slice("file://".length);
+        const apiIdx = details.url.indexOf("/api/");
+        if (apiIdx < 0) { callback({}); return; }
+        const suffix = details.url.slice(apiIdx); // "/api/login" etc.
         const redirectURL = apiServer + suffix;
         console.log("webRequest redirect:", details.url, "->", redirectURL);
         callback({ redirectURL });
