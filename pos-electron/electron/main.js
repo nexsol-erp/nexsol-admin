@@ -9,6 +9,58 @@ if (!app.isPackaged) {
   app.setPath("userData", path.join(__dirname, "../.electron-cache"));
 }
 
+// ── File logger ───────────────────────────────────────────────────────────────
+// Writes to <userData>/logs/pos.log — readable while the app is running.
+let _logStream = null;
+
+function getLogStream() {
+  if (_logStream) return _logStream;
+  try {
+    const logDir = path.join(app.getPath("userData"), "logs");
+    fs.mkdirSync(logDir, { recursive: true });
+    const logFile = path.join(logDir, "pos.log");
+    // Keep last 500 KB — rotate if larger
+    try {
+      if (fs.statSync(logFile).size > 512 * 1024) {
+        fs.renameSync(logFile, logFile + ".old");
+      }
+    } catch (_) { /* file doesn't exist yet */ }
+    _logStream = fs.createWriteStream(logFile, { flags: "a" });
+    // Log the file path once so the user can find it
+    const header = `\n${"=".repeat(60)}\nPOS started ${new Date().toISOString()}\nLog file: ${logFile}\n${"=".repeat(60)}\n`;
+    _logStream.write(header);
+    process.stdout.write(header);
+  } catch (e) {
+    process.stderr.write("Failed to open log file: " + e.message + "\n");
+  }
+  return _logStream;
+}
+
+function writeLog(source, level, ...args) {
+  const message = args.map((a) => {
+    if (a instanceof Error) return a.stack || a.message;
+    if (typeof a === "object") { try { return JSON.stringify(a); } catch (_) { return String(a); } }
+    return String(a);
+  }).join(" ");
+
+  const line = `[${new Date().toISOString()}] [${level.toUpperCase()}] [${source}] ${message}\n`;
+  try { getLogStream()?.write(line); } catch (_) { /* ignore write errors */ }
+  process.stdout.write(line);
+}
+
+// Capture all main-process console output to the log file
+const _origLog   = console.log.bind(console);
+const _origWarn  = console.warn.bind(console);
+const _origError = console.error.bind(console);
+console.log   = (...a) => { writeLog("main", "info",  ...a); };
+console.warn  = (...a) => { writeLog("main", "warn",  ...a); };
+console.error = (...a) => { writeLog("main", "error", ...a); };
+
+// IPC channel so the renderer process can also write to the same log file
+ipcMain.handle("log:write", (_evt, level, message) => {
+  writeLog("renderer", level, message);
+});
+
 let win;
 
 // Resolve the backend API server URL.
@@ -41,6 +93,7 @@ function buildAppMenu() {
 }
 
 function createWindow() {
+  console.log("createWindow called");
   win = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -53,26 +106,44 @@ function createWindow() {
     },
   });
 
+  win.webContents.on("did-finish-load", () => console.log("window did-finish-load"));
+  win.webContents.on("did-fail-load", (e, code, desc, url) =>
+    console.error("window did-fail-load | code:", code, "| desc:", desc, "| url:", url)
+  );
+  win.webContents.on("render-process-gone", (e, details) =>
+    console.error("render-process-gone:", JSON.stringify(details))
+  );
+  win.webContents.on("console-message", (e, level, msg, line, src) => {
+    const lvl = ["verbose", "info", "warn", "error"][level] || "info";
+    writeLog("renderer-console", lvl, `${msg}  (${src}:${line})`);
+  });
+
   if (app.isPackaged) {
-    win.loadFile(path.join(__dirname, "../dist/index.html"));
+    const indexFile = path.join(__dirname, "../dist/index.html");
+    console.log("loading file:", indexFile, "| exists:", fs.existsSync(indexFile));
+    win.loadFile(indexFile);
   } else {
     const devUrl = process.env.ELECTRON_START_URL || "http://localhost:5173";
+    console.log("loading dev url:", devUrl);
     win.loadURL(devUrl);
     win.webContents.openDevTools();
   }
 }
 
 app.whenReady().then(() => {
-  // In the packaged app, intercept fetch('/api/...') calls (which resolve to
-  // file:///api/... from the file:// origin) and forward them to the backend.
+  console.log("app ready | packaged:", app.isPackaged, "| version:", app.getVersion());
+  console.log("userData:", app.getPath("userData"));
+
   if (app.isPackaged) {
     const apiServer = getApiServer();
+    console.log("API server:", apiServer);
     session.defaultSession.webRequest.onBeforeRequest(
       { urls: ["file:///api/*"] },
       (details, callback) => {
-        // details.url is like: file:///api/1/login?x=y
-        const suffix = details.url.slice("file://".length); // /api/1/login?x=y
-        callback({ redirectURL: apiServer + suffix });
+        const suffix = details.url.slice("file://".length);
+        const redirectURL = apiServer + suffix;
+        console.log("webRequest redirect:", details.url, "->", redirectURL);
+        callback({ redirectURL });
       }
     );
   }
