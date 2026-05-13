@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Button, Card, Input, Typography, message, Select, Space } from "antd";
 import { decodeJwtPayload } from "./auth";
 import { apiUrl } from "../utils/apiUrl";
+import { log, error as logError } from "../utils/logger";
 
 const { Title, Text } = Typography;
 
@@ -17,21 +18,36 @@ export default function LoginPage({ onLoggedIn }) {
       return;
     }
 
+    const url = apiUrl("/api/login");
+    log("login attempt | username:", username, "| url:", url);
     setLoading(true);
     try {
-      const res = await fetch(apiUrl("/api/login"), {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await res.json();
+      log("login response | status:", res.status, res.statusText, "| url:", res.url);
+
+      let data;
+      const text = await res.text();
+      log("login response body:", text);
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        logError("login response is not JSON:", parseErr.message);
+        message.error("Server returned unexpected response (not JSON)");
+        return;
+      }
 
       if (!data?.success) {
+        logError("login failed | message:", data?.message, "| full:", JSON.stringify(data));
         message.error(data?.message || "Login failed");
         return;
       }
 
+      log("login success | tenancyId:", data.tenancyId, "| roles:", JSON.stringify(data.roles));
       localStorage.setItem("jwtToken", data.token);
       localStorage.setItem("tenancyId", data.tenancyId);
       localStorage.setItem("roles", JSON.stringify(data.roles || []));
@@ -43,6 +59,7 @@ export default function LoginPage({ onLoggedIn }) {
       message.success("Login success");
       onLoggedIn?.();
     } catch (e) {
+      logError("login fetch error:", e.message, e.stack || "");
       message.error("Login error: " + e.message);
     } finally {
       setLoading(false);
