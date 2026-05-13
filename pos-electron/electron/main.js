@@ -173,6 +173,12 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
+// Synchronous IPC so preload.js can read the runtime API server before
+// the renderer starts, without an async round-trip.
+ipcMain.on("config:get-api-server", (event) => {
+  event.returnValue = getApiServer();
+});
+
 ipcMain.handle("printers:list", async () => {
   return win.webContents.getPrintersAsync();
 });
