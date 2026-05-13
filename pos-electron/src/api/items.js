@@ -1,3 +1,5 @@
+import { apiUrl } from "../utils/apiUrl";
+
 export async function searchItems({ query, page = 0, size = 20 }) {
   const tenancyId = localStorage.getItem("tenancyId");
   const token = localStorage.getItem("jwtToken");
@@ -15,8 +17,8 @@ export async function searchItems({ query, page = 0, size = 20 }) {
   if (branchCode) params.set("branchCode", branchCode);
 
   const urls = [
-    `/api/${tenancyId}/items-search-with-stock?${params.toString()}`,
-    `/api/${tenancyId}/items-search?${params.toString()}`,
+    apiUrl(`/api/${tenancyId}/items-search-with-stock?${params.toString()}`),
+    apiUrl(`/api/${tenancyId}/items-search?${params.toString()}`),
   ];
 
   let res = null;

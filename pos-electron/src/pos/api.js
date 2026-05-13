@@ -1,4 +1,5 @@
 import { getToken, getTenancyId } from "../auth/auth";
+import { apiUrl } from "../utils/apiUrl";
 
 function mapItem(e) {
   const rawAvailable = e.availableQty ?? e.availableStock ?? e.stockQty ?? e.stock ?? e.qty;
@@ -29,8 +30,8 @@ export async function searchItems(q, page = 0, size = 50) {
   if (branchCode) qs.set("branchCode", branchCode);
 
   const urls = [
-    `/api/${encodeURIComponent(tenancyId)}/items-search-with-stock?${qs.toString()}`,
-    `/api/${encodeURIComponent(tenancyId)}/items-search?${qs.toString()}`,
+    apiUrl(`/api/${encodeURIComponent(tenancyId)}/items-search-with-stock?${qs.toString()}`),
+    apiUrl(`/api/${encodeURIComponent(tenancyId)}/items-search?${qs.toString()}`),
   ];
 
   let pageObj = null;

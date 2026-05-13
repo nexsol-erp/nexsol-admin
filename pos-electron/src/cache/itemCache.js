@@ -1,4 +1,5 @@
 import { db } from "./itemCacheDb";
+import { apiUrl } from "../utils/apiUrl";
 
 function getActiveBranchCode() {
   const fromGlobal = String(globalThis.POS_BRANCH_CODE || "").trim();
@@ -22,8 +23,8 @@ async function fetchItemsPage({ query, page, size }) {
   if (branchCode) params.set("branchCode", branchCode);
 
   const urls = [
-    `/api/${tenancyId}/items-search-with-stock?${params.toString()}`,
-    `/api/${tenancyId}/items-search?${params.toString()}`,
+    apiUrl(`/api/${tenancyId}/items-search-with-stock?${params.toString()}`),
+    apiUrl(`/api/${tenancyId}/items-search?${params.toString()}`),
   ];
 
   let lastError = "";
@@ -271,7 +272,7 @@ export async function testBackendAPI() {
   // Test 1: No filter
   console.log("\n--- Test 1: No query filter ---");
   try {
-    const url1 = `/api/${tenancyId}/items-search?page=0&size=100&sortField=itemName&sortOrder=asc`;
+    const url1 = apiUrl(`/api/${tenancyId}/items-search?page=0&size=100&sortField=itemName&sortOrder=asc`);
     console.log("🔵 Calling API:", url1);
     
     const res1 = await fetch(url1, {
@@ -288,7 +289,7 @@ export async function testBackendAPI() {
   // Test 2: With "K" filter
   console.log("\n--- Test 2: With query='K' filter ---");
   try {
-    const url2 = `/api/${tenancyId}/items-search?query=K&page=0&size=100&sortField=itemName&sortOrder=asc`;
+    const url2 = apiUrl(`/api/${tenancyId}/items-search?query=K&page=0&size=100&sortField=itemName&sortOrder=asc`);
     console.log("🔵 Calling API:", url2);
     
     const res2 = await fetch(url2, {
@@ -311,7 +312,7 @@ export async function testBackendAPI() {
   // Test 3: With empty string filter
   console.log("\n--- Test 3: With query='' (empty string) ---");
   try {
-    const url3 = `/api/${tenancyId}/items-search?query=&page=0&size=100&sortField=itemName&sortOrder=asc`;
+    const url3 = apiUrl(`/api/${tenancyId}/items-search?query=&page=0&size=100&sortField=itemName&sortOrder=asc`);
     console.log("🔵 Calling API:", url3);
     
     const res3 = await fetch(url3, {
