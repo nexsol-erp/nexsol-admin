@@ -106,7 +106,8 @@ function createWindow() {
     },
   });
 
-  win.webContents.on("did-finish-load", () => console.log("window did-finish-load"));
+  win.webContents.on("dom-ready", () => console.log("window dom-ready (HTML parsed, scripts starting)"));
+  win.webContents.on("did-finish-load", () => console.log("window did-finish-load (all resources loaded)"));
   win.webContents.on("did-fail-load", (e, code, desc, url) =>
     console.error("window did-fail-load | code:", code, "| desc:", desc, "| url:", url)
   );
@@ -116,6 +117,13 @@ function createWindow() {
   win.webContents.on("console-message", (e, level, msg, line, src) => {
     const lvl = ["verbose", "info", "warn", "error"][level] || "info";
     writeLog("renderer-console", lvl, `${msg}  (${src}:${line})`);
+  });
+
+  // Log any resource (JS/CSS) that fails to load — catches missing bundles early
+  session.defaultSession.webRequest.onErrorOccurred((details) => {
+    if (details.error !== "net::ERR_ABORTED") {
+      console.error("resource load error:", details.error, "|", details.url);
+    }
   });
 
   if (app.isPackaged) {
