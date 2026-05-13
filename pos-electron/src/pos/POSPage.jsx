@@ -3,6 +3,7 @@ import { Button, Input, InputNumber, Table, Typography, Space, Divider, Select, 
 import { logout } from "../auth/auth";
 import ItemLookupModal from "../components/ItemLookupModal";
 import { hasCache, loadAllItemsToCache, applySaleToCache } from "../cache/itemCache";
+import { log, warn, error as logError } from "../utils/logger";
 
 const { Text, Title } = Typography;
 
@@ -26,6 +27,7 @@ export default function POSPage({ onLogout }) {
 
   // Branch options from JWT
   useEffect(() => {
+    log("POSPage mounted");
     const extractBranchCode = (b) => {
       if (typeof b === "string") return b.trim();
       if (b && typeof b === "object")
@@ -34,9 +36,11 @@ export default function POSPage({ onLogout }) {
     };
     let raw = [];
     try {
-      raw = JSON.parse(localStorage.getItem("allowedBranches") || "[]");
-      if (!Array.isArray(raw)) raw = [];
-    } catch { raw = []; }
+      const raw_str = localStorage.getItem("allowedBranches") || "[]";
+      log("allowedBranches raw:", raw_str);
+      raw = JSON.parse(raw_str);
+      if (!Array.isArray(raw)) { warn("allowedBranches is not an array:", raw); raw = []; }
+    } catch (e) { logError("allowedBranches parse error:", e); raw = []; }
 
     const seen = new Set();
     const options = raw
@@ -44,11 +48,14 @@ export default function POSPage({ onLogout }) {
       .filter((code) => { if (!code || seen.has(code)) return false; seen.add(code); return true; })
       .map((code) => ({ value: code, label: code }));
 
+    log("branch options:", options);
     setBranchOptions(options);
-    if (!options.length) { setSelectedBranchCode(""); return; }
-    if (options.length === 1) { setSelectedBranchCode(options[0].value); return; }
+    if (!options.length) { warn("no branch options found"); setSelectedBranchCode(""); return; }
+    if (options.length === 1) { log("auto-selecting single branch:", options[0].value); setSelectedBranchCode(options[0].value); return; }
     const saved = localStorage.getItem("selectedBranchCode") || "";
-    setSelectedBranchCode(options.some((o) => o.value === saved) ? saved : options[0].value);
+    const selected = options.some((o) => o.value === saved) ? saved : options[0].value;
+    log("selected branch:", selected);
+    setSelectedBranchCode(selected);
   }, []);
 
   useEffect(() => {
@@ -60,24 +67,38 @@ export default function POSPage({ onLogout }) {
   // Load cache on mount
   useEffect(() => {
     (async () => {
-      const ok = await hasCache();
-      setCacheStatus((s) => ({ ...s, loaded: ok }));
-      if (!ok) {
-        setCacheStatus((s) => ({ ...s, loading: true }));
-        try {
-          await loadAllItemsToCache({
-            onProgress: ({ loaded }) => setCacheStatus((s) => ({ ...s, loadedCount: loaded })),
-          });
-          setCacheStatus((s) => ({ ...s, loaded: true, loading: false }));
-        } catch (e) {
-          setCacheStatus((s) => ({ ...s, loading: false }));
-          message.error(e.message || "Failed to load item cache");
+      log("checking item cache...");
+      try {
+        const ok = await hasCache();
+        log("hasCache result:", ok);
+        setCacheStatus((s) => ({ ...s, loaded: ok }));
+        if (!ok) {
+          log("cache empty, loading from backend...");
+          setCacheStatus((s) => ({ ...s, loading: true }));
+          try {
+            await loadAllItemsToCache({
+              onProgress: ({ loaded, total }) => {
+                log(`cache load progress: ${loaded}/${total}`);
+                setCacheStatus((s) => ({ ...s, loadedCount: loaded }));
+              },
+            });
+            log("cache loaded successfully");
+            setCacheStatus((s) => ({ ...s, loaded: true, loading: false }));
+          } catch (e) {
+            logError("loadAllItemsToCache failed:", e);
+            setCacheStatus((s) => ({ ...s, loading: false }));
+            message.error(e.message || "Failed to load item cache");
+          }
+        } else {
+          log("cache already populated, skipping load");
         }
+      } catch (e) {
+        logError("hasCache check failed:", e);
       }
     })();
   }, []);
 
-  const openLookup = (q = "") => { setLookupQuery(q); setLookupOpen(true); };
+  const openLookup = (q = "") => { log("openLookup:", q); setLookupQuery(q); setLookupOpen(true); };
   const focusQtyInput = (rowKey, delay = 0) => {
     setTimeout(() => qtyInputRefs.current[rowKey]?.focus?.(), delay);
   };
@@ -152,7 +173,8 @@ export default function POSPage({ onLogout }) {
   const deleteItem = (key) => setItems((p) => p.filter((r) => r.key !== key));
 
   const onSave = async () => {
-    if (!canSave) return;
+    log("onSave called | canSave:", canSave, "| items:", items.length, "| branch:", selectedBranchCode);
+    if (!canSave) { warn("onSave blocked: canSave=false"); return; }
     if (branchOptions.length > 0 && !selectedBranchCode) { message.warning("Select branch code"); return; }
 
     const salesDetails = items.map((item) => ({
@@ -175,13 +197,16 @@ export default function POSPage({ onLogout }) {
     try {
       const tenantId = localStorage.getItem("tenancyId") || "79001a";
       const token    = localStorage.getItem("jwtToken") || "";
+      log("posting sale | tenantId:", tenantId, "| lines:", salesDetails.length);
       const response = await fetch(`/api/${tenantId}/sales`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
+      log("sale POST response:", response.status, response.statusText);
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
+        logError("sale POST error body:", err);
         throw new Error(err.message || `Save failed: ${response.status}`);
       }
       await applySaleToCache(items.map((item) => ({

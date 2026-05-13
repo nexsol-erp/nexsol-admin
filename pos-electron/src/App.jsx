@@ -7,16 +7,24 @@ import AcceptStockPage from "./accept-stock/AcceptStockPage";
 import StockTransferPage from "./stock-transfer/StockTransferPage";
 import UpdateChecker from "./components/UpdateChecker";
 import { isLoggedIn } from "./auth/auth";
+import { log } from "./utils/logger";
 
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [activePage, setActivePage] = useState("pos");
 
   useEffect(() => {
-    if (!window.POS?.onNavigate) return undefined;
+    log("App mounted | loggedIn:", loggedIn, "| activePage:", activePage);
+    if (!window.POS?.onNavigate) {
+      log("window.POS.onNavigate not available (browser mode?)");
+      return undefined;
+    }
     const unsubscribe = window.POS.onNavigate((page) => {
+      log("onNavigate received:", page);
       if (page === "pos" || page === "day-end" || page === "accept-stock" || page === "stock-transfer") {
         setActivePage(page);
+      } else {
+        log("onNavigate: unknown page ignored:", page);
       }
     });
     return () => unsubscribe?.();
@@ -25,14 +33,14 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: "#f0f2f5" }}>
       {!loggedIn ? (
-        <LoginPage onLoggedIn={() => setLoggedIn(true)} />
+        <LoginPage onLoggedIn={() => { log("Login successful, switching to app"); setLoggedIn(true); }} />
       ) : (
         <div style={{ background: "#ffffff" }}>
           <UpdateChecker />
           <Menu
             mode="horizontal"
             selectedKeys={[activePage]}
-            onClick={(e) => setActivePage(e.key)}
+            onClick={(e) => { log("Menu clicked:", e.key); setActivePage(e.key); }}
             items={[
               { key: "pos", label: "POS" },
               { key: "stock-transfer", label: "Stock Transfer" },

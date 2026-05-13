@@ -11,6 +11,9 @@ contextBridge.exposeInMainWorld("POS", {
     return () => ipcRenderer.removeListener("app:navigate", handler);
   },
 
+  // Logger — writes to <userData>/logs/pos.log
+  log: (level, message) => ipcRenderer.invoke("log:write", level, message),
+
   // Auto-updater
   downloadAndInstall: (url) => ipcRenderer.invoke("update:download-install", url),
   onDownloadProgress: (cb) => {
