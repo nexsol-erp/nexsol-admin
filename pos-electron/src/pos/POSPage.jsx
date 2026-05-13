@@ -198,17 +198,23 @@ export default function POSPage({ onLogout }) {
     try {
       const tenantId = localStorage.getItem("tenancyId") || "79001a";
       const token    = localStorage.getItem("jwtToken") || "";
-      log("posting sale | tenantId:", tenantId, "| lines:", salesDetails.length);
-      const response = await fetch(apiUrl(`/api/${tenantId}/sales`), {
+      log("posting sale | tenantId:", tenantId, "| lines:", salesDetails.length,
+          "| hasToken:", !!token, "| tokenLen:", token.length,
+          "| payload:", JSON.stringify(payload));
+      const saleUrl = apiUrl(`/api/${tenantId}/sales`);
+      log("sale POST url:", saleUrl);
+      const response = await fetch(saleUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
       log("sale POST response:", response.status, response.statusText);
       if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        logError("sale POST error body:", err);
-        throw new Error(err.message || `Save failed: ${response.status}`);
+        const rawText = await response.text().catch(() => "");
+        logError("sale POST error body (raw):", rawText);
+        let errMsg = `Save failed: ${response.status}`;
+        try { const j = JSON.parse(rawText); errMsg = j.message || errMsg; } catch (_) {}
+        throw new Error(errMsg);
       }
       await applySaleToCache(items.map((item) => ({
         itemId: item.item_id, batchCode: item.batch || "", qty: Number(item.qty) || 0,
