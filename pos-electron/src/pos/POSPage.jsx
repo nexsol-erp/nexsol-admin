@@ -178,43 +178,78 @@ export default function POSPage({ onLogout }) {
     if (!canSave) { warn("onSave blocked: canSave=false"); return; }
     if (branchOptions.length > 0 && !selectedBranchCode) { message.warning("Select branch code"); return; }
 
-    const salesDetails = items.map((item) => ({
-      itemId: item.item_id, itemName: item.item_name, barcode: item.barcode,
-      qty: Number(item.qty) || 0, rate: Number(item.standard_price) || 0,
-      standardPrice: Number(item.standard_price) || 0, amount: Number(item.amount) || 0,
-      batch: item.batch || "", expiry: item.expiry || null, unit: item.unit || "",
-      taxRate: Number(item.tax_rate) || 0, description: "", itemCode: "",
-    }));
+    const tenantId  = localStorage.getItem("tenancyId") || "79001a";
+    const token     = localStorage.getItem("jwtToken") || "";
+    const branchCode = selectedBranchCode || "";
 
-    const payload = {
-      customerMobile, salesManName: salesmanName,
-      voucherDate: new Date().toISOString(), voucherPrefix: "POS",
-      voucherNumber: `POS-${Date.now()}`,
-      NumericVoucherNumber: Math.floor(Math.random() * 100000),
-      branch_code: selectedBranchCode || globalThis.POS_BRANCH_CODE || "",
-      salesDetails,
+    const headerId = crypto.randomUUID();
+    const numericVoucherNumber = Math.floor(Math.random() * 100000);
+    const voucherNumber = `POS-${numericVoucherNumber}`;
+
+    const header = {
+      id: headerId,
+      branch_code: branchCode,
+      sales_man_name: salesmanName || "",
+      customer_mobile: customerMobile || "",
+      numeric_voucher_number: numericVoucherNumber,
+      voucher_number: voucherNumber,
+      voucher_prefix: "POS",
+      voucher_date: new Date().toISOString(),
+      company_mst_id: tenantId,
+      is_synched: "0",
     };
 
+    const details = items.map((item) => ({
+      id: crypto.randomUUID(),
+      parent_id: headerId,
+      item_name: item.item_name || "",
+      item_id: item.item_id || "",
+      barcode: item.barcode || "",
+      tax_rate: Number(item.tax_rate) || 0,
+      cess_rate: 0,
+      unit: item.unit || "",
+      item_code: item.item_code || "",
+      qty: Number(item.qty) || 0,
+      rate: Number(item.standard_price) || 0,
+      standard_price: Number(item.standard_price) || 0,
+      amount: Number(item.amount) || 0,
+      batch: item.batch || "",
+      expiry: item.expiry || null,
+      description: "",
+    }));
+
+    const payload = { sales: [{ header, details }] };
+
     try {
-      const tenantId = localStorage.getItem("tenancyId") || "79001a";
-      const token    = localStorage.getItem("jwtToken") || "";
-      log("posting sale | tenantId:", tenantId, "| lines:", salesDetails.length,
-          "| hasToken:", !!token, "| tokenLen:", token.length,
+      log("posting sale | tenantId:", tenantId, "| branch:", branchCode,
+          "| lines:", details.length, "| hasToken:", !!token, "| tokenLen:", token.length,
           "| payload:", JSON.stringify(payload));
-      const saleUrl = apiUrl(`/api/${tenantId}/sales`);
+      const saleUrl = apiUrl(`/api/${tenantId}/sales-upload/${branchCode}`);
       log("sale POST url:", saleUrl);
       const response = await fetch(saleUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "X-Tenant-Id": tenantId,
+        },
         body: JSON.stringify(payload),
       });
       log("sale POST response:", response.status, response.statusText);
+      const rawText = await response.text().catch(() => "");
+      log("sale POST response body:", rawText);
       if (!response.ok) {
-        const rawText = await response.text().catch(() => "");
         logError("sale POST error body (raw):", rawText);
         let errMsg = `Save failed: ${response.status}`;
         try { const j = JSON.parse(rawText); errMsg = j.message || errMsg; } catch (_) {}
         throw new Error(errMsg);
+      }
+      let result;
+      try { result = JSON.parse(rawText); } catch (_) { result = {}; }
+      if (result.failedIds?.length > 0) {
+        const msgs = Object.values(result.errorMessages || {}).join("; ");
+        logError("sale upload failed ids:", JSON.stringify(result.failedIds), "| errors:", msgs);
+        throw new Error(msgs || "Sale upload reported failures");
       }
       await applySaleToCache(items.map((item) => ({
         itemId: item.item_id, batchCode: item.batch || "", qty: Number(item.qty) || 0,
