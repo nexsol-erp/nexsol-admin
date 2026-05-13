@@ -1,6 +1,11 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
+// Read the runtime API server (from pos-config.json) synchronously before
+// any React code runs, so apiUrl() can use it instead of the build-time default.
+const _apiServer = ipcRenderer.sendSync("config:get-api-server");
+
 contextBridge.exposeInMainWorld("POS", {
+  apiServer: _apiServer,
   listPrinters: () => ipcRenderer.invoke("printers:list"),
   printHtml: (payload) => ipcRenderer.invoke("print:html", payload),
   closeWindow: () => ipcRenderer.invoke("window:close"),
