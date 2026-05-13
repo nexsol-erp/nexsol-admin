@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Modal, Button, Progress, Typography, Space, Alert } from "antd";
 import { ExclamationCircleFilled, DownloadOutlined } from "@ant-design/icons";
+import { apiUrl } from "../utils/apiUrl";
 
 const { Text, Title } = Typography;
 
@@ -20,7 +21,7 @@ export default function UpdateChecker() {
 
     const check = async () => {
       try {
-        const res = await fetch(`/api/${tenantId}/versioncheck/${CURRENT_VERSION}`, {
+        const res = await fetch(apiUrl(`/api/${tenantId}/versioncheck/${CURRENT_VERSION}`), {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) return;

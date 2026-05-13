@@ -4,6 +4,7 @@ import { logout } from "../auth/auth";
 import ItemLookupModal from "../components/ItemLookupModal";
 import { hasCache, loadAllItemsToCache, applySaleToCache } from "../cache/itemCache";
 import { log, warn, error as logError } from "../utils/logger";
+import { apiUrl } from "../utils/apiUrl";
 
 const { Text, Title } = Typography;
 
@@ -198,7 +199,7 @@ export default function POSPage({ onLogout }) {
       const tenantId = localStorage.getItem("tenancyId") || "79001a";
       const token    = localStorage.getItem("jwtToken") || "";
       log("posting sale | tenantId:", tenantId, "| lines:", salesDetails.length);
-      const response = await fetch(`/api/${tenantId}/sales`, {
+      const response = await fetch(apiUrl(`/api/${tenantId}/sales`), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),

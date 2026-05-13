@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Button, DatePicker, InputNumber, Space, Table, Typography, message } from "antd";
 import dayjs from "dayjs";
+import { apiUrl } from "../utils/apiUrl";
 
 const { Title, Text } = Typography;
 
@@ -104,7 +105,7 @@ export default function DayEndPage() {
 
     try {
       setSaving(true);
-      const res = await fetch(`/api/${tenantId}/day-end/details`, {
+      const res = await fetch(apiUrl(`/api/${tenantId}/day-end/details`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

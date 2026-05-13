@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Button, Card, Input, Typography, message, Select, Space } from "antd";
 import { decodeJwtPayload } from "./auth";
+import { apiUrl } from "../utils/apiUrl";
 
 const { Title, Text } = Typography;
 
@@ -18,7 +19,7 @@ export default function LoginPage({ onLoggedIn }) {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/login", {
+      const res = await fetch(apiUrl("/api/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
