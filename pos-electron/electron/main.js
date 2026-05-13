@@ -1,6 +1,8 @@
-const { app, BrowserWindow, ipcMain, Menu, session } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, session, net } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
+const { spawn } = require("child_process");
 
 // Set custom userData path to avoid cache permission issues
 if (!app.isPackaged) {
@@ -114,3 +116,61 @@ ipcMain.handle("window:close", async () => {
   win.close();
   return true;
 });
+
+// ── Auto-updater ─────────────────────────────────────────────────────────────
+// Downloads the new installer, reports progress to renderer, then launches it and quits.
+ipcMain.handle("update:download-install", async (_evt, rawUrl) => {
+  // Resolve relative URLs against the configured API server
+  const url = rawUrl.startsWith("/") ? getApiServer() + rawUrl : rawUrl;
+  const dest = path.join(os.tmpdir(), "TradeLink247-POS-Update.exe");
+
+  try {
+    await downloadFile(url, dest, (pct) => {
+      win?.webContents?.send("update:progress", pct);
+    });
+    win?.webContents?.send("update:done");
+
+    // Give the renderer a moment to show the success state, then launch and quit
+    setTimeout(() => {
+      spawn(dest, [], { detached: true, stdio: "ignore" }).unref();
+      app.quit();
+    }, 1500);
+  } catch (err) {
+    win?.webContents?.send("update:error", err.message);
+  }
+});
+
+function downloadFile(url, destPath, onProgress) {
+  return new Promise((resolve, reject) => {
+    const request = net.request(url);
+    const file = fs.createWriteStream(destPath);
+    let received = 0;
+    let total = 0;
+
+    request.on("response", (response) => {
+      total = parseInt(response.headers["content-length"] || "0", 10);
+
+      response.on("data", (chunk) => {
+        file.write(chunk);
+        received += chunk.length;
+        if (total > 0) onProgress(Math.round((received / total) * 100));
+      });
+
+      response.on("end", () => {
+        file.end(resolve);
+      });
+
+      response.on("error", (err) => {
+        file.destroy();
+        reject(err);
+      });
+    });
+
+    request.on("error", (err) => {
+      file.destroy();
+      reject(err);
+    });
+
+    request.end();
+  });
+}

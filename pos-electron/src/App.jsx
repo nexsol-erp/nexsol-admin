@@ -5,6 +5,7 @@ import LoginPage from "./auth/LoginPage";
 import DayEndPage from "./dayend/DayEndPage";
 import AcceptStockPage from "./accept-stock/AcceptStockPage";
 import StockTransferPage from "./stock-transfer/StockTransferPage";
+import UpdateChecker from "./components/UpdateChecker";
 import { isLoggedIn } from "./auth/auth";
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
         <LoginPage onLoggedIn={() => setLoggedIn(true)} />
       ) : (
         <div style={{ background: "#ffffff" }}>
+          <UpdateChecker />
           <Menu
             mode="horizontal"
             selectedKeys={[activePage]}
