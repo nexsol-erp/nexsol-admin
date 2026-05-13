@@ -255,6 +255,8 @@ export default function POSPage({ onLogout }) {
         itemId: item.item_id, batchCode: item.batch || "", qty: Number(item.qty) || 0,
       })));
       message.success("Sales saved successfully");
+      // Auto-print: capture snapshot before clearing state
+      doPrint({ snapshot: [...items], voucherNumber, silent: true });
       setItems([]); setTendered(0);
       setReceipts((prev) => prev.map((r) => ({ ...r, amount: 0 })));
       setCustomerMobile(""); setSalesmanCode(""); setSalesmanName("");
@@ -263,6 +265,24 @@ export default function POSPage({ onLogout }) {
       message.error("Save failed: " + (e.message || "Unknown error"));
     }
   };
+
+  // Branch info (name, address, GST) for receipt header
+  const [branchInfo, setBranchInfo] = useState(null);
+  useEffect(() => {
+    if (!selectedBranchCode) return;
+    const tenantId = localStorage.getItem("tenancyId") || "";
+    const token    = localStorage.getItem("jwtToken") || "";
+    fetch(apiUrl(`/api/${tenantId}/branches`), { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((branches) => {
+        const found = Array.isArray(branches)
+          ? branches.find((b) => b.branchCode === selectedBranchCode)
+          : null;
+        setBranchInfo(found || null);
+        log("branchInfo loaded:", JSON.stringify(found));
+      })
+      .catch((e) => logError("branchInfo fetch error:", e.message));
+  }, [selectedBranchCode]);
 
   // Printing
   const [printers, setPrinters] = useState([]);
@@ -277,14 +297,19 @@ export default function POSPage({ onLogout }) {
 
   useEffect(() => { refreshPrinters(); }, []);
 
-  const printTestInvoice = async () => {
-    if (!window.POS?.printHtml) { message.error("Print API not available"); return; }
-    const html = buildReceiptHtml({ items, totalAmount, tendered, balance });
+  const doPrint = async ({ snapshot, voucherNumber, silent = false }) => {
+    if (!window.POS?.printHtml) return;
+    const html = buildReceiptHtml({
+      items: snapshot, totalAmount, tendered, balance, receipts,
+      branchInfo, salesmanName, customerMobile, voucherNumber,
+    });
     try {
-      await window.POS.printHtml({ html, silent: false, deviceName: selectedPrinter });
-      message.success("Print sent");
+      await window.POS.printHtml({ html, silent, deviceName: selectedPrinter });
+      if (!silent) message.success("Print sent");
     } catch (e) { message.error("Print failed: " + e.message); }
   };
+
+  const printTestInvoice = () => doPrint({ snapshot: items, voucherNumber: "", silent: false });
 
   const itemColumns = [
     { title: "Item",    dataIndex: "item_name",     width: 220, render: (v) => <Text strong>{v}</Text> },
@@ -561,26 +586,178 @@ export default function POSPage({ onLogout }) {
 function round2(v)  { return (Number(v) || 0).toFixed(2); }
 function round2n(v) { return Math.round((Number(v) || 0) * 100) / 100; }
 
-function buildReceiptHtml({ items, totalAmount, tendered, balance }) {
-  const rows = items.map((r) => `
-    <tr>
-      <td>${esc(r.item_name)}</td>
-      <td style="text-align:right">${Number(r.qty||0).toFixed(2)}</td>
-      <td style="text-align:right">${Number(r.standard_price||0).toFixed(2)}</td>
-      <td style="text-align:right">${Number(r.amount||0).toFixed(2)}</td>
-    </tr>`).join("");
+function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, branchInfo, salesmanName, customerMobile, voucherNumber }) {
+  const b = branchInfo || {};
+  const addrParts = [
+    b.branchBuildingAddress,
+    b.branchAddress1,
+    b.branchStreetAddress,
+    b.branchState,
+    b.branchCountry,
+  ].filter(Boolean);
 
-  return `<html><body style="font-family:monospace;width:300px;color:#000">
-    <div style="text-align:center;font-weight:bold">POS INVOICE</div><hr/>
-    <table style="width:100%;font-size:12px">
-      <thead><tr><th style="text-align:left">Item</th><th style="text-align:right">Qty</th><th style="text-align:right">Rate</th><th style="text-align:right">Amt</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table><hr/>
-    <div style="display:flex;justify-content:space-between"><span>Total</span><span>${Number(totalAmount||0).toFixed(2)}</span></div>
-    <div style="display:flex;justify-content:space-between"><span>Tendered</span><span>${Number(tendered||0).toFixed(2)}</span></div>
-    <div style="display:flex;justify-content:space-between"><span>Balance</span><span>${Number(balance||0).toFixed(2)}</span></div>
-    <hr/><div style="text-align:center">Thank you!</div>
-  </body></html>`;
+  const addrHtml = addrParts.map((line) => `<div class="addr">${esc(line)}</div>`).join("");
+  const gstHtml  = b.branchGst ? `<div class="addr">GST: ${esc(b.branchGst)}</div>` : "";
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+
+  // Item rows
+  let serial = 0;
+  const itemRows = items.map((r) => {
+    serial++;
+    const taxLabel = Number(r.tax_rate) > 0 ? `(${Number(r.tax_rate).toFixed(0)}%)` : "";
+    return `
+      <tr>
+        <td class="sno">${serial}</td>
+        <td class="iname">${esc(r.item_name)}${taxLabel ? `<span class="tax-badge">${taxLabel}</span>` : ""}</td>
+        <td class="num">${Number(r.qty||0).toFixed(2)}</td>
+        <td class="num">${Number(r.standard_price||0).toFixed(2)}</td>
+        <td class="num">${Number(r.amount||0).toFixed(2)}</td>
+      </tr>`;
+  }).join("");
+
+  // Tax breakdown — CGST / SGST split per Qt style
+  const taxMap = {};
+  items.forEach((r) => {
+    const rate = Number(r.tax_rate) || 0;
+    if (rate <= 0) return;
+    if (!taxMap[rate]) taxMap[rate] = 0;
+    taxMap[rate] += (Number(r.amount) || 0) * rate / 100;
+  });
+  let totalTax = 0;
+  const taxRows = Object.entries(taxMap).map(([rate, taxAmt]) => {
+    totalTax += taxAmt;
+    const half = taxAmt / 2;
+    return `
+      <tr><td colspan="3">CGST @${(rate/2).toFixed(1)}%</td><td class="num">${half.toFixed(2)}</td></tr>
+      <tr><td colspan="3">SGST @${(rate/2).toFixed(1)}%</td><td class="num">${half.toFixed(2)}</td></tr>`;
+  }).join("");
+  const taxTotalRow = totalTax > 0
+    ? `<tr class="tax-total"><td colspan="3"><b>Total Tax</b></td><td class="num"><b>${totalTax.toFixed(2)}</b></td></tr>`
+    : "";
+
+  // Payment rows
+  const payRows = (receipts || [])
+    .filter((r) => Number(r.amount) > 0)
+    .map((r) => `
+      <tr>
+        <td class="pay-mode">${esc(r.receipt_mode)}</td>
+        <td class="num">${Number(r.amount).toFixed(2)}</td>
+      </tr>`).join("");
+
+  const tenderRow = Number(tendered) > 0
+    ? `<tr><td class="pay-mode">Tendered</td><td class="num">${Number(tendered).toFixed(2)}</td></tr>` : "";
+  const balanceRow = Number(balance) > 0
+    ? `<tr class="balance-row"><td class="pay-mode"><b>Balance</b></td><td class="num"><b>${Number(balance).toFixed(2)}</b></td></tr>` : "";
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  @page { margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    width: 302px;
+    color: #000;
+    background: #fff;
+    padding: 6px 4px;
+  }
+  .shop-name { font-size: 15px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 2px; }
+  .addr { font-size: 10px; text-align: center; line-height: 1.4; }
+  .gst  { font-size: 10px; text-align: center; font-weight: bold; margin-top: 1px; }
+  .dash { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+  .solid { border: none; border-top: 2px solid #000; margin: 4px 0; }
+  .meta { font-size: 11px; display: flex; justify-content: space-between; margin: 2px 0; }
+  .meta-single { font-size: 11px; margin: 1px 0; }
+  .invoice-title { text-align: center; font-size: 12px; font-weight: bold; letter-spacing: 2px; margin: 3px 0; }
+
+  table.items { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.items th { text-align: left; font-size: 10px; padding: 1px 2px; border-bottom: 1px dashed #000; }
+  table.items th.num { text-align: right; }
+  table.items td { padding: 1px 2px; vertical-align: top; }
+  table.items td.sno  { width: 14px; color: #555; }
+  table.items td.iname { width: 130px; }
+  table.items td.num { text-align: right; }
+  .tax-badge { font-size: 9px; color: #444; margin-left: 2px; }
+
+  table.tax  { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.tax td { padding: 1px 2px; }
+  table.tax td.num { text-align: right; }
+  .tax-label { font-size: 10px; font-weight: bold; margin: 3px 0 1px 0; }
+  .tax-total td { border-top: 1px dashed #000; }
+
+  .total-line { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin: 4px 0; }
+
+  table.pay { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.pay td { padding: 1px 2px; }
+  table.pay td.pay-mode { text-transform: uppercase; }
+  table.pay td.num { text-align: right; }
+  .balance-row td { border-top: 1px dashed #000; font-size: 12px; }
+
+  .footer { text-align: center; font-size: 11px; margin-top: 4px; line-height: 1.6; }
+  .footer .thanks { font-weight: bold; font-size: 12px; }
+</style>
+</head>
+<body>
+  <div class="shop-name">${esc(b.branchName || "POS INVOICE")}</div>
+  ${addrHtml}
+  ${gstHtml}
+  <hr class="solid"/>
+  <div class="invoice-title">TAX INVOICE</div>
+  <hr class="dash"/>
+  <div class="meta"><span>Invoice: ${esc(voucherNumber || "—")}</span><span>${dateStr} ${timeStr}</span></div>
+  ${customerMobile ? `<div class="meta-single">Customer: ${esc(customerMobile)}</div>` : ""}
+  ${salesmanName   ? `<div class="meta-single">Served by: ${esc(salesmanName)}</div>` : ""}
+  <hr class="dash"/>
+
+  <table class="items">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Item</th>
+        <th class="num">Qty</th>
+        <th class="num">Rate</th>
+        <th class="num">Amt</th>
+      </tr>
+    </thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+  <hr class="dash"/>
+
+  ${totalTax > 0 ? `
+  <div class="tax-label">Tax Details</div>
+  <table class="tax">
+    <tbody>
+      ${taxRows}
+      ${taxTotalRow}
+    </tbody>
+  </table>
+  <hr class="dash"/>` : ""}
+
+  <div class="total-line"><span>TOTAL</span><span>${Number(totalAmount||0).toFixed(2)}</span></div>
+  <hr class="solid"/>
+
+  <table class="pay">
+    <tbody>
+      ${payRows}
+      ${tenderRow}
+      ${balanceRow}
+    </tbody>
+  </table>
+  <hr class="dash"/>
+
+  <div class="footer">
+    <div class="thanks">Thank you for your business!</div>
+    <div>Please visit us again</div>
+  </div>
+  <br/><br/>
+</body>
+</html>`;
 }
 
 function esc(s) {
