@@ -61,7 +61,7 @@ export default function PhysicalStockPage({ onClose }) {
         standard_price: Number(itm.standardPrice || 0),
         tax_rate: Number(itm.taxRate || 0),
         unit: itm.unitName || "",
-        batch: itm.batchCode || "",
+        batch: itm.batchCode || "NB",
         amount: r2(itm.standardPrice || 0),
       },
     ]);
