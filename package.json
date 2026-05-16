@@ -1,6 +1,6 @@
 {
   "name": "nexsol-admin",
-  "version": "0.1.0",
+  "version": "1.9.16",
   "private": true,
   "dependencies": {
     "@date-io/date-fns": "^3.0.0",

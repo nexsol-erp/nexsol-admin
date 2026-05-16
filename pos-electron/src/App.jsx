@@ -5,6 +5,7 @@ import LoginPage from "./auth/LoginPage";
 import DayEndPage from "./dayend/DayEndPage";
 import AcceptStockPage from "./accept-stock/AcceptStockPage";
 import StockTransferPage from "./stock-transfer/StockTransferPage";
+import WeighBridgePage from "./pos/WeighBridgePage";
 import UpdateChecker from "./components/UpdateChecker";
 import { isLoggedIn } from "./auth/auth";
 import { log } from "./utils/logger";
@@ -21,7 +22,7 @@ export default function App() {
     }
     const unsubscribe = window.POS.onNavigate((page) => {
       log("onNavigate received:", page);
-      if (page === "pos" || page === "day-end" || page === "accept-stock" || page === "stock-transfer") {
+      if (page === "pos" || page === "day-end" || page === "accept-stock" || page === "stock-transfer" || page === "weigh-bridge") {
         setActivePage(page);
       } else {
         log("onNavigate: unknown page ignored:", page);
@@ -46,6 +47,7 @@ export default function App() {
               { key: "stock-transfer", label: "Stock Transfer" },
               { key: "day-end", label: "Day End" },
               { key: "accept-stock", label: "Accept Stock" },
+              { key: "weigh-bridge", label: "Weigh Bridge" },
             ]}
             style={{ marginBottom: 8 }}
           />
@@ -53,6 +55,7 @@ export default function App() {
           {activePage === "day-end" && <DayEndPage />}
           {activePage === "accept-stock" && <AcceptStockPage onClose={() => setActivePage("pos")} />}
           {activePage === "pos" && <POSPage onLogout={() => setLoggedIn(false)} />}
+          {activePage === "weigh-bridge" && <WeighBridgePage />}
         </div>
       )}
     </div>

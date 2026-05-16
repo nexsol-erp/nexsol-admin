@@ -86,6 +86,7 @@ function buildAppMenu() {
         { label: "Day End", click: () => win?.webContents?.send("app:navigate", "day-end") },
         { label: "Stock Transfer", click: () => win?.webContents?.send("app:navigate", "stock-transfer") },
         { label: "Accept Stock", click: () => win?.webContents?.send("app:navigate", "accept-stock") },
+        { label: "Weigh Bridge", click: () => win?.webContents?.send("app:navigate", "weigh-bridge") },
       ],
     },
   ];
@@ -205,6 +206,58 @@ ipcMain.handle("window:close", async () => {
   if (!win) return false;
   win.close();
   return true;
+});
+
+// ── WeighBridge serial port ───────────────────────────────────────────────────
+let SerialPort = null;
+let SerialPortList = null;
+try {
+  const sp = require("serialport");
+  SerialPort = sp.SerialPort;
+  SerialPortList = sp.SerialPort.list || sp.list;
+} catch (_) {
+  console.warn("serialport module not available — WB serial disabled");
+}
+
+let wbSerialPort = null;
+
+ipcMain.handle("wb:list-ports", async () => {
+  if (!SerialPort) return [];
+  try { return await SerialPort.list(); } catch (e) { return []; }
+});
+
+ipcMain.handle("wb:open-port", async (_evt, { path, baudRate = 9600 }) => {
+  try {
+    if (wbSerialPort && wbSerialPort.isOpen) wbSerialPort.close();
+    if (!SerialPort) return { error: "serialport not available" };
+    wbSerialPort = new SerialPort({ path, baudRate, autoOpen: false });
+    let buf = "";
+    wbSerialPort.on("data", (data) => {
+      for (const ch of data.toString()) {
+        if (ch === "\x02") { buf = ""; }
+        else if (ch === "\r" || ch === "\n") {
+          const w = parseInt(buf.trim(), 10);
+          if (!isNaN(w)) win?.webContents?.send("wb:weight", w);
+          buf = "";
+        } else { buf += ch; }
+      }
+    });
+    wbSerialPort.on("error", (e) => console.error("wb serial error:", e.message));
+    return await new Promise((resolve) => {
+      wbSerialPort.open((err) => {
+        if (err) { wbSerialPort = null; resolve({ error: err.message }); }
+        else resolve({ ok: true });
+      });
+    });
+  } catch (e) { return { error: e.message }; }
+});
+
+ipcMain.handle("wb:close-port", async () => {
+  try {
+    if (wbSerialPort && wbSerialPort.isOpen) wbSerialPort.close();
+    wbSerialPort = null;
+  } catch (_) {}
+  return { ok: true };
 });
 
 // ── Auto-updater ─────────────────────────────────────────────────────────────

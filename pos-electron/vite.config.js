@@ -14,8 +14,9 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://localhost:8084",
-        changeOrigin: true
+        target: "https://www.tradelink247.com",
+        changeOrigin: true,
+        secure: true,
       }
     }
   }
