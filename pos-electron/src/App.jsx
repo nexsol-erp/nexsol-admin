@@ -11,31 +11,40 @@ import UpdateChecker from "./components/UpdateChecker";
 import { isLoggedIn } from "./auth/auth";
 import { log } from "./utils/logger";
 
+function getRoles() {
+  try { return JSON.parse(localStorage.getItem("roles") || "[]"); } catch { return []; }
+}
+
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [activePage, setActivePage] = useState("pos");
+  const [roles, setRoles] = useState(getRoles);
+
+  const hasWB = roles.includes("WB");
 
   useEffect(() => {
-    log("App mounted | loggedIn:", loggedIn, "| activePage:", activePage);
+    log("App mounted | loggedIn:", loggedIn, "| activePage:", activePage, "| roles:", roles);
     if (!window.POS?.onNavigate) {
       log("window.POS.onNavigate not available (browser mode?)");
       return undefined;
     }
+    const allowedPages = ["pos", "day-end", "accept-stock", "stock-transfer", "physical-stock"];
+    if (hasWB) allowedPages.push("weigh-bridge");
     const unsubscribe = window.POS.onNavigate((page) => {
       log("onNavigate received:", page);
-      if (page === "pos" || page === "day-end" || page === "accept-stock" || page === "stock-transfer" || page === "weigh-bridge" || page === "physical-stock") {
+      if (allowedPages.includes(page)) {
         setActivePage(page);
       } else {
-        log("onNavigate: unknown page ignored:", page);
+        log("onNavigate: unknown or unauthorized page ignored:", page);
       }
     });
     return () => unsubscribe?.();
-  }, []);
+  }, [hasWB]);
 
   return (
     <div style={{ minHeight: "100vh", background: "#f0f2f5" }}>
       {!loggedIn ? (
-        <LoginPage onLoggedIn={() => { log("Login successful, switching to app"); setLoggedIn(true); }} />
+        <LoginPage onLoggedIn={() => { log("Login successful, switching to app"); setRoles(getRoles()); setLoggedIn(true); }} />
       ) : (
         <div style={{ background: "#ffffff" }}>
           <UpdateChecker />
@@ -48,7 +57,7 @@ export default function App() {
               { key: "stock-transfer", label: "Stock Transfer" },
               { key: "day-end", label: "Day End" },
               { key: "accept-stock", label: "Accept Stock" },
-              { key: "weigh-bridge", label: "Weigh Bridge" },
+              ...(hasWB ? [{ key: "weigh-bridge", label: "Weigh Bridge" }] : []),
               { key: "physical-stock", label: "Physical Stock" },
             ]}
             style={{ marginBottom: 8 }}
@@ -57,7 +66,7 @@ export default function App() {
           {activePage === "day-end" && <DayEndPage />}
           {activePage === "accept-stock" && <AcceptStockPage onClose={() => setActivePage("pos")} />}
           {activePage === "pos" && <POSPage onLogout={() => setLoggedIn(false)} />}
-          {activePage === "weigh-bridge" && <WeighBridgePage />}
+          {activePage === "weigh-bridge" && hasWB && <WeighBridgePage />}
           {activePage === "physical-stock" && <PhysicalStockPage onClose={() => setActivePage("pos")} />}
         </div>
       )}
