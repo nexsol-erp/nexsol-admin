@@ -32,4 +32,16 @@ contextBridge.exposeInMainWorld("POS", {
   onDownloadError: (cb) => {
     ipcRenderer.once("update:error", (_evt, msg) => cb(msg));
   },
+
+  // WeighBridge serial port
+  wb: {
+    listPorts: () => ipcRenderer.invoke("wb:list-ports"),
+    openPort: (cfg) => ipcRenderer.invoke("wb:open-port", cfg),
+    closePort: () => ipcRenderer.invoke("wb:close-port"),
+    onWeight: (cb) => {
+      const h = (_evt, w) => cb(w);
+      ipcRenderer.on("wb:weight", h);
+      return () => ipcRenderer.removeListener("wb:weight", h);
+    },
+  },
 });

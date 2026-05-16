@@ -86,29 +86,23 @@ export default function StockTransferPage({ onClose }) {
   useEffect(() => {
     if (!toBranchCode || !tenantId || !token) return;
     const run = async () => {
-      const urls = [
-        apiUrl(`/api/${tenantId}/branches/${encodeURIComponent(toBranchCode)}`),
-        apiUrl(`/api/${tenantId}/branch/${encodeURIComponent(toBranchCode)}`),
-      ];
-
-      for (const url of urls) {
-        const r = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!r.ok) {
-          if (r.status === 404) continue;
-          return;
-        }
-        const data = await r.json();
-        const b = data?.data ?? data;
-        setToBranchName(String(b?.branchName ?? b?.branch_name ?? ""));
-        setToBranchState(String(b?.branchState ?? b?.state ?? ""));
-        setToBranchGst(String(b?.branchGst ?? b?.gst ?? ""));
-        setDeliveryLocation(String(b?.branchBuildingAddress ?? b?.buildingAddress ?? ""));
-        setDeliveryAddress1(String(b?.branchAddress1 ?? b?.address1 ?? ""));
-        setDeliveryAddress2(String(b?.branchAddress2 ?? b?.address2 ?? ""));
-        return;
-      }
+        // Fetch all branches and filter — avoids needing a per-branch endpoint
+      const r = await fetch(apiUrl(`/api/${tenantId}/branches`), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) return;
+      const list = await r.json();
+      const branches = Array.isArray(list) ? list : (list?.data ?? []);
+      const b = branches.find(
+        (x) => (x.branchCode ?? x.branch_code ?? "").toUpperCase() === toBranchCode.toUpperCase()
+      );
+      if (!b) return;
+      setToBranchName(String(b?.branchName ?? b?.branch_name ?? ""));
+      setToBranchState(String(b?.branchState ?? b?.state ?? ""));
+      setToBranchGst(String(b?.branchGst ?? b?.gst ?? ""));
+      setDeliveryLocation(String(b?.branchBuildingAddress ?? b?.buildingAddress ?? ""));
+      setDeliveryAddress1(String(b?.branchAddress1 ?? b?.address1 ?? ""));
+      setDeliveryAddress2(String(b?.branchAddress2 ?? b?.address2 ?? ""));
     };
     run().catch(() => {});
   }, [toBranchCode, tenantId, token]);
@@ -248,10 +242,27 @@ export default function StockTransferPage({ onClose }) {
       return;
     }
 
+    const headerId = crypto.randomUUID();
+    const now = new Date();
+    // HHmmss fits within Java Integer (max ~235959)
+    const numericVoucher = Number(
+      String(now.getHours()).padStart(2, "0") +
+      String(now.getMinutes()).padStart(2, "0") +
+      String(now.getSeconds()).padStart(2, "0")
+    );
+    // varchar(20) limit — keep format short: ST-{branch}-{HHmmss}
+    const voucherNumber = `ST-${fromBranch}-${numericVoucher}`.slice(0, 20);
+    // LocalDateTime does not accept trailing 'Z' — strip it
+    const voucherDate = now.toISOString().slice(0, 19);
     const body = {
+      id: headerId,
       branch_code: fromBranch,
       to_branch_code: toBranchCode,
       voucher_type: "STOCK_TRANSFER",
+      voucher_prefix: "ST",
+      voucher_number: voucherNumber,
+      numeric_voucher_number: numericVoucher,
+      voucher_date: voucherDate,
       description: "Stock Transfer",
       delivery_to_location: deliveryLocation,
       delivery_to_address1: deliveryAddress1,
@@ -259,17 +270,25 @@ export default function StockTransferPage({ onClose }) {
       to_branch_name: toBranchName,
       to_branch_state: toBranchState,
       to_branch_gst: toBranchGst,
-      lines: items.map((r) => ({
+      dtl: items.map((r) => ({
+        id: crypto.randomUUID(),
+        parent_id: headerId,
+        branch_code: fromBranch,
+        voucher_type: "STOCK_TRANSFER",
+        voucher_number: voucherNumber,
+        voucher_date: voucherDate,
         item_id: r.item_id,
         item_name: r.item_name,
         barcode: r.barcode,
         qty: Number(r.qty) || 0,
+        rate: Number(r.standard_price) || 0,
         standard_price: Number(r.standard_price) || 0,
         amount: Number(r.amount) || 0,
         tax_rate: Number(r.tax_rate) || 0,
+        cess_rate: 0,
         unit: r.unit || "",
         batch: r.batch || "",
-        expiry: r.expiry || "",
+        expiry: r.expiry || null,
       })),
     };
 
@@ -298,7 +317,7 @@ export default function StockTransferPage({ onClose }) {
         }
         const t = await r.text().catch(() => "");
         lastErr = `${r.status} ${t || r.statusText}`;
-        if (r.status !== 404) break;
+        // continue trying next URL for any non-2xx
       }
 
       if (!result) throw new Error(lastErr || "Save failed");
