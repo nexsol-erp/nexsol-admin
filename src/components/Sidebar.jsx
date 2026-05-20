@@ -166,19 +166,19 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("Dashboard"),
       icon: <Home sx={{ color: "#ffe3a3" }} />,
       link: "/dashboard",
-      roles: ["admin","user","manager"],
+      roles: ["admin","user","manager","WB"],
     },
     {
       label: t("Admin Page"),
       icon: <Home sx={{ color: "#ffe3a3" }} />,
       link: "/branch-request-list",
-      roles: ["admin"],
+      roles: ["admin","WB"],
     },
     {
       label: t("Reprocess Voucher"),
       icon: <Home sx={{ color: "#ffe3a3" }} />,
       link: "/reprocess-voucher-form",
-      roles: ["admin"],
+      roles: ["admin","WB"],
     },
     
     
@@ -482,7 +482,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
         {
           label: t("Documents List"),
           link: "/documents-list",
-          roles: ["user","admin"],
+          roles: ["user","admin","WB"],
         },
         {
           label: t("Branch Stock Diff Report"),
@@ -511,7 +511,7 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       label: t("Download"),
       icon: <Settings sx={{ color: "#ffe3a3" }} />,
       link: "/download",
-      roles: ["user", "manager", "admin"],
+      roles: ["user", "manager", "admin","WB"],
     },
     {
       label: t("Upload"),
