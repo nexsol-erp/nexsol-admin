@@ -4,12 +4,15 @@ import {
   Button,
   Typography,
   CircularProgress,
-  List,
-  ListItem,
-  ListItemText,
   Paper,
   Container,
   Box,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material';
 import { useMediaQuery } from '@mui/material';
 
@@ -169,42 +172,43 @@ const DocumentList = () => {
         {documents.length > 0 && (
           <Box sx={{ mt: 4 }}>
             <Typography variant="h6" gutterBottom>
-              Matching Documents:
+              Matching Documents ({documents.length})
             </Typography>
-            <List>
-              {documents.map((doc, index) => (
-                <ListItem key={index} divider>
-                  <ListItemText
-                    primary={
-                      <span
-                        dangerouslySetInnerHTML={{ __html: doc.snippet }}
-                      />
-                    }
-                    secondary={
-                      <Box sx={{ mt: 1, display: 'flex', gap: 2 }}>
-                        <Button
-                          variant="outlined"
-                          color="primary"
-                          size="small"
-                          onClick={() => downloadDocument(doc.filePath)}
-                        >
-                          Download
-                        </Button>
-                        <Button
-                          variant="contained"
-                          color="success"
-                          size="small"
-                          onClick={() => reprocessDocument(doc.filePath)}
-                          disabled={processing === doc.filePath}
-                        >
-                          {processing === doc.filePath ? 'Processing...' : 'Reprocess'}
-                        </Button>
-                      </Box>
-                    }
-                  />
-                </ListItem>
-              ))}
-            </List>
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: 'grey.100' }}>
+                    <TableCell><strong>Voucher No.</strong></TableCell>
+                    <TableCell><strong>Type</strong></TableCell>
+                    <TableCell><strong>File</strong></TableCell>
+                    <TableCell align="center"><strong>Action</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {documents.map((doc, index) => {
+                    const fileName = doc.filePath ? doc.filePath.split(/[\\/]/).pop() : '';
+                    return (
+                      <TableRow key={index} hover>
+                        <TableCell>{doc.voucherNumber || '—'}</TableCell>
+                        <TableCell>{doc.voucherType || '—'}</TableCell>
+                        <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{fileName}</TableCell>
+                        <TableCell align="center">
+                          <Button
+                            variant="contained"
+                            color="success"
+                            size="small"
+                            onClick={() => reprocessDocument(doc.filePath)}
+                            disabled={processing === doc.filePath}
+                          >
+                            {processing === doc.filePath ? 'Processing...' : 'Reprocess'}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Box>
         )}
       </Paper>
