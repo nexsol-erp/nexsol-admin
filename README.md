@@ -68,3 +68,17 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+How to deploy an update
+Bump "version" in pos-electron/package.json (e.g., "1.0.1")
+Run npm run dist → produces release/TradeLink247-POS-Setup-1.0.1.exe
+Copy the .exe to C:/pos-updates/ on the server
+Update C:/pos-updates/latest.txt to contain just 1.0.1
+Restart the server (or it picks up latest.txt on each request since it reads the file live)
+
+
+How the update flow works
+  → GET /api/{tenantId}/versioncheck/1.0.0
+  ← "version=1.0.1\nurl=http://server:8084/api/updates/download/latest"
+  → Modal shown: "Update to v1.0.1"
+  → User clicks → downloads EXE → installer runs → app restarts

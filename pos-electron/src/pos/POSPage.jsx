@@ -269,17 +269,23 @@ export default function POSPage({ onLogout }) {
   // Branch info (name, address, GST) for receipt header
   const [branchInfo, setBranchInfo] = useState(null);
   useEffect(() => {
-    if (!selectedBranchCode) return;
+    if (!selectedBranchCode) { log("branchInfo: no selectedBranchCode, skipping fetch"); return; }
     const tenantId = localStorage.getItem("tenancyId") || "";
     const token    = localStorage.getItem("jwtToken") || "";
+    log("branchInfo fetch | tenantId:", tenantId, "| branchCode:", selectedBranchCode);
     fetch(apiUrl(`/api/${tenantId}/branches`), { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then((branches) => {
-        const found = Array.isArray(branches)
-          ? branches.find((b) => b.branchCode === selectedBranchCode)
-          : null;
-        setBranchInfo(found || null);
-        log("branchInfo loaded:", JSON.stringify(found));
+      .then((r) => r.text())
+      .then((text) => {
+        log("branchInfo raw response (first 300):", text.substring(0, 300));
+        let data;
+        try { data = JSON.parse(text); } catch { data = {}; }
+        // Spring may double-encode the string — unwrap one level if so
+        if (typeof data === "string") { try { data = JSON.parse(data); } catch { data = {}; } }
+        const list = Array.isArray(data) ? data : data.branches || data.data || [];
+        log("branchInfo list length:", list.length, "| codes:", list.map((b) => b.branchCode).join(","));
+        const found = list.find((b) => b.branchCode === selectedBranchCode) || null;
+        setBranchInfo(found);
+        log("branchInfo set:", JSON.stringify(found));
       })
       .catch((e) => logError("branchInfo fetch error:", e.message));
   }, [selectedBranchCode]);
@@ -298,6 +304,7 @@ export default function POSPage({ onLogout }) {
   useEffect(() => { refreshPrinters(); }, []);
 
   const doPrint = async ({ snapshot, voucherNumber, silent = false }) => {
+    log("doPrint | branchInfo:", JSON.stringify(branchInfo), "| voucherNumber:", voucherNumber);
     if (!window.POS?.printHtml) return;
     const html = buildReceiptHtml({
       items: snapshot, totalAmount, tendered, balance, receipts,

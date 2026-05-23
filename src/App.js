@@ -23,6 +23,7 @@ import HelpPage from "./components/HelpPage";
 import WeighBridge from "./components/WeighBridge";
 import HSNSalesDetail from "./components/HSNWiseSalesDetail";
 import BranchCreationPage from "./components/BranchCreationPage";
+import BranchUpdatePage from "./components/BranchUpdatePage";
 import UserCreationPage from "./components/UserCreationPage";
 import SchemePage from "./components/SchemePage";
 import PublishSchemePage from "./components/PublishSchemePage";
@@ -114,6 +115,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/purchasereport" element={<PurchaseDetail />} />
             <Route path="/weighbridge" element={<WeighBridge />} />
             <Route path="/branchcreationpage" element={<BranchCreationPage />} />
+            <Route path="/branch-update" element={<BranchUpdatePage />} />
             <Route path="/usercreationpage" element={<UserCreationPage />} />
             <Route path="/schemepage" element={<SchemePage />} />
             <Route path="/publishschemepage" element={<PublishSchemePage />} />
