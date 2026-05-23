@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import ItemLookupModal from "../components/ItemLookupModal";
 import { apiUrl } from "../utils/apiUrl";
 import { log, error as logError } from "../utils/logger";
+import { loadAllItemsToCache } from "../cache/itemCache";
 
 const { Title, Text } = Typography;
 
@@ -98,6 +99,9 @@ export default function PhysicalStockPage({ onClose }) {
       message.success(`Saved! Voucher: ${data.voucherNumber}`);
       setLastVoucher(data.voucherNumber);
       setItems([]);
+      loadAllItemsToCache().catch((e) =>
+        logError("cache refresh after physical stock:", e.message)
+      );
     } catch (e) {
       message.error("Save failed: " + e.message);
       logError("physical-stock save error:", e.message);

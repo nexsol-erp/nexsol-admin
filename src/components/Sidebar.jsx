@@ -278,6 +278,12 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       roles: ["admin"],
     },
     {
+      label: t("Branch Details"),
+      icon: <Luggage sx={{ color: "#a3d4ff" }} />,
+      link: "/branch-update",
+      roles: ["admin"],
+    },
+    {
       label: t("User Creation"),
       icon: <Luggage sx={{ color: "#ffe3a3" }} />,
       link: "/usercreationpage",
