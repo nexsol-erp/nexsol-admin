@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Input, InputNumber, Table, Typography, Space, Divider, Select, message } from "antd";
+import { Button, Input, InputNumber, Table, Typography, Space, Divider, Select, message, Tag, Tooltip } from "antd";
+import { SyncOutlined } from "@ant-design/icons";
 import { logout } from "../auth/auth";
 import ItemLookupModal from "../components/ItemLookupModal";
 import { hasCache, loadAllItemsToCache, applySaleToCache } from "../cache/itemCache";
 import { log, warn, error as logError } from "../utils/logger";
 import { apiUrl } from "../utils/apiUrl";
+import { queueSale, getPendingCount, syncPendingSales } from "./offlineQueue";
 
 const { Text, Title } = Typography;
 
@@ -15,6 +17,7 @@ export default function POSPage({ onLogout }) {
   const tenderedRef = useRef(null);
   const saveButtonRef = useRef(null);
   const qtyInputRefs = useRef({});
+  const lastActivityRef = useRef(Date.now());
 
   const [customerMobile, setCustomerMobile] = useState("");
   const [salesmanCode, setSalesmanCode] = useState("");
@@ -25,6 +28,42 @@ export default function POSPage({ onLogout }) {
   const [items, setItems] = useState([]);
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupQuery, setLookupQuery] = useState("");
+  const [pendingCount, setPendingCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+
+  // Offline queue — poll every 10 s; sync only when idle >= 30 s and online
+  useEffect(() => {
+    getPendingCount().then(setPendingCount);
+
+    let busy = false;
+
+    const trySync = async () => {
+      if (busy || !navigator.onLine) return;
+      const count = await getPendingCount();
+      if (!count) return;
+      const idleMs = Date.now() - lastActivityRef.current;
+      if (idleMs < 120_000) return;
+
+      busy = true;
+      setSyncing(true);
+      log("offlineQueue: idle sync triggered | pending:", count, "| idleMs:", idleMs);
+      const { synced, failed } = await syncPendingSales();
+      if (synced > 0) message.success(`Synced ${synced} offline sale${synced > 1 ? "s" : ""}`);
+      if (failed > 0) message.warning(`${failed} sale${failed > 1 ? "s" : ""} still pending`);
+      setPendingCount(await getPendingCount());
+      setSyncing(false);
+      busy = false;
+    };
+
+    const interval = setInterval(trySync, 10_000);
+    // Also attempt immediately when coming back online
+    window.addEventListener("online", trySync);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("online", trySync);
+    };
+  }, []);
 
   // Branch options from JWT
   useEffect(() => {
@@ -242,7 +281,9 @@ export default function POSPage({ onLogout }) {
         logError("sale POST error body (raw):", rawText);
         let errMsg = `Save failed: ${response.status}`;
         try { const j = JSON.parse(rawText); errMsg = j.message || errMsg; } catch (_) {}
-        throw new Error(errMsg);
+        const err = new Error(errMsg);
+        err.httpStatus = response.status;
+        throw err;
       }
       let result;
       try { result = JSON.parse(rawText); } catch (_) { result = {}; }
@@ -262,7 +303,30 @@ export default function POSPage({ onLogout }) {
       setCustomerMobile(""); setSalesmanCode(""); setSalesmanName("");
       setTimeout(() => itemSearchRef.current?.focus?.(), 50);
     } catch (e) {
-      message.error("Save failed: " + (e.message || "Unknown error"));
+      const isNetworkError = !navigator.onLine || e instanceof TypeError;
+      const isServerError  = e.httpStatus >= 500;
+      if (isNetworkError || isServerError) {
+        try {
+          await queueSale({ tenantId, branchCode, token, payload, voucherNumber });
+          await applySaleToCache(items.map((item) => ({
+            itemId: item.item_id, batchCode: item.batch || "", qty: Number(item.qty) || 0,
+          })));
+          message.warning(isNetworkError
+            ? "No network — sale saved offline, will sync automatically when connected"
+            : `Server error (${e.httpStatus}) — sale saved offline, will retry when server recovers`);
+          doPrint({ snapshot: [...items], voucherNumber, silent: true });
+          setItems([]); setTendered(0);
+          setReceipts((prev) => prev.map((r) => ({ ...r, amount: 0 })));
+          setCustomerMobile(""); setSalesmanCode(""); setSalesmanName("");
+          setTimeout(() => itemSearchRef.current?.focus?.(), 50);
+          setPendingCount((c) => c + 1);
+        } catch (qErr) {
+          logError("offlineQueue: failed to queue sale:", qErr.message);
+          message.error("Save failed and could not queue offline: " + qErr.message);
+        }
+      } else {
+        message.error("Save failed: " + (e.message || "Unknown error"));
+      }
     }
   };
 
@@ -372,8 +436,10 @@ export default function POSPage({ onLogout }) {
     },
   ];
 
+  const markActivity = () => { lastActivityRef.current = Date.now(); };
+
   return (
-    <div className="pos-container">
+    <div className="pos-container" onKeyDown={markActivity} onClick={markActivity}>
       {/* ---- Header ---- */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -391,6 +457,26 @@ export default function POSPage({ onLogout }) {
           )}
         </div>
         <Space size={8}>
+          {pendingCount > 0 && (
+            <Tooltip title={syncing ? "Syncing…" : `${pendingCount} offline sale${pendingCount > 1 ? "s" : ""} — auto-sync after 2 min idle`}>
+              <Tag
+                color="warning"
+                icon={<SyncOutlined spin={syncing} />}
+                style={{ cursor: syncing ? "default" : "pointer" }}
+                onClick={async () => {
+                  if (syncing) return;
+                  setSyncing(true);
+                  const { synced, failed } = await syncPendingSales();
+                  if (synced > 0) message.success(`Synced ${synced} offline sale${synced > 1 ? "s" : ""}`);
+                  if (failed > 0) message.warning(`${failed} sale${failed > 1 ? "s" : ""} still pending`);
+                  setPendingCount(await getPendingCount());
+                  setSyncing(false);
+                }}
+              >
+                {pendingCount} pending
+              </Tag>
+            </Tooltip>
+          )}
           <Button
             size="small"
             loading={cacheStatus.loading}
