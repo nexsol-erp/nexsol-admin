@@ -53,6 +53,7 @@ jobs:
 
     env:
       TEMP_DEPLOY_DIR: /home/deploy/tmp-deploy
+      UPDATE_ASSETS_DIR: ${{ vars.UPDATE_ASSETS_DIR || '/home/deploy/nexsol' }}
 
     steps:
       - name: Checkout code
@@ -64,17 +65,45 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
+      - name: Extract POS version from package.json
+        id: pos-ver
+        run: echo "version=$(node -p "require('./pos-electron/package.json').version")" >> $GITHUB_OUTPUT
+
       - name: Download POS installer artifact
         uses: actions/download-artifact@v4
         with:
           name: pos-installer
           path: public/downloads/
 
-      - name: Rename installer to fixed filename
+      - name: Rename installer — fixed name for web download + versioned name for auto-update
         run: |
           cd public/downloads
           for f in *.exe; do mv "$f" TradeLink247-POS-Setup.exe; done
-          echo "POS installer ready: $(ls -lh public/downloads/)"
+          cp TradeLink247-POS-Setup.exe "PosClient-${{ steps.pos-ver.outputs.version }}.exe"
+          echo "Installers ready: $(ls -lh)"
+
+      - name: Copy versioned installer to update server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "public/downloads/PosClient-${{ steps.pos-ver.outputs.version }}.exe"
+          target: "${{ env.UPDATE_ASSETS_DIR }}/"
+          strip_components: 2
+          overwrite: true
+
+      - name: Update latest.txt on server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p ${{ env.UPDATE_ASSETS_DIR }}
+            echo "${{ steps.pos-ver.outputs.version }}" > ${{ env.UPDATE_ASSETS_DIR }}/latest.txt
+            echo "latest.txt updated to ${{ steps.pos-ver.outputs.version }}"
+            ls -lh ${{ env.UPDATE_ASSETS_DIR }}/
 
       - name: Install dependencies
         run: npm install
