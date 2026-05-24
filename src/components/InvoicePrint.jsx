@@ -4,15 +4,20 @@ import "./invoice.css";
 const InvoicePrint = forwardRef(({ bill }, ref) => {
   if (!bill) return null;
 
+  const bi = bill.branchInfo || {};
+  const storeName = bi.branchName || "MY STORE";
+  const addressParts = [bi.branchBuildingAddress, bi.branchStreetAddress, bi.branchAddress1, bi.branchAddress2].filter(Boolean);
+  const storeGst = bi.branchGst || bill.gstin;
+  const storeState = bi.branchState;
+
   return (
     <div className="receipt-container" ref={ref}>
       {/* Header */}
       <div className="receipt-header">
-        <h2 style={{ margin: 0, fontSize: '18px' }}>MY STORE</h2>
-        <div>123 Main Street, Market Area</div>
-        <div>New Delhi - 110001</div>
-        <div>Ph: +91-9876543210</div>
-        {bill.gstin && <div>GSTIN: {bill.gstin}</div>}
+        <h2 style={{ margin: 0, fontSize: '18px' }}>{storeName}</h2>
+        {addressParts.map((line, i) => <div key={i}>{line}</div>)}
+        {storeState && !addressParts.some(p => p?.includes(storeState)) && <div>{storeState}</div>}
+        {storeGst && <div>GSTIN: {storeGst}</div>}
       </div>
 
       <div className="receipt-divider" />

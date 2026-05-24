@@ -225,6 +225,11 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
           link: "/purchaseentry",
           roles: ["user", "manager", "admin"],
         },
+        {
+          label: t("Goods Receipt"),
+          link: "/goodsreceipt",
+          roles: ["user", "manager", "admin"],
+        },
       ],
     },
     {
