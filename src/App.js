@@ -84,6 +84,7 @@ import ProductionExecutionPage from "./components/ProductionExecutionPage";
 
 import "./i18n"; // i18n config
 import KOTEntry from "./components/KOTEntry";
+import GoodsReceiptForm from "./components/GoodsReceiptForm";
 
 // ========================
 // AUTH WRAPPER COMPONENT
@@ -181,6 +182,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/production-def" element={<ProductionDefPage />} />
 <Route path="/production-planning" element={<ProductionPlanningPage />} />
 <Route path="/production-execution" element={<ProductionExecutionPage />} />
+<Route path="/goodsreceipt" element={<GoodsReceiptForm />} />
 
 
 

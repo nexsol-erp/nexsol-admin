@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Input, InputNumber, Modal, Radio, Select, Space, Table, Typography, message } from "antd";
+import { Badge, Button, Input, InputNumber, Modal, Radio, Select, Space, Table, Typography, message } from "antd";
+import { SyncOutlined } from "@ant-design/icons";
 import ItemLookupModal from "../components/ItemLookupModal";
 import { apiUrl } from "../utils/apiUrl";
+import { queueStockTransfer, getPendingStockCount, syncPendingStockTransfers } from "./offlineStockQueue";
+import { applySaleToCache } from "../cache/itemCache";
+import { buildTransferHtml } from "./transferPrint";
 
 const { Title, Text } = Typography;
 
@@ -51,61 +55,85 @@ export default function StockTransferPage({ onClose }) {
   const [recallOpen, setRecallOpen] = useState(false);
   const [holdRows, setHoldRows] = useState([]);
   const [selectedHoldId, setSelectedHoldId] = useState("");
+  const [pendingCount, setPendingCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const lastActivityRef = useRef(Date.now());
 
   const tenantId = localStorage.getItem("tenancyId") || "";
   const token = localStorage.getItem("jwtToken") || "";
   const fromBranch = String(globalThis.POS_BRANCH_CODE || localStorage.getItem("selectedBranchCode") || "").trim();
 
+  const [allBranches, setAllBranches] = useState([]);
+
   const branchOptions = useMemo(() => {
-    let raw = [];
-    try {
-      raw = JSON.parse(localStorage.getItem("allowedBranches") || "[]");
-      if (!Array.isArray(raw)) raw = [];
-    } catch (e) {
-      raw = [];
-    }
     const seen = new Set();
-    return raw
-      .map((b) => {
-        if (typeof b === "string") return b.trim();
-        return String(b?.branchCode ?? b?.code ?? b?.branch ?? b?.value ?? b?.id ?? "").trim();
-      })
-      .filter((x) => x && x !== fromBranch)
-      .filter((x) => {
-        if (seen.has(x)) return false;
-        seen.add(x);
+    return allBranches
+      .map((b) => String(b.branchCode ?? "").trim())
+      .filter((code) => code && code !== fromBranch)
+      .filter((code) => {
+        if (seen.has(code)) return false;
+        seen.add(code);
         return true;
       })
-      .map((x) => ({ value: x, label: x }));
-  }, [fromBranch]);
+      .map((code) => ({ value: code, label: code }));
+  }, [allBranches, fromBranch]);
 
   useEffect(() => {
     setHoldRows(readHoldList());
   }, []);
 
   useEffect(() => {
-    if (!toBranchCode || !tenantId || !token) return;
-    const run = async () => {
-        // Fetch all branches and filter — avoids needing a per-branch endpoint
-      const r = await fetch(apiUrl(`/api/${tenantId}/branches`), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!r.ok) return;
-      const list = await r.json();
-      const branches = Array.isArray(list) ? list : (list?.data ?? []);
-      const b = branches.find(
-        (x) => (x.branchCode ?? x.branch_code ?? "").toUpperCase() === toBranchCode.toUpperCase()
-      );
-      if (!b) return;
-      setToBranchName(String(b?.branchName ?? b?.branch_name ?? ""));
-      setToBranchState(String(b?.branchState ?? b?.state ?? ""));
-      setToBranchGst(String(b?.branchGst ?? b?.gst ?? ""));
-      setDeliveryLocation(String(b?.branchBuildingAddress ?? b?.buildingAddress ?? ""));
-      setDeliveryAddress1(String(b?.branchAddress1 ?? b?.address1 ?? ""));
-      setDeliveryAddress2(String(b?.branchAddress2 ?? b?.address2 ?? ""));
+    if (!tenantId || !token) return;
+    fetch(apiUrl(`/api/${tenantId}/branches`), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return;
+        const list = Array.isArray(data) ? data : (data?.branches ?? data?.data ?? []);
+        setAllBranches(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {});
+  }, [tenantId, token]);
+
+  useEffect(() => {
+    if (!toBranchCode) return;
+    const b = allBranches.find(
+      (x) => String(x.branchCode ?? "").toUpperCase() === toBranchCode.toUpperCase()
+    );
+    if (!b) return;
+    setToBranchName(String(b.branchName ?? ""));
+    setToBranchState(String(b.branchState ?? ""));
+    setToBranchGst(String(b.branchGst ?? ""));
+    setDeliveryLocation(String(b.branchBuildingAddress ?? ""));
+    setDeliveryAddress1(String(b.branchAddress1 ?? ""));
+    setDeliveryAddress2(String(b.branchAddress2 ?? ""));
+  }, [toBranchCode, allBranches]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const IDLE_MS = 120_000;
+    const tick = async () => {
+      if (cancelled) return;
+      const idle = Date.now() - lastActivityRef.current >= IDLE_MS;
+      if (navigator.onLine && idle) {
+        const { synced } = await syncPendingStockTransfers().catch(() => ({ synced: 0 }));
+        if (synced > 0) message.success(`Synced ${synced} offline stock transfer(s)`);
+      }
+      const count = await getPendingStockCount().catch(() => 0);
+      if (!cancelled) setPendingCount(count);
     };
-    run().catch(() => {});
-  }, [toBranchCode, tenantId, token]);
+    tick();
+    const id = setInterval(tick, 10_000);
+    const onOnline = () => { lastActivityRef.current = 0; tick(); };
+    window.addEventListener("online", onOnline);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      window.removeEventListener("online", onOnline);
+    };
+  }, []);
+
 
   const totalQty = useMemo(
     () => items.reduce((s, r) => s + (Number(r.qty) || 0), 0),
@@ -198,6 +226,7 @@ export default function StockTransferPage({ onClose }) {
       const next = [rec, ...holdRows].slice(0, 100);
       setHoldRows(next);
       writeHoldList(next);
+      resetForm();
       message.success("Hold DC saved");
     } finally {
       setSavingHold(false);
@@ -218,8 +247,12 @@ export default function StockTransferPage({ onClose }) {
     setDeliveryLocation(String(p.deliveryLocation || ""));
     setDeliveryAddress1(String(p.deliveryAddress1 || ""));
     setDeliveryAddress2(String(p.deliveryAddress2 || ""));
-    setPrintMode(p.printMode === "thermal" ? "thermal" : "pdf");
+    setPrintMode(p.printMode === "thermal" ? "thermal" : "a4");
     setItems(Array.isArray(p.items) ? p.items : []);
+    const next = holdRows.filter((x) => x.id !== selectedHoldId);
+    setHoldRows(next);
+    writeHoldList(next);
+    setSelectedHoldId("");
     setRecallOpen(false);
     message.success("DC recalled");
   };
@@ -270,13 +303,8 @@ export default function StockTransferPage({ onClose }) {
       to_branch_name: toBranchName,
       to_branch_state: toBranchState,
       to_branch_gst: toBranchGst,
-      dtl: items.map((r) => ({
+      lines: items.map((r) => ({
         id: crypto.randomUUID(),
-        parent_id: headerId,
-        branch_code: fromBranch,
-        voucher_type: "STOCK_TRANSFER",
-        voucher_number: voucherNumber,
-        voucher_date: voucherDate,
         item_id: r.item_id,
         item_name: r.item_name,
         barcode: r.barcode,
@@ -292,6 +320,7 @@ export default function StockTransferPage({ onClose }) {
       })),
     };
 
+    lastActivityRef.current = Date.now();
     try {
       setSaving(true);
       const urls = [
@@ -302,41 +331,86 @@ export default function StockTransferPage({ onClose }) {
 
       let result = null;
       let lastErr = "";
+      let saveLocally = false;
       for (const url of urls) {
-        const r = await fetch(url, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        });
-        if (r.ok) {
-          result = await r.json().catch(() => ({}));
+        try {
+          const r = await fetch(url, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          });
+          if (r.ok) {
+            result = await r.json().catch(() => ({}));
+            break;
+          }
+          const t = await r.text().catch(() => "");
+          lastErr = `${r.status} ${t || r.statusText}`;
+          if (r.status >= 500) { saveLocally = true; break; }
+        } catch (fetchErr) {
+          saveLocally = true;
+          lastErr = fetchErr.message;
           break;
         }
-        const t = await r.text().catch(() => "");
-        lastErr = `${r.status} ${t || r.statusText}`;
-        // continue trying next URL for any non-2xx
       }
 
-      if (!result) throw new Error(lastErr || "Save failed");
+      const fromBranchObj = allBranches.find(
+        (x) => String(x.branchCode ?? "").toUpperCase() === fromBranch.toUpperCase()
+      ) || {};
+      const printArgs = {
+        printMode,
+        fromBranch,
+        fromBranchName: String(fromBranchObj.branchName ?? ""),
+        fromBranchGst: String(fromBranchObj.branchGst ?? ""),
+        fromBranchState: String(fromBranchObj.branchState ?? ""),
+        fromBranchAddress: [
+          fromBranchObj.branchBuildingAddress,
+          fromBranchObj.branchAddress1,
+          fromBranchObj.branchAddress2,
+        ].filter(Boolean).join(", "),
+        toBranchCode,
+        toBranchName,
+        toBranchState,
+        toBranchGst,
+        deliveryLocation,
+        deliveryAddress1,
+        deliveryAddress2,
+        voucherNumber,
+        voucherDate,
+        items,
+        totalAmount,
+        totalQty,
+      };
+
+      const cacheLines = items.map((r) => ({ itemId: r.item_id, batchCode: r.batch || "", qty: Number(r.qty) || 0 }));
+
+      if (!result) {
+        if (saveLocally || !navigator.onLine) {
+          await queueStockTransfer({ tenantId, branchCode: fromBranch, token, payload: body, voucherNumber });
+          setPendingCount((c) => c + 1);
+          await applySaleToCache(cacheLines);
+          message.warning("Server error — Stock Transfer saved locally and will sync when resolved.");
+          if (window.POS?.printHtml) {
+            const html = buildTransferHtml(printArgs);
+            await window.POS.printHtml({ html, silent: printMode === "thermal", deviceName: "" });
+          }
+          resetForm();
+          return;
+        }
+        throw new Error(lastErr || "Save failed");
+      }
+
+      await applySaleToCache(cacheLines);
       message.success("Stock Transfer saved");
 
       if (window.POS?.printHtml) {
-        const html = buildTransferHtml({
-          fromBranch,
-          toBranchCode,
-          toBranchName,
-          items,
-          totalAmount,
-          totalQty,
-        });
         await window.POS.printHtml({
-          html,
+          html: buildTransferHtml(printArgs),
           silent: printMode === "thermal",
           deviceName: "",
-        });
+        }).catch(() => {});
       }
 
       resetForm();
@@ -400,6 +474,25 @@ export default function StockTransferPage({ onClose }) {
         <Space>
           <Button onClick={saveToHold} loading={savingHold}>Hold DC</Button>
           <Button onClick={() => setRecallOpen(true)}>Recall DC</Button>
+          {pendingCount > 0 && (
+            <Badge count={pendingCount} size="small">
+              <Button
+                icon={<SyncOutlined spin={syncing} />}
+                loading={syncing}
+                onClick={async () => {
+                  setSyncing(true);
+                  const { synced, failed } = await syncPendingStockTransfers().catch(() => ({ synced: 0, failed: 0 }));
+                  const count = await getPendingStockCount().catch(() => 0);
+                  setPendingCount(count);
+                  setSyncing(false);
+                  if (synced > 0) message.success(`Synced ${synced} offline transfer(s)`);
+                  if (failed > 0) message.warning(`${failed} transfer(s) still pending`);
+                }}
+              >
+                Sync
+              </Button>
+            </Badge>
+          )}
           <Button onClick={onClose}>Close</Button>
           <Button type="primary" onClick={saveTransfer} loading={saving}>Save</Button>
         </Space>
@@ -440,8 +533,8 @@ export default function StockTransferPage({ onClose }) {
           <Text strong style={{ display: "block", color: "#374151", marginBottom: 4 }}>Print Mode</Text>
           <Radio.Group
             options={[
-              { label: "PDF File", value: "pdf" },
-              { label: "Thermal Printer", value: "thermal" },
+              { label: "A4", value: "a4" },
+              { label: "Thermal", value: "thermal" },
             ]}
             value={printMode}
             onChange={(e) => setPrintMode(e.target.value)}
@@ -529,50 +622,4 @@ export default function StockTransferPage({ onClose }) {
   );
 }
 
-function escapeHtml(s) {
-  return String(s || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function buildTransferHtml({ fromBranch, toBranchCode, toBranchName, items, totalAmount, totalQty }) {
-  const rows = items
-    .map(
-      (r) => `
-      <tr>
-        <td>${escapeHtml(r.item_name)}</td>
-        <td style="text-align:right">${Number(r.qty || 0).toFixed(2)}</td>
-        <td style="text-align:right">${Number(r.standard_price || 0).toFixed(2)}</td>
-        <td style="text-align:right">${Number(r.amount || 0).toFixed(2)}</td>
-      </tr>`
-    )
-    .join("");
-
-  return `
-  <html>
-    <body style="font-family: monospace; width: 320px;">
-      <div style="text-align:center;font-weight:bold;">STOCK TRANSFER</div>
-      <div>From: ${escapeHtml(fromBranch)}</div>
-      <div>To: ${escapeHtml(toBranchCode)} ${escapeHtml(toBranchName || "")}</div>
-      <hr/>
-      <table style="width:100%; font-size:12px;">
-        <thead>
-          <tr>
-            <th style="text-align:left">Item</th>
-            <th style="text-align:right">Qty</th>
-            <th style="text-align:right">Rate</th>
-            <th style="text-align:right">Amt</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <hr/>
-      <div style="display:flex; justify-content:space-between;"><span>Total Qty</span><span>${Number(totalQty || 0).toFixed(2)}</span></div>
-      <div style="display:flex; justify-content:space-between;"><span>Total Amount</span><span>${Number(totalAmount || 0).toFixed(2)}</span></div>
-    </body>
-  </html>`;
-}
 

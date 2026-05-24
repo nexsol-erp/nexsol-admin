@@ -120,7 +120,6 @@ export default function ItemLookupModal({ open, initialQuery, onClose, onPick })
       footer={null}
       width={900}
       centered
-      getContainer={false}
       title="Item Lookup"
       className="item-lookup-modal"
       styles={{ body: { color: "#1f2937", fontSize: 12 } }}
@@ -154,7 +153,7 @@ export default function ItemLookupModal({ open, initialQuery, onClose, onPick })
             pagination={false}
             rowKey={(r) => `${r.itemId}-${r.batchCode || ""}-${r.barcode || ""}`}
             onRow={(record, index) => ({
-              onClick: () => setSelectedIndex(index ?? 0),
+              onClick: () => { setSelectedIndex(index ?? 0); inputRef.current?.focus?.(); },
               onDoubleClick: () => pick(record),
             })}
             rowClassName={(_, idx) => (idx === selectedIndex ? "lookup-row-selected" : "")}
