@@ -85,6 +85,7 @@ const POSEntry = () => {
 
   const [scanOpen, setScanOpen] = useState(false);
   const [cache, setCache] = useState(loadCache());
+  const [branchInfo, setBranchInfo] = useState(null);
 
   const [items, setItems] = useState([]);
   const [totalAmount, setTotalAmount] = useState(0);
@@ -161,6 +162,21 @@ const POSEntry = () => {
     if (!cache || cache.length === 0) syncItems();
     barcodeInputRef.current?.focus?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
+    const branchCode = localStorage.getItem("branchCode");
+    if (!tenancyId || !token || !branchCode) return;
+    fetch(`/api/${tenancyId}/branches`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => {
+        const branches = data?.branches ?? data?.data ?? [];
+        const found = branches.find((b) => b.branchCode === branchCode);
+        if (found) setBranchInfo(found);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -370,7 +386,7 @@ const POSEntry = () => {
       if (!savedResult || !savedResult.voucherNumber) throw new Error("Invalid response from server");
 
       message.success({ content: "Saved successfully!", key: "saving", duration: 1.5 });
-      setBillToPrint(savedResult);
+      setBillToPrint({ ...savedResult, branchInfo });
       setPreviewOpen(true);
     } catch (e) {
       console.error(e);
@@ -521,9 +537,17 @@ const POSEntry = () => {
           <div style={{ background: "#1890ff", color: "#fff", padding: "6px 10px", borderRadius: 8 }}>
             <ShoppingCartOutlined style={{ fontSize: 18 }} />
           </div>
-          <Title level={isMobile ? 5 : 4} style={{ margin: 0, color: "#001529" }}>
-            POS Terminal
-          </Title>
+          <div>
+            <Title level={isMobile ? 5 : 4} style={{ margin: 0, color: "#001529" }}>
+              POS Terminal
+            </Title>
+            {branchInfo && (
+              <Text style={{ fontSize: 12, color: "#555" }}>
+                {branchInfo.branchCode} — {branchInfo.branchName}
+                {branchInfo.branchState ? ` | ${branchInfo.branchState}` : ""}
+              </Text>
+            )}
+          </div>
         </div>
 
         {!isMobile && (

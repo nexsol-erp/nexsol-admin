@@ -1,17 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Input, InputNumber, Table, Typography, Space, Divider, Select, message, Tag, Tooltip } from "antd";
+import { Button, Input, InputNumber, Select, Table, Typography, Space, Divider, message, Tag, Tooltip } from "antd";
 import { SyncOutlined } from "@ant-design/icons";
 import { logout } from "../auth/auth";
 import ItemLookupModal from "../components/ItemLookupModal";
-import { hasCache, loadAllItemsToCache, applySaleToCache } from "../cache/itemCache";
-import { log, warn, error as logError } from "../utils/logger";
+import { applySaleToCache } from "../cache/itemCache";
+import { log, error as logError } from "../utils/logger";
 import { apiUrl } from "../utils/apiUrl";
 import { queueSale, getPendingCount, syncPendingSales } from "./offlineQueue";
 
 const { Text, Title } = Typography;
 
-export default function POSPage({ onLogout }) {
-  const [cacheStatus, setCacheStatus] = useState({ loaded: false, loading: false, loadedCount: 0 });
+export default function POSPage({ onLogout, selectedBranchCode = "", prefillItems = null, onPrefillUsed }) {
 
   const itemSearchRef = useRef(null);
   const tenderedRef = useRef(null);
@@ -22,8 +21,6 @@ export default function POSPage({ onLogout }) {
   const [customerMobile, setCustomerMobile] = useState("");
   const [salesmanCode, setSalesmanCode] = useState("");
   const [salesmanName, setSalesmanName] = useState("");
-  const [branchOptions, setBranchOptions] = useState([]);
-  const [selectedBranchCode, setSelectedBranchCode] = useState("");
   const [itemQuery, setItemQuery] = useState("");
   const [items, setItems] = useState([]);
   const [lookupOpen, setLookupOpen] = useState(false);
@@ -65,78 +62,15 @@ export default function POSPage({ onLogout }) {
     };
   }, []);
 
-  // Branch options from JWT
+  useEffect(() => { log("POSPage mounted"); }, []);
+
+  // Load items pre-filled from KOT Convert-to-POS
   useEffect(() => {
-    log("POSPage mounted");
-    const extractBranchCode = (b) => {
-      if (typeof b === "string") return b.trim();
-      if (b && typeof b === "object")
-        return String(b.branchCode ?? b.code ?? b.branch ?? b.value ?? b.id ?? "").trim();
-      return "";
-    };
-    let raw = [];
-    try {
-      const raw_str = localStorage.getItem("allowedBranches") || "[]";
-      log("allowedBranches raw:", raw_str);
-      raw = JSON.parse(raw_str);
-      if (!Array.isArray(raw)) { warn("allowedBranches is not an array:", raw); raw = []; }
-    } catch (e) { logError("allowedBranches parse error:", e); raw = []; }
-
-    const seen = new Set();
-    const options = raw
-      .map(extractBranchCode)
-      .filter((code) => { if (!code || seen.has(code)) return false; seen.add(code); return true; })
-      .map((code) => ({ value: code, label: code }));
-
-    log("branch options:", options);
-    setBranchOptions(options);
-    if (!options.length) { warn("no branch options found"); setSelectedBranchCode(""); return; }
-    if (options.length === 1) { log("auto-selecting single branch:", options[0].value); setSelectedBranchCode(options[0].value); return; }
-    const saved = localStorage.getItem("selectedBranchCode") || "";
-    const selected = options.some((o) => o.value === saved) ? saved : options[0].value;
-    log("selected branch:", selected);
-    setSelectedBranchCode(selected);
-  }, []);
-
-  useEffect(() => {
-    const code = selectedBranchCode || "";
-    globalThis.POS_BRANCH_CODE = code;
-    if (code) localStorage.setItem("selectedBranchCode", code);
-  }, [selectedBranchCode]);
-
-  // Load cache on mount
-  useEffect(() => {
-    (async () => {
-      log("checking item cache...");
-      try {
-        const ok = await hasCache();
-        log("hasCache result:", ok);
-        setCacheStatus((s) => ({ ...s, loaded: ok }));
-        if (!ok) {
-          log("cache empty, loading from backend...");
-          setCacheStatus((s) => ({ ...s, loading: true }));
-          try {
-            await loadAllItemsToCache({
-              onProgress: ({ loaded, total }) => {
-                log(`cache load progress: ${loaded}/${total}`);
-                setCacheStatus((s) => ({ ...s, loadedCount: loaded }));
-              },
-            });
-            log("cache loaded successfully");
-            setCacheStatus((s) => ({ ...s, loaded: true, loading: false }));
-          } catch (e) {
-            logError("loadAllItemsToCache failed:", e);
-            setCacheStatus((s) => ({ ...s, loading: false }));
-            message.error(e.message || "Failed to load item cache");
-          }
-        } else {
-          log("cache already populated, skipping load");
-        }
-      } catch (e) {
-        logError("hasCache check failed:", e);
-      }
-    })();
-  }, []);
+    if (!prefillItems?.length) return;
+    setItems(prefillItems);
+    onPrefillUsed?.();
+    setTimeout(() => itemSearchRef.current?.focus?.(), 100);
+  }, [prefillItems]);
 
   const openLookup = (q = "") => { log("openLookup:", q); setLookupQuery(q); setLookupOpen(true); };
   const focusQtyInput = (rowKey, delay = 0) => {
@@ -215,7 +149,7 @@ export default function POSPage({ onLogout }) {
   const onSave = async () => {
     log("onSave called | canSave:", canSave, "| items:", items.length, "| branch:", selectedBranchCode);
     if (!canSave) { warn("onSave blocked: canSave=false"); return; }
-    if (branchOptions.length > 0 && !selectedBranchCode) { message.warning("Select branch code"); return; }
+    if (!selectedBranchCode) { message.warning("Select branch code"); return; }
 
     const tenantId  = localStorage.getItem("tenancyId") || "79001a";
     const token     = localStorage.getItem("jwtToken") || "";
@@ -444,17 +378,8 @@ export default function POSPage({ onLogout }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Title level={4} style={{ margin: 0, color: "#0b3a75" }}>
-            {branchOptions.length === 1 && selectedBranchCode ? `POS — ${selectedBranchCode}` : "POS Window"}
+            {selectedBranchCode ? `POS — ${selectedBranchCode}` : "POS Window"}
           </Title>
-          {branchOptions.length > 1 && (
-            <Select
-              size="small" style={{ width: 140 }}
-              value={selectedBranchCode || undefined}
-              onChange={setSelectedBranchCode}
-              options={branchOptions}
-              placeholder="Branch"
-            />
-          )}
         </div>
         <Space size={8}>
           {pendingCount > 0 && (
@@ -477,23 +402,6 @@ export default function POSPage({ onLogout }) {
               </Tag>
             </Tooltip>
           )}
-          <Button
-            size="small"
-            loading={cacheStatus.loading}
-            onClick={async () => {
-              setCacheStatus((s) => ({ ...s, loading: true }));
-              try {
-                await loadAllItemsToCache({ onProgress: ({ loaded }) => setCacheStatus((s) => ({ ...s, loadedCount: loaded })) });
-                setCacheStatus((s) => ({ ...s, loaded: true, loading: false }));
-                message.success("Item cache refreshed");
-              } catch (e) {
-                setCacheStatus((s) => ({ ...s, loading: false }));
-                message.error(e.message || "Refresh failed");
-              }
-            }}
-          >
-            Refresh Items
-          </Button>
           <Button danger size="small" onClick={() => { logout(); onLogout?.(); }}>
             Logout
           </Button>
