@@ -87,6 +87,7 @@ import KOTEntry from "./components/KOTEntry";
 import GoodsReceiptForm from "./components/GoodsReceiptForm";
 import ReceiptModePage from "./components/ReceiptModePage";
 import BranchStockViewReport from "./components/BranchStockViewReport";
+import ItemTransferReport from "./components/ItemTransferReport";
 
 // ========================
 // AUTH WRAPPER COMPONENT
@@ -187,6 +188,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/goodsreceipt" element={<GoodsReceiptForm />} />
 <Route path="/receipt-modes" element={<ReceiptModePage />} />
 <Route path="/branch-stock-view" element={<BranchStockViewReport />} />
+<Route path="/item-transfer-report" element={<ItemTransferReport />} />
 
 
 
