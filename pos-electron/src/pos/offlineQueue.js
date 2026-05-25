@@ -5,11 +5,10 @@ import { log, warn, error as logError } from "../utils/logger";
 /**
  * Persist a failed sale to IndexedDB so it can be retried when online.
  */
-export async function queueSale({ tenantId, branchCode, token, payload, voucherNumber }) {
+export async function queueSale({ tenantId, branchCode, payload, voucherNumber }) {
   await db.pending_sales.add({
     tenantId,
     branchCode,
-    token,
     payload,
     voucherNumber,
     queuedAt: new Date().toISOString(),
@@ -41,6 +40,9 @@ export async function syncPendingSales() {
   let synced = 0;
   let failed = 0;
 
+  // Always use the current session token — the stored token may have expired
+  const currentToken = localStorage.getItem("jwtToken") || "";
+
   for (const sale of pending) {
     try {
       const url = apiUrl(`/api/${sale.tenantId}/sales-upload/${sale.branchCode}`);
@@ -48,7 +50,7 @@ export async function syncPendingSales() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${sale.token}`,
+          Authorization: `Bearer ${currentToken}`,
           "X-Tenant-Id": sale.tenantId,
         },
         body: JSON.stringify(sale.payload),
@@ -57,6 +59,12 @@ export async function syncPendingSales() {
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         logError("offlineQueue: server rejected voucher:", sale.voucherNumber, "| status:", res.status, "| body:", text);
+        if (res.status === 401) {
+          // Session not authenticated — stop sync, user must login
+          warn("offlineQueue: stopping sync — session expired or not logged in");
+          failed++;
+          break;
+        }
         await db.pending_sales.update(sale.id, { retryCount: sale.retryCount + 1 });
         failed++;
         continue;
