@@ -15,7 +15,9 @@ import {
   FormControl,
   InputLabel,
   Alert,
+  IconButton,
 } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { useWebSocket } from "./WebSocketContext"; // Adjust the import path as needed
 
 const SchemePage = () => {
@@ -67,29 +69,42 @@ const SchemePage = () => {
     }
   };
 
-  try {
-    useEffect(() => {
-      fetchSchemes();
-      const storedItems = JSON.parse(localStorage.getItem("items") || "[]");
-      setItems(storedItems);
-      const storedCategories = JSON.parse(
-        localStorage.getItem("categories") || "[]"
-      );
-      setCategories(storedCategories);
-    }, []);
-  } catch (error) {
-    setError("An error occurred while fetching schemes.");
-    console.error("Fetch Schemes Error:", error);
-  }
-
   useEffect(() => {
-    if (data.items) {
-      setItems(data.items);
+    fetchSchemes();
+    fetchItems();
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
+    try {
+      const res = await fetch(`/api/${tenancyId}/categoriesNames`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch categories");
+      const data = await res.json();
+      setCategories(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("fetchCategories error:", err);
     }
-    if (data.categories) {
-      setCategories(data.categories);
+  };
+
+  const fetchItems = async () => {
+    const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
+    try {
+      const res = await fetch(`/api/${tenancyId}/items`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch items");
+      const data = await res.json();
+      setItems(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("fetchItems error:", err);
     }
-  }, [data.items, data.categories]);
+  };
+
 
   const handleCreateScheme = async () => {
     setError("");
@@ -149,6 +164,31 @@ const SchemePage = () => {
     } catch (error) {
       setError("An error occurred while creating the scheme.");
       console.error("Create Scheme Error:", error);
+    }
+  };
+
+  const handleDeleteScheme = async (schemeName) => {
+    if (!window.confirm(`Delete scheme "${schemeName}"?`)) return;
+    const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
+    try {
+      const response = await fetch(
+        `/api/${tenancyId}/scheme/${encodeURIComponent(schemeName)}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (response.ok) {
+        fetchSchemes();
+      } else {
+        setError(`Failed to delete scheme (${response.status}).`);
+      }
+    } catch (err) {
+      setError("An error occurred while deleting the scheme.");
+      console.error("Delete Scheme Error:", err);
     }
   };
 
@@ -221,11 +261,8 @@ const SchemePage = () => {
                   onChange={(e) => setCategoryName(e.target.value)}
                 >
                   {categories.map((category) => (
-                    <MenuItem
-                      key={category.categoryid}
-                      value={category.category_name}
-                    >
-                      {category.category_name}
+                    <MenuItem key={category.id} value={category.categoryName}>
+                      {category.categoryName}
                     </MenuItem>
                   ))}
                 </Select>
@@ -249,11 +286,8 @@ const SchemePage = () => {
                   onChange={(e) => setCategoryName(e.target.value)}
                 >
                   {categories.map((category) => (
-                    <MenuItem
-                      key={category.categoryid}
-                      value={category.category_name}
-                    >
-                      {category.category_name}
+                    <MenuItem key={category.id} value={category.categoryName}>
+                      {category.categoryName}
                     </MenuItem>
                   ))}
                 </Select>
@@ -277,8 +311,8 @@ const SchemePage = () => {
                   onChange={(e) => setEligibilityItemName(e.target.value)}
                 >
                   {items.map((item) => (
-                    <MenuItem key={item.item_id} value={item.item_name}>
-                      {item.item_name}
+                    <MenuItem key={item.itemId} value={item.itemName}>
+                      {item.itemName}
                     </MenuItem>
                   ))}
                 </Select>
@@ -302,8 +336,8 @@ const SchemePage = () => {
                   onChange={(e) => setEligibilityItemName(e.target.value)}
                 >
                   {items.map((item) => (
-                    <MenuItem key={item.item_id} value={item.item_name}>
-                      {item.item_name}
+                    <MenuItem key={item.itemId} value={item.itemName}>
+                      {item.itemName}
                     </MenuItem>
                   ))}
                 </Select>
@@ -350,8 +384,8 @@ const SchemePage = () => {
                   onChange={(e) => setOfferItem(e.target.value)}
                 >
                   {items.map((item) => (
-                    <MenuItem key={item.item_id} value={item.item_name}>
-                      {item.item_name}
+                    <MenuItem key={item.itemId} value={item.itemName}>
+                      {item.itemName}
                     </MenuItem>
                   ))}
                 </Select>
@@ -375,8 +409,8 @@ const SchemePage = () => {
                   onChange={(e) => setOfferItem(e.target.value)}
                 >
                   {items.map((item) => (
-                    <MenuItem key={item.item_id} value={item.item_name}>
-                      {item.item_name}
+                    <MenuItem key={item.itemId} value={item.itemName}>
+                      {item.itemName}
                     </MenuItem>
                   ))}
                 </Select>
@@ -438,6 +472,7 @@ const SchemePage = () => {
               <TableCell>Offer Qty</TableCell>
               <TableCell>Offer Discount Percent</TableCell>
               <TableCell>Cash Back Amount</TableCell>
+              <TableCell>Action</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -458,6 +493,15 @@ const SchemePage = () => {
                 <TableCell>{row.offerQty}</TableCell>
                 <TableCell>{row.offerDiscountPercent}</TableCell>
                 <TableCell>{row.cashBackAmount}</TableCell>
+                <TableCell>
+                  <IconButton
+                    color="error"
+                    size="small"
+                    onClick={() => handleDeleteScheme(row.schemeName)}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

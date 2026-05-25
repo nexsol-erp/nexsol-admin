@@ -33,31 +33,31 @@ body {
 
 /* ---- POS container (main sales screen) ---- */
 .pos-container {
-  background: #ffffff;
-  padding: 12px;
-}
-
-.pos-header {
+  background: #d4d0c8;
+  height: 100vh;
+  overflow: hidden;
   display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.pos-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  padding: 0;
+  font-family: "Segoe UI", "MS Shell Dlg 2", Arial, sans-serif;
 }
 
 /* ---- All inputs — visible white background, dark text ---- */
-.ant-input,
-.ant-input-affix-wrapper,
-.ant-input-number,
-.ant-input-number-input,
-.ant-select:not(.ant-select-customize-input) .ant-select-selector,
-.ant-picker {
+.pos-container .ant-input,
+.pos-container .ant-input-number-input {
   background: #ffffff !important;
-  color: #1f2937 !important;
+  color: #000000 !important;
+  border-radius: 0 !important;
+}
+
+.pos-container .ant-input[disabled],
+.pos-container .ant-input-disabled {
+  background: #d0d0d0 !important;
+  color: #555 !important;
+}
+
+.pos-container .ant-input-number {
+  border-radius: 0 !important;
 }
 
 .ant-input::placeholder,
@@ -78,43 +78,81 @@ body {
 
 /* ---- Tables ---- */
 .ant-table {
-  background: #ffffff;
-  color: #1f2937;
+  color: #000000;
 }
 
 .ant-table-thead > tr > th {
-  background: #f5f5f5 !important;
-  color: #374151 !important;
   font-weight: 600;
 }
 
 .ant-table-tbody > tr > td {
-  color: #1f2937;
+  color: #000000;
 }
 
-.ant-table-tbody > tr:hover > td {
-  background: #f0f7ff !important;
+/* ---- Qt-style: POS items table — olive/khaki background ---- */
+.qt-items-table .ant-table-container {
+  border: 1px solid #808080;
+  border-radius: 0;
 }
-
-/* ---- POS item table (green-tinted) ---- */
-.pos-item-table .ant-table-container {
-  border: 1px solid #b7dfb9;
-  border-radius: 6px;
-  overflow: hidden;
+.qt-items-table .ant-table {
+  background: #aaaa7f;
 }
-.pos-item-table .ant-table-thead > tr > th {
-  background: #dff3df !important;
-  color: #1f4d1f !important;
+.qt-items-table .ant-table-thead > tr > th {
+  background: #8a8a5f !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  border-radius: 0 !important;
+  border-color: #707060 !important;
+  padding: 4px 6px !important;
 }
-.pos-item-table .ant-table-tbody > tr > td {
-  background: #f6fcf6;
-  color: #1f2937;
+.qt-items-table .ant-table-tbody > tr > td {
+  background: #aaaa7f !important;
+  color: #000000 !important;
+  border-color: #909070 !important;
+  padding: 3px 6px !important;
 }
-.pos-item-table .ant-table-tbody > tr:hover > td {
-  background: #e1f3e1 !important;
+.qt-items-table .ant-table-tbody > tr:hover > td {
+  background: #c8c89a !important;
 }
-.pos-item-table .ant-table-tbody > tr:focus-within > td {
+.qt-items-table .ant-table-tbody > tr:focus-within > td {
   background: #fff9c4 !important;
+}
+.qt-items-table .ant-table-cell-row-hover {
+  background: #c8c89a !important;
+}
+
+/* ---- Qt-style: receipt/payment table — magenta background ---- */
+.qt-receipt-table .ant-table-container {
+  border: 1px solid #808080;
+  border-radius: 0;
+}
+.qt-receipt-table .ant-table {
+  background: #ffaaff;
+}
+.qt-receipt-table .ant-table-thead > tr > th {
+  background: #cc88cc !important;
+  color: #000000 !important;
+  font-weight: 700;
+  border-radius: 0 !important;
+  border-color: #aa66aa !important;
+  padding: 3px 6px !important;
+}
+.qt-receipt-table .ant-table-tbody > tr > td {
+  background: #ffaaff !important;
+  color: #000000 !important;
+  border-color: #cc88cc !important;
+  padding: 3px 6px !important;
+}
+.qt-receipt-table .ant-table-tbody > tr:hover > td {
+  background: #ffccff !important;
+}
+.qt-receipt-table .ant-input-number {
+  background: #ffaaff !important;
+  border-color: #aa66aa !important;
+}
+.qt-receipt-table .ant-input-number-input {
+  background: #ffaaff !important;
+  color: #000 !important;
 }
 
 /* ---- Item lookup modal ---- */
