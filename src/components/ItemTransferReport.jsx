@@ -66,7 +66,7 @@ const ItemTransferReport = () => {
       const token = localStorage.getItem("jwtToken");
       const res = await axios.get(`/api/${tenancyId}/stock-transfers/out/by-item`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { itemId: selectedItem.id, fromDate, toDate },
+        params: { itemId: selectedItem.itemId, fromDate, toDate },
       });
       setReportData(res.data?.data || []);
     } catch (err) {
@@ -111,9 +111,10 @@ const ItemTransferReport = () => {
         <Autocomplete
           options={itemOptions}
           getOptionLabel={(opt) =>
-            typeof opt === "string" ? opt : `(${opt.itemCode ?? opt.id}) ${opt.itemName}`
+            typeof opt === "string" ? opt : `(${opt.itemId ?? opt.itemCode ?? ""}) ${opt.itemName ?? ""}`
           }
-          isOptionEqualToValue={(opt, val) => opt.id === val?.id}
+          filterOptions={(x) => x}
+          isOptionEqualToValue={(opt, val) => opt.itemId === val?.itemId}
           value={selectedItem}
           inputValue={itemInput}
           loading={itemSearchLoading}
