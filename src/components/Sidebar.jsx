@@ -505,6 +505,11 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
           link: "/branch-stock-diff-report",
           roles: ["admin","franchiseeuser"],
         },
+        {
+          label: t("Branch Stock Report"),
+          link: "/branch-stock-view",
+          roles: ["admin", "manager", "user", "franchiseeuser"],
+        },
         
         {
           label: t("Stock Transfer Out Report"),
