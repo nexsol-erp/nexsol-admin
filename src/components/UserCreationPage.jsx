@@ -16,6 +16,9 @@ const UserCreationPage = () => {
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [branchCode, setBranchCode] = useState("");
+  const [role, setRole] = useState("user");
+
+  const availableRoles = ["admin", "user", "manager", "franchiseeuser", "cgn", "WB"];
   const [branches, setBranches] = useState([]);
 
   useEffect(() => {
@@ -47,6 +50,7 @@ const UserCreationPage = () => {
       userId,
       password,
       branchCode,
+      role,
     };
 
     try {
@@ -137,6 +141,14 @@ const UserCreationPage = () => {
                 <MenuItem key={branch.branchCode} value={branch.branchCode}>
                   {branch.branchCode}
                 </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth margin="normal" required>
+            <InputLabel>Role</InputLabel>
+            <Select value={role} onChange={(e) => setRole(e.target.value)} label="Role">
+              {availableRoles.map((r) => (
+                <MenuItem key={r} value={r}>{r}</MenuItem>
               ))}
             </Select>
           </FormControl>
