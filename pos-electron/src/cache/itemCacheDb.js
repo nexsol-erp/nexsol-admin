@@ -29,3 +29,17 @@ db.version(4).stores({
   kot_lines: "++id, headerId",
   kot_sequence: "seqDate",
 });
+
+// v5: adds category index; clear items so they are re-fetched with category from backend
+db.version(5).stores({
+  items: "itemId, barcode, itemName, category",
+  meta: "key",
+  pending_sales: "++id, status, queuedAt",
+  pending_stock_transfers: "++id, status, queuedAt",
+  kot_headers: "++id, tableId, kotDate, status",
+  kot_lines: "++id, headerId",
+  kot_sequence: "seqDate",
+}).upgrade(async (tx) => {
+  await tx.table("items").clear();
+  await tx.table("meta").put({ key: "items_loaded", value: "0" });
+});

@@ -326,6 +326,11 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
           roles: ["admin","franchiseeuser"],
         },
         {
+          label: t("Receipt Modes"),
+          link: "/receipt-modes",
+          roles: ["admin"],
+        },
+        {
           label: t("Item Search"),
           link: "/itemsearch",
           roles: ["admin","user","cgn","franchiseeuser"],

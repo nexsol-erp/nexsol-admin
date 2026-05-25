@@ -303,7 +303,7 @@ export default function StockTransferPage({ onClose }) {
       to_branch_name: toBranchName,
       to_branch_state: toBranchState,
       to_branch_gst: toBranchGst,
-      lines: items.map((r) => ({
+      dtl: items.map((r) => ({
         id: crypto.randomUUID(),
         item_id: r.item_id,
         item_name: r.item_name,

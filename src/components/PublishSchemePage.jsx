@@ -84,8 +84,10 @@ const PublishSchemePage = () => {
     const tenancyId = localStorage.getItem("tenancyId");
     const token = localStorage.getItem("jwtToken");
     const response = await fetch(`/api/${tenancyId}/scheme/${schemeId}`, {
-      Authorization: `Bearer ${token}`,
       method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     if (response.ok) {

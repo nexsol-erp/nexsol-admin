@@ -72,6 +72,7 @@ function normalizeItem(x) {
     batchCode: x.batchCode ?? "",
     expiry: x.expiry ?? "",
     availableQty: Number.isFinite(parsedAvailable) ? parsedAvailable : null,
+    category: x.category ?? "",
   };
 }
 
@@ -159,6 +160,14 @@ export async function getItemByBarcode(barcode) {
   const b = (barcode || "").trim();
   if (!b) return null;
   return db.items.where("barcode").equals(b).first();
+}
+
+export async function findItemByName(name) {
+  const q = (name || "").trim().toLowerCase();
+  if (!q) return null;
+  return db.items
+    .filter((it) => (it.itemName || "").toLowerCase() === q)
+    .first();
 }
 
 export async function applySaleToCache(lines = []) {

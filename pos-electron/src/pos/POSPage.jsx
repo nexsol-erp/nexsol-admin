@@ -1,14 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Input, InputNumber, Select, Table, Typography, Space, Divider, message, Tag, Tooltip } from "antd";
+import { Button, Input, InputNumber, Select, Table, message, Tag, Tooltip } from "antd";
 import { SyncOutlined } from "@ant-design/icons";
 import { logout } from "../auth/auth";
 import ItemLookupModal from "../components/ItemLookupModal";
-import { applySaleToCache } from "../cache/itemCache";
-import { log, error as logError } from "../utils/logger";
+import { applySaleToCache, findItemByName } from "../cache/itemCache";
+import { evaluateSchemes, buildOfferRows } from "./schemeEngine";
+import { log, warn, error as logError } from "../utils/logger";
 import { apiUrl } from "../utils/apiUrl";
 import { queueSale, getPendingCount, syncPendingSales } from "./offlineQueue";
-
-const { Text, Title } = Typography;
 
 export default function POSPage({ onLogout, selectedBranchCode = "", prefillItems = null, onPrefillUsed }) {
 
@@ -27,6 +26,8 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const [lookupQuery, setLookupQuery] = useState("");
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
+  const [schemes, setSchemes] = useState([]);
+  const [categoryMap, setCategoryMap] = useState({});
 
   // Offline queue — poll every 10 s; sync only when idle >= 30 s and online
   useEffect(() => {
@@ -64,6 +65,48 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   useEffect(() => { log("POSPage mounted"); }, []);
 
+  useEffect(() => {
+    const tenantId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
+    if (!tenantId || !token) return;
+    const hdr = { Authorization: `Bearer ${token}` };
+
+    fetch(`/api/${tenantId}/scheme`, { headers: hdr })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setSchemes(Array.isArray(data) ? data : []))
+      .catch(() => {});
+
+    fetch(`/api/${tenantId}/item-category-map/all`, { headers: hdr })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows) => {
+        if (!Array.isArray(rows)) return;
+        const map = {};
+        for (const row of rows) {
+          const id = String(row.itemId || "").trim();
+          const cat = String(row.categoryName || "").trim();
+          if (!id || !cat) continue;
+          if (!map[id]) map[id] = [];
+          if (!map[id].includes(cat)) map[id].push(cat);
+        }
+        setCategoryMap(map);
+      })
+      .catch(() => {});
+
+    fetch(`/api/${tenantId}/receipt-modes`, { headers: hdr })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((rows) => {
+        if (!Array.isArray(rows) || rows.length === 0) return;
+        setReceipts(
+          rows.map((r) => ({
+            key: r.receiptMode,
+            receipt_mode: r.receiptMode,
+            amount: 0,
+          }))
+        );
+      })
+      .catch(() => {});
+  }, []);
+
   // Load items pre-filled from KOT Convert-to-POS
   useEffect(() => {
     if (!prefillItems?.length) return;
@@ -83,11 +126,10 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   const [receipts, setReceipts] = useState([
     { key: "CASH", receipt_mode: "CASH", amount: 0 },
-    { key: "CARD", receipt_mode: "CARD", amount: 0 },
-    { key: "UPI",  receipt_mode: "UPI",  amount: 0 },
   ]);
 
   const totalAmount   = useMemo(() => items.reduce((s, r) => s + (Number(r.amount) || 0), 0), [items]);
+  const activeOffers  = useMemo(() => evaluateSchemes(items, schemes, categoryMap), [items, schemes, categoryMap]);
   const totalQty      = useMemo(() => items.reduce((s, r) => s + (Number(r.qty) || 0), 0), [items]);
   const totalReceived = useMemo(() => receipts.reduce((s, r) => s + (Number(r.amount) || 0), 0), [receipts]);
 
@@ -155,6 +197,23 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     const token     = localStorage.getItem("jwtToken") || "";
     const branchCode = selectedBranchCode || "";
 
+    // ── Apply schemes: remove stale offer rows, re-evaluate, inject free items ──
+    const baseItems = items.filter((r) => !r.is_offer);
+    const offers = evaluateSchemes(baseItems, schemes, categoryMap);
+    const offerRows = await buildOfferRows(offers, findItemByName);
+    const finalItems = [...baseItems, ...offerRows];
+    if (offerRows.length > 0) {
+      setItems(finalItems);
+      const labels = offerRows.map((r) => `${r.item_name} ×${r.qty} (FREE)`).join(", ");
+      message.success(`Scheme applied — ${labels}`, 4);
+    }
+    // Cash-back offers: informational
+    offers
+      .filter((o) => o.offerType === "Cash Back")
+      .forEach((o) =>
+        message.info(`Cash Back: ₹${o.cashBackAmount} from scheme "${o.schemeName}"`, 5)
+      );
+
     const headerId = crypto.randomUUID();
     const numericVoucherNumber = Math.floor(Math.random() * 100000);
     const voucherNumber = `POS-${numericVoucherNumber}`;
@@ -172,7 +231,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       is_synched: "0",
     };
 
-    const details = items.map((item) => ({
+    const details = finalItems.map((item) => ({
       id: crypto.randomUUID(),
       parent_id: headerId,
       item_name: item.item_name || "",
@@ -188,10 +247,14 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       amount: Number(item.amount) || 0,
       batch: item.batch || "",
       expiry: item.expiry || null,
-      description: "",
+      description: item.description || "",
     }));
 
-    const payload = { sales: [{ header, details }] };
+    const receiptLines = receipts
+      .filter((r) => (Number(r.amount) || 0) > 0)
+      .map((r) => ({ receipt_mode: r.receipt_mode, amount: Number(r.amount) }));
+
+    const payload = { sales: [{ header, details, receipts: receiptLines }] };
 
     try {
       log("posting sale | tenantId:", tenantId, "| branch:", branchCode,
@@ -226,29 +289,33 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
         logError("sale upload failed ids:", JSON.stringify(result.failedIds), "| errors:", msgs);
         throw new Error(msgs || "Sale upload reported failures");
       }
-      await applySaleToCache(items.map((item) => ({
+      await applySaleToCache(finalItems.map((item) => ({
         itemId: item.item_id, batchCode: item.batch || "", qty: Number(item.qty) || 0,
       })));
       message.success("Sales saved successfully");
       // Auto-print: capture snapshot before clearing state
-      doPrint({ snapshot: [...items], voucherNumber, silent: true });
+      doPrint({ snapshot: [...finalItems], voucherNumber, silent: true });
       setItems([]); setTendered(0);
       setReceipts((prev) => prev.map((r) => ({ ...r, amount: 0 })));
       setCustomerMobile(""); setSalesmanCode(""); setSalesmanName("");
       setTimeout(() => itemSearchRef.current?.focus?.(), 50);
     } catch (e) {
+      if (e.httpStatus === 401) {
+        message.error("Session expired — please log in again.", 6);
+        return;
+      }
       const isNetworkError = !navigator.onLine || e instanceof TypeError;
       const isServerError  = e.httpStatus >= 500;
       if (isNetworkError || isServerError) {
         try {
-          await queueSale({ tenantId, branchCode, token, payload, voucherNumber });
-          await applySaleToCache(items.map((item) => ({
+          await queueSale({ tenantId, branchCode, payload, voucherNumber });
+          await applySaleToCache(finalItems.map((item) => ({
             itemId: item.item_id, batchCode: item.batch || "", qty: Number(item.qty) || 0,
           })));
           message.warning(isNetworkError
             ? "No network — sale saved offline, will sync automatically when connected"
             : `Server error (${e.httpStatus}) — sale saved offline, will retry when server recovers`);
-          doPrint({ snapshot: [...items], voucherNumber, silent: true });
+          doPrint({ snapshot: [...finalItems], voucherNumber, silent: true });
           setItems([]); setTendered(0);
           setReceipts((prev) => prev.map((r) => ({ ...r, amount: 0 })));
           setCustomerMobile(""); setSalesmanCode(""); setSalesmanName("");
@@ -317,52 +384,42 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const printTestInvoice = () => doPrint({ snapshot: items, voucherNumber: "", silent: false });
 
   const itemColumns = [
-    { title: "Item",    dataIndex: "item_name",     width: 220, render: (v) => <Text strong>{v}</Text> },
-    { title: "Barcode", dataIndex: "barcode",        width: 130 },
-    { title: "Stock",   dataIndex: "available_qty",  width: 80, render: (v) => (v == null ? "-" : round2(v)) },
+    { title: "Item", dataIndex: "item_name", width: 200, render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
+    { title: "barcode",   dataIndex: "barcode",       width: 120 },
+    { title: "stock",     dataIndex: "available_qty", width: 70, render: (v) => (v == null ? "-" : round2(v)) },
     {
-      title: "Qty", dataIndex: "qty", width: 90,
+      title: "qty", dataIndex: "qty", width: 80,
       render: (_, row) => (
         <InputNumber
           ref={(el) => { if (el) qtyInputRefs.current[row.key] = el; else delete qtyInputRefs.current[row.key]; }}
           value={row.qty} min={0}
           onChange={(val) => updateItem(row.key, { qty: val })}
           onPressEnter={() => itemSearchRef.current?.focus?.()}
-          style={{ width: "100%" }}
+          style={{ width: "100%", borderRadius: 0 }}
         />
       ),
     },
+    { title: "Rate", dataIndex: "standard_price", width: 90, render: (v) => round2(v) },
+    { title: "Tax",  dataIndex: "tax_rate",       width: 70 },
+    { title: "amount",   dataIndex: "amount",   width: 100, render: (v) => round2(v) },
+    { title: "batch",    dataIndex: "batch",    width: 90 },
+    { title: "unit",     dataIndex: "unit",     width: 60 },
+    { title: "expiry",   dataIndex: "expiry",   width: 100 },
     {
-      title: "Rate", dataIndex: "standard_price", width: 100,
+      title: "", key: "x", width: 42,
       render: (_, row) => (
-        <InputNumber
-          value={row.standard_price} min={0}
-          onChange={(val) => updateItem(row.key, { standard_price: val })}
-          onPressEnter={() => tenderedRef.current?.focus?.()}
-          style={{ width: "100%" }}
-        />
-      ),
-    },
-    { title: "Tax%",   dataIndex: "tax_rate", width: 70 },
-    { title: "Amount", dataIndex: "amount",   width: 100, render: (v) => round2(v) },
-    { title: "Batch",  dataIndex: "batch",    width: 100 },
-    { title: "Unit",   dataIndex: "unit",     width: 70 },
-    { title: "Expiry", dataIndex: "expiry",   width: 110 },
-    {
-      title: "", key: "x", width: 50,
-      render: (_, row) => (
-        <Button danger size="small" onClick={() => deleteItem(row.key)}>✕</Button>
+        <Button danger size="small" style={{ borderRadius: 0, padding: "0 6px" }} onClick={() => deleteItem(row.key)}>✕</Button>
       ),
     },
   ];
 
   const receiptColumns = [
-    { title: "Payment Type", dataIndex: "receipt_mode", width: 160 },
+    { title: "Payment Type", dataIndex: "receipt_mode", width: 130 },
     {
-      title: "Amount", dataIndex: "amount", width: 140,
+      title: "Amount", dataIndex: "amount", width: 120,
       render: (_, row) => (
         <InputNumber
-          value={row.amount} min={0} style={{ width: "100%" }}
+          value={row.amount} min={0} style={{ width: "100%", borderRadius: 0 }}
           onChange={(val) => setReceipts((prev) => prev.map((r) => r.key === row.key ? { ...r, amount: Number(val || 0) } : r))}
           onKeyDown={(e) => { if (e.key === "Enter") setSingleReceiptToTotal(row.receipt_mode); }}
         />
@@ -372,108 +429,188 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   const markActivity = () => { lastActivityRef.current = Date.now(); };
 
+  const qtLabel = (text) => (
+    <div style={{ fontSize: 11, fontWeight: "bold", color: "#000", marginBottom: 1 }}>{text}</div>
+  );
+
   return (
     <div className="pos-container" onKeyDown={markActivity} onClick={markActivity}>
-      {/* ---- Header ---- */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Title level={4} style={{ margin: 0, color: "#0b3a75" }}>
-            {selectedBranchCode ? `POS — ${selectedBranchCode}` : "POS Window"}
-          </Title>
-        </div>
-        <Space size={8}>
-          {pendingCount > 0 && (
-            <Tooltip title={syncing ? "Syncing…" : `${pendingCount} offline sale${pendingCount > 1 ? "s" : ""} — auto-sync after 2 min idle`}>
-              <Tag
-                color="warning"
-                icon={<SyncOutlined spin={syncing} />}
-                style={{ cursor: syncing ? "default" : "pointer" }}
-                onClick={async () => {
-                  if (syncing) return;
-                  setSyncing(true);
-                  const { synced, failed } = await syncPendingSales();
-                  if (synced > 0) message.success(`Synced ${synced} offline sale${synced > 1 ? "s" : ""}`);
-                  if (failed > 0) message.warning(`${failed} sale${failed > 1 ? "s" : ""} still pending`);
-                  setPendingCount(await getPendingCount());
-                  setSyncing(false);
-                }}
-              >
-                {pendingCount} pending
-              </Tag>
-            </Tooltip>
-          )}
-          <Button danger size="small" onClick={() => { logout(); onLogout?.(); }}>
-            Logout
-          </Button>
-        </Space>
+      {/* ── Title bar ── */}
+      <div style={{
+        background: "#0b3a75", color: "#fff", padding: "3px 10px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        fontSize: 13, fontWeight: "bold", flexShrink: 0,
+      }}>
+        <span>POS Window{selectedBranchCode ? ` — ${selectedBranchCode}` : ""}</span>
+        {pendingCount > 0 && (
+          <Tooltip title={syncing ? "Syncing…" : `${pendingCount} offline sale(s) — click to sync`}>
+            <Tag
+              color="warning"
+              icon={<SyncOutlined spin={syncing} />}
+              style={{ cursor: "pointer", marginRight: 4 }}
+              onClick={async () => {
+                if (syncing) return;
+                setSyncing(true);
+                const { synced, failed } = await syncPendingSales();
+                if (synced > 0) message.success(`Synced ${synced} offline sale${synced > 1 ? "s" : ""}`);
+                if (failed > 0) message.warning(`${failed} still pending`);
+                setPendingCount(await getPendingCount());
+                setSyncing(false);
+              }}
+            >
+              {pendingCount} pending
+            </Tag>
+          </Tooltip>
+        )}
       </div>
 
-      <Divider style={{ margin: "4px 0 8px 0" }} />
+      {/* ── Main two-panel body ── */}
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
 
-      {/* ---- Main layout ---- */}
-      <div style={{ display: "flex", gap: 12, height: "calc(100vh - 120px)" }}>
-
-        {/* LEFT PANEL */}
-        <div style={{ flex: "0 0 260px", overflow: "auto", borderRight: "1px solid #e5e7eb", paddingRight: 10 }}>
-          <div style={{ marginBottom: 8 }}>
-            <Text style={{ fontSize: 12, display: "block", marginBottom: 2, color: "#374151" }}>Customer Mobile</Text>
-            <Input size="small" value={customerMobile} onChange={(e) => setCustomerMobile(e.target.value)} />
+        {/* ══ LEFT PANEL (controls + payment) ══ */}
+        <div style={{
+          width: 270, minWidth: 250, flexShrink: 0,
+          background: "#d4d0c8",
+          borderRight: "2px solid #808080",
+          display: "flex", flexDirection: "column",
+          padding: "6px 8px", gap: 4, overflow: "auto",
+        }}>
+          {/* Customer Mobile */}
+          <div>
+            {qtLabel("Customer Mobile")}
+            <Input
+              size="small" value={customerMobile}
+              onChange={(e) => setCustomerMobile(e.target.value)}
+              style={{ borderRadius: 0 }}
+            />
           </div>
 
-          <div style={{ marginBottom: 8 }}>
-            <Text style={{ fontSize: 12, display: "block", marginBottom: 2, color: "#374151" }}>Salesman Code</Text>
+          {/* Salesman */}
+          <div>
+            {qtLabel("SalesMan Code")}
             <Input
               size="small" value={salesmanCode}
               onChange={(e) => { setSalesmanCode(e.target.value); setSalesmanName(e.target.value); }}
+              style={{ borderRadius: 0 }}
             />
-            <Text style={{ fontSize: 12, display: "block", marginTop: 4, marginBottom: 2, color: "#374151" }}>Salesman Name</Text>
-            <Input size="small" value={salesmanName} disabled />
+            <Input
+              size="small" value={salesmanName} disabled
+              style={{ borderRadius: 0, marginTop: 2 }}
+            />
           </div>
 
-          <Divider style={{ margin: "6px 0" }} />
-
-          <Text strong style={{ fontSize: 11, color: "#374151" }}>Receipt Details</Text>
+          {/* Receipt Details */}
+          <div style={{ fontWeight: "bold", fontSize: 13, color: "#000", marginTop: 4, borderBottom: "1px solid #808080", paddingBottom: 2 }}>
+            Receipt Details
+          </div>
           <Table
-            size="small" dataSource={receipts} columns={receiptColumns}
-            pagination={false} rowKey="key" style={{ marginTop: 4 }}
+            className="qt-receipt-table"
+            size="small"
+            dataSource={receipts}
+            columns={receiptColumns}
+            pagination={false}
+            rowKey="key"
+            showHeader
             onRow={(record) => ({ onClick: () => setSingleReceiptToTotal(record.receipt_mode) })}
           />
 
-          <Divider style={{ margin: "6px 0" }} />
-
-          <Text strong style={{ fontSize: 11, color: "#374151" }}>Printer</Text>
-          <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-            <Select
-              size="small" style={{ flex: 1 }}
-              value={selectedPrinter} onChange={setSelectedPrinter}
-              options={printers.map((p) => ({ value: p.name, label: p.name }))}
-              placeholder="Select printer"
-            />
-            <Button size="small" onClick={refreshPrinters}>↻</Button>
+          {/* Payment totals */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: "bold" }}>Total Received</span>
+            <Input readOnly value={round2(totalReceived)}
+              style={{ width: 110, fontSize: 14, fontWeight: "bold", borderRadius: 0, textAlign: "right" }} />
           </div>
-          <Button size="small" onClick={printTestInvoice} style={{ width: "100%", marginTop: 4 }}>
-            Print Test Invoice
-          </Button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 12, fontWeight: "bold" }}>Amount Tendered</span>
+            <InputNumber
+              ref={tenderedRef} value={tendered} min={0}
+              onChange={(v) => setTendered(Number(v || 0))}
+              onPressEnter={onSave}
+              style={{ width: 110, fontSize: 14, fontWeight: "bold", borderRadius: 0 }}
+            />
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 12, fontWeight: "bold" }}>Balance to Pay</span>
+            <Input readOnly value={round2(balance)}
+              style={{ width: 110, fontSize: 14, fontWeight: "bold", borderRadius: 0, textAlign: "right" }} />
+          </div>
 
-          <Divider style={{ margin: "6px 0" }} />
+          {/* Offer panel — live scheme results */}
+          {activeOffers.length > 0 && (
+            <div style={{
+              background: "#fffbe6", border: "1px solid #ffe58f",
+              borderRadius: 0, padding: "4px 6px", marginTop: 4,
+            }}>
+              <div style={{ fontSize: 11, fontWeight: "bold", color: "#7c5800", marginBottom: 2 }}>
+                Offers Applicable
+              </div>
+              {activeOffers.map((o, i) => (
+                <div key={i} style={{ fontSize: 11, color: "#5a4000", lineHeight: 1.5 }}>
+                  {o.offerType === "Free Qty" && `🎁 ${o.offerItemName} ×${o.offerQty} FREE`}
+                  {o.offerType === "Item Discount Percent" && `🏷 ${o.offerDiscountPercent}% off on ${o.offerItemName}`}
+                  {o.offerType === "Cash Back" && `💵 Cash Back ₹${o.cashBackAmount}`}
+                  <span style={{ color: "#999", marginLeft: 4 }}>({o.schemeName})</span>
+                </div>
+              ))}
+            </div>
+          )}
 
-          <Button size="small" onClick={() => window.POS?.closeWindow?.() || window.close?.()}>
-            Close Window
-          </Button>
+          {/* Printer */}
+          <div style={{ marginTop: 6 }}>
+            {qtLabel("Printer")}
+            <div style={{ display: "flex", gap: 4 }}>
+              <Select
+                size="small" style={{ flex: 1 }} value={selectedPrinter} onChange={setSelectedPrinter}
+                options={printers.map((p) => ({ value: p.name, label: p.name }))}
+                placeholder="Select printer"
+              />
+              <Button size="small" style={{ borderRadius: 0 }} onClick={refreshPrinters}>↻</Button>
+            </div>
+            <Button size="small" style={{ width: "100%", marginTop: 3, borderRadius: 0 }} onClick={printTestInvoice}>
+              Print Test Invoice
+            </Button>
+          </div>
+
+          {/* Save + Close buttons at bottom */}
+          <div style={{ marginTop: "auto", paddingTop: 8, display: "flex", gap: 6 }}>
+            <button
+              ref={saveButtonRef}
+              onClick={onSave}
+              disabled={!canSave}
+              style={{
+                flex: 1, height: 44, fontSize: 17, fontWeight: "bold",
+                background: canSave ? "#ffc8ff" : "#c8c8c8",
+                border: "2px outset #ccc",
+                cursor: canSave ? "pointer" : "not-allowed",
+                color: "#000",
+              }}
+            >
+              Save
+            </button>
+            <button
+              onClick={() => { logout(); onLogout?.(); }}
+              style={{
+                flex: 1, height: 44, fontSize: 17, fontWeight: "bold",
+                background: "#d4d0c8", border: "2px outset #ccc", cursor: "pointer", color: "#000",
+              }}
+            >
+              Close
+            </button>
+          </div>
         </div>
 
-        {/* RIGHT PANEL */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <div style={{ marginBottom: 6 }}>
-            <Text style={{ fontSize: 12, display: "block", marginBottom: 2, color: "#374151" }}>
-              Item Search / Barcode
-            </Text>
+        {/* ══ RIGHT PANEL (items table) ══ */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "6px 8px", overflow: "hidden", background: "#d4d0c8" }}>
+          {/* Item search */}
+          <div style={{ marginBottom: 5 }}>
+            {qtLabel("Item Search / Barcode")}
             <Input
               className="item-search-input"
               ref={itemSearchRef}
               value={itemQuery}
               onChange={(e) => setItemQuery(e.target.value)}
               placeholder="Scan barcode or type name — Enter / F2 to browse"
+              style={{ borderRadius: 0 }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -490,64 +627,35 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             />
           </div>
 
+          {/* Items table — olive/khaki */}
           <Table
-            className="pos-item-table"
+            className="qt-items-table"
             size="small"
             dataSource={items}
             columns={itemColumns}
             pagination={false}
             rowKey="key"
-            scroll={{ x: 1050, y: "calc(100vh - 360px)" }}
+            scroll={{ x: 1000, y: "calc(100vh - 210px)" }}
             style={{ flex: 1 }}
           />
 
-          <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 8 }}>
-            <div>
-              <Text style={{ fontSize: 12, color: "#374151" }}>Total QTY</Text>
-              <Input value={round2(totalQty)} readOnly style={{ width: 120, fontSize: 16, fontWeight: 600, marginTop: 2 }} />
+          {/* Totals row */}
+          <div style={{
+            display: "flex", justifyContent: "flex-end", gap: 16, marginTop: 5,
+            paddingTop: 5, borderTop: "2px solid #808080",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 14, fontWeight: "bold", color: "#000" }}>Total QTY</span>
+              <Input readOnly value={round2(totalQty)}
+                style={{ width: 100, fontSize: 16, fontWeight: "bold", borderRadius: 0, textAlign: "right" }} />
             </div>
-            <div>
-              <Text style={{ fontSize: 12, color: "#374151" }}>Total Amount</Text>
-              <Input value={round2(totalAmount)} readOnly style={{ width: 160, fontSize: 16, fontWeight: 600, marginTop: 2 }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 14, fontWeight: "bold", color: "#000" }}>Total Amount</span>
+              <Input readOnly value={round2(totalAmount)}
+                style={{ width: 150, fontSize: 20, fontWeight: "bold", borderRadius: 0, textAlign: "right", background: "#fffff0" }} />
             </div>
           </div>
         </div>
-      </div>
-
-      {/* ---- Footer totals + Save ---- */}
-      <Divider style={{ margin: "8px 0" }} />
-      <div style={{ display: "flex", gap: 12, justifyContent: "space-between", alignItems: "flex-end" }}>
-        <div style={{ display: "flex", gap: 10 }}>
-          {[
-            { label: "Total Received", value: round2(totalReceived), width: 150 },
-            { label: "Amount Tendered", value: null,                  width: 150 },
-            { label: "Balance",         value: round2(balance),       width: 130 },
-          ].map(({ label, value, width }) =>
-            value !== null ? (
-              <div key={label}>
-                <Text style={{ fontSize: 12, color: "#374151", display: "block", marginBottom: 2 }}>{label}</Text>
-                <Input readOnly value={value} style={{ width, fontSize: 15, fontWeight: 700 }} />
-              </div>
-            ) : (
-              <div key={label}>
-                <Text style={{ fontSize: 12, color: "#374151", display: "block", marginBottom: 2 }}>{label}</Text>
-                <InputNumber
-                  ref={tenderedRef} value={tendered} min={0}
-                  onChange={(v) => setTendered(Number(v || 0))}
-                  onPressEnter={onSave}
-                  style={{ width: 150, fontSize: 15, fontWeight: 700 }}
-                />
-              </div>
-            )
-          )}
-        </div>
-        <Button
-          ref={saveButtonRef} type="primary" size="large"
-          onClick={onSave} disabled={!canSave}
-          style={{ minWidth: 180, height: 44, fontSize: 16, fontWeight: 700 }}
-        >
-          Save Bill
-        </Button>
       </div>
 
       <ItemLookupModal
@@ -575,6 +683,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             tax_rate: itm.taxRate, standard_price: itm.standardPrice,
             amount: round2n(Number(itm.standardPrice) || 0),
             batch, unit: itm.unitName || "", expiry: itm.expiry || "",
+            category: itm.category || "",
           };
           setItems((p) => [row, ...p]);
           setItemQuery(""); closeLookup({ focusSearch: false }); focusQtyInput(row.key, 80);
