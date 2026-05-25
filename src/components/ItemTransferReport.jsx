@@ -126,7 +126,7 @@ const ItemTransferReport = () => {
           renderInput={(params) => (
             <TextField
               {...params}
-              label="Search Item"
+              label="Type First two Chars of Item Name"
               variant="outlined"
               sx={{ width: "40ch" }}
               InputProps={{
