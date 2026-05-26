@@ -82,6 +82,9 @@ jobs:
           cp TradeLink247-POS-Setup.exe "PosClient-${{ steps.pos-ver.outputs.version }}.exe"
           echo "Installers ready: $(ls -lh)"
 
+      - name: Fix installer permissions
+        run: chmod 644 public/downloads/*.exe
+
       - name: Copy versioned installer to update server
         uses: appleboy/scp-action@master
         with:
