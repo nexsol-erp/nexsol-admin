@@ -53,7 +53,7 @@ jobs:
 
     env:
       TEMP_DEPLOY_DIR: /home/deploy/tmp-deploy
-      UPDATE_ASSETS_DIR: ${{ vars.UPDATE_ASSETS_DIR || '/home/deploy/nexsol' }}
+      UPDATE_ASSETS_DIR: ${{ vars.UPDATE_ASSETS_DIR || '/home/deploy/tradelink-pos' }}
 
     steps:
       - name: Checkout code
