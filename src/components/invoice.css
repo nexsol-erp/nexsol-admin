@@ -4,6 +4,7 @@
 .receipt-container {
   width: 80mm;
   padding: 4mm;
+  box-sizing: border-box;
   font-family: Arial, sans-serif;
   font-size: 12px;
   color: #000;
@@ -42,6 +43,8 @@
 .receipt-summary {
   display: flex;
   justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
   margin-top: 4px;
 }
 
@@ -58,6 +61,12 @@
     padding: 0 !important;
   }
   .receipt-container {
+    width: 80mm !important;
+    box-sizing: border-box !important;
     page-break-inside: avoid;
+  }
+  .receipt-summary {
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 }
