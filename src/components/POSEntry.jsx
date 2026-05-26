@@ -64,6 +64,7 @@ function normalizeItem(it) {
           it.purchaseRate ??
           0
       ) || 0,
+    taxRate: Number(it.taxRate ?? it.tax_rate ?? 0) || 0,
   };
 }
 
@@ -231,16 +232,18 @@ const POSEntry = () => {
       id: it.id,
       itemName: it.name,
       rate: Number(it.rate) || 0,
+      taxRate: Number(it.taxRate) || 0,
       qty: 1,
     });
     setSearchOpen(false);
     setTimeout(() => qtyRef.current?.focus?.(), 50);
   };
 
-  const addLineMerge = ({ id, itemName, rate, qtyToAdd = 1 }) => {
+  const addLineMerge = ({ id, itemName, rate, taxRate = 0, qtyToAdd = 1 }) => {
     const addQty = Number(qtyToAdd) || 1;
     const addRate = Number(rate) || 0;
     const addName = String(itemName || "").trim();
+    const addTaxRate = Number(taxRate) || 0;
 
     if (!addName || addQty <= 0) return;
 
@@ -269,6 +272,7 @@ const POSEntry = () => {
         itemName: addName,
         qty: addQty,
         rate: addRate,
+        taxRate: addTaxRate,
         amount: Math.round(addQty * addRate * 100) / 100,
       };
 
@@ -291,7 +295,7 @@ const POSEntry = () => {
       return;
     }
 
-    addLineMerge({ id: it.id, itemName: it.name, rate: it.rate, qtyToAdd: 1 });
+    addLineMerge({ id: it.id, itemName: it.name, rate: it.rate, taxRate: it.taxRate, qtyToAdd: 1 });
     message.success(`${it.name} added`);
     barcodeInputRef.current?.focus?.();
   };
@@ -303,10 +307,10 @@ const POSEntry = () => {
   };
 
   const handleAddItem = () => {
-    const { itemName, qty, rate, id } = selectedItem;
+    const { itemName, qty, rate, taxRate, id } = selectedItem;
     if (!itemName || !(Number(qty) > 0)) return message.warning("Please enter item and quantity");
 
-    addLineMerge({ id, itemName, rate, qtyToAdd: qty });
+    addLineMerge({ id, itemName, rate, taxRate, qtyToAdd: qty });
     setSelectedItem({ itemName: "", qty: 1, rate: 0, id: null });
 
     setTimeout(() => {
@@ -386,7 +390,21 @@ const POSEntry = () => {
       if (!savedResult || !savedResult.voucherNumber) throw new Error("Invalid response from server");
 
       message.success({ content: "Saved successfully!", key: "saving", duration: 1.5 });
-      setBillToPrint({ ...savedResult, branchInfo });
+      setBillToPrint({
+        ...savedResult,
+        branchInfo,
+        totalAmount: savedResult.totalAmount ?? totalAmount,
+        tendered: values.tendered || 0,
+        customer: savedResult.customer ?? { name: values.customer || "Walk-In" },
+        salesDetails: savedResult.salesDetails ?? items.map((it) => ({
+          itemId: it.id,
+          itemName: it.itemName,
+          qty: it.qty,
+          rate: it.rate,
+          taxRate: it.taxRate || 0,
+          amount: it.amount,
+        })),
+      });
       setPreviewOpen(true);
     } catch (e) {
       console.error(e);

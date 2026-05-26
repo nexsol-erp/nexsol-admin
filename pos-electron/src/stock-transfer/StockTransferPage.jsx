@@ -65,9 +65,15 @@ export default function StockTransferPage({ onClose }) {
 
   const [allBranches, setAllBranches] = useState([]);
 
+  const EXCLUDED_BRANCH_TYPES = new Set(["BAKERY_PROD", "BAKERY_BO"]);
+
   const branchOptions = useMemo(() => {
     const seen = new Set();
     return allBranches
+      .filter((b) => {
+        const type = b.branchType ?? b.branch_type ?? null;
+        return type && !EXCLUDED_BRANCH_TYPES.has(type);
+      })
       .map((b) => String(b.branchCode ?? "").trim())
       .filter((code) => code && code !== fromBranch)
       .filter((code) => {

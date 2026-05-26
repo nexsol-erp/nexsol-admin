@@ -701,13 +701,13 @@ function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, bra
   const addrParts = [
     b.branchBuildingAddress,
     b.branchAddress1,
-    b.branchStreetAddress,
     b.branchState,
     b.branchCountry,
   ].filter(Boolean);
 
-  const addrHtml = addrParts.map((line) => `<div class="addr">${esc(line)}</div>`).join("");
-  const gstHtml  = b.branchGst ? `<div class="addr">GST: ${esc(b.branchGst)}</div>` : "";
+  const addrHtml  = addrParts.map((line) => `<div class="addr">${esc(line)}</div>`).join("");
+  const phoneHtml = b.branchStreetAddress ? `<div class="addr">Ph: ${esc(b.branchStreetAddress)}</div>` : "";
+  const gstHtml   = b.branchGst ? `<div class="addr">GST: ${esc(b.branchGst)}</div>` : "";
 
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
@@ -816,6 +816,7 @@ function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, bra
 <body>
   <div class="shop-name">${esc(b.branchName || "POS INVOICE")}</div>
   ${addrHtml}
+  ${phoneHtml}
   ${gstHtml}
   <hr class="solid"/>
   <div class="invoice-title">TAX INVOICE</div>
