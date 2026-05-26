@@ -21,7 +21,7 @@ export default function UpdateChecker() {
 
     const check = async () => {
       try {
-        const res = await fetch(apiUrl(`/api/${tenantId}/versioncheck/${CURRENT_VERSION}`), {
+        const res = await fetch(apiUrl(`/api/${tenantId}/electron-version/${CURRENT_VERSION}`), {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) return;
