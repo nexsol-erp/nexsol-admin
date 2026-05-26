@@ -85,6 +85,17 @@ jobs:
       - name: Fix installer permissions
         run: chmod 644 public/downloads/*.exe
 
+      - name: Clear old installers on server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p ${{ env.UPDATE_ASSETS_DIR }}
+            chmod 775 ${{ env.UPDATE_ASSETS_DIR }}
+            rm -f ${{ env.UPDATE_ASSETS_DIR }}/PosClient-*.exe || true
+
       - name: Copy versioned installer to update server
         uses: appleboy/scp-action@master
         with:
