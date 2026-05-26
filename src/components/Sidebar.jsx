@@ -31,6 +31,7 @@ import {
   Category,
   ExitToApp,
   Refresh,
+  AutoGraph,
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -167,6 +168,12 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
       icon: <Home sx={{ color: "#ffe3a3" }} />,
       link: "/dashboard",
       roles: ["admin","user","manager","WB"],
+    },
+    {
+      label: t("AI Stock Intelligence"),
+      icon: <AutoGraph sx={{ color: "#a3ffd4" }} />,
+      link: "/ai-dashboard",
+      roles: ["admin", "manager"],
     },
     {
       label: t("Admin Page"),

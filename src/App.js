@@ -88,6 +88,7 @@ import GoodsReceiptForm from "./components/GoodsReceiptForm";
 import ReceiptModePage from "./components/ReceiptModePage";
 import BranchStockViewReport from "./components/BranchStockViewReport";
 import ItemTransferReport from "./components/ItemTransferReport";
+import AIDashboardPage from "./components/AIDashboardPage";
 
 // ========================
 // AUTH WRAPPER COMPONENT
@@ -189,6 +190,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/receipt-modes" element={<ReceiptModePage />} />
 <Route path="/branch-stock-view" element={<BranchStockViewReport />} />
 <Route path="/item-transfer-report" element={<ItemTransferReport />} />
+<Route path="/ai-dashboard" element={<AIDashboardPage />} />
 
 
 
