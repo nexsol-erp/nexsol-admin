@@ -75,15 +75,14 @@ jobs:
           name: pos-installer
           path: public/downloads/
 
-      - name: Rename installer — fixed name for web download + versioned name for auto-update
+      - name: Rename installer to versioned name for auto-update
         run: |
           cd public/downloads
-          for f in *.exe; do mv "$f" TradeLink247-POS-Setup.exe; done
-          cp TradeLink247-POS-Setup.exe "PosClient-${{ steps.pos-ver.outputs.version }}.exe"
-          echo "Installers ready: $(ls -lh)"
+          for f in *.exe; do mv "$f" "TradeLink247-POS-${{ steps.pos-ver.outputs.version }}.exe"; done
+          echo "Installer ready: $(ls -lh)"
 
       - name: Fix installer permissions
-        run: chmod 644 public/downloads/*.exe
+        run: chmod 644 "public/downloads/TradeLink247-POS-${{ steps.pos-ver.outputs.version }}.exe"
 
       - name: Clear old installers on server
         uses: appleboy/ssh-action@master
@@ -94,7 +93,7 @@ jobs:
           script: |
             mkdir -p ${{ env.UPDATE_ASSETS_DIR }}
             chmod 775 ${{ env.UPDATE_ASSETS_DIR }}
-            rm -f ${{ env.UPDATE_ASSETS_DIR }}/PosClient-*.exe || true
+            rm -f ${{ env.UPDATE_ASSETS_DIR }}/TradeLink247-POS-*.exe || true
 
       - name: Copy versioned installer to update server
         uses: appleboy/scp-action@master
@@ -102,7 +101,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "public/downloads/PosClient-${{ steps.pos-ver.outputs.version }}.exe"
+          source: "public/downloads/TradeLink247-POS-${{ steps.pos-ver.outputs.version }}.exe"
           target: "${{ env.UPDATE_ASSETS_DIR }}/"
           strip_components: 2
           overwrite: true

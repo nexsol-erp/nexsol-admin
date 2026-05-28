@@ -4,7 +4,7 @@ import { localSearchItems, loadAllItemsToCache, hasCache } from "../cache/itemCa
 
 const { Text } = Typography;
 
-export default function ItemLookupModal({ open, initialQuery, onClose, onPick }) {
+export default function ItemLookupModal({ open, initialQuery, onClose, onPick, onAfterClose }) {
   const inputRef = useRef(null);
 
   const [q, setQ] = useState(initialQuery || "");
@@ -117,6 +117,7 @@ export default function ItemLookupModal({ open, initialQuery, onClose, onPick })
     <Modal
       open={open}
       onCancel={onClose}
+      afterClose={onAfterClose}
       footer={null}
       width={900}
       centered

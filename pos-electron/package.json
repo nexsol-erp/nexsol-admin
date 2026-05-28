@@ -1,6 +1,6 @@
 {
   "name": "tradelink247-pos",
-  "version": "1.9.19",
+  "version": "2.0.0",
   "description": "TradeLink247 POS desktop app",
   "main": "electron/main.js",
   "scripts": {
@@ -43,7 +43,7 @@
     ],
     "win": {
       "target": "nsis",
-      "artifactName": "TradeLink247-POS-Setup-${version}.${ext}"
+      "artifactName": "TradeLink247-POS-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
