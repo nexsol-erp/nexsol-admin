@@ -16,6 +16,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const saveButtonRef = useRef(null);
   const qtyInputRefs = useRef({});
   const lastActivityRef = useRef(Date.now());
+  const pendingQtyFocusKey = useRef(null);
 
   const [customerMobile, setCustomerMobile] = useState("");
   const [salesmanCode, setSalesmanCode] = useState("");
@@ -662,6 +663,13 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
         open={lookupOpen}
         initialQuery={lookupQuery}
         onClose={closeLookup}
+        onAfterClose={() => {
+          const key = pendingQtyFocusKey.current;
+          if (key) {
+            pendingQtyFocusKey.current = null;
+            qtyInputRefs.current[key]?.focus?.();
+          }
+        }}
         onPick={(itm) => {
           const batch     = itm.batchCode || "";
           const available = Number.isFinite(Number(itm.availableQty)) ? Number(itm.availableQty) : null;
@@ -672,7 +680,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             const allowed = getAvailableQty(existing) ?? available;
             if (allowed !== null && nextQty > allowed) { message.warning(`Only ${allowed} in stock for ${existing.item_name}`); return; }
             updateItem(existing.key, { qty: nextQty, available_qty: allowed });
-            setItemQuery(""); closeLookup({ focusSearch: false }); focusQtyInput(existing.key, 80);
+            setItemQuery(""); pendingQtyFocusKey.current = existing.key; closeLookup({ focusSearch: false });
             return;
           }
           if (available !== null && available <= 0) { message.warning(`No stock for ${itm.itemName}`); return; }
@@ -686,7 +694,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             category: itm.category || "",
           };
           setItems((p) => [row, ...p]);
-          setItemQuery(""); closeLookup({ focusSearch: false }); focusQtyInput(row.key, 80);
+          setItemQuery(""); pendingQtyFocusKey.current = row.key; closeLookup({ focusSearch: false });
         }}
       />
     </div>

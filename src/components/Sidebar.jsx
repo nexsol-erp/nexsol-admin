@@ -410,7 +410,17 @@ const Sidebar = ({ mode, setMode, roles = []}) => {
           link: "/physical-stock-correction",
           roles: ["admin", "manager"],
         },
-        
+        {
+          label: t("Menu Master"),
+          link: "/menu-master",
+          roles: ["admin"],
+        },
+        {
+          label: t("Role Menu Access"),
+          link: "/role-menu",
+          roles: ["admin"],
+        },
+
       ],
     },
     {
