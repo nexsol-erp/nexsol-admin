@@ -75,12 +75,6 @@ jobs:
           name: pos-installer
           path: public/downloads/
 
-      - name: Rename installer to versioned name for auto-update
-        run: |
-          cd public/downloads
-          for f in *.exe; do mv "$f" "TradeLink247-POS-${{ steps.pos-ver.outputs.version }}.exe"; done
-          echo "Installer ready: $(ls -lh)"
-
       - name: Fix installer permissions
         run: chmod 644 "public/downloads/TradeLink247-POS-${{ steps.pos-ver.outputs.version }}.exe"
 
