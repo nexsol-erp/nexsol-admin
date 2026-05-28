@@ -9,6 +9,14 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
+  Stack,
 } from "@mui/material";
 
 const UserCreationPage = () => {
@@ -17,17 +25,19 @@ const UserCreationPage = () => {
   const [password, setPassword] = useState("");
   const [branchCode, setBranchCode] = useState("");
   const [role, setRole] = useState("user");
+  const [users, setUsers] = useState([]);
 
   const availableRoles = ["admin", "user", "manager", "franchiseeuser", "cgn", "WB"];
   const [branches, setBranches] = useState([]);
 
   useEffect(() => {
     fetchBranches();
+    fetchUsers();
   }, []);
 
   const fetchBranches = async () => {
     try {
-       const token = localStorage.getItem("jwtToken");
+      const token = localStorage.getItem("jwtToken");
       const tenancyId = localStorage.getItem("tenancyId");
       const response = await fetch(`/api/${tenancyId}/branches`, {
         method: "GET",
@@ -43,20 +53,30 @@ const UserCreationPage = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem("jwtToken");
+      const tenancyId = localStorage.getItem("tenancyId");
+      const response = await fetch(`/api/${tenancyId}/users`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await response.json();
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const formData = {
-      username,
-      userId,
-      password,
-      branchCode,
-      role,
-    };
+    const formData = { username, userId, password, branchCode, role };
 
     try {
-        const token = localStorage.getItem("jwtToken");
-       // const tenancyId = localStorage.getItem("tenancyId");
-       const tenancyId = localStorage.getItem("tenancyId");
+      const token = localStorage.getItem("jwtToken");
       const response = await fetch(`/api/createbranchuser`, {
         method: "POST",
         headers: {
@@ -65,20 +85,15 @@ const UserCreationPage = () => {
         },
         body: JSON.stringify(formData),
       });
-  const data = await response.json();
-      /*const response2 = await fetch(`/api/${tenancyId}/createbranchusertenancy`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });*/
-
-      //const data2 = await response2.json();
+      const data = await response.json();
       if (data.success) {
         alert("User created successfully!");
-        // Optionally redirect or perform other actions after successful user creation
+        setUsername("");
+        setUserId("");
+        setPassword("");
+        setBranchCode("");
+        setRole("user");
+        fetchUsers();
       } else {
         alert(data.message || "Failed to create user.");
       }
@@ -88,23 +103,9 @@ const UserCreationPage = () => {
     }
   };
 
-  const handleBranchChange = (event) => {
-    setBranchCode(event.target.value);
-  };
-
   return (
-    <Box
-      sx={{
-        flexGrow: 1,
-        p: 3,
-        ml: "240px",
-        mt: 2,
-      }}
-    >
-      <Paper
-        sx={{ width: "100%", maxWidth: 600, padding: "20px" }}
-        elevation={3}
-      >
+    <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
+      <Paper sx={{ width: "100%", maxWidth: 600, padding: "20px" }} elevation={3}>
         <Typography variant="h4" gutterBottom>
           Create User
         </Typography>
@@ -136,7 +137,7 @@ const UserCreationPage = () => {
           />
           <FormControl fullWidth margin="normal" required>
             <InputLabel>Branch Name</InputLabel>
-            <Select value={branchCode} onChange={handleBranchChange}>
+            <Select value={branchCode} onChange={(e) => setBranchCode(e.target.value)}>
               {branches.map((branch) => (
                 <MenuItem key={branch.branchCode} value={branch.branchCode}>
                   {branch.branchCode}
@@ -158,6 +159,50 @@ const UserCreationPage = () => {
             </Button>
           </Box>
         </form>
+      </Paper>
+
+      <Paper sx={{ mt: 4, p: 2 }} elevation={3}>
+        <Typography variant="h6" gutterBottom>
+          Users
+        </Typography>
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>#</TableCell>
+                <TableCell>Username</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Phone</TableCell>
+                <TableCell>Roles</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {users.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ color: "text.secondary" }}>
+                    No users found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                users.map((user, index) => (
+                  <TableRow key={user.id || index} hover>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>{user.username}</TableCell>
+                    <TableCell>{user.email || "—"}</TableCell>
+                    <TableCell>{user.phone || "—"}</TableCell>
+                    <TableCell>
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                        {(user.roles || []).map((r) => (
+                          <Chip key={r} label={r} size="small" variant="outlined" />
+                        ))}
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Paper>
     </Box>
   );
