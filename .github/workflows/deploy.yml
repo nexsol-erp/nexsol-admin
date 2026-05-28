@@ -146,4 +146,10 @@ jobs:
             sudo mkdir -p /var/www/html
             sudo rm -rf /var/www/html/*
             sudo cp -r /home/deploy/tmp-deploy/build/* /var/www/html/
+            sudo mkdir -p /var/www/html/downloads
+            LATEST=$(cat /home/deploy/tradelink-pos/latest.txt 2>/dev/null || echo "")
+            if [ -n "$LATEST" ] && [ -f "/home/deploy/tradelink-pos/TradeLink247-POS-$LATEST.exe" ]; then
+              sudo cp "/home/deploy/tradelink-pos/TradeLink247-POS-$LATEST.exe" /var/www/html/downloads/TradeLink247-POS-Setup.exe
+              sudo chmod 644 /var/www/html/downloads/TradeLink247-POS-Setup.exe
+            fi
             sudo systemctl reload nginx

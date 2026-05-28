@@ -107,7 +107,7 @@ const DownloadPage = () => {
 
   const handlePosDownload = () => {
     const link = document.createElement("a");
-    link.href = "/api/updates/electron/download/latest";
+    link.href = "/downloads/TradeLink247-POS-Setup.exe";
     link.setAttribute("download", "TradeLink247-POS-Setup.exe");
     document.body.appendChild(link);
     link.click();
