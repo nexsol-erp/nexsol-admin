@@ -1,8 +1,7 @@
-const { app, BrowserWindow, ipcMain, Menu, session, net } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, session, net, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
-const { spawn } = require("child_process");
 
 // Set custom userData path to avoid cache permission issues
 if (!app.isPackaged) {
@@ -274,8 +273,8 @@ ipcMain.handle("update:download-install", async (_evt, rawUrl) => {
     win?.webContents?.send("update:done");
 
     // Give the renderer a moment to show the success state, then launch and quit
-    setTimeout(() => {
-      spawn(dest, [], { detached: true, stdio: "ignore" }).unref();
+    setTimeout(async () => {
+      await shell.openPath(dest);
       app.quit();
     }, 1500);
   } catch (err) {
