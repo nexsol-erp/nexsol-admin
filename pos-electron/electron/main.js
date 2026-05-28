@@ -290,6 +290,11 @@ function downloadFile(url, destPath, onProgress) {
     let total = 0;
 
     request.on("response", (response) => {
+      if (response.statusCode !== 200) {
+        file.destroy();
+        reject(new Error(`Download failed: server returned ${response.statusCode}`));
+        return;
+      }
       total = parseInt(response.headers["content-length"] || "0", 10);
 
       response.on("data", (chunk) => {
