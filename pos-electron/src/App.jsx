@@ -10,7 +10,7 @@ import WeighBridgePage from "./pos/WeighBridgePage";
 import PhysicalStockPage from "./pos/PhysicalStockPage";
 import KOTPage from "./pos/KOTPage";
 import UpdateChecker from "./components/UpdateChecker";
-import { isLoggedIn } from "./auth/auth";
+import { isLoggedIn, logout } from "./auth/auth";
 import { hasCache, loadAllItemsToCache } from "./cache/itemCache";
 import { log } from "./utils/logger";
 
@@ -37,7 +37,11 @@ export default function App() {
   const [roles, setRoles] = useState(getRoles);
 
   const [branchOptions, setBranchOptions] = useState([]);
-  const [selectedBranchCode, setSelectedBranchCode] = useState("");
+  const [selectedBranchCode, setSelectedBranchCode] = useState(() => {
+    const saved = localStorage.getItem("selectedBranchCode") || "";
+    if (saved) globalThis.POS_BRANCH_CODE = saved;
+    return saved;
+  });
   const [cacheLoading, setCacheLoading] = useState(false);
   const [kotPrefillItems, setKotPrefillItems] = useState(null);
 
@@ -116,42 +120,50 @@ export default function App() {
         <div style={{ background: "#ffffff" }}>
           <UpdateChecker />
 
-          {/* Branch selector + cache refresh bar */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 12px", background: "#f8fafc", borderBottom: "1px solid #e5e7eb" }}>
-            <Text strong style={{ color: "#374151", fontSize: 13 }}>Branch:</Text>
-            {branchOptions.length <= 1 ? (
-              <Text style={{ fontSize: 13 }}>{selectedBranchCode || "—"}</Text>
-            ) : (
-              <Select
+          {/* Top bar: nav tabs + branch + actions */}
+          <div style={{ display: "flex", alignItems: "center", background: "#f8fafc", borderBottom: "1px solid #e5e7eb", paddingRight: 10 }}>
+            <Menu
+              mode="horizontal"
+              selectedKeys={[activePage]}
+              onClick={(e) => { log("Menu clicked:", e.key); setActivePage(e.key); }}
+              items={[
+                { key: "pos", label: "POS" },
+                { key: "kot", label: "KOT" },
+                { key: "stock-transfer", label: "Stock Transfer" },
+                { key: "st-history", label: "ST History" },
+                { key: "day-end", label: "Day End" },
+                { key: "accept-stock", label: "Accept Stock" },
+                ...(hasWB ? [{ key: "weigh-bridge", label: "Weigh Bridge" }] : []),
+                { key: "physical-stock", label: "Physical Stock" },
+              ]}
+              style={{ flex: 1, borderBottom: "none", minWidth: 0 }}
+            />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+              <Text strong style={{ color: "#374151", fontSize: 12 }}>Branch:</Text>
+              {branchOptions.length <= 1 ? (
+                <Text style={{ fontSize: 12 }}>{selectedBranchCode || branchOptions[0]?.value || "—"}</Text>
+              ) : (
+                <Select
+                  size="small"
+                  style={{ width: 130 }}
+                  value={selectedBranchCode || undefined}
+                  onChange={handleBranchChange}
+                  options={branchOptions}
+                  placeholder="Select branch"
+                />
+              )}
+              <Button size="small" loading={cacheLoading} onClick={reloadCache}>
+                Refresh
+              </Button>
+              <Button
                 size="small"
-                style={{ width: 150 }}
-                value={selectedBranchCode || undefined}
-                onChange={handleBranchChange}
-                options={branchOptions}
-                placeholder="Select branch"
-              />
-            )}
-            <Button size="small" loading={cacheLoading} onClick={reloadCache}>
-              Refresh Items
-            </Button>
+                danger
+                onClick={() => { logout(); setLoggedIn(false); }}
+              >
+                Logout
+              </Button>
+            </div>
           </div>
-
-          <Menu
-            mode="horizontal"
-            selectedKeys={[activePage]}
-            onClick={(e) => { log("Menu clicked:", e.key); setActivePage(e.key); }}
-            items={[
-              { key: "pos", label: "POS" },
-              { key: "kot", label: "KOT" },
-              { key: "stock-transfer", label: "Stock Transfer" },
-              { key: "st-history", label: "ST History" },
-              { key: "day-end", label: "Day End" },
-              { key: "accept-stock", label: "Accept Stock" },
-              ...(hasWB ? [{ key: "weigh-bridge", label: "Weigh Bridge" }] : []),
-              { key: "physical-stock", label: "Physical Stock" },
-            ]}
-            style={{ marginBottom: 8 }}
-          />
 
           {activePage === "pos" && <POSPage selectedBranchCode={selectedBranchCode} onLogout={() => setLoggedIn(false)} prefillItems={kotPrefillItems} onPrefillUsed={() => setKotPrefillItems(null)} />}
           {activePage === "stock-transfer" && <StockTransferPage onClose={() => setActivePage("pos")} />}

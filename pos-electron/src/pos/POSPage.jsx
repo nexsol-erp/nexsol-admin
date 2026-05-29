@@ -556,23 +556,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             </div>
           )}
 
-          {/* Printer */}
-          <div style={{ marginTop: 6 }}>
-            {qtLabel("Printer")}
-            <div style={{ display: "flex", gap: 4 }}>
-              <Select
-                size="small" style={{ flex: 1 }} value={selectedPrinter} onChange={setSelectedPrinter}
-                options={printers.map((p) => ({ value: p.name, label: p.name }))}
-                placeholder="Select printer"
-              />
-              <Button size="small" style={{ borderRadius: 0 }} onClick={refreshPrinters}>↻</Button>
-            </div>
-            <Button size="small" style={{ width: "100%", marginTop: 3, borderRadius: 0 }} onClick={printTestInvoice}>
-              Print Test Invoice
-            </Button>
-          </div>
-
-          {/* Save + Close buttons at bottom */}
+          {/* Save + Close buttons */}
           <div style={{ marginTop: "auto", paddingTop: 8, display: "flex", gap: 6 }}>
             <button
               ref={saveButtonRef}
@@ -598,34 +582,62 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
               Close
             </button>
           </div>
+
+          {/* Printer */}
+          <div style={{ marginTop: 6 }}>
+            {qtLabel("Printer")}
+            <div style={{ display: "flex", gap: 4 }}>
+              <Select
+                size="small" style={{ flex: 1 }} value={selectedPrinter} onChange={setSelectedPrinter}
+                options={printers.map((p) => ({ value: p.name, label: p.name }))}
+                placeholder="Select printer"
+              />
+              <Button size="small" style={{ borderRadius: 0 }} onClick={refreshPrinters}>↻</Button>
+            </div>
+            <Button size="small" style={{ width: "100%", marginTop: 3, borderRadius: 0 }} onClick={printTestInvoice}>
+              Print Test Invoice
+            </Button>
+          </div>
         </div>
 
         {/* ══ RIGHT PANEL (items table) ══ */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "6px 8px", overflow: "hidden", background: "#d4d0c8" }}>
-          {/* Item search */}
-          <div style={{ marginBottom: 5 }}>
-            {qtLabel("Item Search / Barcode")}
-            <Input
-              className="item-search-input"
-              ref={itemSearchRef}
-              value={itemQuery}
-              onChange={(e) => setItemQuery(e.target.value)}
-              placeholder="Scan barcode or type name — Enter / F2 to browse"
-              style={{ borderRadius: 0 }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  openLookup(itemQuery.trim() || "");
-                  setItemQuery("");
-                } else if (e.key === "Tab" && !e.shiftKey) {
-                  e.preventDefault();
-                  saveButtonRef.current?.focus?.();
-                } else if (e.key === "F2") {
-                  e.preventDefault();
-                  openLookup(itemQuery || "");
-                }
-              }}
-            />
+          {/* Item search + totals on same line */}
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 5 }}>
+            <div style={{ flex: 1 }}>
+              {qtLabel("Item Search / Barcode")}
+              <Input
+                className="item-search-input"
+                ref={itemSearchRef}
+                value={itemQuery}
+                onChange={(e) => setItemQuery(e.target.value)}
+                placeholder="Scan barcode or type name — Enter / F2 to browse"
+                style={{ borderRadius: 0 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    openLookup(itemQuery.trim() || "");
+                    setItemQuery("");
+                  } else if (e.key === "Tab" && !e.shiftKey) {
+                    e.preventDefault();
+                    saveButtonRef.current?.focus?.();
+                  } else if (e.key === "F2") {
+                    e.preventDefault();
+                    openLookup(itemQuery || "");
+                  }
+                }}
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              <span style={{ fontSize: 13, fontWeight: "bold", color: "#000" }}>QTY</span>
+              <Input readOnly value={round2(totalQty)}
+                style={{ width: 80, fontSize: 14, fontWeight: "bold", borderRadius: 0, textAlign: "right" }} />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              <span style={{ fontSize: 13, fontWeight: "bold", color: "#000" }}>Total</span>
+              <Input readOnly value={round2(totalAmount)}
+                style={{ width: 120, fontSize: 18, fontWeight: "bold", borderRadius: 0, textAlign: "right", background: "#fffff0" }} />
+            </div>
           </div>
 
           {/* Items table — olive/khaki */}
@@ -639,23 +651,6 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             scroll={{ x: 1000, y: "calc(100vh - 210px)" }}
             style={{ flex: 1 }}
           />
-
-          {/* Totals row */}
-          <div style={{
-            display: "flex", justifyContent: "flex-end", gap: 16, marginTop: 5,
-            paddingTop: 5, borderTop: "2px solid #808080",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 14, fontWeight: "bold", color: "#000" }}>Total QTY</span>
-              <Input readOnly value={round2(totalQty)}
-                style={{ width: 100, fontSize: 16, fontWeight: "bold", borderRadius: 0, textAlign: "right" }} />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 14, fontWeight: "bold", color: "#000" }}>Total Amount</span>
-              <Input readOnly value={round2(totalAmount)}
-                style={{ width: 150, fontSize: 20, fontWeight: "bold", borderRadius: 0, textAlign: "right", background: "#fffff0" }} />
-            </div>
-          </div>
         </div>
       </div>
 
