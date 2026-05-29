@@ -81,6 +81,7 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
   const [selectedBranch, setSelectedBranch] = useState("");
   // null = not yet loaded; empty Set = loaded but no assignments (show all)
   const [allowedMenuNames, setAllowedMenuNames] = useState(null);
+  const [menuFetchTrigger, setMenuFetchTrigger] = useState(0);
 
   const allowedBranches = useMemo(() => {
     try {
@@ -110,7 +111,7 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
       .then((data) => setAllowedMenuNames(new Set(Array.isArray(data) ? data : [])))
       .catch(() => setAllowedMenuNames(new Set()));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roles]);
+  }, [roles, menuFetchTrigger]);
 
   const isSystemAdmin = roles.includes("system-admin");
 
@@ -157,7 +158,8 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
   const handleRefresh = () => {
     localStorage.removeItem("items");
     localStorage.removeItem("categories");
-    window.location.reload();
+    setAllowedMenuNames(null);
+    setMenuFetchTrigger((n) => n + 1);
   };
 
   const toggleMenu = (idx) =>
@@ -587,7 +589,7 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
             "&:hover": { bgcolor: C.hover, color: C.text, borderColor: "rgba(255,255,255,0.15)" },
           }}
         >
-          {t("Refresh")}
+          {allowedMenuNames === null && menuFetchTrigger > 0 ? t("Refreshing…") : t("Refresh Cache")}
         </Button>
       </Box>
 
