@@ -53,15 +53,6 @@ const MainLayout = ({ mode, setMode, roles }) => {
                 >
                   Help
                 </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: "#555",
-                    fontFamily: "Roboto, sans-serif",
-                  }}
-                >
-                  Find guidance and documentation here.
-                </Typography>
               </CardContent>
             </Card>
           </Grid>
