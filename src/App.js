@@ -91,6 +91,7 @@ import ItemTransferReport from "./components/ItemTransferReport";
 import AIDashboardPage from "./components/AIDashboardPage";
 import MenuMasterPage from "./components/MenuMasterPage";
 import RoleMenuPage from "./components/RoleMenuPage";
+import RoleManagementPage from "./components/RoleManagementPage";
 
 // ========================
 // AUTH WRAPPER COMPONENT
@@ -195,6 +196,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/ai-dashboard" element={<AIDashboardPage />} />
 <Route path="/menu-master" element={<MenuMasterPage />} />
 <Route path="/role-menu" element={<RoleMenuPage />} />
+<Route path="/role-management" element={<RoleManagementPage />} />
 
 
 

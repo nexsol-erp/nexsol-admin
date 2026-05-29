@@ -332,6 +332,7 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
         { menuKey: "Branch Assignment", label: t("Branch Assignment"), link: "/branchassingment", roles: ["admin"] },
         { menuKey: "Physical Stock Correction", label: t("Physical Stock Correction"), link: "/physical-stock-correction", roles: ["admin", "manager"] },
         { menuKey: "Menu Master", label: t("Menu Master"), link: "/menu-master", roles: ["admin"] },
+        { menuKey: "Role Management", label: t("Role Management"), link: "/role-management", roles: ["admin"] },
         { menuKey: "Role Menu Access", label: t("Role Menu Access"), link: "/role-menu", roles: ["admin"] },
       ],
     },
