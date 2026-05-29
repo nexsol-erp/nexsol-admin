@@ -9,9 +9,11 @@ import StockTransferHistoryPage from "./stock-transfer/StockTransferHistoryPage"
 import WeighBridgePage from "./pos/WeighBridgePage";
 import PhysicalStockPage from "./pos/PhysicalStockPage";
 import KOTPage from "./pos/KOTPage";
+import SalesmanReportPage from "./pos/SalesmanReportPage";
 import UpdateChecker from "./components/UpdateChecker";
 import { isLoggedIn, logout } from "./auth/auth";
 import { hasCache, loadAllItemsToCache } from "./cache/itemCache";
+import { registerMachine } from "./utils/posDevice";
 import { log } from "./utils/logger";
 
 const { Text } = Typography;
@@ -79,6 +81,16 @@ export default function App() {
     prevBranchRef.current = selectedBranchCode;
   }, [selectedBranchCode, loggedIn]);
 
+  // Register this machine with the server on login / branch change.
+  // Idempotent — safe to call every time. Updates local FY + machineCode cache.
+  useEffect(() => {
+    if (!loggedIn || !selectedBranchCode) return;
+    const tenantId = localStorage.getItem("tenancyId") || "";
+    if (!tenantId) return;
+    const machineName = window.navigator?.userAgent?.split(" ").pop() || "";
+    registerMachine(tenantId, selectedBranchCode, machineName);
+  }, [selectedBranchCode, loggedIn]);
+
   const reloadCache = async () => {
     setCacheLoading(true);
     try {
@@ -135,6 +147,7 @@ export default function App() {
                 { key: "accept-stock", label: "Accept Stock" },
                 ...(hasWB ? [{ key: "weigh-bridge", label: "Weigh Bridge" }] : []),
                 { key: "physical-stock", label: "Physical Stock" },
+                { key: "salesman-report", label: "Salesman" },
               ]}
               style={{ flex: 1, borderBottom: "none", minWidth: 0 }}
             />
@@ -172,6 +185,7 @@ export default function App() {
           {activePage === "accept-stock" && <AcceptStockPage onClose={() => setActivePage("pos")} />}
           {activePage === "weigh-bridge" && hasWB && <WeighBridgePage />}
           {activePage === "physical-stock" && <PhysicalStockPage onClose={() => setActivePage("pos")} />}
+          {activePage === "salesman-report" && <SalesmanReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "kot" && <KOTPage selectedBranchCode={selectedBranchCode} onConvertToPOS={handleKotConvertToPOS} />}
         </div>
       )}
