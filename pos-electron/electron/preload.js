@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld("POS", {
   apiServer: _apiServer,
   listPrinters: () => ipcRenderer.invoke("printers:list"),
   printHtml: (payload) => ipcRenderer.invoke("print:html", payload),
+  getPrinterPaperSize: (deviceName) => ipcRenderer.invoke("printer:get-paper-size", deviceName),
+  savePrinterConfig: (settings) => ipcRenderer.invoke("config:save-printer", settings),
   closeWindow: () => ipcRenderer.invoke("window:close"),
   onNavigate: (cb) => {
     if (typeof cb !== "function") return () => {};
