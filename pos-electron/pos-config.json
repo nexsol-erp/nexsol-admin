@@ -1,3 +1,7 @@
 {
-  "apiServer": "https://www.tradelink247.com"
+  "apiServer": "https://www.tradelink247.com",
+  "printer": {
+    "paperWidthMm": 72,
+    "paperHeightMm": 3276
+  }
 }
