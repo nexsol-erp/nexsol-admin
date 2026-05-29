@@ -606,13 +606,16 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
       >
         <List disablePadding>
           {menuItems.map((item, idx) => {
-            if (!isSystemAdmin && !item.roles.some((r) => roles.includes(r))) return null;
+            // When role-menu assignments are active, they are the sole visibility source.
+            // Fall back to hardcoded role arrays only when no assignments are configured.
+            const usingAssignments = allowedMenuNames !== null && allowedMenuNames.size > 0;
+            if (!isSystemAdmin && !usingAssignments && !item.roles.some((r) => roles.includes(r))) return null;
 
             if (item.hasSubmenu) {
               const isOpen = !!openMenus[idx];
               const hasActive = item.submenu?.some((s) => isActive(s.link));
               const visibleSubs = item.submenu.filter((s) =>
-                (isSystemAdmin || s.roles.some((r) => roles.includes(r))) && isMenuAllowed(s.menuKey)
+                (isSystemAdmin || usingAssignments || s.roles.some((r) => roles.includes(r))) && isMenuAllowed(s.menuKey)
               );
               if (visibleSubs.length === 0) return null;
 
