@@ -39,7 +39,7 @@ const RoleMenuPage = () => {
       setError("");
       try {
         const [rolesRes, menusRes] = await Promise.all([
-          fetch(`/api/${tenancyId}/role-menus/roles`, { headers }),
+          fetch(`/api/roles`, { headers }),
           fetch(`/api/${tenancyId}/menus/all`, { headers }),
         ]);
         if (!rolesRes.ok || !menusRes.ok) throw new Error("Failed to load data");
@@ -171,7 +171,7 @@ const RoleMenuPage = () => {
         <InputLabel>Select Role</InputLabel>
         <Select value={selectedRole} label="Select Role" onChange={handleRoleChange}>
           {roles.map((r) => (
-            <MenuItem key={r.roleid} value={r.roleid}>
+            <MenuItem key={r.roleid} value={r.name}>
               {r.name}
             </MenuItem>
           ))}

@@ -61,8 +61,8 @@ const RoleManagementPage = () => {
         headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
       });
+      if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      if (!res.ok) throw new Error(data);
       setNewRoleName("");
       fetchRoles();
       showSnack(`Role "${name}" created`, "success");

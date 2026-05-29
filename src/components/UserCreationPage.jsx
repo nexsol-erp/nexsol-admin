@@ -28,16 +28,15 @@ import {
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 
-const AVAILABLE_ROLES = ["admin", "user", "manager", "franchiseeuser", "cgn", "WB"];
-
 const UserCreationPage = () => {
   const [username, setUsername] = useState("");
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [branchCode, setBranchCode] = useState("");
-  const [role, setRole] = useState("user");
+  const [role, setRole] = useState("");
   const [branches, setBranches] = useState([]);
   const [users, setUsers] = useState([]);
+  const [availableRoles, setAvailableRoles] = useState([]);
 
   // Edit roles dialog
   const [editUser, setEditUser] = useState(null);
@@ -47,7 +46,21 @@ const UserCreationPage = () => {
   useEffect(() => {
     fetchBranches();
     fetchUsers();
+    fetchRoles();
   }, []);
+
+  const fetchRoles = async () => {
+    try {
+      const token = localStorage.getItem("jwtToken");
+      const res = await fetch("/api/roles", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setAvailableRoles(Array.isArray(data) ? data.map((r) => r.name) : []);
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+    }
+  };
 
   const fetchBranches = async () => {
     try {
@@ -167,7 +180,7 @@ const UserCreationPage = () => {
           <FormControl fullWidth margin="normal" required>
             <InputLabel>Role</InputLabel>
             <Select value={role} onChange={(e) => setRole(e.target.value)} label="Role">
-              {AVAILABLE_ROLES.map((r) => (
+              {availableRoles.map((r) => (
                 <MenuItem key={r} value={r}>{r}</MenuItem>
               ))}
             </Select>
@@ -233,7 +246,7 @@ const UserCreationPage = () => {
         <DialogTitle>Edit Roles — {editUser?.username}</DialogTitle>
         <DialogContent>
           <FormGroup>
-            {AVAILABLE_ROLES.map((r) => (
+            {availableRoles.map((r) => (
               <FormControlLabel
                 key={r}
                 control={
