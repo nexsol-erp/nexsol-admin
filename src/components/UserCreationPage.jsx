@@ -17,7 +17,18 @@ import {
   TableRow,
   Chip,
   Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
+  IconButton,
 } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+
+const AVAILABLE_ROLES = ["admin", "user", "manager", "franchiseeuser", "cgn", "WB"];
 
 const UserCreationPage = () => {
   const [username, setUsername] = useState("");
@@ -25,10 +36,13 @@ const UserCreationPage = () => {
   const [password, setPassword] = useState("");
   const [branchCode, setBranchCode] = useState("");
   const [role, setRole] = useState("user");
+  const [branches, setBranches] = useState([]);
   const [users, setUsers] = useState([]);
 
-  const availableRoles = ["admin", "user", "manager", "franchiseeuser", "cgn", "WB"];
-  const [branches, setBranches] = useState([]);
+  // Edit roles dialog
+  const [editUser, setEditUser] = useState(null);
+  const [editRoles, setEditRoles] = useState([]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchBranches();
@@ -40,11 +54,7 @@ const UserCreationPage = () => {
       const token = localStorage.getItem("jwtToken");
       const tenancyId = localStorage.getItem("tenancyId");
       const response = await fetch(`/api/${tenancyId}/branches`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       });
       const data = await response.json();
       setBranches(data.branches);
@@ -58,11 +68,7 @@ const UserCreationPage = () => {
       const token = localStorage.getItem("jwtToken");
       const tenancyId = localStorage.getItem("tenancyId");
       const response = await fetch(`/api/${tenancyId}/users`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       });
       const data = await response.json();
       setUsers(Array.isArray(data) ? data : []);
@@ -73,26 +79,17 @@ const UserCreationPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const formData = { username, userId, password, branchCode, role };
-
     try {
       const token = localStorage.getItem("jwtToken");
       const response = await fetch(`/api/createbranchuser`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ username, userId, password, branchCode, role }),
       });
       const data = await response.json();
       if (data.success) {
         alert("User created successfully!");
-        setUsername("");
-        setUserId("");
-        setPassword("");
-        setBranchCode("");
-        setRole("user");
+        setUsername(""); setUserId(""); setPassword(""); setBranchCode(""); setRole("user");
         fetchUsers();
       } else {
         alert(data.message || "Failed to create user.");
@@ -103,6 +100,47 @@ const UserCreationPage = () => {
     }
   };
 
+  const openEditDialog = (user) => {
+    setEditUser(user);
+    setEditRoles(user.roles || []);
+  };
+
+  const closeEditDialog = () => {
+    setEditUser(null);
+    setEditRoles([]);
+  };
+
+  const toggleRole = (r) => {
+    setEditRoles((prev) =>
+      prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
+    );
+  };
+
+  const saveRoles = async () => {
+    setSaving(true);
+    try {
+      const token = localStorage.getItem("jwtToken");
+      const tenancyId = localStorage.getItem("tenancyId");
+      const res = await fetch(`/api/${tenancyId}/users/${editUser.id}/roles`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(editRoles),
+      });
+      const data = await res.json();
+      if (data.success) {
+        closeEditDialog();
+        fetchUsers();
+      } else {
+        alert(data.message || "Failed to update roles.");
+      }
+    } catch (error) {
+      console.error("Error updating roles:", error);
+      alert("An error occurred.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
       <Paper sx={{ width: "100%", maxWidth: 600, padding: "20px" }} elevation={3}>
@@ -110,31 +148,12 @@ const UserCreationPage = () => {
           Create User
         </Typography>
         <form onSubmit={handleSubmit}>
-          <TextField
-            label="Username"
-            fullWidth
-            margin="normal"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
-          <TextField
-            label="User ID"
-            fullWidth
-            margin="normal"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            required
-          />
-          <TextField
-            label="Password"
-            type="password"
-            fullWidth
-            margin="normal"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <TextField label="Username" fullWidth margin="normal" value={username}
+            onChange={(e) => setUsername(e.target.value)} required />
+          <TextField label="User ID" fullWidth margin="normal" value={userId}
+            onChange={(e) => setUserId(e.target.value)} required />
+          <TextField label="Password" type="password" fullWidth margin="normal" value={password}
+            onChange={(e) => setPassword(e.target.value)} required />
           <FormControl fullWidth margin="normal" required>
             <InputLabel>Branch Name</InputLabel>
             <Select value={branchCode} onChange={(e) => setBranchCode(e.target.value)}>
@@ -148,7 +167,7 @@ const UserCreationPage = () => {
           <FormControl fullWidth margin="normal" required>
             <InputLabel>Role</InputLabel>
             <Select value={role} onChange={(e) => setRole(e.target.value)} label="Role">
-              {availableRoles.map((r) => (
+              {AVAILABLE_ROLES.map((r) => (
                 <MenuItem key={r} value={r}>{r}</MenuItem>
               ))}
             </Select>
@@ -162,9 +181,7 @@ const UserCreationPage = () => {
       </Paper>
 
       <Paper sx={{ mt: 4, p: 2 }} elevation={3}>
-        <Typography variant="h6" gutterBottom>
-          Users
-        </Typography>
+        <Typography variant="h6" gutterBottom>Users</Typography>
         <TableContainer>
           <Table size="small">
             <TableHead>
@@ -174,12 +191,13 @@ const UserCreationPage = () => {
                 <TableCell>Email</TableCell>
                 <TableCell>Phone</TableCell>
                 <TableCell>Roles</TableCell>
+                <TableCell align="center">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ color: "text.secondary" }}>
+                  <TableCell colSpan={6} align="center" sx={{ color: "text.secondary" }}>
                     No users found
                   </TableCell>
                 </TableRow>
@@ -197,6 +215,11 @@ const UserCreationPage = () => {
                         ))}
                       </Stack>
                     </TableCell>
+                    <TableCell align="center">
+                      <IconButton size="small" onClick={() => openEditDialog(user)} title="Edit roles">
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -204,6 +227,33 @@ const UserCreationPage = () => {
           </Table>
         </TableContainer>
       </Paper>
+
+      {/* Edit Roles Dialog */}
+      <Dialog open={!!editUser} onClose={closeEditDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>Edit Roles — {editUser?.username}</DialogTitle>
+        <DialogContent>
+          <FormGroup>
+            {AVAILABLE_ROLES.map((r) => (
+              <FormControlLabel
+                key={r}
+                control={
+                  <Checkbox
+                    checked={editRoles.includes(r)}
+                    onChange={() => toggleRole(r)}
+                  />
+                }
+                label={r}
+              />
+            ))}
+          </FormGroup>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeEditDialog} disabled={saving}>Cancel</Button>
+          <Button onClick={saveRoles} variant="contained" disabled={saving}>
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
