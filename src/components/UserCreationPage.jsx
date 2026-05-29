@@ -27,6 +27,7 @@ import {
   IconButton,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const UserCreationPage = () => {
   const [username, setUsername] = useState("");
@@ -42,6 +43,10 @@ const UserCreationPage = () => {
   const [editUser, setEditUser] = useState(null);
   const [editRoles, setEditRoles] = useState([]);
   const [saving, setSaving] = useState(false);
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchBranches();
@@ -127,6 +132,27 @@ const UserCreationPage = () => {
     setEditRoles((prev) =>
       prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
     );
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem("jwtToken");
+      const tenancyId = localStorage.getItem("tenancyId");
+      const res = await fetch(`/api/${tenancyId}/users/${deleteTarget.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      setDeleteTarget(null);
+      fetchUsers();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      alert("Failed to delete user.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const saveRoles = async () => {
@@ -232,6 +258,9 @@ const UserCreationPage = () => {
                       <IconButton size="small" onClick={() => openEditDialog(user)} title="Edit roles">
                         <EditIcon fontSize="small" />
                       </IconButton>
+                      <IconButton size="small" color="error" onClick={() => setDeleteTarget(user)} title="Delete user">
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
                 ))
@@ -240,6 +269,20 @@ const UserCreationPage = () => {
           </Table>
         </TableContainer>
       </Paper>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete User</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete <strong>{deleteTarget?.username}</strong>? This cannot be undone.
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+          <Button onClick={handleDelete} color="error" variant="contained" disabled={deleting}>
+            {deleting ? "Deleting…" : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Edit Roles Dialog */}
       <Dialog open={!!editUser} onClose={closeEditDialog} maxWidth="xs" fullWidth>
