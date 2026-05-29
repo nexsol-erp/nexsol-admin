@@ -79,6 +79,8 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
   const [branches, setBranches] = useState([]);
   const [branch, setBranch] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
+  // null = not yet loaded; empty Set = loaded but no assignments (show all)
+  const [allowedMenuNames, setAllowedMenuNames] = useState(null);
 
   const allowedBranches = useMemo(() => {
     try {
@@ -94,6 +96,28 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
     fetchBranches();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!roles || roles.length === 0) return;
+    const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
+    fetch(`/api/${tenancyId}/role-menus/accessible-menus`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(roles),
+    })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setAllowedMenuNames(new Set(Array.isArray(data) ? data : [])))
+      .catch(() => setAllowedMenuNames(new Set()));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roles]);
+
+  const isSystemAdmin = roles.includes("system-admin");
+
+  const isMenuAllowed = (key) => {
+    if (isSystemAdmin || !allowedMenuNames || allowedMenuNames.size === 0) return true;
+    return allowedMenuNames.has(key);
+  };
 
   const fetchBranches = async () => {
     try {
@@ -143,216 +167,242 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
 
   const menuItems = [
     {
+      menuKey: "Dashboard",
       label: t("Dashboard"),
       icon: <Dashboard />,
       link: "/dashboard",
       roles: ["admin", "user", "manager", "WB"],
     },
     {
+      menuKey: "AI Stock Intelligence",
       label: t("AI Stock Intelligence"),
       icon: <AutoGraph />,
       link: "/ai-dashboard",
       roles: ["admin", "manager"],
     },
     {
+      menuKey: "Admin Page",
       label: t("Admin Page"),
       icon: <AdminPanelSettings />,
       link: "/branch-request-list",
       roles: ["admin", "WB"],
     },
     {
+      menuKey: "Reprocess Voucher",
       label: t("Reprocess Voucher"),
       icon: <Replay />,
       link: "/reprocess-voucher-form",
       roles: ["admin", "WB"],
     },
     {
+      menuKey: "POS",
       label: t("POS"),
       icon: <PointOfSale />,
       link: "/pos",
       roles: ["admin", "user"],
     },
     {
+      menuKey: "KOT",
       label: t("KOT"),
       icon: <RestaurantMenu />,
       link: "/kot",
       roles: ["admin", "user"],
     },
     {
+      menuKey: "Sales Entry",
       label: t("Sales Entry"),
       icon: <Receipt />,
       link: "/salesentryform",
       roles: ["admin"],
     },
     {
+      menuKey: "HSN wise Sales",
       label: t("HSN wise Sales"),
       icon: <Pages />,
       link: "/hsnsales",
       roles: ["admin", "franchiseeuser", "user"],
     },
     {
+      menuKey: "HSN wise Purchase",
       label: t("HSN wise Purchase"),
       icon: <Pages />,
       link: "/hsnwise-purchase-report",
       roles: ["admin", "user"],
     },
     {
+      menuKey: "Purchase",
       label: t("Purchase"),
       icon: <ShoppingCart />,
       link: "",
       roles: ["admin", "manager"],
       hasSubmenu: true,
       submenu: [
-        { label: t("Purchase Entry"), link: "/purchaseentry", roles: ["user", "manager", "admin"] },
-        { label: t("Goods Receipt"), link: "/goodsreceipt", roles: ["user", "manager", "admin"] },
+        { menuKey: "Purchase Entry", label: t("Purchase Entry"), link: "/purchaseentry", roles: ["user", "manager", "admin"] },
+        { menuKey: "Goods Receipt", label: t("Goods Receipt"), link: "/goodsreceipt", roles: ["user", "manager", "admin"] },
       ],
     },
     {
+      menuKey: "Production",
       label: t("Production"),
       icon: <Category />,
       link: "",
       roles: ["admin", "manager", "user"],
       hasSubmenu: true,
       submenu: [
-        { label: t("Production Def"), link: "/production-def", roles: ["admin", "manager", "user"] },
-        { label: t("Production Planning"), link: "/production-planning", roles: ["admin", "manager", "user"] },
-        { label: t("Production Execution"), link: "/production-execution", roles: ["admin", "manager", "user"] },
+        { menuKey: "Production Def", label: t("Production Def"), link: "/production-def", roles: ["admin", "manager", "user"] },
+        { menuKey: "Production Planning", label: t("Production Planning"), link: "/production-planning", roles: ["admin", "manager", "user"] },
+        { menuKey: "Production Execution", label: t("Production Execution"), link: "/production-execution", roles: ["admin", "manager", "user"] },
       ],
     },
     {
+      menuKey: "Weighbridge",
       label: t("Weighbridge"),
       icon: <Scale />,
       link: "/weighbridge",
       roles: ["WB"],
     },
     {
+      menuKey: "Weight-Count",
       label: t("Weight-Count"),
       icon: <Speed />,
       link: "/bridge-count",
       roles: ["WB"],
     },
     {
+      menuKey: "WeighBridge Usage",
       label: t("WeighBridge Usage"),
       icon: <Analytics />,
       link: "/weighbridgeusage",
       roles: ["WB"],
     },
     {
+      menuKey: "Branch Creation",
       label: t("Branch Creation"),
       icon: <AddBusiness />,
       link: "/branchcreationpage",
       roles: ["admin"],
     },
     {
+      menuKey: "Branch Details",
       label: t("Branch Details"),
       icon: <Business />,
       link: "/branch-update",
       roles: ["admin"],
     },
     {
+      menuKey: "User Creation",
       label: t("User Creation"),
       icon: <Group />,
       link: "/usercreationpage",
       roles: ["admin"],
     },
     {
+      menuKey: "Scheme",
       label: t("Scheme"),
       icon: <Loyalty />,
       link: "",
       roles: ["admin"],
       hasSubmenu: true,
       submenu: [
-        { label: t("Scheme Creation"), link: "/schemepage", roles: ["admin"] },
-        { label: t("Manage Scheme"), link: "/publishschemepage", roles: ["admin"] },
+        { menuKey: "Scheme Creation", label: t("Scheme Creation"), link: "/schemepage", roles: ["admin"] },
+        { menuKey: "Manage Scheme", label: t("Manage Scheme"), link: "/publishschemepage", roles: ["admin"] },
       ],
     },
     {
+      menuKey: "Masters",
       label: t("Masters"),
       icon: <Tune />,
       link: "",
       roles: ["admin", "user", "cgn", "franchiseeuser"],
       hasSubmenu: true,
       submenu: [
-        { label: t("Financial Year Setup"), link: "/financialyearpage", roles: ["admin", "franchiseeuser"] },
-        { label: t("Receipt Modes"), link: "/receipt-modes", roles: ["admin"] },
-        { label: t("Item Search"), link: "/itemsearch", roles: ["admin", "user", "cgn", "franchiseeuser"] },
-        { label: t("Item Creation"), link: "/createitemmaster", roles: ["admin", "user"] },
-        { label: t("Price Edit Category Wise"), link: "/category-price-edit", roles: ["admin", "user"] },
-        { label: t("Category Link"), link: "/item-category-linker", roles: ["admin", "user"] },
-        { label: t("Manage AccountHeads"), link: "/manage-account-heads", roles: ["admin", "user"] },
-        { label: t("Statement Of Account"), link: "/statement-of-account", roles: ["admin", "user"] },
-        { label: t("Category Type"), link: "/categorytypemaster", roles: ["admin", "user"] },
-        { label: t("Category Name"), link: "/categorynamemaster", roles: ["admin", "user"] },
-        { label: t("Supplier Creation"), link: "/suppliercreation", roles: ["admin", "user", "cgn"] },
-        { label: t("Tax Update Manager"), link: "/tax-update-manager", roles: ["admin", "user"] },
-        { label: t("Tax Update Preview"), link: "/tax-update-preview", roles: ["admin", "user"] },
-        { label: t("Branch Assignment"), link: "/branchassingment", roles: ["admin"] },
-        { label: t("Physical Stock Correction"), link: "/physical-stock-correction", roles: ["admin", "manager"] },
-        { label: t("Menu Master"), link: "/menu-master", roles: ["admin"] },
-        { label: t("Role Menu Access"), link: "/role-menu", roles: ["admin"] },
+        { menuKey: "Financial Year Setup", label: t("Financial Year Setup"), link: "/financialyearpage", roles: ["admin", "franchiseeuser"] },
+        { menuKey: "Receipt Modes", label: t("Receipt Modes"), link: "/receipt-modes", roles: ["admin"] },
+        { menuKey: "Item Search", label: t("Item Search"), link: "/itemsearch", roles: ["admin", "user", "cgn", "franchiseeuser"] },
+        { menuKey: "Item Creation", label: t("Item Creation"), link: "/createitemmaster", roles: ["admin", "user"] },
+        { menuKey: "Price Edit Category Wise", label: t("Price Edit Category Wise"), link: "/category-price-edit", roles: ["admin", "user"] },
+        { menuKey: "Category Link", label: t("Category Link"), link: "/item-category-linker", roles: ["admin", "user"] },
+        { menuKey: "Manage Account Heads", label: t("Manage Account Heads"), link: "/manage-account-heads", roles: ["admin", "user"] },
+        { menuKey: "Statement Of Account", label: t("Statement Of Account"), link: "/statement-of-account", roles: ["admin", "user"] },
+        { menuKey: "Category Type", label: t("Category Type"), link: "/categorytypemaster", roles: ["admin", "user"] },
+        { menuKey: "Category Name", label: t("Category Name"), link: "/categorynamemaster", roles: ["admin", "user"] },
+        { menuKey: "Supplier Creation", label: t("Supplier Creation"), link: "/suppliercreation", roles: ["admin", "user", "cgn"] },
+        { menuKey: "Tax Update Manager", label: t("Tax Update Manager"), link: "/tax-update-manager", roles: ["admin", "user"] },
+        { menuKey: "Tax Update Preview", label: t("Tax Update Preview"), link: "/tax-update-preview", roles: ["admin", "user"] },
+        { menuKey: "Branch Assignment", label: t("Branch Assignment"), link: "/branchassingment", roles: ["admin"] },
+        { menuKey: "Physical Stock Correction", label: t("Physical Stock Correction"), link: "/physical-stock-correction", roles: ["admin", "manager"] },
+        { menuKey: "Menu Master", label: t("Menu Master"), link: "/menu-master", roles: ["admin"] },
+        { menuKey: "Role Menu Access", label: t("Role Menu Access"), link: "/role-menu", roles: ["admin"] },
       ],
     },
     {
+      menuKey: "Reports",
       label: t("Reports"),
       icon: <Assessment />,
       link: "",
       roles: ["admin", "manager", "cgn", "user", "franchiseeuser", "WB"],
       hasSubmenu: true,
       submenu: [
-        { label: t("Sales  Re Print"), link: "/salessummaryreport", roles: ["admin", "user", "manager", "franchiseeuser"] },
-        { label: t("Sales Report"), link: "/sales", roles: ["admin", "user", "manager", "franchiseeuser"] },
-        { label: t("Sales Tax Summary"), link: "/salestaxsummary", roles: ["admin", "user", "manager", "franchiseeuser"] },
-        { label: t("Purchase Report"), link: "/purchasereport", roles: ["admin", "user", "manager", "franchiseeuser"] },
-        { label: t("Stock Movement Report"), link: "/stockmovementreport", roles: ["admin", "user", "manager", "franchiseeuser"] },
-        { label: t("Physical Stock Report"), link: "/physicalstockreport", roles: ["admin", "user", "manager", "franchiseeuser"] },
-        { label: t("All Branch Stock Report"), link: "/stock-report-all-branch", roles: ["admin", "user", "manager", "cgn", "franchiseeuser"] },
-        { label: t("Branch Stock Management"), link: "/branch-stock-report", roles: ["admin"] },
-        { label: t("All Branch Sales Report"), link: "/sales-report-all-branch", roles: ["admin", "user", "manager"] },
-        { label: t("All Branch Categorywise Sales Report"), link: "/sales-category-wise-report-all-branch", roles: ["admin", "user", "manager"] },
-        { label: t("Item Stock Report"), link: "/item-stock-report", roles: ["admin", "user", "manager", "cgn"] },
-        { label: t("Bill Series Report"), link: "/billseriesreport", roles: ["admin", "user", "manager"] },
-        { label: t("Season Sales Report"), link: "/seasonalreport", roles: ["admin"] },
-        { label: t("Stock Turnover Report"), link: "/stock-turnover", roles: ["user", "admin"] },
-        { label: t("Item Sales Report"), link: "/item-sales", roles: ["user", "admin"] },
-        { label: t("Documents List"), link: "/documents-list", roles: ["user", "admin", "WB"] },
-        { label: t("Branch Stock Diff Report"), link: "/branch-stock-diff-report", roles: ["admin", "franchiseeuser"] },
-        { label: t("Branch Stock Report"), link: "/branch-stock-view", roles: ["admin", "manager", "user", "franchiseeuser"] },
-        { label: t("Stock Transfer Out Report"), link: "/stocktransfer-out-report", roles: ["admin", "franchiseeuser"] },
-        { label: t("Stock Transfer In Report"), link: "/stocktransfer-in-report", roles: ["admin", "franchiseeuser", "user"] },
-        { label: t("Item Transfer Report"), link: "/item-transfer-report", roles: ["admin", "manager", "user", "franchiseeuser"] },
+        { menuKey: "Sales Re Print", label: t("Sales  Re Print"), link: "/salessummaryreport", roles: ["admin", "user", "manager", "franchiseeuser"] },
+        { menuKey: "Sales Report", label: t("Sales Report"), link: "/sales", roles: ["admin", "user", "manager", "franchiseeuser"] },
+        { menuKey: "Sales Tax Summary", label: t("Sales Tax Summary"), link: "/salestaxsummary", roles: ["admin", "user", "manager", "franchiseeuser"] },
+        { menuKey: "Purchase Report", label: t("Purchase Report"), link: "/purchasereport", roles: ["admin", "user", "manager", "franchiseeuser"] },
+        { menuKey: "Stock Movement Report", label: t("Stock Movement Report"), link: "/stockmovementreport", roles: ["admin", "user", "manager", "franchiseeuser"] },
+        { menuKey: "Physical Stock Report", label: t("Physical Stock Report"), link: "/physicalstockreport", roles: ["admin", "user", "manager", "franchiseeuser"] },
+        { menuKey: "All Branch Stock Report", label: t("All Branch Stock Report"), link: "/stock-report-all-branch", roles: ["admin", "user", "manager", "cgn", "franchiseeuser"] },
+        { menuKey: "Branch Stock Management", label: t("Branch Stock Management"), link: "/branch-stock-report", roles: ["admin"] },
+        { menuKey: "All Branch Sales Report", label: t("All Branch Sales Report"), link: "/sales-report-all-branch", roles: ["admin", "user", "manager"] },
+        { menuKey: "All Branch Categorywise Sales Report", label: t("All Branch Categorywise Sales Report"), link: "/sales-category-wise-report-all-branch", roles: ["admin", "user", "manager"] },
+        { menuKey: "Item Stock Report", label: t("Item Stock Report"), link: "/item-stock-report", roles: ["admin", "user", "manager", "cgn"] },
+        { menuKey: "Bill Series Report", label: t("Bill Series Report"), link: "/billseriesreport", roles: ["admin", "user", "manager"] },
+        { menuKey: "Season Sales Report", label: t("Season Sales Report"), link: "/seasonalreport", roles: ["admin"] },
+        { menuKey: "Stock Turnover Report", label: t("Stock Turnover Report"), link: "/stock-turnover", roles: ["user", "admin"] },
+        { menuKey: "Item Sales Report", label: t("Item Sales Report"), link: "/item-sales", roles: ["user", "admin"] },
+        { menuKey: "Documents List", label: t("Documents List"), link: "/documents-list", roles: ["user", "admin", "WB"] },
+        { menuKey: "Branch Stock Diff Report", label: t("Branch Stock Diff Report"), link: "/branch-stock-diff-report", roles: ["admin", "franchiseeuser"] },
+        { menuKey: "Branch Stock Report", label: t("Branch Stock Report"), link: "/branch-stock-view", roles: ["admin", "manager", "user", "franchiseeuser"] },
+        { menuKey: "Stock Transfer Out Report", label: t("Stock Transfer Out Report"), link: "/stocktransfer-out-report", roles: ["admin", "franchiseeuser"] },
+        { menuKey: "Stock Transfer In Report", label: t("Stock Transfer In Report"), link: "/stocktransfer-in-report", roles: ["admin", "franchiseeuser", "user"] },
+        { menuKey: "Item Transfer Report", label: t("Item Transfer Report"), link: "/item-transfer-report", roles: ["admin", "manager", "user", "franchiseeuser"] },
       ],
     },
     {
+      menuKey: "Download",
       label: t("Download"),
       icon: <CloudDownload />,
       link: "/download",
       roles: ["user", "manager", "admin", "WB"],
     },
     {
+      menuKey: "Upload",
       label: t("Upload"),
       icon: <CloudUpload />,
       link: "/uploadpage",
       roles: ["admin"],
     },
     {
+      menuKey: "Invoice Designer",
       label: t("Invoice Designer"),
       icon: <Description />,
       link: "/invoicedesigner",
       roles: ["user", "admin", "manager"],
     },
     {
+      menuKey: "Workflow Designer",
       label: t("Workflow Designer"),
       icon: <AccountTree />,
       link: "/bpmn-editorr",
       roles: ["user", "admin", "manager"],
     },
     {
+      menuKey: "About",
       label: t("About"),
       icon: <Info />,
       link: "/about",
       roles: ["manager"],
     },
     {
+      menuKey: "Help",
       label: t("Help"),
       icon: <HelpOutline />,
       link: "/help",
@@ -555,13 +605,13 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
       >
         <List disablePadding>
           {menuItems.map((item, idx) => {
-            if (!item.roles.some((r) => roles.includes(r))) return null;
+            if (!isSystemAdmin && !item.roles.some((r) => roles.includes(r))) return null;
 
             if (item.hasSubmenu) {
               const isOpen = !!openMenus[idx];
               const hasActive = item.submenu?.some((s) => isActive(s.link));
               const visibleSubs = item.submenu.filter((s) =>
-                s.roles.some((r) => roles.includes(r))
+                (isSystemAdmin || s.roles.some((r) => roles.includes(r))) && isMenuAllowed(s.menuKey)
               );
               if (visibleSubs.length === 0) return null;
 
@@ -602,6 +652,7 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
               );
             }
 
+            if (!isMenuAllowed(item.menuKey)) return null;
             return (
               <ListItemButton
                 key={idx}
