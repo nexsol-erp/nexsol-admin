@@ -8,6 +8,7 @@ import { evaluateSchemes, buildOfferRows } from "./schemeEngine";
 import { log, warn, error as logError } from "../utils/logger";
 import { apiUrl } from "../utils/apiUrl";
 import { queueSale, getPendingCount, syncPendingSales } from "./offlineQueue";
+import { generateVoucherNumber } from "../utils/posDevice";
 
 export default function POSPage({ onLogout, selectedBranchCode = "", prefillItems = null, onPrefillUsed }) {
 
@@ -216,8 +217,9 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       );
 
     const headerId = crypto.randomUUID();
-    const numericVoucherNumber = Math.floor(Math.random() * 100000);
-    const voucherNumber = `POS-${numericVoucherNumber}`;
+    const { voucherNumber, numericSeq } = generateVoucherNumber(branchCode);
+    const numericVoucherNumber = numericSeq;
+    const voucherPrefix = localStorage.getItem(`posBranchPrefix_${branchCode}`) || "POS";
 
     const header = {
       id: headerId,
@@ -226,7 +228,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       customer_mobile: customerMobile || "",
       numeric_voucher_number: numericVoucherNumber,
       voucher_number: voucherNumber,
-      voucher_prefix: "POS",
+      voucher_prefix: voucherPrefix,
       voucher_date: new Date().toISOString(),
       company_mst_id: tenantId,
       is_synched: "0",
