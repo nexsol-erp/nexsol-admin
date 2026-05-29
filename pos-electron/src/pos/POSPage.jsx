@@ -297,7 +297,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       })));
       message.success("Sales saved successfully");
       // Auto-print: capture snapshot before clearing state
-      doPrint({ snapshot: [...finalItems], voucherNumber, silent: true });
+      doPrint({ snapshot: [...finalItems], voucherNumber });
       setItems([]); setTendered(0);
       setReceipts((prev) => prev.map((r) => ({ ...r, amount: 0 })));
       setCustomerMobile(""); setSalesmanCode(""); setSalesmanName("");
@@ -318,7 +318,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
           message.warning(isNetworkError
             ? "No network — sale saved offline, will sync automatically when connected"
             : `Server error (${e.httpStatus}) — sale saved offline, will retry when server recovers`);
-          doPrint({ snapshot: [...finalItems], voucherNumber, silent: true });
+          doPrint({ snapshot: [...finalItems], voucherNumber });
           setItems([]); setTendered(0);
           setReceipts((prev) => prev.map((r) => ({ ...r, amount: 0 })));
           setCustomerMobile(""); setSalesmanCode(""); setSalesmanName("");
@@ -371,20 +371,47 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   useEffect(() => { refreshPrinters(); }, []);
 
-  const doPrint = async ({ snapshot, voucherNumber, silent = false }) => {
-    log("doPrint | branchInfo:", JSON.stringify(branchInfo), "| voucherNumber:", voucherNumber);
-    if (!window.POS?.printHtml) return;
+  const doPrint = async ({ snapshot, voucherNumber }) => {
+    if (!window.POS?.printHtml) { log("doPrint: window.POS.printHtml not available"); return; }
     const html = buildReceiptHtml({
       items: snapshot, totalAmount, tendered, balance, receipts,
       branchInfo, salesmanName, customerMobile, voucherNumber,
     });
+    log("doPrint | htmlLen:", html.length, "| snapshotLen:", snapshot?.length);
     try {
-      await window.POS.printHtml({ html, silent, deviceName: selectedPrinter });
-      if (!silent) message.success("Print sent");
-    } catch (e) { message.error("Print failed: " + e.message); }
+      await window.POS.printHtml({ html, silent: true, deviceName: selectedPrinter || "" });
+      log("doPrint | success");
+    } catch (e) {
+      log("doPrint | error:", e.message);
+      message.error("Print failed: " + e.message);
+    }
   };
 
-  const printTestInvoice = () => doPrint({ snapshot: items, voucherNumber: "", silent: false });
+  const printTestInvoice = async () => {
+    if (!window.POS?.printHtml) return;
+    if (selectedPrinter && window.POS.getPrinterPaperSize) {
+      try {
+        const result = await window.POS.getPrinterPaperSize(selectedPrinter);
+        if (result?.paperWidthMm && result?.paperHeightMm) {
+          await window.POS.savePrinterConfig({ paperWidthMm: result.paperWidthMm, paperHeightMm: result.paperHeightMm });
+          message.success(`Paper size saved: ${result.paperWidthMm}×${result.paperHeightMm}mm`);
+        } else {
+          log("printTestInvoice: paper size not detected | raw:", JSON.stringify(result?.raw));
+        }
+      } catch (e) {
+        log("printTestInvoice: paper size error:", e.message);
+      }
+    }
+    const html = buildReceiptHtml({
+      items, totalAmount, tendered, balance, receipts,
+      branchInfo, salesmanName, customerMobile, voucherNumber: "TEST",
+    });
+    try {
+      await window.POS.printHtml({ html, silent: false, deviceName: selectedPrinter || "" });
+    } catch (e) {
+      message.error("Test print failed: " + e.message);
+    }
+  };
 
   const itemColumns = [
     { title: "Item", dataIndex: "item_name", width: 200, render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
@@ -694,6 +721,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
           setItemQuery(""); pendingQtyFocusKey.current = row.key; closeLookup({ focusSearch: false });
         }}
       />
+
     </div>
   );
 }
@@ -775,47 +803,47 @@ function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, bra
   @page { margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 12px;
-    width: 302px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11px;
+    width: 258px;
     color: #000;
     background: #fff;
-    padding: 6px 4px;
+    padding: 6px 4px 6px 1px;
   }
-  .shop-name { font-size: 15px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 2px; }
+  .shop-name { font-size: 14px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 2px; }
   .addr { font-size: 10px; text-align: center; line-height: 1.4; }
   .gst  { font-size: 10px; text-align: center; font-weight: bold; margin-top: 1px; }
   .dash { border: none; border-top: 1px dashed #000; margin: 4px 0; }
   .solid { border: none; border-top: 2px solid #000; margin: 4px 0; }
-  .meta { font-size: 11px; display: flex; justify-content: space-between; margin: 2px 0; }
-  .meta-single { font-size: 11px; margin: 1px 0; }
-  .invoice-title { text-align: center; font-size: 12px; font-weight: bold; letter-spacing: 2px; margin: 3px 0; }
+  .meta { font-size: 10px; display: flex; justify-content: space-between; margin: 2px 0; }
+  .meta-single { font-size: 10px; margin: 1px 0; }
+  .invoice-title { text-align: center; font-size: 11px; font-weight: bold; letter-spacing: 2px; margin: 3px 0; }
 
-  table.items { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.items { width: 100%; border-collapse: collapse; font-size: 10px; }
   table.items th { text-align: left; font-size: 10px; padding: 1px 2px; border-bottom: 1px dashed #000; }
-  table.items th.num { text-align: right; }
+  table.items th.num { text-align: right; padding-right: 3px; }
   table.items td { padding: 1px 2px; vertical-align: top; }
-  table.items td.sno  { width: 14px; color: #555; }
-  table.items td.iname { width: 130px; }
-  table.items td.num { text-align: right; }
-  .tax-badge { font-size: 9px; color: #444; margin-left: 2px; }
+  table.items td.sno  { width: 14px; color: #000; }
+  table.items td.iname { width: 118px; }
+  table.items td.num { text-align: right; padding-right: 3px; }
+  .tax-badge { font-size: 9px; color: #000; margin-left: 2px; }
 
-  table.tax  { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.tax  { width: 100%; border-collapse: collapse; font-size: 10px; }
   table.tax td { padding: 1px 2px; }
-  table.tax td.num { text-align: right; }
+  table.tax td.num { text-align: right; padding-right: 3px; }
   .tax-label { font-size: 10px; font-weight: bold; margin: 3px 0 1px 0; }
   .tax-total td { border-top: 1px dashed #000; }
 
-  .total-line { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin: 4px 0; }
+  .total-line { display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin: 4px 0; }
 
-  table.pay { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.pay { width: 100%; border-collapse: collapse; font-size: 10px; }
   table.pay td { padding: 1px 2px; }
   table.pay td.pay-mode { text-transform: uppercase; }
-  table.pay td.num { text-align: right; }
-  .balance-row td { border-top: 1px dashed #000; font-size: 12px; }
+  table.pay td.num { text-align: right; padding-right: 3px; }
+  .balance-row td { border-top: 1px dashed #000; font-size: 11px; }
 
-  .footer { text-align: center; font-size: 11px; margin-top: 4px; line-height: 1.6; }
-  .footer .thanks { font-weight: bold; font-size: 12px; }
+  .footer { text-align: center; font-size: 10px; margin-top: 4px; line-height: 1.6; }
+  .footer .thanks { font-weight: bold; font-size: 11px; }
 </style>
 </head>
 <body>

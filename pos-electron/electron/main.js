@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, session, net, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, session, net, shell, screen } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
@@ -62,16 +62,22 @@ ipcMain.handle("log:write", (_evt, level, message) => {
 
 let win;
 
+// Reads pos-config.json — next to the .exe when packaged, or in project root in dev.
+function getPosConfig() {
+  const locations = app.isPackaged
+    ? [path.join(path.dirname(process.execPath), "pos-config.json")]
+    : [path.join(__dirname, "../pos-config.json")];
+  for (const p of locations) {
+    try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch (_) {}
+  }
+  return {};
+}
+
 // Resolve the backend API server URL.
 // Priority: pos-config.json (next to .exe) → env var → hardcoded default.
 function getApiServer() {
-  if (app.isPackaged) {
-    try {
-      const cfgPath = path.join(path.dirname(process.execPath), "pos-config.json");
-      const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
-      if (cfg.apiServer) return String(cfg.apiServer).replace(/\/$/, "");
-    } catch (_) { /* no config file, fall through */ }
-  }
+  const cfg = getPosConfig();
+  if (cfg.apiServer) return String(cfg.apiServer).replace(/\/$/, "");
   if (process.env.VITE_API_SERVER) return String(process.env.VITE_API_SERVER).replace(/\/$/, "");
   return "http://localhost:8084";
 }
@@ -183,21 +189,47 @@ ipcMain.handle("printers:list", async () => {
   return win.webContents.getPrintersAsync();
 });
 
-ipcMain.handle("print:html", async (_evt, { html, silent, deviceName }) => {
-  const printWin = new BrowserWindow({
-    show: false,
-    webPreferences: { contextIsolation: true },
-  });
-  await printWin.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
+ipcMain.handle("print:html", (_evt, { html, silent, deviceName }) => {
   return new Promise((resolve, reject) => {
-    printWin.webContents.print(
-      { silent: !!silent, deviceName: deviceName || "", printBackground: true },
-      (success, errorType) => {
-        printWin.close();
-        if (!success) reject(new Error(errorType));
-        else resolve(true);
-      }
-    );
+    // opacity:0 keeps the window on-screen so Chromium's compositor fully
+    // renders it, while making it invisible to the user.
+    // show:false / offscreen both skip the paint cycle, causing silent prints
+    // to fire before the page is rendered and come out blank.
+    const printWin = new BrowserWindow({
+      width: 400,
+      height: 1200,
+      x: 0,
+      y: 0,
+      show: true,
+      opacity: 0,
+      frame: false,
+      skipTaskbar: true,
+      alwaysOnTop: false,
+      webPreferences: { contextIsolation: true },
+    });
+
+    printWin.webContents.once("did-finish-load", () => {
+      const cfg = getPosConfig();
+      const wMm = cfg.printer?.paperWidthMm  || 72;
+      const hMm = cfg.printer?.paperHeightMm || 3276;
+      printWin.webContents.print(
+        {
+          silent: !!silent,
+          deviceName: deviceName || "",
+          printBackground: true,
+          pageSize: { width: wMm * 1000, height: hMm * 1000 },
+          margins: { marginType: "none" },
+          scaleFactor: 100,
+        },
+        (success, errorType) => {
+          printWin.destroy();
+          if (!success) reject(new Error(errorType));
+          else resolve(true);
+        }
+      );
+    });
+
+    printWin.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
   });
 });
 
@@ -205,6 +237,42 @@ ipcMain.handle("window:close", async () => {
   if (!win) return false;
   win.close();
   return true;
+});
+
+ipcMain.handle("printer:get-paper-size", async (_evt, deviceName) => {
+  try {
+    const printers = await win.webContents.getPrintersAsync();
+    const printer = printers.find((p) => p.name === deviceName);
+    if (!printer) return null;
+    const opts = printer.options || {};
+    console.log("printer:get-paper-size | printer:", deviceName, "| options:", JSON.stringify(opts));
+    // Look for dimensions in any option value, e.g. "Custom.72x3276mm" or "70x3276mm"
+    const allText = Object.entries(opts).map(([k, v]) => `${k}=${v}`).join(" ");
+    const match = allText.match(/(\d+(?:\.\d+)?)[xX×](\d+(?:\.\d+)?)\s*mm/);
+    if (match) {
+      return { paperWidthMm: parseFloat(match[1]), paperHeightMm: parseFloat(match[2]), raw: opts };
+    }
+    return { raw: opts };
+  } catch (e) {
+    return { error: e.message };
+  }
+});
+
+ipcMain.handle("config:save-printer", (_evt, printerSettings) => {
+  const cfgPath = app.isPackaged
+    ? path.join(path.dirname(process.execPath), "pos-config.json")
+    : path.join(__dirname, "../pos-config.json");
+  try {
+    let current = {};
+    try { current = JSON.parse(fs.readFileSync(cfgPath, "utf8")); } catch (_) {}
+    current.printer = { ...(current.printer || {}), ...printerSettings };
+    fs.writeFileSync(cfgPath, JSON.stringify(current, null, 2), "utf8");
+    console.log("config:save-printer | saved:", JSON.stringify(current.printer));
+    return true;
+  } catch (e) {
+    console.error("config:save-printer | error:", e.message);
+    return false;
+  }
 });
 
 // ── WeighBridge serial port ───────────────────────────────────────────────────
