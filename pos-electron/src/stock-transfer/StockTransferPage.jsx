@@ -68,6 +68,18 @@ export default function StockTransferPage({ onClose }) {
   const EXCLUDED_BRANCH_TYPES = new Set(["BAKERY_PROD", "BAKERY_BO"]);
 
   const branchOptions = useMemo(() => {
+    const allowedCodes = (() => {
+      try {
+        const raw = JSON.parse(localStorage.getItem("allowedBranches") || "[]");
+        if (!Array.isArray(raw) || !raw.length) return null;
+        return new Set(
+          raw
+            .map((b) => typeof b === "string" ? b.trim() : String(b?.branchCode ?? b?.code ?? "").trim())
+            .filter(Boolean)
+        );
+      } catch { return null; }
+    })();
+
     const seen = new Set();
     return allBranches
       .filter((b) => {
@@ -76,6 +88,7 @@ export default function StockTransferPage({ onClose }) {
       })
       .map((b) => String(b.branchCode ?? "").trim())
       .filter((code) => code && code !== fromBranch)
+      .filter((code) => !allowedCodes || allowedCodes.has(code))
       .filter((code) => {
         if (seen.has(code)) return false;
         seen.add(code);
