@@ -68,6 +68,7 @@ import SalesCategoryWiseReportAllBranch from "./components/SalesCategoryWiseRepo
 import BpmnEditor from "./components/BpmnEditor";
 import StockTransferOutReport from "./components/StockTransferOutReport";
 import BranchAssignment from "./components/BranchAssignment";
+import BranchTransferAssignment from "./components/BranchTransferAssignment";
 import StockTransferInvoicePrint from "./components/StockTransferInvoicePrint";
 import StockTransferOutInvoice from "./components/StockTransferOutInvoice";
 import CategoryPriceEditDialog from "./components/CategoryPriceEditDialog";
@@ -171,6 +172,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/stocktransfer-out-report" element={<StockTransferOutReport />} />
             <Route path="/stocktransfer-in-report" element={<StockTransferInReport />} />
             <Route path="/branchassingment" element={<BranchAssignment />} />
+            <Route path="/branch-transfer-assignment" element={<BranchTransferAssignment />} />
             <Route path="/category-price-edit" element={<CategoryPriceEditDialog />} />
             <Route path="/kot" element={<KOTEntry />} />
               <Route path="/salestaxsummary" element={<SalesTaxSummary />} />

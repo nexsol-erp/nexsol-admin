@@ -85,7 +85,7 @@ export default function LoginPage({ onLoggedIn }) {
       >
         {/* Logo / app name */}
         <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <Title level={2} style={{ margin: 0, color: "#1677ff" }}>MapleERP</Title>
+          <Title level={2} style={{ margin: 0, color: "#1677ff" }}>TradeLink247</Title>
           <Text style={{ color: "#6b7280", fontSize: 13 }}>Point of Sale</Text>
         </div>
 

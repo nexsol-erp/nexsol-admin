@@ -190,6 +190,7 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
         { menuKey: "Branch Creation", label: t("4. Create Branches"),           link: "/branchcreationpage",  roles: ["admin"] },
         { menuKey: "User Creation",   label: t("5. Create Users"),              link: "/usercreationpage",    roles: ["admin"] },
         { menuKey: "Branch Assignment",label: t("6. Assign Branches & Roles"), link: "/branchassingment",    roles: ["admin"] },
+        { menuKey: "Transfer Branch Permissions", label: t("7. Transfer Branch Permissions"), link: "/branch-transfer-assignment", roles: ["admin"] },
       ],
     },
     {
