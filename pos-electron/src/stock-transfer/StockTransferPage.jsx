@@ -6,6 +6,7 @@ import { apiUrl } from "../utils/apiUrl";
 import { queueStockTransfer, getPendingStockCount, syncPendingStockTransfers } from "./offlineStockQueue";
 import { applySaleToCache } from "../cache/itemCache";
 import { buildTransferHtml } from "./transferPrint";
+import { generateTransferVoucherNumber } from "../utils/posDevice";
 
 const { Title, Text } = Typography;
 
@@ -295,17 +296,8 @@ export default function StockTransferPage({ onClose }) {
     }
 
     const headerId = crypto.randomUUID();
-    const now = new Date();
-    // HHmmss fits within Java Integer (max ~235959)
-    const numericVoucher = Number(
-      String(now.getHours()).padStart(2, "0") +
-      String(now.getMinutes()).padStart(2, "0") +
-      String(now.getSeconds()).padStart(2, "0")
-    );
-    // varchar(20) limit — keep format short: ST-{branch}-{HHmmss}
-    const voucherNumber = `ST-${fromBranch}-${numericVoucher}`.slice(0, 20);
-    // LocalDateTime does not accept trailing 'Z' — strip it
-    const voucherDate = now.toISOString().slice(0, 19);
+    const { voucherNumber, numericSeq: numericVoucher } = generateTransferVoucherNumber(fromBranch);
+    const voucherDate = new Date().toISOString().slice(0, 19);
     const body = {
       id: headerId,
       branch_code: fromBranch,

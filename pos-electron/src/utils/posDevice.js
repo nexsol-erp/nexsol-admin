@@ -129,6 +129,32 @@ export function generateVoucherNumber(branchCode) {
 }
 
 /**
+ * Generates the next unique voucher number for a stock transfer from the given
+ * branch. Uses its own counter key (stSeq_…) so the sequence is independent
+ * of POS invoices but follows the same format.
+ *
+ * Format:  ST/{fyShort}/{machineCode}/{seqNo padded to 6}
+ * Example: ST/2526/M01/000007
+ *
+ * Returns { voucherNumber: string, numericSeq: number }
+ */
+export function generateTransferVoucherNumber(branchCode) {
+  const machineCode = localStorage.getItem(`posMachineCode_${branchCode}`) || "M00";
+  const fyCode      = resolvedFyCode(branchCode);
+  const fyShort     = compactFy(fyCode);
+
+  const seqKey  = `stSeq_${branchCode}_${machineCode}_${fyCode}`;
+  const current = parseInt(localStorage.getItem(seqKey) || "0", 10);
+  const next    = current + 1;
+  localStorage.setItem(seqKey, String(next));
+
+  return {
+    voucherNumber: `ST/${fyShort}/${machineCode}/${String(next).padStart(6, "0")}`,
+    numericSeq:    next,
+  };
+}
+
+/**
  * Returns the stored machine info for a branch (for display / debugging).
  */
 export function getMachineInfo(branchCode) {
