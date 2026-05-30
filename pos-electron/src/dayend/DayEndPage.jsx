@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Button, DatePicker, InputNumber, Space, Table, Typography, message } from "antd";
 import dayjs from "dayjs";
 import { apiUrl } from "../utils/apiUrl";
@@ -34,6 +34,22 @@ export default function DayEndPage() {
   );
 
   const branchCode = String(globalThis.POS_BRANCH_CODE || localStorage.getItem("selectedBranchCode") || "").trim();
+  const [branchInfo, setBranchInfo] = useState(null);
+
+  useEffect(() => {
+    if (!branchCode) return;
+    const tenantId = localStorage.getItem("tenancyId") || "";
+    const token    = localStorage.getItem("jwtToken") || "";
+    fetch(apiUrl(`/api/${tenantId}/branches`), { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return;
+        const list = Array.isArray(data) ? data : (data?.branches ?? data?.data ?? []);
+        const found = list.find((b) => b.branchCode === branchCode) || null;
+        setBranchInfo(found);
+      })
+      .catch(() => {});
+  }, [branchCode]);
 
   const rows = useMemo(() => {
     return DENOMINATIONS.map((currency) => {
@@ -122,6 +138,25 @@ export default function DayEndPage() {
       records.push(localRecord);
       saveDayEndRecords(records);
       message.success("Day End completed successfully");
+
+      // Fetch sales summary then auto-print
+      let salesSummary = {};
+      try {
+        const sumRes = await fetch(
+          apiUrl(`/api/${tenantId}/day-end/summary/${branchCode}/${dateKey}`),
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (sumRes.ok) salesSummary = await sumRes.json();
+      } catch (_) {}
+
+      if (window.POS?.printHtml) {
+        const html = buildDayEndReportHtml({
+          branchInfo, branchCode, dateKey,
+          printedAt: new Date().toISOString(),
+          rows, grandTotal, salesSummary,
+        });
+        window.POS.printHtml({ html, silent: true, deviceName: "" }).catch(() => {});
+      }
     } catch (e) {
       message.error("Day End save failed: " + (e.message || "Unknown error"));
     } finally {
@@ -134,18 +169,52 @@ export default function DayEndPage() {
       message.error("Print API not available");
       return;
     }
+    const dateKey  = dayEndDate.format("YYYY-MM-DD");
+    const tenantId = localStorage.getItem("tenancyId") || "";
+    const token    = localStorage.getItem("jwtToken") || "";
+    const headers  = { Authorization: `Bearer ${token}` };
+
+    // Fetch saved day-end denomination rows from backend
+    let fetchedRows = [];
+    let fetchedTotal = 0;
+    try {
+      const detRes = await fetch(
+        apiUrl(`/api/${tenantId}/day-end/details/${branchCode}/${dateKey}`),
+        { headers }
+      );
+      if (detRes.ok) {
+        const data = await detRes.json();
+        if (Array.isArray(data) && data.length > 0) {
+          fetchedRows = data.map((e) => ({
+            currency: Number(e.currency || 0),
+            quantity: Number(e.quantity || 0),
+            amount:   Number(e.amount   || 0),
+          }));
+          fetchedTotal = fetchedRows.reduce((s, r) => s + r.amount, 0);
+        }
+      }
+    } catch (_) {}
+
+    // Fall back to in-memory state if nothing saved yet for this date
+    const printRows  = fetchedRows.length > 0 ? fetchedRows  : rows;
+    const printTotal = fetchedRows.length > 0 ? fetchedTotal : grandTotal;
+
+    let salesSummary = {};
+    try {
+      const sumRes = await fetch(
+        apiUrl(`/api/${tenantId}/day-end/summary/${branchCode}/${dateKey}`),
+        { headers }
+      );
+      if (sumRes.ok) salesSummary = await sumRes.json();
+    } catch (_) {}
 
     const html = buildDayEndReportHtml({
-      branchCode,
-      dateKey: dayEndDate.format("YYYY-MM-DD"),
+      branchInfo, branchCode, dateKey,
       printedAt: new Date().toISOString(),
-      rows,
-      grandTotal,
+      rows: printRows, grandTotal: printTotal, salesSummary,
     });
-
     try {
       await window.POS.printHtml({ html, silent: false, deviceName: "" });
-      message.success("Print sent");
     } catch (e) {
       message.error("Print failed: " + (e.message || "Unknown error"));
     }
@@ -211,45 +280,126 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;");
 }
 
-function buildDayEndReportHtml({ branchCode, dateKey, printedAt, rows, grandTotal }) {
-  const lines = rows
+function buildDayEndReportHtml({ branchInfo, branchCode, dateKey, printedAt, rows, grandTotal, salesSummary = {} }) {
+  const b = branchInfo || {};
+  const branchName = b.branchName || branchCode || "";
+  const addrParts  = [b.branchBuildingAddress, b.branchAddress1, b.branchState].filter(Boolean);
+  const phone      = b.branchStreetAddress || "";
+  const gst        = b.branchGst || "";
+
+  const addrHtml = addrParts.map((l) => `<div class="addr">${escapeHtml(l)}</div>`).join("");
+  const phoneHtml = phone ? `<div class="addr">Ph: ${escapeHtml(phone)}</div>` : "";
+  const gstHtml   = gst   ? `<div class="addr">GST: ${escapeHtml(gst)}</div>`  : "";
+
+  const printedDate = new Date(printedAt).toLocaleString("en-IN", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+
+  // Denomination rows (only non-zero)
+  const denomRows = rows
     .filter((r) => Number(r.quantity || 0) > 0)
-    .map(
-      (r) => `
+    .map((r) => `
       <tr>
-        <td>${escapeHtml(r.currency)}</td>
-        <td style="text-align:right">${Number(r.quantity || 0).toFixed(0)}</td>
-        <td style="text-align:right">${Number(r.amount || 0).toFixed(2)}</td>
-      </tr>
-    `
-    )
+        <td class="num">${escapeHtml(String(r.currency))}</td>
+        <td class="num">${Number(r.quantity || 0)}</td>
+        <td class="num">${Number(r.amount || 0).toFixed(2)}</td>
+      </tr>`)
     .join("");
 
-  return `
-  <html>
-    <body style="font-family: monospace; width: 300px;">
-      <div style="text-align:center;font-weight:bold;">DAY END COLLECTION REPORT</div>
-      <hr/>
-      <div>Branch: ${escapeHtml(branchCode || "-")}</div>
-      <div>Date: ${escapeHtml(dateKey)}</div>
-      <div>Printed: ${escapeHtml(new Date(printedAt).toLocaleString())}</div>
-      <hr/>
-      <table style="width:100%; font-size:12px;">
-        <thead>
-          <tr>
-            <th style="text-align:left">Currency</th>
-            <th style="text-align:right">Qty</th>
-            <th style="text-align:right">Amount</th>
-          </tr>
-        </thead>
-        <tbody>${lines}</tbody>
-      </table>
-      <hr/>
-      <div style="display:flex; justify-content:space-between; font-weight:bold;">
-        <span>Grand Total</span>
-        <span>${Number(grandTotal || 0).toFixed(2)}</span>
-      </div>
-    </body>
-  </html>
-  `;
+  // Sales summary from backend
+  const byMode       = Array.isArray(salesSummary.byMode) ? salesSummary.byMode : [];
+  const totalSales   = Number(salesSummary.totalSales   || 0);
+  const billCount    = Number(salesSummary.billCount    || 0);
+  const totalReceipts = Number(salesSummary.totalReceipts || 0);
+
+  const receiptRows = byMode.map((m) => `
+      <tr>
+        <td>${escapeHtml(String(m.receiptMode || ""))}</td>
+        <td class="num">${Number(m.amount || 0).toFixed(2)}</td>
+      </tr>`).join("");
+
+  const salesSection = byMode.length > 0 || totalSales > 0 ? `
+    <hr class="dash"/>
+    <div class="section-title">Sales Summary</div>
+    <table class="t">
+      <tbody>
+        <tr><td>Total Bills</td><td class="num">${billCount}</td></tr>
+        <tr class="bold-row"><td>Total Sales</td><td class="num">${totalSales.toFixed(2)}</td></tr>
+      </tbody>
+    </table>
+    <hr class="dash"/>
+    <div class="section-title">Receipt Mode Breakdown</div>
+    <table class="t">
+      <thead><tr><th>Mode</th><th class="num">Amount</th></tr></thead>
+      <tbody>
+        ${receiptRows}
+      </tbody>
+    </table>
+    <hr class="dash"/>
+    <div class="total-line"><span>Total Receipts</span><span>${totalReceipts.toFixed(2)}</span></div>` : "";
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  @page { margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11px;
+    width: 258px;
+    color: #000;
+    background: #fff;
+    padding: 6px 4px 6px 1px;
+  }
+  .shop-name { font-size: 13px; font-weight: bold; text-align: center; margin-bottom: 2px; }
+  .addr { font-size: 9px; text-align: center; line-height: 1.4; }
+  .report-title { text-align: center; font-size: 11px; font-weight: bold; letter-spacing: 1px; margin: 3px 0; }
+  .meta { font-size: 9px; display: flex; justify-content: space-between; margin: 2px 0; }
+  .section-title { font-size: 10px; font-weight: bold; margin: 3px 0 1px 0; }
+  hr.dash  { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+  hr.solid { border: none; border-top: 2px solid #000; margin: 4px 0; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 10px; }
+  table.t th { font-size: 10px; padding: 1px 2px; border-bottom: 1px dashed #000; }
+  table.t th.num { text-align: right; padding-right: 3px; }
+  table.t td { padding: 1px 2px; }
+  table.t td.num { text-align: right; padding-right: 3px; }
+  .total-line { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin: 3px 0; }
+  .bold-row td { font-weight: bold; border-top: 1px dashed #000; }
+  .footer { text-align: center; font-size: 9px; margin-top: 6px; }
+</style>
+</head>
+<body>
+  <div class="shop-name">${escapeHtml(branchName)}</div>
+  ${addrHtml}${phoneHtml}${gstHtml}
+  <hr class="solid"/>
+  <div class="report-title">DAY END COLLECTION REPORT</div>
+  <hr class="dash"/>
+  <div class="meta"><span>Branch: ${escapeHtml(branchCode)}</span><span>${escapeHtml(dateKey)}</span></div>
+  <div class="meta" style="justify-content:flex-end">Printed: ${escapeHtml(printedDate)}</div>
+  <hr class="dash"/>
+
+  <div class="section-title">Cash Denomination</div>
+  <table class="t">
+    <thead>
+      <tr>
+        <th class="num">Currency</th>
+        <th class="num">Qty</th>
+        <th class="num">Amount</th>
+      </tr>
+    </thead>
+    <tbody>${denomRows}</tbody>
+  </table>
+  <hr class="dash"/>
+  <div class="total-line"><span>Cash Total</span><span>${Number(grandTotal || 0).toFixed(2)}</span></div>
+
+  ${salesSection}
+
+  <hr class="solid"/>
+  <div class="footer">*** End of Day End Report ***</div>
+  <br/><br/>
+</body>
+</html>`;
 }
