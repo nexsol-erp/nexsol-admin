@@ -3,6 +3,7 @@ import { Button, DatePicker, Radio, Space, Table, Typography, message } from "an
 import { PrinterOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { apiUrl } from "../utils/apiUrl";
+import { decodeJwtPayload } from "../auth/auth";
 import { buildTransferHtml } from "./transferPrint";
 
 const { Title, Text } = Typography;
@@ -24,6 +25,26 @@ export default function StockTransferHistoryPage({ onClose }) {
   const tenantId = localStorage.getItem("tenancyId") || "";
   const token = localStorage.getItem("jwtToken") || "";
   const branchCode = String(globalThis.POS_BRANCH_CODE || localStorage.getItem("selectedBranchCode") || "").trim();
+  const payload = decodeJwtPayload(token) || {};
+  const username = String(payload.sub || payload.username || "");
+
+  const [transferBranchCodes, setTransferBranchCodes] = useState(null);
+
+  useEffect(() => {
+    if (!tenantId || !token || !username) { setTransferBranchCodes(null); return; }
+    fetch(apiUrl(`/api/${tenantId}/admin/users/${encodeURIComponent(username)}/transfer-branches`), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return;
+        const codes = Array.isArray(data)
+          ? data.filter((x) => typeof x === "string")
+          : Array.isArray(data.branches) ? data.branches.filter((x) => typeof x === "string") : [];
+        setTransferBranchCodes(codes.length ? new Set(codes) : null);
+      })
+      .catch(() => { setTransferBranchCodes(null); });
+  }, [tenantId, token, username]);
 
   useEffect(() => {
     if (!tenantId || !token) return;
@@ -87,8 +108,12 @@ export default function StockTransferHistoryPage({ onClose }) {
         totalAmount: v.lines.reduce((s, l) => s + l.amount, 0),
       }));
 
-      setVouchers(grouped);
-      if (!grouped.length) message.info("No stock transfers found for this date.");
+      const filtered = transferBranchCodes
+        ? grouped.filter((v) => transferBranchCodes.has(v.toBranchCode))
+        : grouped;
+
+      setVouchers(filtered);
+      if (!filtered.length) message.info("No stock transfers found for this date.");
     } catch (e) {
       message.error("Fetch failed: " + (e.message || "Unknown error"));
     } finally {

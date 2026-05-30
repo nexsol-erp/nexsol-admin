@@ -3,6 +3,7 @@ import { Badge, Button, Input, InputNumber, Modal, Radio, Select, Space, Table, 
 import { SyncOutlined } from "@ant-design/icons";
 import ItemLookupModal from "../components/ItemLookupModal";
 import { apiUrl } from "../utils/apiUrl";
+import { decodeJwtPayload } from "../auth/auth";
 import { queueStockTransfer, getPendingStockCount, syncPendingStockTransfers } from "./offlineStockQueue";
 import { applySaleToCache } from "../cache/itemCache";
 import { buildTransferHtml } from "./transferPrint";
@@ -62,9 +63,12 @@ export default function StockTransferPage({ onClose }) {
 
   const tenantId = localStorage.getItem("tenancyId") || "";
   const token = localStorage.getItem("jwtToken") || "";
+  const payload = decodeJwtPayload(token) || {};
+  const username = String(payload.sub || payload.username || "");
   const fromBranch = String(globalThis.POS_BRANCH_CODE || localStorage.getItem("selectedBranchCode") || "").trim();
 
   const [allBranches, setAllBranches] = useState([]);
+  const [transferBranchCodes, setTransferBranchCodes] = useState(null);
 
   const EXCLUDED_BRANCH_TYPES = new Set(["BAKERY_PROD", "BAKERY_BO"]);
 
@@ -90,13 +94,14 @@ export default function StockTransferPage({ onClose }) {
       .map((b) => String(b.branchCode ?? "").trim())
       .filter((code) => code && code !== fromBranch)
       .filter((code) => !allowedCodes || allowedCodes.has(code))
+      .filter((code) => !transferBranchCodes || transferBranchCodes.has(code))
       .filter((code) => {
         if (seen.has(code)) return false;
         seen.add(code);
         return true;
       })
       .map((code) => ({ value: code, label: code }));
-  }, [allBranches, fromBranch]);
+  }, [allBranches, fromBranch, transferBranchCodes]);
 
   useEffect(() => {
     setHoldRows(readHoldList());
@@ -115,6 +120,30 @@ export default function StockTransferPage({ onClose }) {
       })
       .catch(() => {});
   }, [tenantId, token]);
+
+  useEffect(() => {
+    if (!tenantId || !token || !username) {
+      setTransferBranchCodes(null);
+      return;
+    }
+
+    fetch(apiUrl(`/api/${tenantId}/admin/users/${encodeURIComponent(username)}/transfer-branches`), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return;
+        const codes = Array.isArray(data)
+          ? data.filter((x) => typeof x === "string")
+          : Array.isArray(data.branches)
+            ? data.branches.filter((x) => typeof x === "string")
+            : [];
+        setTransferBranchCodes(codes.length ? new Set(codes) : null);
+      })
+      .catch(() => {
+        setTransferBranchCodes(null);
+      });
+  }, [tenantId, token, username]);
 
   useEffect(() => {
     if (!toBranchCode) return;

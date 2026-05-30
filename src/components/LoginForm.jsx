@@ -146,7 +146,7 @@ const LoginForm = ({ onLogin }) => {
       <AppBar position="static" color="default">
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            MapleERP
+            TradeLink247
           </Typography>
           <Button
             color="primary"
