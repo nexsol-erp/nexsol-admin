@@ -104,7 +104,9 @@ const UserCreationPage = () => {
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ username, userId, password, branchCode, role }),
       });
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = { success: false, message: text }; }
       if (data.success) {
         alert("User created successfully!");
         setUsername(""); setUserId(""); setPassword(""); setBranchCode(""); setRole("user");

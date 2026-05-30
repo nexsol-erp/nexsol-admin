@@ -141,7 +141,10 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     [tendered, totalAmount]
   );
 
+  const [dayEndDone, setDayEndDone] = useState(false);
+
   const canSave = useMemo(() => {
+    if (dayEndDone) return false;
     const bill = Number(totalAmount) || 0;
     const rec  = Number(totalReceived) || 0;
     const ten  = Number(tendered) || 0;
@@ -149,7 +152,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     if (Math.abs(rec - bill) > 0.001) return false;
     if (ten > 0 && ten < bill) return false;
     return true;
-  }, [totalAmount, totalReceived, tendered]);
+  }, [dayEndDone, totalAmount, totalReceived, tendered]);
 
   // Auto-set CASH receipt
   useEffect(() => {
@@ -192,6 +195,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   const onSave = async () => {
     log("onSave called | canSave:", canSave, "| items:", items.length, "| branch:", selectedBranchCode);
+    if (dayEndDone) { message.error("Day End is already completed for today. Billing is not allowed."); return; }
     if (!canSave) { warn("onSave blocked: canSave=false"); return; }
     if (!selectedBranchCode) { message.warning("Select branch code"); return; }
 
@@ -335,6 +339,13 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   };
 
   // Branch info (name, address, GST) for receipt header
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const records = JSON.parse(localStorage.getItem("day_end_records") || "[]");
+    const done = records.some((r) => r.dateKey === today && r.branchCode === selectedBranchCode);
+    setDayEndDone(done);
+  }, [selectedBranchCode]);
+
   const [branchInfo, setBranchInfo] = useState(null);
   useEffect(() => {
     if (!selectedBranchCode) { log("branchInfo: no selectedBranchCode, skipping fetch"); return; }
@@ -493,6 +504,16 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
           </Tooltip>
         )}
       </div>
+
+      {/* ── Day End block banner ── */}
+      {dayEndDone && (
+        <div style={{
+          background: "#ff4d4f", color: "#fff", padding: "4px 12px",
+          fontSize: 13, fontWeight: "bold", textAlign: "center", flexShrink: 0,
+        }}>
+          Day End completed for today — Billing is not allowed
+        </div>
+      )}
 
       {/* ── Main two-panel body ── */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
