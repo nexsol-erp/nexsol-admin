@@ -120,7 +120,10 @@ const AIDashboardPage = () => {
     try {
       const res = await axios.get(`${AI}/recommendations?horizon=${horizon}`);
       setRecommendations(res.data || []);
-    } catch {
+      setError(null);
+    } catch (err) {
+      const detail = err?.response?.data?.detail || err?.message || "Unknown error";
+      setError(`Recommendations failed: ${detail}`);
       setRecommendations([]);
     } finally {
       setLoading((l) => ({ ...l, recs: false }));

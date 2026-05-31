@@ -87,6 +87,7 @@ import "./i18n"; // i18n config
 import KOTEntry from "./components/KOTEntry";
 import GoodsReceiptForm from "./components/GoodsReceiptForm";
 import ReceiptModePage from "./components/ReceiptModePage";
+import UpiConfigPage from "./components/UpiConfigPage";
 import BranchStockViewReport from "./components/BranchStockViewReport";
 import ItemTransferReport from "./components/ItemTransferReport";
 import AIDashboardPage from "./components/AIDashboardPage";
@@ -193,6 +194,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/production-execution" element={<ProductionExecutionPage />} />
 <Route path="/goodsreceipt" element={<GoodsReceiptForm />} />
 <Route path="/receipt-modes" element={<ReceiptModePage />} />
+<Route path="/upi-config" element={<UpiConfigPage />} />
 <Route path="/branch-stock-view" element={<BranchStockViewReport />} />
 <Route path="/item-transfer-report" element={<ItemTransferReport />} />
 <Route path="/ai-dashboard" element={<AIDashboardPage />} />
