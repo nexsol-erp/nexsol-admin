@@ -31,10 +31,12 @@ import {
   Typography,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+import DocumentScannerIcon from "@mui/icons-material/DocumentScanner";
 import EditIcon from "@mui/icons-material/Edit";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import SearchIcon from "@mui/icons-material/Search";
 import { getItems } from "../services/apiservice";
+import InvoiceReaderDialog from "./InvoiceReaderDialog";
 
 function fmtDate(dt) {
   if (!dt) return "";
@@ -157,6 +159,7 @@ export default function PurchaseEntryForm() {
 
   // Edit mode
   const [editingId, setEditingId] = useState(null);
+  const [scanOpen, setScanOpen] = useState(false);
   const [loadOpen, setLoadOpen] = useState(false);
   const [loadFromDate, setLoadFromDate] = useState(
     () => new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
@@ -438,6 +441,15 @@ export default function PurchaseEntryForm() {
           <Button
             variant="outlined"
             size="small"
+            color="secondary"
+            startIcon={<DocumentScannerIcon />}
+            onClick={() => setScanOpen(true)}
+          >
+            Scan Invoice
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
             startIcon={<EditIcon />}
             onClick={() => { setLoadOpen(true); setPurchaseList([]); }}
           >
@@ -691,6 +703,33 @@ export default function PurchaseEntryForm() {
         />
       </Stack>
 
+
+      {/* ── Invoice Reader dialog ── */}
+      <InvoiceReaderDialog
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        itemList={itemList}
+        onApply={({ supplierName: sn, supplierInvNo: inv, supplierInvDate: dt, items }) => {
+          if (sn) setSupplierName(sn);
+          if (inv) setSupplierInvNo(inv);
+          if (dt) setSupplierInvDate(dt);
+          if (items && items.length) {
+            setRows((prev) => {
+              const merged = [...prev];
+              for (const it of items) {
+                const idx = merged.findIndex((r) => r._id === it._id);
+                if (idx >= 0) {
+                  merged[idx] = calcRow({ ...merged[idx], quantity: merged[idx].quantity + it.quantity });
+                } else {
+                  merged.push(calcRow(it));
+                }
+              }
+              return merged;
+            });
+            notify(`${items.length} item(s) loaded from invoice`, "success");
+          }
+        }}
+      />
 
       {/* ── Load for Edit dialog ── */}
       <Dialog open={loadOpen} onClose={() => setLoadOpen(false)} maxWidth="md" fullWidth>
