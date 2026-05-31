@@ -90,6 +90,7 @@ import ReceiptModePage from "./components/ReceiptModePage";
 import UpiConfigPage from "./components/UpiConfigPage";
 import TermsAndConditionsPage from "./components/TermsAndConditionsPage";
 import RefundPolicyPage from "./components/RefundPolicyPage";
+import PrivacyPolicyPage from "./components/PrivacyPolicyPage";
 import BranchStockViewReport from "./components/BranchStockViewReport";
 import ItemTransferReport from "./components/ItemTransferReport";
 import AIDashboardPage from "./components/AIDashboardPage";
@@ -205,6 +206,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/role-management" element={<RoleManagementPage />} />
 <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
 <Route path="/refund-policy" element={<RefundPolicyPage />} />
+<Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
 
 
 

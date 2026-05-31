@@ -412,6 +412,27 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
       link: "/help",
       roles: ["user", "admin", "manager"],
     },
+    {
+      menuKey: "Terms & Conditions",
+      label: t("Terms & Conditions"),
+      icon: <Description />,
+      link: "/terms-and-conditions",
+      roles: ["user", "admin", "manager"],
+    },
+    {
+      menuKey: "Privacy Policy",
+      label: t("Privacy Policy"),
+      icon: <Description />,
+      link: "/privacy-policy",
+      roles: ["user", "admin", "manager"],
+    },
+    {
+      menuKey: "Refund Policy",
+      label: t("Refund Policy"),
+      icon: <Description />,
+      link: "/refund-policy",
+      roles: ["user", "admin", "manager"],
+    },
   ];
 
   // Auto-open submenus that contain the active route
