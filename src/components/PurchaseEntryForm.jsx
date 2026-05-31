@@ -709,6 +709,7 @@ export default function PurchaseEntryForm() {
         open={scanOpen}
         onClose={() => setScanOpen(false)}
         itemList={itemList}
+        initialSupplierName={supplierName}
         onApply={({ supplierName: sn, supplierInvNo: inv, supplierInvDate: dt, items }) => {
           if (sn) setSupplierName(sn);
           if (inv) setSupplierInvNo(inv);

@@ -127,7 +127,7 @@ function DropZone({ onFile }) {
 
 // ── main component ───────────────────────────────────────────────────────────
 
-export default function InvoiceReaderDialog({ open, onClose, onApply, itemList = [] }) {
+export default function InvoiceReaderDialog({ open, onClose, onApply, itemList = [], initialSupplierName = "" }) {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null); // object URL for images
   const [scanning, setScanning] = useState(false);
@@ -182,8 +182,12 @@ export default function InvoiceReaderDialog({ open, onClose, onApply, itemList =
     const formData = new FormData();
     formData.append("file", file);
 
+    // Pass known supplier name so the backend can fetch few-shot examples
+    const knownSupplier = (supplierName || initialSupplierName || "").trim();
+    const qs = knownSupplier ? `?supplier_name=${encodeURIComponent(knownSupplier)}` : "";
+
     try {
-      const res = await fetch(`/ai-service/${tenancyId}/read-invoice`, {
+      const res = await fetch(`/ai-service/${tenancyId}/read-invoice${qs}`, {
         method: "POST",
         body: formData,
       });
@@ -257,12 +261,27 @@ export default function InvoiceReaderDialog({ open, onClose, onApply, itemList =
       };
     });
 
-    onApply({
+    // Save this confirmed extraction as a few-shot example for future scans
+    const tenancyId = localStorage.getItem("tenancyId");
+    const correction = {
       supplierName,
       supplierInvNo,
       supplierInvDate,
-      items,
-    });
+      items: rows.map((r) => ({
+        itemName: r.matchedItem ? r.matchedItem.itemName : r.itemName,
+        quantity: parseFloat(r.quantity) || 1,
+        rateIncludingTax: parseFloat(r.rateIncludingTax) || 0,
+        taxRate: parseFloat(r.taxRate) || 0,
+        totalAmount: parseFloat(r.totalAmount) || 0,
+      })),
+    };
+    fetch(`/ai-service/${tenancyId}/invoice-correction`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(correction),
+    }).catch(() => {}); // fire-and-forget — don't block the user
+
+    onApply({ supplierName, supplierInvNo, supplierInvDate, items });
     handleClose();
   };
 
