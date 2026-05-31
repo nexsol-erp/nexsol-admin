@@ -88,6 +88,8 @@ import KOTEntry from "./components/KOTEntry";
 import GoodsReceiptForm from "./components/GoodsReceiptForm";
 import ReceiptModePage from "./components/ReceiptModePage";
 import UpiConfigPage from "./components/UpiConfigPage";
+import TermsAndConditionsPage from "./components/TermsAndConditionsPage";
+import RefundPolicyPage from "./components/RefundPolicyPage";
 import BranchStockViewReport from "./components/BranchStockViewReport";
 import ItemTransferReport from "./components/ItemTransferReport";
 import AIDashboardPage from "./components/AIDashboardPage";
@@ -201,6 +203,8 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/menu-master" element={<MenuMasterPage />} />
 <Route path="/role-menu" element={<RoleMenuPage />} />
 <Route path="/role-management" element={<RoleManagementPage />} />
+<Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
+<Route path="/refund-policy" element={<RefundPolicyPage />} />
 
 
 
