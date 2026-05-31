@@ -2,6 +2,8 @@ const { app, BrowserWindow, ipcMain, Menu, session, net, shell, screen } = requi
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
+let QRCode = null;
+try { QRCode = require("qrcode"); } catch (_) { console.warn("qrcode module not available — run npm install"); }
 
 // Set custom userData path to avoid cache permission issues
 if (!app.isPackaged) {
@@ -61,6 +63,7 @@ ipcMain.handle("log:write", (_evt, level, message) => {
 });
 
 let win;
+let customerDisplayWin = null;
 
 // Reads pos-config.json — next to the .exe when packaged, or in project root in dev.
 function getPosConfig() {
@@ -325,6 +328,160 @@ ipcMain.handle("wb:close-port", async () => {
     wbSerialPort = null;
   } catch (_) {}
   return { ok: true };
+});
+
+// ── UPI Customer Display ──────────────────────────────────────────────────────
+
+function buildCustomerDisplayHtml({ qrDataUrl, amount, shopName }) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0b3a75;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    height: 100vh; overflow: hidden;
+    user-select: none;
+  }
+  .shop-name { font-size: 28px; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px; opacity: 0.9; }
+  .subtitle  { font-size: 16px; opacity: 0.65; margin-bottom: 32px; }
+  .qr-card {
+    background: #fff; border-radius: 16px; padding: 24px;
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+  }
+  .qr-card img { width: 280px; height: 280px; display: block; }
+  .amount-label { font-size: 14px; color: #555; font-weight: 600; }
+  .amount-value { font-size: 48px; font-weight: 800; color: #0b3a75; letter-spacing: -1px; }
+  .instruction  { font-size: 14px; color: #666; margin-top: 4px; }
+  .upi-apps { display: flex; gap: 12px; align-items: center; margin-top: 4px; }
+  .upi-badge {
+    background: #f5f5f5; border-radius: 8px; padding: 4px 10px;
+    font-size: 12px; color: #333; font-weight: 600;
+  }
+  /* ── Success overlay ── */
+  .success-overlay {
+    display: none; position: fixed; inset: 0;
+    background: #00b96b;
+    flex-direction: column; align-items: center; justify-content: center;
+    animation: fadeIn 0.4s ease;
+  }
+  .success-overlay.show { display: flex; }
+  .success-icon { font-size: 100px; margin-bottom: 24px; }
+  .success-text { font-size: 48px; font-weight: 800; }
+  .success-sub  { font-size: 22px; opacity: 0.85; margin-top: 12px; }
+  @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+  /* ── Waiting pulse ── */
+  .waiting {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 20px; font-size: 15px; opacity: 0.75;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #90caf9;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+</style>
+</head>
+<body>
+  <div class="shop-name">${shopName || "Store"}</div>
+  <div class="subtitle">Scan QR to pay</div>
+  <div class="qr-card">
+    <img src="${qrDataUrl}" alt="UPI QR" />
+    <div class="amount-label">Amount to Pay</div>
+    <div class="amount-value">&#8377;${Number(amount).toFixed(2)}</div>
+    <div class="instruction">Scan with any UPI app</div>
+    <div class="upi-apps">
+      <span class="upi-badge">GPay</span>
+      <span class="upi-badge">PhonePe</span>
+      <span class="upi-badge">Paytm</span>
+      <span class="upi-badge">BHIM</span>
+    </div>
+  </div>
+  <div class="waiting">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    <span>Waiting for payment</span>
+  </div>
+
+  <div class="success-overlay" id="successOverlay">
+    <div class="success-icon">&#10004;</div>
+    <div class="success-text">Payment Received!</div>
+    <div class="success-sub">&#8377;${Number(amount).toFixed(2)} &mdash; Thank you</div>
+  </div>
+
+  <script>
+    // Main process sends this event when PhonePe confirms payment
+    const { ipcRenderer } = require("electron");
+    ipcRenderer.on("upi:payment-success", () => {
+      document.getElementById("successOverlay").classList.add("show");
+    });
+  </script>
+</body>
+</html>`;
+}
+
+ipcMain.handle("upi:show-customer-display", async (_evt, { qrData, amount, shopName }) => {
+  try {
+    if (!QRCode) { console.warn("upi:show-customer-display — qrcode module not loaded"); return { error: "qrcode not available" }; }
+
+    // Find the secondary display; fall back to primary if only one monitor
+    const displays = screen.getAllDisplays();
+    const primary  = screen.getPrimaryDisplay();
+    const secondary = displays.find((d) => d.id !== primary.id) || primary;
+    const { x, y, width, height } = secondary.bounds;
+
+    const qrDataUrl = await QRCode.toDataURL(qrData, { width: 320, margin: 1, color: { dark: "#0b3a75", light: "#ffffff" } });
+
+    if (customerDisplayWin && !customerDisplayWin.isDestroyed()) {
+      customerDisplayWin.close();
+    }
+
+    customerDisplayWin = new BrowserWindow({
+      x, y, width, height,
+      fullscreen: secondary.id !== primary.id, // fullscreen only on external monitor
+      frame: false,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      webPreferences: {
+        contextIsolation: false,   // needed so inline <script> can require("electron")
+        nodeIntegration: true,
+      },
+    });
+
+    const html = buildCustomerDisplayHtml({ qrDataUrl, amount, shopName });
+    customerDisplayWin.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
+    customerDisplayWin.on("closed", () => { customerDisplayWin = null; });
+
+    console.log("upi:show-customer-display | display:", secondary.id, "| amount:", amount);
+    return { ok: true };
+  } catch (e) {
+    console.error("upi:show-customer-display error:", e.message);
+    return { error: e.message };
+  }
+});
+
+ipcMain.handle("upi:payment-success", async () => {
+  if (customerDisplayWin && !customerDisplayWin.isDestroyed()) {
+    customerDisplayWin.webContents.send("upi:payment-success");
+    setTimeout(() => {
+      if (customerDisplayWin && !customerDisplayWin.isDestroyed()) customerDisplayWin.close();
+      customerDisplayWin = null;
+    }, 3000);
+  }
+});
+
+ipcMain.handle("upi:hide-customer-display", async () => {
+  if (customerDisplayWin && !customerDisplayWin.isDestroyed()) {
+    customerDisplayWin.close();
+    customerDisplayWin = null;
+  }
 });
 
 // ── Auto-updater ─────────────────────────────────────────────────────────────

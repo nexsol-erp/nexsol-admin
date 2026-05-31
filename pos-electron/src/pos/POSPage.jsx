@@ -3,6 +3,7 @@ import { Button, Input, InputNumber, Select, Table, message, Tag, Tooltip } from
 import { SyncOutlined } from "@ant-design/icons";
 import { logout } from "../auth/auth";
 import ItemLookupModal from "../components/ItemLookupModal";
+import UpiPaymentModal from "./UpiPaymentModal";
 import { applySaleToCache, findItemByName } from "../cache/itemCache";
 import { evaluateSchemes, buildOfferRows } from "./schemeEngine";
 import { log, warn, error as logError } from "../utils/logger";
@@ -142,6 +143,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   );
 
   const [dayEndDone, setDayEndDone] = useState(false);
+  const [upiSession, setUpiSession] = useState({ open: false, merchantTransactionId: null, amount: 0, qrData: "" });
 
   const canSave = useMemo(() => {
     if (dayEndDone) return false;
@@ -192,6 +194,38 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   };
 
   const deleteItem = (key) => setItems((p) => p.filter((r) => r.key !== key));
+
+  const initiateUpiPayment = async (amount) => {
+    const tenantId  = localStorage.getItem("tenancyId") || "";
+    const token     = localStorage.getItem("jwtToken") || "";
+    const { voucherNumber } = generateVoucherNumber(selectedBranchCode);
+    try {
+      const res = await fetch(`/api/${tenantId}/upi/initiate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ amount, voucherNumber, branchCode: selectedBranchCode }),
+      });
+      if (!res.ok) throw new Error(`UPI initiate failed: ${res.status}`);
+      const { merchantTransactionId, qrData } = await res.json();
+
+      // Open customer display on second monitor
+      await window.POS?.upi?.showCustomerDisplay?.({
+        qrData,
+        amount,
+        shopName: branchInfo?.branchName || "",
+      });
+
+      // Set UPI receipt amount and open cashier-side modal
+      setReceipts((prev) =>
+        prev.map((r) =>
+          r.receipt_mode.toUpperCase() === "UPI" ? { ...r, amount: round2n(amount) } : { ...r, amount: 0 }
+        )
+      );
+      setUpiSession({ open: true, merchantTransactionId, amount, qrData });
+    } catch (e) {
+      message.error("Could not initiate UPI payment: " + e.message);
+    }
+  };
 
   const onSave = async () => {
     log("onSave called | canSave:", canSave, "| items:", items.length, "| branch:", selectedBranchCode);
@@ -562,7 +596,17 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             pagination={false}
             rowKey="key"
             showHeader
-            onRow={(record) => ({ onClick: () => setSingleReceiptToTotal(record.receipt_mode) })}
+            onRow={(record) => ({
+              onClick: () => {
+                if (record.receipt_mode.toUpperCase() === "UPI") {
+                  if (totalAmount <= 0) { message.warning("Add items before UPI payment"); return; }
+                  initiateUpiPayment(round2n(totalAmount));
+                } else {
+                  setSingleReceiptToTotal(record.receipt_mode);
+                }
+              },
+              style: record.receipt_mode.toUpperCase() === "UPI" ? { cursor: "pointer", background: "#e6f4ff" } : { cursor: "pointer" },
+            })}
           />
 
           {/* Payment totals */}
@@ -703,6 +747,21 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
           />
         </div>
       </div>
+
+      <UpiPaymentModal
+        open={upiSession.open}
+        amount={upiSession.amount}
+        qrData={upiSession.qrData}
+        merchantTransactionId={upiSession.merchantTransactionId}
+        onSuccess={() => {
+          setUpiSession({ open: false, merchantTransactionId: null, amount: 0, qrData: "" });
+          onSave();
+        }}
+        onCancel={() => {
+          setUpiSession({ open: false, merchantTransactionId: null, amount: 0, qrData: "" });
+          setReceipts((prev) => prev.map((r) => ({ ...r, amount: 0 })));
+        }}
+      />
 
       <ItemLookupModal
         open={lookupOpen}
