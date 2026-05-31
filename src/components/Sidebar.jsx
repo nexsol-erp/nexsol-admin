@@ -324,6 +324,7 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
       submenu: [
         { menuKey: "Financial Year Setup", label: t("Financial Year Setup"), link: "/financialyearpage", roles: ["admin", "franchiseeuser"] },
         { menuKey: "Receipt Modes", label: t("Receipt Modes"), link: "/receipt-modes", roles: ["admin"] },
+        { menuKey: "UPI Payment Setup", label: t("UPI Payment Setup"), link: "/upi-config", roles: ["admin"] },
         { menuKey: "Item Search", label: t("Item Search"), link: "/itemsearch", roles: ["admin", "user", "cgn", "franchiseeuser"] },
         { menuKey: "Item Creation", label: t("Item Creation"), link: "/createitemmaster", roles: ["admin", "user"] },
         { menuKey: "Price Edit Category Wise", label: t("Price Edit Category Wise"), link: "/category-price-edit", roles: ["admin", "user"] },

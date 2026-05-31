@@ -35,6 +35,13 @@ contextBridge.exposeInMainWorld("POS", {
     ipcRenderer.once("update:error", (_evt, msg) => cb(msg));
   },
 
+  // UPI customer display (second monitor)
+  upi: {
+    showCustomerDisplay: (payload) => ipcRenderer.invoke("upi:show-customer-display", payload),
+    paymentSuccess: () => ipcRenderer.invoke("upi:payment-success"),
+    hideCustomerDisplay: () => ipcRenderer.invoke("upi:hide-customer-display"),
+  },
+
   // WeighBridge serial port
   wb: {
     listPorts: () => ipcRenderer.invoke("wb:list-ports"),
