@@ -19,7 +19,9 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const qtyInputRefs = useRef({});
   const lastActivityRef = useRef(Date.now());
   const pendingQtyFocusKey = useRef(null);
+  const savingRef = useRef(false);
 
+  const [isSaving, setIsSaving] = useState(false);
   const [customerMobile, setCustomerMobile] = useState("");
   const [salesmanCode, setSalesmanCode] = useState("");
   const [salesmanName, setSalesmanName] = useState("");
@@ -229,9 +231,12 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   const onSave = async () => {
     log("onSave called | canSave:", canSave, "| items:", items.length, "| branch:", selectedBranchCode);
+    if (savingRef.current) { warn("onSave blocked: already saving"); return; }
     if (dayEndDone) { message.error("Day End is already completed for today. Billing is not allowed."); return; }
     if (!canSave) { warn("onSave blocked: canSave=false"); return; }
     if (!selectedBranchCode) { message.warning("Select branch code"); return; }
+    savingRef.current = true;
+    setIsSaving(true);
 
     const tenantId  = localStorage.getItem("tenancyId") || "79001a";
     const token     = localStorage.getItem("jwtToken") || "";
@@ -369,6 +374,9 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       } else {
         message.error("Save failed: " + (e.message || "Unknown error"));
       }
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
     }
   };
 
@@ -655,16 +663,16 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             <button
               ref={saveButtonRef}
               onClick={onSave}
-              disabled={!canSave}
+              disabled={!canSave || isSaving}
               style={{
                 flex: 1, height: 44, fontSize: 17, fontWeight: "bold",
-                background: canSave ? "#ffc8ff" : "#c8c8c8",
+                background: canSave && !isSaving ? "#ffc8ff" : "#c8c8c8",
                 border: "2px outset #ccc",
-                cursor: canSave ? "pointer" : "not-allowed",
+                cursor: canSave && !isSaving ? "pointer" : "not-allowed",
                 color: "#000",
               }}
             >
-              Save
+              {isSaving ? "Saving…" : "Save"}
             </button>
             <button
               onClick={() => { logout(); onLogout?.(); }}

@@ -76,6 +76,24 @@ function normalizeItem(x) {
   };
 }
 
+// Directly set availableQty in cache from a physical stock count.
+// Safer than relying on loadAllItemsToCache because the backend groups by batchCode;
+// if the adjustment entry uses a different batchCode than the original stock, the
+// last-batch-wins bulkPut can ignore the adjustment.
+export async function applyPhysicalStockToCache(lines = []) {
+  if (!Array.isArray(lines) || !lines.length) return;
+  await db.transaction("rw", db.items, async () => {
+    for (const line of lines) {
+      const itemId = String(line.itemId ?? "").trim();
+      const qty = Number(line.qty ?? 0);
+      if (!itemId) continue;
+      const item = await db.items.get(itemId);
+      if (!item) continue;
+      await db.items.put({ ...item, availableQty: qty });
+    }
+  });
+}
+
 export async function clearItemCache() {
   await db.transaction("rw", db.items, db.meta, async () => {
     await db.items.clear();
@@ -91,7 +109,7 @@ export async function hasCache() {
 
 export async function loadAllItemsToCache({ pageSize = 500, onProgress } = {}) {
   console.log("loadAllItemsToCache started");
-  
+
   // wipe old
   await db.transaction("rw", db.items, db.meta, async () => {
     await db.items.clear();
@@ -101,29 +119,51 @@ export async function loadAllItemsToCache({ pageSize = 500, onProgress } = {}) {
 
   let page = 0;
   let total = 0;
-  let loaded = 0;
+  // Collect every raw row first so we can aggregate across batches correctly.
+  // The server query groups by (itemId, batchCode, expiry), so one item can appear in
+  // multiple rows (e.g. one batch with availableQty=2 and another with -1 from a
+  // stock adjustment). bulkPut last-batch-wins would store 2 instead of the correct 1.
+  const allRows = [];
 
   while (true) {
-    // Use empty query parameter to get all items (query=)
     const data = await fetchItemsPage({ query: "", page, size: pageSize });
 
     const content = Array.isArray(data?.content) ? data.content : [];
     total = Number(data?.totalElements || 0);
 
     const rows = content.map(normalizeItem).filter((r) => r.itemId);
-    
-    console.log("Page", page, "loaded", rows.length, "items");
+    allRows.push(...rows);
+    console.log("Page", page, "loaded", rows.length, "rows (running total:", allRows.length, ")");
 
-    await db.items.bulkPut(rows);
-    loaded += rows.length;
-
-    onProgress?.({ loaded, total, page });
+    onProgress?.({ loaded: allRows.length, total, page });
 
     const last = Boolean(data?.last);
     if (last || rows.length === 0) break;
-
     page += 1;
   }
+
+  // Aggregate per itemId: sum availableQty across all (batchCode, expiry) groups.
+  // This matches sum(qtyIn) - sum(qtyOut) from item_batch_mst, which is the true stock.
+  const byItemId = new Map();
+  for (const row of allRows) {
+    if (byItemId.has(row.itemId)) {
+      const existing = byItemId.get(row.itemId);
+      const a = Number(existing.availableQty);
+      const b = Number(row.availableQty);
+      existing.availableQty =
+        Number.isFinite(a) && Number.isFinite(b) ? a + b
+        : Number.isFinite(a) ? a
+        : Number.isFinite(b) ? b
+        : null;
+    } else {
+      byItemId.set(row.itemId, { ...row });
+    }
+  }
+
+  const aggregated = Array.from(byItemId.values());
+  await db.items.bulkPut(aggregated);
+  const loaded = aggregated.length;
+  console.log("loadAllItemsToCache: aggregated", allRows.length, "rows →", loaded, "unique items");
 
   await db.transaction("rw", db.meta, async () => {
     await db.meta.put({ key: "items_loaded", value: "1" });
@@ -131,7 +171,7 @@ export async function loadAllItemsToCache({ pageSize = 500, onProgress } = {}) {
     await db.meta.put({ key: "items_loaded_at", value: new Date().toISOString() });
   });
 
-  console.log("loadAllItemsToCache completed. Total items loaded:", loaded);
+  console.log("loadAllItemsToCache completed. Unique items:", loaded);
   return { loaded, total };
 }
 
