@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Menu, Select, Typography, message } from "antd";
+import { Button, Menu, Popconfirm, Select, Typography, message } from "antd";
 import POSPage from "./pos/POSPage";
 import LoginPage from "./auth/LoginPage";
 import DayEndPage from "./dayend/DayEndPage";
@@ -12,7 +12,7 @@ import KOTPage from "./pos/KOTPage";
 import SalesmanReportPage from "./pos/SalesmanReportPage";
 import UpdateChecker from "./components/UpdateChecker";
 import { isLoggedIn, logout } from "./auth/auth";
-import { hasCache, loadAllItemsToCache } from "./cache/itemCache";
+import { clearItemCache, hasCache, loadAllItemsToCache } from "./cache/itemCache";
 import { registerMachine } from "./utils/posDevice";
 import { log } from "./utils/logger";
 
@@ -45,6 +45,7 @@ export default function App() {
     return saved;
   });
   const [cacheLoading, setCacheLoading] = useState(false);
+  const [cacheClearing, setCacheClearing] = useState(false);
   const [kotPrefillItems, setKotPrefillItems] = useState(null);
 
   const prevBranchRef = useRef(null);
@@ -100,6 +101,18 @@ export default function App() {
       message.error(e.message || "Failed to load item cache");
     } finally {
       setCacheLoading(false);
+    }
+  };
+
+  const handleClearCache = async () => {
+    setCacheClearing(true);
+    try {
+      await clearItemCache();
+      message.success("Stock cache cleared. Press Refresh to reload.");
+    } catch (e) {
+      message.error("Failed to clear cache: " + (e.message || "Unknown error"));
+    } finally {
+      setCacheClearing(false);
     }
   };
 
@@ -168,6 +181,18 @@ export default function App() {
               <Button size="small" loading={cacheLoading} onClick={reloadCache}>
                 Refresh
               </Button>
+              <Popconfirm
+                title="Clear stock cache?"
+                description="Cached stock quantities will be wiped. Press Refresh afterwards to reload."
+                onConfirm={handleClearCache}
+                okText="Clear"
+                okButtonProps={{ danger: true }}
+                cancelText="Cancel"
+              >
+                <Button size="small" danger loading={cacheClearing}>
+                  Clear Cache
+                </Button>
+              </Popconfirm>
               <Button
                 size="small"
                 danger
