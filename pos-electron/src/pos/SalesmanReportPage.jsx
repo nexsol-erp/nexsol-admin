@@ -19,44 +19,73 @@ function escapeHtml(s) {
 }
 
 function buildPrintHtml({ branchCode, dateKey, rows, totalBills, totalAmount }) {
+  const printedDate = new Date().toLocaleString("en-IN", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+
   const lines = rows
-    .map(
-      (r) => `
+    .map((r) => `
       <tr>
         <td>${escapeHtml(r.salesmanName)}</td>
-        <td style="text-align:right">${r.totalBills}</td>
-        <td style="text-align:right">${round2(r.totalAmount).toFixed(2)}</td>
-      </tr>`
-    )
+        <td class="num">${r.totalBills}</td>
+        <td class="num">${round2(r.totalAmount).toFixed(2)}</td>
+      </tr>`)
     .join("");
 
-  return `
-  <html>
-    <body style="font-family: monospace; width: 300px;">
-      <div style="text-align:center;font-weight:bold;">SALESMAN SALES REPORT</div>
-      <hr/>
-      <div>Branch: ${escapeHtml(branchCode || "-")}</div>
-      <div>Date: ${escapeHtml(dateKey)}</div>
-      <div>Printed: ${new Date().toLocaleString()}</div>
-      <hr/>
-      <table style="width:100%; font-size:12px;">
-        <thead>
-          <tr>
-            <th style="text-align:left">Salesman</th>
-            <th style="text-align:right">Bills</th>
-            <th style="text-align:right">Amount</th>
-          </tr>
-        </thead>
-        <tbody>${lines}</tbody>
-      </table>
-      <hr/>
-      <div style="display:flex; justify-content:space-between; font-weight:bold;">
-        <span>Total</span>
-        <span>${totalBills} bills</span>
-        <span>${round2(totalAmount).toFixed(2)}</span>
-      </div>
-    </body>
-  </html>`;
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  @page { margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11px;
+    width: 258px;
+    color: #000;
+    background: #fff;
+    padding: 6px 4px 6px 1px;
+  }
+  .report-title { text-align: center; font-size: 11px; font-weight: bold; letter-spacing: 1px; margin: 3px 0; }
+  .meta { font-size: 9px; display: flex; justify-content: space-between; margin: 2px 0; }
+  .section-title { font-size: 10px; font-weight: bold; margin: 3px 0 1px 0; }
+  hr.dash  { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+  hr.solid { border: none; border-top: 2px solid #000; margin: 4px 0; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 10px; }
+  table.t th { font-size: 10px; padding: 1px 2px; border-bottom: 1px dashed #000; }
+  table.t th.num { text-align: right; padding-right: 3px; }
+  table.t td { padding: 1px 2px; }
+  table.t td.num { text-align: right; padding-right: 3px; }
+  .total-line { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin: 3px 0; }
+  .footer { text-align: center; font-size: 9px; margin-top: 6px; }
+</style>
+</head>
+<body>
+  <hr class="solid"/>
+  <div class="report-title">SALESMAN SALES REPORT</div>
+  <hr class="dash"/>
+  <div class="meta"><span>Branch: ${escapeHtml(branchCode || "-")}</span><span>${escapeHtml(dateKey)}</span></div>
+  <div class="meta" style="justify-content:flex-end">Printed: ${escapeHtml(printedDate)}</div>
+  <hr class="dash"/>
+  <table class="t">
+    <thead>
+      <tr>
+        <th style="text-align:left">Salesman</th>
+        <th class="num">Bills</th>
+        <th class="num">Amount</th>
+      </tr>
+    </thead>
+    <tbody>${lines}</tbody>
+  </table>
+  <hr class="dash"/>
+  <div class="total-line"><span>Total</span><span>${totalBills} bills</span><span>${round2(totalAmount).toFixed(2)}</span></div>
+  <hr class="solid"/>
+  <div class="footer">*** End of Salesman Report ***</div>
+  <br/><br/>
+</body>
+</html>`;
 }
 
 const columns = [
