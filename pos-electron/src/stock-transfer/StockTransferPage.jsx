@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Button, Input, InputNumber, Modal, Radio, Select, Space, Table, Typography, message } from "antd";
-import { SyncOutlined } from "@ant-design/icons";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Badge, Button, Input, InputNumber, Modal, Radio, Select, Space, Table, Tag, Typography, message } from "antd";
+import { RobotOutlined, SyncOutlined } from "@ant-design/icons";
 import ItemLookupModal from "../components/ItemLookupModal";
-import { apiUrl } from "../utils/apiUrl";
+import { apiUrl, aiUrl } from "../utils/apiUrl";
+import { db } from "../cache/itemCacheDb";
 import { decodeJwtPayload } from "../auth/auth";
 import { queueStockTransfer, getPendingStockCount, syncPendingStockTransfers } from "./offlineStockQueue";
 import { applySaleToCache } from "../cache/itemCache";
@@ -60,6 +61,11 @@ export default function StockTransferPage({ onClose }) {
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const lastActivityRef = useRef(Date.now());
+
+  // AI recommendations
+  const [aiState, setAiState] = useState("idle"); // idle | loading | done | none | error
+  const [aiCount, setAiCount] = useState(0);
+  const skipAiFetch = useRef(false); // set before recall to avoid overwriting recalled items
 
   const tenantId = localStorage.getItem("tenancyId") || "";
   const token = localStorage.getItem("jwtToken") || "";
@@ -158,6 +164,71 @@ export default function StockTransferPage({ onClose }) {
     setDeliveryAddress1(String(b.branchAddress1 ?? ""));
     setDeliveryAddress2(String(b.branchAddress2 ?? ""));
   }, [toBranchCode, allBranches]);
+
+  const fetchAiRecommendations = useCallback(async (targetBranch) => {
+    if (!tenantId || !fromBranch || !targetBranch) return;
+    setAiState("loading");
+    setItems([]);
+    try {
+      const res = await fetch(aiUrl(`/ai-service/${tenantId}/recommendations?horizon=7`));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const recs = await res.json();
+
+      const filtered = (Array.isArray(recs) ? recs : []).filter(
+        (r) =>
+          String(r.from_branch || "").toUpperCase() === fromBranch.toUpperCase() &&
+          String(r.to_branch || "").toUpperCase() === targetBranch.toUpperCase()
+      );
+
+      if (!filtered.length) {
+        setAiState("none");
+        return;
+      }
+
+      const rows = await Promise.all(
+        filtered.map(async (rec) => {
+          const cached = await db.items.get(String(rec.item_id)).catch(() => null);
+          const price = Number(cached?.standardPrice || 0);
+          const qty = Number(rec.qty) || 1;
+          return {
+            key: crypto.randomUUID(),
+            item_id: String(rec.item_id),
+            item_name: cached?.itemName || rec.item_name || "",
+            barcode: cached?.barcode || "",
+            qty,
+            tax_rate: Number(cached?.taxRate || 0),
+            standard_price: price,
+            amount: round2n(qty * price),
+            batch: cached?.batchCode || "",
+            unit: cached?.unitName || "",
+            expiry: cached?.expiry || "",
+            ai_suggested: true,
+            ai_urgency: rec.urgency || "",
+          };
+        })
+      );
+
+      setItems(rows);
+      setAiCount(rows.length);
+      setAiState("done");
+    } catch (e) {
+      console.warn("[AI] Recommendations fetch failed:", e.message);
+      setAiState("error");
+    }
+  }, [tenantId, fromBranch]);
+
+  useEffect(() => {
+    if (!toBranchCode) {
+      setAiState("idle");
+      setAiCount(0);
+      return;
+    }
+    if (skipAiFetch.current) {
+      skipAiFetch.current = false;
+      return;
+    }
+    fetchAiRecommendations(toBranchCode);
+  }, [toBranchCode, fetchAiRecommendations]);
 
   useEffect(() => {
     let cancelled = false;
@@ -289,6 +360,7 @@ export default function StockTransferPage({ onClose }) {
       return;
     }
     const p = row.payload || {};
+    skipAiFetch.current = true; // don't overwrite recalled items with AI suggestions
     setToBranchCode(String(p.toBranchCode || ""));
     setToBranchName(String(p.toBranchName || ""));
     setToBranchState(String(p.toBranchState || ""));
@@ -461,8 +533,27 @@ export default function StockTransferPage({ onClose }) {
     }
   };
 
+  const URGENCY_COLOR = { critical: "red", high: "orange", medium: "blue" };
+
   const columns = [
-    { title: "Item", dataIndex: "item_name", width: 220 },
+    {
+      title: "Item",
+      dataIndex: "item_name",
+      width: 220,
+      render: (name, row) =>
+        row.ai_suggested ? (
+          <Space size={4}>
+            <span>{name}</span>
+            <Tag
+              icon={<RobotOutlined />}
+              color={URGENCY_COLOR[row.ai_urgency] || "purple"}
+              style={{ fontSize: 10, padding: "0 4px" }}
+            >
+              {row.ai_urgency || "AI"}
+            </Tag>
+          </Space>
+        ) : name,
+    },
     { title: "Barcode", dataIndex: "barcode", width: 130 },
     {
       title: "Qty",
@@ -612,6 +703,45 @@ export default function StockTransferPage({ onClose }) {
           placeholder="Scan barcode (Enter/F2 to browse)"
         />
       </div>
+
+      {aiState === "loading" && (
+        <Alert
+          message="AI is generating stock transfer suggestions based on demand forecast…"
+          type="info"
+          showIcon
+          icon={<RobotOutlined />}
+          style={{ marginBottom: 8 }}
+        />
+      )}
+      {aiState === "done" && (
+        <Alert
+          message={`${aiCount} item(s) suggested by AI based on demand forecast. Review quantities and edit as needed.`}
+          type="success"
+          showIcon
+          icon={<RobotOutlined />}
+          closable
+          style={{ marginBottom: 8 }}
+        />
+      )}
+      {aiState === "none" && (
+        <Alert
+          message="No AI suggestions for this branch pair. Add items manually."
+          type="info"
+          showIcon
+          icon={<RobotOutlined />}
+          closable
+          style={{ marginBottom: 8 }}
+        />
+      )}
+      {aiState === "error" && (
+        <Alert
+          message="AI suggestions unavailable — AI service may not be running. Add items manually."
+          type="warning"
+          showIcon
+          closable
+          style={{ marginBottom: 8 }}
+        />
+      )}
 
       <Table
         size="small"
