@@ -7,7 +7,7 @@ import dayjs from "dayjs";
 import ItemLookupModal from "../components/ItemLookupModal";
 import { apiUrl } from "../utils/apiUrl";
 import { log, error as logError } from "../utils/logger";
-import { loadAllItemsToCache } from "../cache/itemCache";
+import { applyPhysicalStockToCache } from "../cache/itemCache";
 
 const { Title, Text } = Typography;
 
@@ -98,10 +98,12 @@ export default function PhysicalStockPage({ onClose }) {
       if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
       message.success(`Saved! Voucher: ${data.voucherNumber}`);
       setLastVoucher(data.voucherNumber);
-      setItems([]);
-      loadAllItemsToCache().catch((e) =>
-        logError("cache refresh after physical stock:", e.message)
+      // Directly stamp the counted qty into cache so the popup reflects the new
+      // physical count immediately without a full reload.
+      applyPhysicalStockToCache(items.map((r) => ({ itemId: r.item_id, qty: r.qty }))).catch((e) =>
+        logError("cache update after physical stock:", e.message)
       );
+      setItems([]);
     } catch (e) {
       message.error("Save failed: " + e.message);
       logError("physical-stock save error:", e.message);
