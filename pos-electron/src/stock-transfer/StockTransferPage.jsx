@@ -65,7 +65,16 @@ export default function StockTransferPage({ onClose }) {
   // AI recommendations
   const [aiState, setAiState] = useState("idle"); // idle | loading | done | none | error
   const [aiCount, setAiCount] = useState(0);
+  const [maxAiItems, setMaxAiItems] = useState(
+    () => Number(localStorage.getItem("ai_transfer_max_items") || 20)
+  );
   const skipAiFetch = useRef(false); // set before recall to avoid overwriting recalled items
+
+  const updateMaxAiItems = (val) => {
+    const n = Math.max(1, Math.min(200, Number(val) || 20));
+    setMaxAiItems(n);
+    localStorage.setItem("ai_transfer_max_items", String(n));
+  };
 
   const tenantId = localStorage.getItem("tenancyId") || "";
   const token = localStorage.getItem("jwtToken") || "";
@@ -165,7 +174,9 @@ export default function StockTransferPage({ onClose }) {
     setDeliveryAddress2(String(b.branchAddress2 ?? ""));
   }, [toBranchCode, allBranches]);
 
-  const fetchAiRecommendations = useCallback(async (targetBranch) => {
+  const URGENCY_RANK = { critical: 0, high: 1, medium: 2 };
+
+  const fetchAiRecommendations = useCallback(async (targetBranch, limit) => {
     if (!tenantId || !fromBranch || !targetBranch) return;
     setAiState("loading");
     setItems([]);
@@ -174,11 +185,20 @@ export default function StockTransferPage({ onClose }) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const recs = await res.json();
 
-      const filtered = (Array.isArray(recs) ? recs : []).filter(
-        (r) =>
-          String(r.from_branch || "").toUpperCase() === fromBranch.toUpperCase() &&
-          String(r.to_branch || "").toUpperCase() === targetBranch.toUpperCase()
-      );
+      const filtered = (Array.isArray(recs) ? recs : [])
+        .filter(
+          (r) =>
+            String(r.from_branch || "").toUpperCase() === fromBranch.toUpperCase() &&
+            String(r.to_branch || "").toUpperCase() === targetBranch.toUpperCase()
+        )
+        .sort((a, b) => {
+          const ua = URGENCY_RANK[a.urgency] ?? 9;
+          const ub = URGENCY_RANK[b.urgency] ?? 9;
+          if (ua !== ub) return ua - ub;
+          // within same urgency: higher forecast demand first
+          return (Number(b.to_forecast_7d) || 0) - (Number(a.to_forecast_7d) || 0);
+        })
+        .slice(0, limit);
 
       if (!filtered.length) {
         setAiState("none");
@@ -227,8 +247,8 @@ export default function StockTransferPage({ onClose }) {
       skipAiFetch.current = false;
       return;
     }
-    fetchAiRecommendations(toBranchCode);
-  }, [toBranchCode, fetchAiRecommendations]);
+    fetchAiRecommendations(toBranchCode, maxAiItems);
+  }, [toBranchCode, fetchAiRecommendations, maxAiItems]);
 
   useEffect(() => {
     let cancelled = false;
@@ -603,6 +623,18 @@ export default function StockTransferPage({ onClose }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <Title level={3} style={{ margin: 0, color: "#0b3a75" }}>Stock Transfer</Title>
         <Space>
+          <Space size={4}>
+            <RobotOutlined style={{ color: "#7c3aed" }} />
+            <Text type="secondary" style={{ fontSize: 12 }}>Max AI items</Text>
+            <InputNumber
+              min={1}
+              max={200}
+              value={maxAiItems}
+              onChange={updateMaxAiItems}
+              style={{ width: 64 }}
+              size="small"
+            />
+          </Space>
           <Button onClick={saveToHold} loading={savingHold}>Hold DC</Button>
           <Button onClick={() => setRecallOpen(true)}>Recall DC</Button>
           {pendingCount > 0 && (
