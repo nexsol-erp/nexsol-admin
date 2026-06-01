@@ -97,6 +97,16 @@ function buildAppMenu() {
         { label: "Weigh Bridge", click: () => win?.webContents?.send("app:navigate", "weigh-bridge") },
       ],
     },
+    {
+      label: "Tools",
+      submenu: [
+        {
+          label: "Developer Tools",
+          accelerator: "F12",
+          click: () => win?.webContents?.toggleDevTools(),
+        },
+      ],
+    },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }

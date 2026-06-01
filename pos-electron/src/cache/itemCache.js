@@ -76,6 +76,14 @@ function normalizeItem(x) {
   };
 }
 
+export async function clearItemCache() {
+  await db.transaction("rw", db.items, db.meta, async () => {
+    await db.items.clear();
+    await db.meta.put({ key: "items_loaded", value: "0" });
+    await db.meta.put({ key: "items_count", value: "0" });
+  });
+}
+
 export async function hasCache() {
   const v = await db.meta.get("items_loaded");
   return v?.value === "1";
