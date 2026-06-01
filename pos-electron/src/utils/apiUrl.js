@@ -9,3 +9,15 @@ export function apiUrl(path) {
   const base = runtime || import.meta.env.VITE_API_SERVER || "";
   return base + path;
 }
+
+// Priority for the AI service base URL:
+//  1. Dev mode       → "" (Vite proxy forwards /ai-service/* to localhost:8001)
+//  2. Runtime config → window.POS.aiServer
+//  3. Build-time env → import.meta.env.VITE_AI_SERVER
+//  4. Fallback       → "" (relative)
+export function aiUrl(path) {
+  if (import.meta.env.DEV) return path;
+  const runtime = typeof window !== "undefined" ? window.POS?.aiServer : null;
+  const base = runtime || import.meta.env.VITE_AI_SERVER || "";
+  return base + path;
+}

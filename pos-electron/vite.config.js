@@ -14,10 +14,15 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "https://www.tradelink247.com",
+        target: "http://www.tradelink247.com",
         changeOrigin: true,
         secure: true,
-      }
+      },
+      "/ai-service": {
+        target: "http://www.tradelink247.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ai-service/, ""),
+      },
     }
   }
 });
