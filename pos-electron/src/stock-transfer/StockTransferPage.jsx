@@ -64,6 +64,7 @@ export default function StockTransferPage({ onClose }) {
 
   // AI recommendations
   const [aiState, setAiState] = useState("idle"); // idle | loading | done | none | error
+  const [aiError, setAiError] = useState("");
   const [aiCount, setAiCount] = useState(0);
   const [maxAiItems, setMaxAiItems] = useState(
     () => Number(localStorage.getItem("ai_transfer_max_items") || 20)
@@ -104,7 +105,7 @@ export default function StockTransferPage({ onClose }) {
     return allBranches
       .filter((b) => {
         const type = b.branchType ?? b.branch_type ?? null;
-        return type && !EXCLUDED_BRANCH_TYPES.has(type);
+        return !type || !EXCLUDED_BRANCH_TYPES.has(type);
       })
       .map((b) => String(b.branchCode ?? "").trim())
       .filter((code) => code && code !== fromBranch)
@@ -179,10 +180,22 @@ export default function StockTransferPage({ onClose }) {
   const fetchAiRecommendations = useCallback(async (targetBranch, limit) => {
     if (!tenantId || !fromBranch || !targetBranch) return;
     setAiState("loading");
+    setAiError("");
     setItems([]);
     try {
       const res = await fetch(aiUrl(`/ai-service/${tenantId}/recommendations?horizon=7`));
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 503) {
+          setAiError("AI model not trained yet. Go to AI Dashboard → Retrain Model first.");
+        } else if (res.status === 502 || res.status === 504) {
+          setAiError("AI service is not responding. Check that the service is running.");
+        } else {
+          const body = await res.json().catch(() => ({}));
+          setAiError(body.detail || `AI service error (HTTP ${res.status}).`);
+        }
+        setAiState("error");
+        return;
+      }
       const recs = await res.json();
 
       const filtered = (Array.isArray(recs) ? recs : [])
@@ -767,7 +780,7 @@ export default function StockTransferPage({ onClose }) {
       )}
       {aiState === "error" && (
         <Alert
-          message="AI suggestions unavailable — AI service may not be running. Add items manually."
+          message={aiError || "AI suggestions unavailable. Add items manually."}
           type="warning"
           showIcon
           closable
