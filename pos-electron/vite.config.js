@@ -21,7 +21,6 @@ export default defineConfig({
       "/ai-service": {
         target: "https://www.tradelink247.com",
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/ai-service/, ""),
       },
     }
   }
