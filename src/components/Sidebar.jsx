@@ -358,6 +358,7 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
         { menuKey: "All Branch Sales Report", label: t("All Branch Sales Report"), link: "/sales-report-all-branch", roles: ["admin", "user", "manager"] },
         { menuKey: "All Branch Categorywise Sales Report", label: t("All Branch Categorywise Sales Report"), link: "/sales-category-wise-report-all-branch", roles: ["admin", "user", "manager"] },
         { menuKey: "Item Stock Report", label: t("Item Stock Report"), link: "/item-stock-report", roles: ["admin", "user", "manager", "cgn"] },
+        { menuKey: "Day End Report", label: t("Day End Report"), link: "/day-end-report", roles: ["admin", "manager"] },
         { menuKey: "Bill Series Report", label: t("Bill Series Report"), link: "/billseriesreport", roles: ["admin", "user", "manager"] },
         { menuKey: "Season Sales Report", label: t("Season Sales Report"), link: "/seasonalreport", roles: ["admin"] },
         { menuKey: "Stock Turnover Report", label: t("Stock Turnover Report"), link: "/stock-turnover", roles: ["user", "admin"] },
