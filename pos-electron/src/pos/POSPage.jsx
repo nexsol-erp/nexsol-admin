@@ -10,6 +10,7 @@ import { log, warn, error as logError } from "../utils/logger";
 import { apiUrl } from "../utils/apiUrl";
 import { queueSale, getPendingCount, syncPendingSales } from "./offlineQueue";
 import { generateVoucherNumber } from "../utils/posDevice";
+import { nowIST, todayIST } from "../utils/timeUtils";
 
 export default function POSPage({ onLogout, selectedBranchCode = "", prefillItems = null, onPrefillUsed }) {
 
@@ -272,7 +273,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       numeric_voucher_number: numericVoucherNumber,
       voucher_number: voucherNumber,
       voucher_prefix: voucherPrefix,
-      voucher_date: new Date().toISOString(),
+      voucher_date: nowIST(),
       company_mst_id: tenantId,
       is_synched: "0",
     };
@@ -382,7 +383,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   // Branch info (name, address, GST) for receipt header
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayIST();
     const records = JSON.parse(localStorage.getItem("day_end_records") || "[]");
     const done = records.some((r) => r.dateKey === today && r.branchCode === selectedBranchCode);
     setDayEndDone(done);
