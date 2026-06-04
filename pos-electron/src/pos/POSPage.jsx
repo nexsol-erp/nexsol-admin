@@ -12,6 +12,7 @@ import { queueSale, getPendingCount, syncPendingSales } from "./offlineQueue";
 import { generateVoucherNumber } from "../utils/posDevice";
 import { nowIST, todayIST } from "../utils/timeUtils";
 import { db } from "../cache/itemCacheDb";
+import { connect as wsConnect, disconnect as wsDisconnect, onMessage as wsOnMessage, onStateChange } from "../utils/posWebSocket";
 
 export default function POSPage({ onLogout, selectedBranchCode = "", prefillItems = null, onPrefillUsed }) {
 
@@ -36,6 +37,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const [holdCount, setHoldCount] = useState(0);
   const [recallOpen, setRecallOpen] = useState(false);
   const [heldBills, setHeldBills] = useState([]);
+  const [wsOnline, setWsOnline] = useState(false);
   const [schemes, setSchemes] = useState([]);
   const [categoryMap, setCategoryMap] = useState({});
 
@@ -75,6 +77,63 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   }, []);
 
   useEffect(() => { log("POSPage mounted"); }, []);
+
+  // WebSocket — connect once branch is known, reconnect if branch changes
+  useEffect(() => {
+    if (!selectedBranchCode) return;
+    const tenant = localStorage.getItem("tenancyId") || "";
+    const wsBase = typeof window !== "undefined" ? window.POS?.wsServer : "";
+    wsConnect(tenant, selectedBranchCode, wsBase);
+
+    const unsubState = onStateChange(setWsOnline);
+
+    // Price change — patch only the changed items in IndexedDB
+    const unsubPrice = wsOnMessage("PRICE_CHANGE", async (msg) => {
+      log("posWebSocket: PRICE_CHANGE received", JSON.stringify(msg));
+      const changed = Array.isArray(msg.items)
+        ? msg.items
+        : msg.itemId ? [msg] : [];
+
+      if (changed.length) {
+        for (const patch of changed) {
+          const existing = await db.items.get(patch.itemId);
+          if (existing) await db.items.put({ ...existing, ...patch });
+        }
+        message.info(`Price updated for ${changed.length} item(s)`, 3);
+      } else {
+        // No item data in message — fall back to full reload
+        message.info("Price update received — refreshing item cache…", 3);
+        import("../cache/itemCache").then(({ loadAllItemsToCache }) => {
+          loadAllItemsToCache().catch(() => {});
+        });
+      }
+    });
+
+    // Full catalogue refresh (new items added, bulk GST change, etc.)
+    const unsubCatalog = wsOnMessage("CATALOG_REFRESH", () => {
+      message.info("Catalogue updated — refreshing item cache…", 3);
+      import("../cache/itemCache").then(({ loadAllItemsToCache }) => {
+        loadAllItemsToCache().catch(() => {});
+      });
+    });
+
+    // Generic notification
+    const unsubNotify = wsOnMessage("NOTIFICATION", (msg) => {
+      const text = msg.message || msg.text || "New notification";
+      const type = (msg.type || "info").toLowerCase();
+      if (type === "error")   message.error(text, 6);
+      else if (type === "warning") message.warning(text, 5);
+      else message.info(text, 4);
+    });
+
+    return () => {
+      unsubState();
+      unsubPrice();
+      unsubCatalog();
+      unsubNotify();
+      wsDisconnect();
+    };
+  }, [selectedBranchCode]);
 
   useEffect(() => {
     const tenantId = localStorage.getItem("tenancyId");
@@ -586,7 +645,16 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
         display: "flex", alignItems: "center", justifyContent: "space-between",
         fontSize: 13, fontWeight: "bold", flexShrink: 0,
       }}>
-        <span>POS Window{selectedBranchCode ? ` — ${selectedBranchCode}` : ""}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          POS Window{selectedBranchCode ? ` — ${selectedBranchCode}` : ""}
+          <Tooltip title={wsOnline ? "Connected to server" : "Not connected to server"}>
+            <span style={{
+              display: "inline-block", width: 8, height: 8, borderRadius: "50%",
+              background: wsOnline ? "#52c41a" : "#d9d9d9",
+              boxShadow: wsOnline ? "0 0 4px #52c41a" : "none",
+            }} />
+          </Tooltip>
+        </span>
         {pendingCount > 0 && (
           <Tooltip title={syncing ? "Syncing…" : `${pendingCount} offline sale(s) — click to sync`}>
             <Tag
