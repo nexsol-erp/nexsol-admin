@@ -85,6 +85,14 @@ function getApiServer() {
   return "http://localhost:8084";
 }
 
+function getWsServer() {
+  const cfg = getPosConfig();
+  if (cfg.wsServer) return String(cfg.wsServer).replace(/\/$/, "");
+  // Derive from apiServer: https → wss, http → ws
+  const api = getApiServer();
+  return api.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
+}
+
 function buildAppMenu() {
   const template = [
     {
@@ -196,6 +204,10 @@ app.on("window-all-closed", () => {
 // the renderer starts, without an async round-trip.
 ipcMain.on("config:get-api-server", (event) => {
   event.returnValue = getApiServer();
+});
+
+ipcMain.on("config:get-ws-server", (event) => {
+  event.returnValue = getWsServer();
 });
 
 ipcMain.handle("printers:list", async () => {
