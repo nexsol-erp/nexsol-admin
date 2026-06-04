@@ -17,6 +17,13 @@ db.version(3).stores({
   items: "itemId, barcode, itemName",
   meta: "key",
   pending_sales: "++id, status, queuedAt",
+  pos_holds: "++id, heldAt, branchCode",
+});
+
+db.version(3).stores({
+  items: "itemId, barcode, itemName",
+  meta: "key",
+  pending_sales: "++id, status, queuedAt",
   pending_stock_transfers: "++id, status, queuedAt",
 });
 
