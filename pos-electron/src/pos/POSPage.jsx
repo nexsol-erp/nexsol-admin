@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Input, InputNumber, Select, Table, message, Tag, Tooltip } from "antd";
-import { SyncOutlined } from "@ant-design/icons";
+import { Button, Input, InputNumber, Select, Table, message, Tag, Tooltip, Modal, Badge } from "antd";
+import { SyncOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined } from "@ant-design/icons";
 import { logout } from "../auth/auth";
 import ItemLookupModal from "../components/ItemLookupModal";
 import UpiPaymentModal from "./UpiPaymentModal";
@@ -11,6 +11,7 @@ import { apiUrl } from "../utils/apiUrl";
 import { queueSale, getPendingCount, syncPendingSales } from "./offlineQueue";
 import { generateVoucherNumber } from "../utils/posDevice";
 import { nowIST, todayIST } from "../utils/timeUtils";
+import { db } from "../cache/itemCacheDb";
 
 export default function POSPage({ onLogout, selectedBranchCode = "", prefillItems = null, onPrefillUsed }) {
 
@@ -32,12 +33,16 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const [lookupQuery, setLookupQuery] = useState("");
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
+  const [holdCount, setHoldCount] = useState(0);
+  const [recallOpen, setRecallOpen] = useState(false);
+  const [heldBills, setHeldBills] = useState([]);
   const [schemes, setSchemes] = useState([]);
   const [categoryMap, setCategoryMap] = useState({});
 
   // Offline queue — poll every 10 s; sync only when idle >= 30 s and online
   useEffect(() => {
     getPendingCount().then(setPendingCount);
+    db.pos_holds.count().then(setHoldCount);
 
     let busy = false;
 
@@ -230,6 +235,58 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     }
   };
 
+  const clearForm = () => {
+    setItems([]); setTendered(0);
+    setReceipts((prev) => prev.map((r) => ({ ...r, amount: 0 })));
+    setCustomerMobile(""); setSalesmanCode(""); setSalesmanName("");
+    setTimeout(() => itemSearchRef.current?.focus?.(), 50);
+  };
+
+  const onHold = async () => {
+    if (!items.length) return;
+    await db.pos_holds.add({
+      heldAt:         nowIST(),
+      branchCode:     selectedBranchCode,
+      items,
+      customerMobile,
+      salesmanCode,
+      salesmanName,
+      receipts,
+      tendered,
+    });
+    const count = await db.pos_holds.count();
+    setHoldCount(count);
+    message.success("Bill put on hold");
+    clearForm();
+  };
+
+  const openRecall = async () => {
+    const all = await db.pos_holds.orderBy("heldAt").reverse().toArray();
+    setHeldBills(all);
+    setRecallOpen(true);
+  };
+
+  const recallBill = async (hold) => {
+    setItems(hold.items);
+    setCustomerMobile(hold.customerMobile || "");
+    setSalesmanCode(hold.salesmanCode || "");
+    setSalesmanName(hold.salesmanName || "");
+    setReceipts(hold.receipts?.length ? hold.receipts : [{ key: "CASH", receipt_mode: "CASH", amount: 0 }]);
+    setTendered(hold.tendered || 0);
+    await db.pos_holds.delete(hold.id);
+    const count = await db.pos_holds.count();
+    setHoldCount(count);
+    setRecallOpen(false);
+    setTimeout(() => itemSearchRef.current?.focus?.(), 50);
+  };
+
+  const deleteHold = async (id) => {
+    await db.pos_holds.delete(id);
+    const remaining = await db.pos_holds.orderBy("heldAt").reverse().toArray();
+    setHeldBills(remaining);
+    setHoldCount(remaining.length);
+  };
+
   const onSave = async () => {
     log("onSave called | canSave:", canSave, "| items:", items.length, "| branch:", selectedBranchCode);
     if (savingRef.current) { warn("onSave blocked: already saving"); return; }
@@ -340,12 +397,8 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
         itemId: item.item_id, batchCode: item.batch || "", qty: Number(item.qty) || 0,
       })));
       message.success("Sales saved successfully");
-      // Auto-print: capture snapshot before clearing state
       doPrint({ snapshot: [...finalItems], voucherNumber });
-      setItems([]); setTendered(0);
-      setReceipts((prev) => prev.map((r) => ({ ...r, amount: 0 })));
-      setCustomerMobile(""); setSalesmanCode(""); setSalesmanName("");
-      setTimeout(() => itemSearchRef.current?.focus?.(), 50);
+      clearForm();
     } catch (e) {
       if (e.httpStatus === 401) {
         message.error("Session expired — please log in again.", 6);
@@ -363,10 +416,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             ? "No network — sale saved offline, will sync automatically when connected"
             : `Server error (${e.httpStatus}) — sale saved offline, will retry when server recovers`);
           doPrint({ snapshot: [...finalItems], voucherNumber });
-          setItems([]); setTendered(0);
-          setReceipts((prev) => prev.map((r) => ({ ...r, amount: 0 })));
-          setCustomerMobile(""); setSalesmanCode(""); setSalesmanName("");
-          setTimeout(() => itemSearchRef.current?.focus?.(), 50);
+          clearForm();
           setPendingCount((c) => c + 1);
         } catch (qErr) {
           logError("offlineQueue: failed to queue sale:", qErr.message);
@@ -414,13 +464,24 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   // Printing
   const [printers, setPrinters] = useState([]);
-  const [selectedPrinter, setSelectedPrinter] = useState("");
+  const [selectedPrinter, setSelectedPrinter] = useState(
+    () => localStorage.getItem("posPrinter") || ""
+  );
+
+  const savePrinterSelection = (name) => {
+    setSelectedPrinter(name);
+    if (name) localStorage.setItem("posPrinter", name);
+  };
 
   const refreshPrinters = async () => {
     if (!window.POS?.listPrinters) return;
     const list = await window.POS.listPrinters();
     setPrinters(list || []);
-    if (!selectedPrinter && list?.length) setSelectedPrinter(list[0].name);
+    const cached = localStorage.getItem("posPrinter");
+    const stillAvailable = cached && list?.some((p) => p.name === cached);
+    if (!selectedPrinter && !stillAvailable && list?.length) {
+      savePrinterSelection(list[0].name);
+    }
   };
 
   useEffect(() => { refreshPrinters(); }, []);
@@ -659,14 +720,14 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             </div>
           )}
 
-          {/* Save + Close buttons */}
+          {/* Save + Hold + Recall + Close buttons */}
           <div style={{ marginTop: "auto", paddingTop: 8, display: "flex", gap: 6 }}>
             <button
               ref={saveButtonRef}
               onClick={onSave}
               disabled={!canSave || isSaving}
               style={{
-                flex: 1, height: 44, fontSize: 17, fontWeight: "bold",
+                flex: 2, height: 44, fontSize: 17, fontWeight: "bold",
                 background: canSave && !isSaving ? "#ffc8ff" : "#c8c8c8",
                 border: "2px outset #ccc",
                 cursor: canSave && !isSaving ? "pointer" : "not-allowed",
@@ -675,10 +736,39 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             >
               {isSaving ? "Saving…" : "Save"}
             </button>
+            <Tooltip title="Hold bill — come back to it later">
+              <button
+                onClick={onHold}
+                disabled={!items.length}
+                style={{
+                  flex: 1, height: 44, fontSize: 13, fontWeight: "bold",
+                  background: items.length ? "#fff3cd" : "#c8c8c8",
+                  border: "2px outset #ccc",
+                  cursor: items.length ? "pointer" : "not-allowed",
+                  color: "#000",
+                }}
+              >
+                <PauseCircleOutlined /> Hold
+              </button>
+            </Tooltip>
+            <Tooltip title="Recall a held bill">
+              <Badge count={holdCount} size="small" offset={[-4, 4]}>
+                <button
+                  onClick={openRecall}
+                  style={{
+                    flex: 1, height: 44, fontSize: 13, fontWeight: "bold",
+                    background: holdCount ? "#d4edda" : "#d4d0c8",
+                    border: "2px outset #ccc", cursor: "pointer", color: "#000",
+                  }}
+                >
+                  <PlayCircleOutlined /> Recall
+                </button>
+              </Badge>
+            </Tooltip>
             <button
               onClick={() => { logout(); onLogout?.(); }}
               style={{
-                flex: 1, height: 44, fontSize: 17, fontWeight: "bold",
+                flex: 1, height: 44, fontSize: 13, fontWeight: "bold",
                 background: "#d4d0c8", border: "2px outset #ccc", cursor: "pointer", color: "#000",
               }}
             >
@@ -686,12 +776,50 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             </button>
           </div>
 
+          {/* Recall modal */}
+          <Modal
+            open={recallOpen}
+            title="Held Bills"
+            onCancel={() => setRecallOpen(false)}
+            footer={null}
+            width={560}
+          >
+            {heldBills.length === 0 ? (
+              <p style={{ textAlign: "center", color: "#999" }}>No bills on hold</p>
+            ) : (
+              <Table
+                size="small"
+                dataSource={heldBills}
+                rowKey="id"
+                pagination={false}
+                columns={[
+                  { title: "Time",     dataIndex: "heldAt",    width: 140,
+                    render: (v) => v?.slice(11, 19) ?? "" },
+                  { title: "Items",    dataIndex: "items",     width: 60,
+                    render: (v) => v?.length ?? 0 },
+                  { title: "Amount",   dataIndex: "items",     width: 90,
+                    render: (v) => "₹" + (v?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0).toFixed(2) },
+                  { title: "Customer", dataIndex: "customerMobile", width: 110,
+                    render: (v) => v || "—" },
+                  { title: "", key: "actions", width: 110,
+                    render: (_, row) => (
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <Button size="small" type="primary" onClick={() => recallBill(row)}>Recall</Button>
+                        <Button size="small" danger icon={<DeleteOutlined />} onClick={() => deleteHold(row.id)} />
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            )}
+          </Modal>
+
           {/* Printer */}
           <div style={{ marginTop: 6 }}>
             {qtLabel("Printer")}
             <div style={{ display: "flex", gap: 4 }}>
               <Select
-                size="small" style={{ flex: 1 }} value={selectedPrinter} onChange={setSelectedPrinter}
+                size="small" style={{ flex: 1 }} value={selectedPrinter} onChange={savePrinterSelection}
                 options={printers.map((p) => ({ value: p.name, label: p.name }))}
                 placeholder="Select printer"
               />

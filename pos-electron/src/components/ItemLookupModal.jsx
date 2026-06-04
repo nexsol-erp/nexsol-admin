@@ -12,7 +12,7 @@ export default function ItemLookupModal({ open, initialQuery, onClose, onPick, o
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [cacheReady, setCacheReady] = useState(false);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(15);
   const [moreAvailable, setMoreAvailable] = useState(false);
 
   // Ensure cache is loaded when modal opens
@@ -165,7 +165,7 @@ export default function ItemLookupModal({ open, initialQuery, onClose, onPick, o
                 <Button size="small" onClick={() => setLimit((l) => Math.min(1000, l * 10))}>
                   Show more
                 </Button>
-                <Button size="small" onClick={() => { setLimit(10); setQ(""); inputRef.current?.focus?.(); }}>
+                <Button size="small" onClick={() => { setLimit(50); setQ(""); inputRef.current?.focus?.(); }}>
                   Reset
                 </Button>
               </Space>

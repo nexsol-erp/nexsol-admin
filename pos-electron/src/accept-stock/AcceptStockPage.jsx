@@ -13,7 +13,7 @@ function normalizeHeader(x, branchCode) {
   return {
     id: String(x.id ?? ""),
     branch_code: String(x.branch_code ?? x.branchCode ?? branchCode ?? ""),
-    from_branch_code: String(x.from_branch_code ?? x.fromBranchCode ?? ""),
+    from_branch_code: String(x.from_branch_code ?? x.fromBranchCode ?? x.branch_code ?? ""),
     voucher_number: String(x.voucher_number ?? x.voucherNumber ?? ""),
     source_voucher_number: String(x.source_voucher_number ?? x.sourceVoucherNumber ?? ""),
     source_voucher_date: String(x.source_voucher_date ?? x.sourceVoucherDate ?? ""),
