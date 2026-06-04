@@ -13,6 +13,7 @@ import {
   closeKot, convertKot, markKotPrinted, mergeKots, saveKot, splitKot,
 } from "./kotDb";
 import { buildKotHtml } from "./kotPrint";
+import { nowIST, todayIST } from "../utils/timeUtils";
 
 const { Text, Title } = Typography;
 const TABLES_KEY = "kot_tables_config";
@@ -204,7 +205,7 @@ export default function KOTPage({ selectedBranchCode, onConvertToPOS }) {
     tableName: activeTable?.name,
     salesMan,
     status,
-    kotDate:   new Date().toISOString().slice(0, 10),
+    kotDate:   todayIST(),
     kotNumber: kotNumber || null,
   });
 
@@ -236,7 +237,7 @@ export default function KOTPage({ selectedBranchCode, onConvertToPOS }) {
       branchAddress: [branchInfo?.branchBuildingAddress, branchInfo?.branchAddress1]
         .filter(Boolean).join(", "),
       kotNumber:   kotNum,
-      voucherDate: new Date().toISOString(),
+      voucherDate: nowIST(),
       salesMan,
       tableName:   activeTable?.name,
       items:       linesToPrint,
@@ -387,7 +388,7 @@ export default function KOTPage({ selectedBranchCode, onConvertToPOS }) {
       branchName:    branchInfo?.branchName,
       branchAddress: [branchInfo?.branchBuildingAddress, branchInfo?.branchAddress1].filter(Boolean).join(", "),
       kotNumber:   num,
-      voucherDate: new Date().toISOString(),
+      voucherDate: nowIST(),
       salesMan:    taCustomer,
       tableName:   `Takeaway${taOrderNo ? " #" + taOrderNo : ""}`,
       items:       taLines,

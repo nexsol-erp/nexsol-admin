@@ -9,6 +9,7 @@ import { queueStockTransfer, getPendingStockCount, syncPendingStockTransfers } f
 import { applySaleToCache } from "../cache/itemCache";
 import { buildTransferHtml } from "./transferPrint";
 import { generateTransferVoucherNumber } from "../utils/posDevice";
+import { nowIST, todayIST } from "../utils/timeUtils";
 
 const { Title, Text } = Typography;
 
@@ -346,11 +347,10 @@ export default function StockTransferPage({ onClose }) {
     }
     setSavingHold(true);
     try {
-      const now = new Date();
       const rec = {
         id: crypto.randomUUID(),
-        name: `DC_${toBranchCode}_${now.toISOString().slice(0, 10)}`,
-        createdAt: now.toISOString(),
+        name: `DC_${toBranchCode}_${todayIST()}`,
+        createdAt: nowIST(),
         payload: {
           toBranchCode,
           toBranchName,
@@ -418,7 +418,7 @@ export default function StockTransferPage({ onClose }) {
 
     const headerId = crypto.randomUUID();
     const { voucherNumber, numericSeq: numericVoucher } = generateTransferVoucherNumber(fromBranch);
-    const voucherDate = new Date().toISOString().slice(0, 19);
+    const voucherDate = nowIST();
     const body = {
       id: headerId,
       branch_code: fromBranch,
