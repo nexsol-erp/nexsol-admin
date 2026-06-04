@@ -1,7 +1,8 @@
 import { db } from "../cache/itemCacheDb";
+import { nowIST, todayIST } from "../utils/timeUtils";
 
 function round2(v) { return Math.round(Number(v) * 100) / 100; }
-function todayStr() { return new Date().toISOString().slice(0, 10); }
+function todayStr() { return todayIST(); }
 
 export async function getNextKotNumber() {
   const today = todayStr();
@@ -28,7 +29,7 @@ export async function saveKot(header, lines) {
   return db.transaction("rw", db.kot_headers, db.kot_lines, async () => {
     let headerId = header.id;
     if (!headerId) {
-      headerId = await db.kot_headers.add({ ...header, createdAt: new Date().toISOString() });
+      headerId = await db.kot_headers.add({ ...header, createdAt: nowIST() });
     } else {
       await db.kot_headers.put(header);
       await db.kot_lines.where("headerId").equals(headerId).delete();
@@ -88,9 +89,9 @@ export async function splitKot(sourceHeaderId, itemsToMove, targetTableId, targe
         tableName: targetTableName,
         salesMan:  "",
         status:    "open",
-        kotDate:   new Date().toISOString().slice(0, 10),
+        kotDate:   todayIST(),
         kotNumber: null,
-        createdAt: new Date().toISOString(),
+        createdAt: nowIST(),
       });
     }
 
