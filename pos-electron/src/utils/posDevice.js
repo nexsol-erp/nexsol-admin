@@ -47,11 +47,11 @@ export async function registerMachine(tenantId, branchCode, machineName = "") {
     const data = await res.json();
 
     // Persist all fields keyed by branch so a multi-branch setup works correctly
-    localStorage.setItem(`posMachineCode_${branchCode}`,    data.machineCode);
-    localStorage.setItem(`posBranchPrefix_${branchCode}`,   data.branchInvoicePrefix);
-    localStorage.setItem(`posFyCode_${branchCode}`,         data.fyCode);
-    localStorage.setItem(`posFyStart_${branchCode}`,        data.fyStartDate);   // "YYYY-MM-DD"
-    localStorage.setItem(`posFyEnd_${branchCode}`,          data.fyEndDate);     // "YYYY-MM-DD"
+    if (data.machineCode)         localStorage.setItem(`posMachineCode_${branchCode}`,  data.machineCode);
+    if (data.branchInvoicePrefix) localStorage.setItem(`posBranchPrefix_${branchCode}`, data.branchInvoicePrefix);
+    if (data.fyCode)              localStorage.setItem(`posFyCode_${branchCode}`,        data.fyCode);
+    if (data.fyStartDate)         localStorage.setItem(`posFyStart_${branchCode}`,       data.fyStartDate);
+    if (data.fyEndDate)           localStorage.setItem(`posFyEnd_${branchCode}`,         data.fyEndDate);
 
     // Sync sequence counter from server if no local counter exists.
     // This covers: new install, localStorage cleared, machine replacement.
@@ -78,7 +78,8 @@ export async function registerMachine(tenantId, branchCode, machineName = "") {
  * until the machine re-registers and gets the new FY from the server.
  */
 function resolvedFyCode(branchCode) {
-  const fyCode = localStorage.getItem(`posFyCode_${branchCode}`) || "00-00";
+  const raw    = localStorage.getItem(`posFyCode_${branchCode}`);
+  const fyCode = (raw && raw !== "null") ? raw : "00-00";
   const fyEnd  = localStorage.getItem(`posFyEnd_${branchCode}`);
   if (fyEnd && new Date() > new Date(fyEnd + "T23:59:59")) {
     return fyCode + "_NEXT";   // distinct key → sequence restarts until re-registration
