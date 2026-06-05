@@ -20,6 +20,14 @@ db.version(3).stores({
   pos_holds: "++id, heldAt, branchCode",
 });
 
+db.version(4).stores({
+  items: "itemId, barcode, itemName",
+  meta: "key",
+  pending_sales: "++id, status, queuedAt",
+  pos_holds: "++id, heldAt, branchCode",
+  pos_receipts: "++id, voucherNumber, savedAt, branchCode",
+});
+
 db.version(3).stores({
   items: "itemId, barcode, itemName",
   meta: "key",
