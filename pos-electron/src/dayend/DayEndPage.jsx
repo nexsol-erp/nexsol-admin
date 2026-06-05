@@ -5,7 +5,7 @@ import { apiUrl } from "../utils/apiUrl";
 
 const { Title, Text } = Typography;
 
-const DENOMINATIONS = [2000, 500, 200, 100, 50, 20, 10, 5, 2, 1];
+const DENOMINATIONS = [500, 200, 100, 50, 20, 10, 5, 2, 1];
 
 function round2n(v) {
   const n = Number(v) || 0;
@@ -29,6 +29,7 @@ function saveDayEndRecords(rows) {
 export default function DayEndPage() {
   const [dayEndDate, setDayEndDate] = useState(dayjs());
   const [saving, setSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [qtyByDenom, setQtyByDenom] = useState(() =>
     Object.fromEntries(DENOMINATIONS.map((d) => [String(d), 0]))
   );
@@ -50,6 +51,13 @@ export default function DayEndPage() {
       })
       .catch(() => {});
   }, [branchCode]);
+
+  // Recheck saved state whenever date or branch changes
+  useEffect(() => {
+    const dateKey = dayEndDate.format("YYYY-MM-DD");
+    const records = loadDayEndRecords();
+    setIsSaved(records.some((r) => r.dateKey === dateKey && r.branchCode === branchCode));
+  }, [dayEndDate, branchCode]);
 
   const rows = useMemo(() => {
     return DENOMINATIONS.map((currency) => {
@@ -137,6 +145,7 @@ export default function DayEndPage() {
 
       records.push(localRecord);
       saveDayEndRecords(records);
+      setIsSaved(true);
       message.success("Day End completed successfully");
 
       // Fetch sales summary then auto-print
@@ -195,9 +204,8 @@ export default function DayEndPage() {
       }
     } catch (_) {}
 
-    // Fall back to in-memory state if nothing saved yet for this date
-    const printRows  = fetchedRows.length > 0 ? fetchedRows  : rows;
-    const printTotal = fetchedRows.length > 0 ? fetchedTotal : grandTotal;
+    const printRows  = fetchedRows;
+    const printTotal = fetchedTotal;
 
     let salesSummary = {};
     try {
@@ -249,7 +257,7 @@ export default function DayEndPage() {
           <Text style={{ color: "#374151" }}>Branch:</Text>
           <Text strong style={{ color: "#1f2937" }}>{branchCode || "-"}</Text>
           <DatePicker value={dayEndDate} onChange={(d) => setDayEndDate(d || dayjs())} />
-          <Button onClick={printReport}>Print</Button>
+          <Button onClick={printReport} disabled={!isSaved}>Print</Button>
           <Button type="primary" onClick={onSaveDayEnd} loading={saving}>
             Save Day End
           </Button>
