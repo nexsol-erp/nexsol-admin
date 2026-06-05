@@ -10,6 +10,7 @@ import WeighBridgePage from "./pos/WeighBridgePage";
 import PhysicalStockPage from "./pos/PhysicalStockPage";
 import KOTPage from "./pos/KOTPage";
 import SalesmanReportPage from "./pos/SalesmanReportPage";
+import ItemSalesReportPage from "./pos/ItemSalesReportPage";
 import UpdateChecker from "./components/UpdateChecker";
 import { isLoggedIn, logout } from "./auth/auth";
 import { clearItemCache, hasCache, loadAllItemsToCache } from "./cache/itemCache";
@@ -161,6 +162,7 @@ export default function App() {
                 ...(hasWB ? [{ key: "weigh-bridge", label: "Weigh Bridge" }] : []),
                 { key: "physical-stock", label: "Physical Stock" },
                 { key: "salesman-report", label: "Salesman" },
+                { key: "item-sales-report", label: "Item Sales" },
               ]}
               style={{ flex: 1, borderBottom: "none", minWidth: 0 }}
             />
@@ -211,6 +213,7 @@ export default function App() {
           {activePage === "weigh-bridge" && hasWB && <WeighBridgePage />}
           {activePage === "physical-stock" && <PhysicalStockPage onClose={() => setActivePage("pos")} />}
           {activePage === "salesman-report" && <SalesmanReportPage selectedBranchCode={selectedBranchCode} />}
+          {activePage === "item-sales-report" && <ItemSalesReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "kot" && <KOTPage selectedBranchCode={selectedBranchCode} onConvertToPOS={handleKotConvertToPOS} />}
         </div>
       )}
