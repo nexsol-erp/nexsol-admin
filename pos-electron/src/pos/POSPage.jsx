@@ -34,6 +34,8 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const [lookupQuery, setLookupQuery] = useState("");
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
+  const [reprintOpen, setReprintOpen] = useState(false);
+  const [reprintHistory, setReprintHistory] = useState([]);
   const [holdCount, setHoldCount] = useState(0);
   const [recallOpen, setRecallOpen] = useState(false);
   const [heldBills, setHeldBills] = useState([]);
@@ -301,6 +303,23 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     setTimeout(() => itemSearchRef.current?.focus?.(), 50);
   };
 
+  const openReprint = async () => {
+    const history = await db.pos_receipts.orderBy("id").reverse().limit(10).toArray();
+    setReprintHistory(history);
+    setReprintOpen(true);
+  };
+
+  const reprintVoucher = async (record) => {
+    if (!window.POS?.printHtml) { message.error("Print API not available"); return; }
+    const html = buildReceiptHtml(record);
+    try {
+      await window.POS.printHtml({ html, silent: false, deviceName: selectedPrinter || "" });
+      message.success(`Reprinted: ${record.voucherNumber}`);
+    } catch (e) {
+      message.error("Reprint failed: " + e.message);
+    }
+  };
+
   const onHold = async () => {
     if (!items.length) return;
     await db.pos_holds.add({
@@ -547,10 +566,11 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   const doPrint = async ({ snapshot, voucherNumber }) => {
     if (!window.POS?.printHtml) { log("doPrint: window.POS.printHtml not available"); return; }
-    const html = buildReceiptHtml({
+    const printData = {
       items: snapshot, totalAmount, tendered, balance, receipts,
       branchInfo, salesmanName, customerMobile, voucherNumber,
-    });
+    };
+    const html = buildReceiptHtml(printData);
     log("doPrint | htmlLen:", html.length, "| snapshotLen:", snapshot?.length);
     try {
       await window.POS.printHtml({ html, silent: true, deviceName: selectedPrinter || "" });
@@ -558,6 +578,17 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     } catch (e) {
       log("doPrint | error:", e.message);
       message.error("Print failed: " + e.message);
+    }
+    // Save to reprint history — keep only the latest 10
+    try {
+      await db.pos_receipts.add({ ...printData, savedAt: nowIST(), branchCode: selectedBranchCode });
+      const count = await db.pos_receipts.count();
+      if (count > 10) {
+        const oldest = await db.pos_receipts.orderBy("id").limit(count - 10).primaryKeys();
+        await db.pos_receipts.bulkDelete(oldest);
+      }
+    } catch (e) {
+      logError("doPrint: failed to save receipt history:", e.message);
     }
   };
 
@@ -655,26 +686,34 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             }} />
           </Tooltip>
         </span>
-        {pendingCount > 0 && (
-          <Tooltip title={syncing ? "Syncing…" : `${pendingCount} offline sale(s) — click to sync`}>
-            <Tag
-              color="warning"
-              icon={<SyncOutlined spin={syncing} />}
-              style={{ cursor: "pointer", marginRight: 4 }}
-              onClick={async () => {
-                if (syncing) return;
-                setSyncing(true);
-                const { synced, failed } = await syncPendingSales();
-                if (synced > 0) message.success(`Synced ${synced} offline sale${synced > 1 ? "s" : ""}`);
-                if (failed > 0) message.warning(`${failed} still pending`);
-                setPendingCount(await getPendingCount());
-                setSyncing(false);
-              }}
-            >
-              {pendingCount} pending
-            </Tag>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {pendingCount > 0 && (
+            <Tooltip title={syncing ? "Syncing…" : `${pendingCount} offline sale(s) — click to sync`}>
+              <Tag
+                color="warning"
+                icon={<SyncOutlined spin={syncing} />}
+                style={{ cursor: "pointer" }}
+                onClick={async () => {
+                  if (syncing) return;
+                  setSyncing(true);
+                  const { synced, failed } = await syncPendingSales();
+                  if (synced > 0) message.success(`Synced ${synced} offline sale${synced > 1 ? "s" : ""}`);
+                  if (failed > 0) message.warning(`${failed} still pending`);
+                  setPendingCount(await getPendingCount());
+                  setSyncing(false);
+                }}
+              >
+                {pendingCount} pending
+              </Tag>
+            </Tooltip>
+          )}
+          <Tooltip title="Reprint a recent invoice">
+            <Button size="small" onClick={openReprint}
+              style={{ color: "#fff", borderColor: "rgba(255,255,255,0.4)", background: "transparent" }}>
+              ⎙ Reprint
+            </Button>
           </Tooltip>
-        )}
+        </div>
       </div>
 
       {/* ── Day End block banner ── */}
@@ -875,6 +914,46 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
                         <Button size="small" type="primary" onClick={() => recallBill(row)}>Recall</Button>
                         <Button size="small" danger icon={<DeleteOutlined />} onClick={() => deleteHold(row.id)} />
                       </div>
+                    ),
+                  },
+                ]}
+              />
+            )}
+          </Modal>
+
+          {/* Reprint modal */}
+          <Modal
+            open={reprintOpen}
+            title="Reprint Invoice"
+            onCancel={() => setReprintOpen(false)}
+            footer={null}
+            width={580}
+          >
+            {reprintHistory.length === 0 ? (
+              <p style={{ textAlign: "center", color: "#999" }}>No recent invoices</p>
+            ) : (
+              <Table
+                size="small"
+                dataSource={reprintHistory}
+                rowKey="id"
+                pagination={false}
+                columns={[
+                  { title: "Time",    dataIndex: "savedAt",       width: 80,
+                    render: (v) => v?.slice(11, 19) ?? "" },
+                  { title: "Voucher", dataIndex: "voucherNumber", width: 160 },
+                  { title: "Items",   dataIndex: "items",         width: 55,
+                    render: (v) => v?.length ?? 0 },
+                  { title: "Amount",  dataIndex: "totalAmount",   width: 90,
+                    render: (v) => "₹" + Number(v || 0).toFixed(2) },
+                  { title: "Customer", dataIndex: "customerMobile", width: 100,
+                    render: (v) => v || "—" },
+                  { title: "", key: "action", width: 80,
+                    render: (_, row) => (
+                      <Button size="small" type="primary"
+                        icon={<span>⎙</span>}
+                        onClick={() => reprintVoucher(row)}>
+                        Print
+                      </Button>
                     ),
                   },
                 ]}
