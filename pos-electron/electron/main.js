@@ -88,11 +88,29 @@ function savePosConfig(cfg) {
   fs.writeFileSync(p, JSON.stringify(cfg, null, 2), "utf8");
 }
 
-// The version we treat as "installed" — prefers the value persisted in
-// pos-config.json so updates survive even when package.json wasn't bumped.
+// Path for the persisted installed-version file (always writable).
+function installedVersionFile() {
+  return path.join(app.getPath("userData"), "installed-version.txt");
+}
+
+// The version we treat as "installed".
+// Reads from userData/installed-version.txt first (written after every update),
+// falls back to app.getVersion() on first ever run.
 function getInstalledVersion() {
-  const cfg = getPosConfig();
-  return cfg.installedVersion || app.getVersion();
+  try {
+    const v = fs.readFileSync(installedVersionFile(), "utf8").trim();
+    if (v) return v;
+  } catch (_) {}
+  return app.getVersion();
+}
+
+function persistInstalledVersion(version) {
+  try {
+    fs.writeFileSync(installedVersionFile(), version, "utf8");
+    console.log("[updater] Persisted installed version:", version, "→", installedVersionFile());
+  } catch (e) {
+    console.error("[updater] Failed to persist version:", e.message);
+  }
 }
 
 // Resolve the backend API server URL.
@@ -245,8 +263,9 @@ async function checkForUpdates() {
     const { version, url } = manifest;
 
     const installedVersion = getInstalledVersion();
+    console.log(`[updater] remote=${version}  local=${installedVersion}`);
     if (!isNewer(version, installedVersion)) {
-      console.log("[updater] Already on latest version", installedVersion);
+      console.log("[updater] Already on latest version");
       return;
     }
 
@@ -326,11 +345,7 @@ Start-Process '${currentExe}'`;
     fs.writeFileSync(psPath, ps, "utf8");
 
     // Persist the new version so the next launch doesn't re-prompt
-    try {
-      const cfg = getPosConfig();
-      cfg.installedVersion = version;
-      savePosConfig(cfg);
-    } catch (_) {}
+    persistInstalledVersion(version);
 
     const { spawn } = require("child_process");
     spawn("powershell.exe", [
