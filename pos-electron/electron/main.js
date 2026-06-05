@@ -65,10 +65,15 @@ ipcMain.handle("log:write", (_evt, level, message) => {
 let win;
 let customerDisplayWin = null;
 
+// Directory where the .exe lives — works for both portable and installed builds.
+function exeDir() {
+  return process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
+}
+
 // Reads pos-config.json — next to the .exe when packaged, or in project root in dev.
 function getPosConfig() {
   const locations = app.isPackaged
-    ? [path.join(path.dirname(process.execPath), "pos-config.json")]
+    ? [path.join(exeDir(), "pos-config.json")]
     : [path.join(__dirname, "../pos-config.json")];
   for (const p of locations) {
     try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch (_) {}
@@ -194,7 +199,129 @@ app.whenReady().then(() => {
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+
+  // Check for updates 5 seconds after launch so the UI is fully loaded first
+  if (app.isPackaged) {
+    setTimeout(checkForUpdates, 5000);
+  }
 });
+
+// ── Auto-updater ──────────────────────────────────────────────────────────────
+
+function parseVersion(v) {
+  return (v || "0.0.0").split(".").map(Number);
+}
+
+function isNewer(remote, local) {
+  const r = parseVersion(remote);
+  const l = parseVersion(local);
+  for (let i = 0; i < 3; i++) {
+    if (r[i] > l[i]) return true;
+    if (r[i] < l[i]) return false;
+  }
+  return false;
+}
+
+async function checkForUpdates() {
+  try {
+    const apiServer = getApiServer();
+    const res = await fetch(`${apiServer}/api/updates/electron/manifest.json`);
+    if (!res.ok) return;
+    const manifest = await res.json();
+    const { version, url } = manifest;
+
+    if (!isNewer(version, app.getVersion())) {
+      console.log("[updater] Already on latest version", app.getVersion());
+      return;
+    }
+
+    console.log(`[updater] New version available: ${version}`);
+
+    const { dialog } = require("electron");
+    const { response } = await dialog.showMessageBox(win, {
+      type: "info",
+      title: "Update Available",
+      message: `Version ${version} is available`,
+      detail: `You are running v${app.getVersion()}.\nDownload and install v${version} now?`,
+      buttons: ["Download & Restart", "Later"],
+      defaultId: 0,
+      cancelId: 1,
+    });
+
+    if (response !== 0) return;
+
+    await downloadAndApplyUpdate(url, version);
+  } catch (e) {
+    console.error("[updater] Check failed:", e.message);
+  }
+}
+
+async function downloadAndApplyUpdate(url, version) {
+  const { dialog } = require("electron");
+  const https = require("https");
+
+  const portableDir = process.env.PORTABLE_EXECUTABLE_DIR;
+  if (!portableDir) {
+    dialog.showErrorBox("Update Error", "Cannot determine install location.\nPlease update manually.");
+    return;
+  }
+
+  const currentExe  = path.join(portableDir, path.basename(process.execPath.split("\\app.asar")[0]));
+  const downloadTo  = path.join(os.tmpdir(), `TradeLink247-POS-${version}-update.exe`);
+
+  // Show progress window
+  const progressWin = new BrowserWindow({
+    width: 380, height: 120, resizable: false, minimizable: false,
+    alwaysOnTop: true, frame: false, show: true,
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
+  });
+  progressWin.loadURL(`data:text/html,<body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#1e293b;color:#f8fafc">
+    <div style="text-align:center"><div id="msg">Downloading update…</div>
+    <progress id="bar" value="0" max="100" style="width:300px;margin-top:12px"></progress></div>
+    <script>
+      const {ipcRenderer}=require("electron");
+      ipcRenderer.on("update-progress",(_,p)=>{document.getElementById("bar").value=p;document.getElementById("msg").textContent="Downloading… "+p+"%"});
+    </script></body>`);
+
+  try {
+    await new Promise((resolve, reject) => {
+      const file = fs.createWriteStream(downloadTo);
+      https.get(url, (res) => {
+        const total = parseInt(res.headers["content-length"] || "0", 10);
+        let received = 0;
+        res.on("data", (chunk) => {
+          received += chunk.length;
+          file.write(chunk);
+          if (total > 0 && progressWin && !progressWin.isDestroyed()) {
+            progressWin.webContents.send("update-progress", Math.round(received / total * 100));
+          }
+        });
+        res.on("end", () => { file.end(); resolve(); });
+        res.on("error", reject);
+      }).on("error", reject);
+    });
+
+    progressWin.close();
+
+    // PowerShell script: wait for this process to exit, replace exe, relaunch
+    const ps = `Start-Sleep -Seconds 2
+Move-Item -Force '${downloadTo}' '${currentExe}'
+Start-Process '${currentExe}'`;
+    const psPath = path.join(os.tmpdir(), "tradelink247-update.ps1");
+    fs.writeFileSync(psPath, ps, "utf8");
+
+    const { spawn } = require("child_process");
+    spawn("powershell.exe", [
+      "-NonInteractive", "-WindowStyle", "Hidden",
+      "-ExecutionPolicy", "Bypass", "-File", psPath,
+    ], { detached: true, stdio: "ignore" }).unref();
+
+    app.quit();
+  } catch (e) {
+    if (!progressWin.isDestroyed()) progressWin.close();
+    dialog.showErrorBox("Download Failed", e.message);
+  }
+}
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
@@ -285,7 +412,7 @@ ipcMain.handle("printer:get-paper-size", async (_evt, deviceName) => {
 
 ipcMain.handle("config:save-printer", (_evt, printerSettings) => {
   const cfgPath = app.isPackaged
-    ? path.join(path.dirname(process.execPath), "pos-config.json")
+    ? path.join(exeDir(), "pos-config.json")
     : path.join(__dirname, "../pos-config.json");
   try {
     let current = {};
