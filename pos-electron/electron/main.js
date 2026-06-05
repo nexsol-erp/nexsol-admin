@@ -81,6 +81,20 @@ function getPosConfig() {
   return {};
 }
 
+function savePosConfig(cfg) {
+  const p = app.isPackaged
+    ? path.join(exeDir(), "pos-config.json")
+    : path.join(__dirname, "../pos-config.json");
+  fs.writeFileSync(p, JSON.stringify(cfg, null, 2), "utf8");
+}
+
+// The version we treat as "installed" — prefers the value persisted in
+// pos-config.json so updates survive even when package.json wasn't bumped.
+function getInstalledVersion() {
+  const cfg = getPosConfig();
+  return cfg.installedVersion || app.getVersion();
+}
+
 // Resolve the backend API server URL.
 // Priority: pos-config.json (next to .exe) → env var → hardcoded default.
 function getApiServer() {
@@ -230,8 +244,9 @@ async function checkForUpdates() {
     const manifest = await res.json();
     const { version, url } = manifest;
 
-    if (!isNewer(version, app.getVersion())) {
-      console.log("[updater] Already on latest version", app.getVersion());
+    const installedVersion = getInstalledVersion();
+    if (!isNewer(version, installedVersion)) {
+      console.log("[updater] Already on latest version", installedVersion);
       return;
     }
 
@@ -309,6 +324,13 @@ Move-Item -Force '${downloadTo}' '${currentExe}'
 Start-Process '${currentExe}'`;
     const psPath = path.join(os.tmpdir(), "tradelink247-update.ps1");
     fs.writeFileSync(psPath, ps, "utf8");
+
+    // Persist the new version so the next launch doesn't re-prompt
+    try {
+      const cfg = getPosConfig();
+      cfg.installedVersion = version;
+      savePosConfig(cfg);
+    } catch (_) {}
 
     const { spawn } = require("child_process");
     spawn("powershell.exe", [
