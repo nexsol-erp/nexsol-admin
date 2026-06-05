@@ -88,9 +88,9 @@ function savePosConfig(cfg) {
   fs.writeFileSync(p, JSON.stringify(cfg, null, 2), "utf8");
 }
 
-// Path for the persisted installed-version file (always writable).
+// Path for the persisted installed-version file — sits next to the exe.
 function installedVersionFile() {
-  return path.join(app.getPath("userData"), "installed-version.txt");
+  return path.join(exeDir(), "installed-version.txt");
 }
 
 // The version we treat as "installed".
