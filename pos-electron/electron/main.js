@@ -106,8 +106,10 @@ function getInstalledVersion() {
 
 function persistInstalledVersion(version) {
   try {
-    fs.writeFileSync(installedVersionFile(), version, "utf8");
-    console.log("[updater] Persisted installed version:", version, "→", installedVersionFile());
+    const file = installedVersionFile();
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, version, "utf8");
+    console.log("[updater] Persisted installed version:", version, "→", file);
   } catch (e) {
     console.error("[updater] Failed to persist version:", e.message);
   }
