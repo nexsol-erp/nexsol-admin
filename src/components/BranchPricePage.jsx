@@ -238,14 +238,20 @@ const BranchPricePage = () => {
                     return (
                       <TableRow key={item.itemId}
                         sx={{
-                          borderLeft: isDirty
-                            ? "4px solid #f59e0b"
+                          bgcolor: isDirty
+                            ? "#FDE68A"
                             : hasOverride
-                              ? "4px solid #1976d2"
-                              : "4px solid transparent",
+                              ? "#BFDBFE"
+                              : "inherit",
+                          "& .MuiTableCell-root": {
+                            color: (isDirty || hasOverride) ? "#1a1a1a" : "inherit",
+                          },
+                          "& .MuiInputBase-input": {
+                            color: (isDirty || hasOverride) ? "#1a1a1a" : "inherit",
+                          },
                         }}>
                         <TableCell>{item.itemName}</TableCell>
-                        <TableCell sx={{ color: "text.secondary" }}>{item.barcode || "—"}</TableCell>
+                        <TableCell>{item.barcode || "—"}</TableCell>
                         <TableCell align="right">{Number(item.standardPrice || 0).toFixed(2)}</TableCell>
                         <TableCell align="right" sx={{ minWidth: 120 }}>
                           <TextField
