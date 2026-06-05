@@ -303,6 +303,13 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
       roles: ["admin"],
     },
     {
+      menuKey: "Branch Price",
+      label: t("Branch Price"),
+      icon: <Business />,
+      link: "/branch-price",
+      roles: ["admin"],
+    },
+    {
       menuKey: "Scheme",
       label: t("Scheme"),
       icon: <Loyalty />,
