@@ -310,6 +310,13 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
       roles: ["admin"],
     },
     {
+      menuKey: "Version Management",
+      label: t("Version Management"),
+      icon: <AdminPanelSettings />,
+      link: "/version-management",
+      roles: ["admin"],
+    },
+    {
       menuKey: "Scheme",
       label: t("Scheme"),
       icon: <Loyalty />,
