@@ -72,8 +72,11 @@ export default function VersionManagementPage() {
 
   // ── Load ─────────────────────────────────────────────────────────────────────
 
-  const load = useCallback(async () => {
-    setLoading(true); setError(null);
+  const pollRef = useRef(null);
+
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    setError(null);
     try {
       const res = await fetch(
         `/api/${tenantId}/admin/pos-app/versions?platform=${platform}`,
@@ -98,10 +101,18 @@ export default function VersionManagementPage() {
         setPatches(patchMap);
       }
     } catch (e) { setError(e.message); }
-    finally { setLoading(false); }
+    finally { if (!silent) setLoading(false); }
   }, [platform, tenantId, token]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Auto-refresh: poll every 5 s while any delta is still generating
+  useEffect(() => {
+    if (pollRef.current) clearTimeout(pollRef.current);
+    const hasPending = Object.values(patches).some(p => p.status === "PENDING");
+    if (hasPending) pollRef.current = setTimeout(() => load(true), 5000);
+    return () => { if (pollRef.current) clearTimeout(pollRef.current); };
+  }, [patches, load]);
 
   // ── Upload ────────────────────────────────────────────────────────────────────
 
@@ -219,6 +230,14 @@ export default function VersionManagementPage() {
         <Tabs value={platform} onChange={(_, v) => setPlatform(v)} sx={{ minHeight: 36 }}>
           {PLATFORMS.map(p => <Tab key={p} label={p} value={p} sx={{ minHeight: 36, py: 0 }} />)}
         </Tabs>
+        {Object.values(patches).some(p => p.status === "PENDING") && (
+          <Tooltip title="Delta patches are being generated — refreshing automatically">
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "text.secondary" }}>
+              <CircularProgress size={14} thickness={5} />
+              <Typography variant="caption">Generating deltas…</Typography>
+            </Box>
+          </Tooltip>
+        )}
         <Box sx={{ flex: 1 }} />
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setUploadOpen(true)}>
           Add Version
@@ -234,8 +253,8 @@ export default function VersionManagementPage() {
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                  {["Version","Build","Platform","Type","Status","File Size","Delta Patch",
-                    "Uploaded By","Uploaded Date","Actions"].map(h => (
+                  {["Version","Build","Platform","Type","Status","File Name","File Size",
+                    "Delta Patch","Uploaded By","Uploaded Date","Actions"].map(h => (
                     <TableCell key={h}><strong>{h}</strong></TableCell>
                   ))}
                 </TableRow>
@@ -243,7 +262,7 @@ export default function VersionManagementPage() {
               <TableBody>
                 {versions.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={11} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                    <TableCell colSpan={12} align="center" sx={{ py: 4, color: "text.secondary" }}>
                       No versions found for {platform}
                     </TableCell>
                   </TableRow>
