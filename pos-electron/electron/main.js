@@ -113,7 +113,7 @@ function buildAppMenu() {
         { label: "Day End", click: () => win?.webContents?.send("app:navigate", "day-end") },
         { label: "Stock Transfer", click: () => win?.webContents?.send("app:navigate", "stock-transfer") },
         { label: "Accept Stock", click: () => win?.webContents?.send("app:navigate", "accept-stock") },
-        { label: "Weigh Bridge", click: () => win?.webContents?.send("app:navigate", "weigh-bridge") },
+        { label: "WB", click: () => win?.webContents?.send("app:navigate", "weigh-bridge") },
       ],
     },
     {
@@ -121,7 +121,7 @@ function buildAppMenu() {
       submenu: [
         {
           label: "Developer Tools",
-          accelerator: "F12",
+          accelerator: "F11",
           click: () => win?.webContents?.toggleDevTools(),
         },
       ],
