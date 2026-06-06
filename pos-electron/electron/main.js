@@ -158,25 +158,51 @@ function buildAppMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+
+function createSplash() {
+  const splash = new BrowserWindow({
+    width: 420,
+    height: 260,
+    frame: false,
+    resizable: false,
+    center: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    backgroundColor: "#0b3a75",
+    webPreferences: { nodeIntegration: false, contextIsolation: true },
+  });
+  splash.loadFile(path.join(__dirname, "splash.html"));
+  return splash;
+}
+
 function createWindow() {
   console.log("createWindow called");
+
+  const splash = createSplash();
+
   win = new BrowserWindow({
     width: 1400,
     height: 900,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      // Packaged desktop app: disable web-security so file:// can reach the backend API
       webSecurity: !app.isPackaged,
     },
   });
 
-  win.webContents.on("dom-ready", () => console.log("window dom-ready (HTML parsed, scripts starting)"));
-  win.webContents.on("did-finish-load", () => console.log("window did-finish-load (all resources loaded)"));
-  win.webContents.on("did-fail-load", (e, code, desc, url) =>
-    console.error("window did-fail-load | code:", code, "| desc:", desc, "| url:", url)
-  );
+  win.webContents.once("did-finish-load", () => {
+    win.maximize();
+    win.show();
+    setTimeout(() => { if (!splash.isDestroyed()) splash.close(); }, 300);
+  });
+
+  win.webContents.on("did-finish-load", () => console.log("page did-finish-load"));
+  win.webContents.on("did-fail-load", (e, code, desc, url) => {
+    console.error("did-fail-load | code:", code, "| desc:", desc, "| url:", url);
+    if (!splash.isDestroyed()) splash.close();
+  });
   win.webContents.on("render-process-gone", (e, details) =>
     console.error("render-process-gone:", JSON.stringify(details))
   );
@@ -185,11 +211,9 @@ function createWindow() {
     writeLog("renderer-console", lvl, `${msg}  (${src}:${line})`);
   });
 
-  // Log any resource (JS/CSS) that fails to load — catches missing bundles early
   session.defaultSession.webRequest.onErrorOccurred((details) => {
-    if (details.error !== "net::ERR_ABORTED") {
+    if (details.error !== "net::ERR_ABORTED")
       console.error("resource load error:", details.error, "|", details.url);
-    }
   });
 
   if (app.isPackaged) {
@@ -256,40 +280,102 @@ function isNewer(remote, local) {
   return false;
 }
 
+function getTenantId() {
+  const cfg = getPosConfig();
+  return cfg.tenantId || cfg.tenancyId || "";
+}
+
 async function checkForUpdates() {
   try {
-    const apiServer = getApiServer();
-    const res = await fetch(`${apiServer}/api/updates/electron/manifest.json`);
-    if (!res.ok) return;
-    const manifest = await res.json();
-    const { version, url } = manifest;
+    const apiServer    = getApiServer();
+    const installedVer = getInstalledVersion();
+    const { dialog }   = require("electron");
 
-    const installedVersion = getInstalledVersion();
-    console.log(`[updater] remote=${version}  local=${installedVersion}`);
-    if (!isNewer(version, installedVersion)) {
-      console.log("[updater] Already on latest version");
+    // Single call to the update-check API — server decides everything
+    const params = new URLSearchParams({
+      platform: "WINDOWS",
+      currentVersion: installedVer,
+    });
+    const res = await fetch(`${apiServer}/api/pos-app/update-check?${params}`);
+    if (!res.ok) {
+      console.log("[updater] update-check returned", res.status, "— skipping");
       return;
     }
 
-    console.log(`[updater] New version available: ${version}`);
+    const data = await res.json();
+    console.log("[updater] update-check:", JSON.stringify(data));
 
-    const { dialog } = require("electron");
+    if (!data.updateAvailable) return;
+
+    const { updateType, latestVersion, downloadUrl, releaseNotes, reason, message } = data;
+
+    // ── OBSOLETE current version ──────────────────────────────────────────────
+    if (reason === "CURRENT_VERSION_OBSOLETE") {
+      await dialog.showMessageBox(win, {
+        type: "error",
+        title: "Version No Longer Supported",
+        message: `v${installedVer} is no longer supported`,
+        detail: `You must update to v${latestVersion} to continue using the application.`,
+        buttons: ["Download & Restart"],
+        defaultId: 0, noLink: true,
+      });
+      await downloadAndApplyUpdate(downloadUrl, latestVersion);
+      return;
+    }
+
+    // ── REQUIRED update ───────────────────────────────────────────────────────
+    if (updateType === "REQUIRED") {
+      const detail = [
+        message || "A mandatory update is available. Please update the application to continue.",
+        releaseNotes ? `\nWhat's new:\n${releaseNotes}` : "",
+      ].join("");
+      await dialog.showMessageBox(win, {
+        type: "warning",
+        title: "Mandatory Update Required",
+        message: `Version ${latestVersion} — Required Update`,
+        detail, buttons: ["Download & Restart"], defaultId: 0, noLink: true,
+      });
+      await downloadAndApplyUpdate(downloadUrl, latestVersion);
+      return;
+    }
+
+    // ── OPTIONAL update ───────────────────────────────────────────────────────
+    const detail = [
+      `You are running v${installedVer}.`,
+      releaseNotes ? `\nWhat's new:\n${releaseNotes}` : "",
+    ].filter(Boolean).join("");
     const { response } = await dialog.showMessageBox(win, {
       type: "info",
       title: "Update Available",
-      message: `Version ${version} is available`,
-      detail: `You are running v${app.getVersion()}.\nDownload and install v${version} now?`,
-      buttons: ["Download & Restart", "Later"],
-      defaultId: 0,
-      cancelId: 1,
+      message: `Version ${latestVersion} is available`,
+      detail,
+      buttons: ["Download & Restart", "Later", "Skip"],
+      defaultId: 0, cancelId: 1,
     });
+    if (response === 0) await downloadAndApplyUpdate(downloadUrl, latestVersion);
 
-    if (response !== 0) return;
-
-    await downloadAndApplyUpdate(url, version);
   } catch (e) {
     console.error("[updater] Check failed:", e.message);
   }
+}
+
+async function forceObsoleteUpdate(apiServer, dialog) {
+  const installedVer = getInstalledVersion();
+  let url = null, version = "latest";
+  try {
+    const r = await fetch(`${apiServer}/api/pos-app/update-check?platform=WINDOWS&currentVersion=${installedVer}`);
+    if (r.ok) { const m = await r.json(); url = m.downloadUrl; version = m.latestVersion || "latest"; }
+  } catch (_) {}
+
+  await dialog.showMessageBox(win, {
+    type: "error", title: "Version No Longer Supported",
+    message: `v${installedVer} is obsolete`,
+    detail: `This version is no longer supported.\nYou must update to v${version} to continue.`,
+    buttons: ["Download & Restart"], defaultId: 0, noLink: true,
+  });
+
+  if (url) await downloadAndApplyUpdate(url, version);
+  else app.quit();
 }
 
 async function downloadAndApplyUpdate(url, version) {
@@ -368,6 +454,10 @@ app.on("window-all-closed", () => {
 
 // Synchronous IPC so preload.js can read the runtime API server before
 // the renderer starts, without an async round-trip.
+ipcMain.on("app:version", (event) => {
+  event.returnValue = app.getVersion();
+});
+
 ipcMain.on("config:get-api-server", (event) => {
   event.returnValue = getApiServer();
 });

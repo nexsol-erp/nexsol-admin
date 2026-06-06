@@ -77,6 +77,7 @@ import SalesTaxSummary from "./components/SalesTaxSummary";
 import PhysicalStockEntryReport from "./components/PhysicalStockEntryReport";
 
 import FinancialYearPage from "./components/FinancialYearPage";
+import VersionManagementPage from "./components/VersionManagementPage";
 import DayEndReport from "./components/DayEndReport";
 import BranchPricePage from "./components/BranchPricePage";
 import PhysicalStockCorrection from "./components/PhysicalStockCorrection";
@@ -186,6 +187,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
  <Route path="/financialyearpage" element={<FinancialYearPage />} />
             <Route path="/day-end-report" element={<DayEndReport />} />
             <Route path="/branch-price" element={<BranchPricePage />} />
+            <Route path="/version-management" element={<VersionManagementPage />} />
 
 <Route
   path="/stock-transfer-out/invoice/:voucherNumber"

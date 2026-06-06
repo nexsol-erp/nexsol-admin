@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#0b3a75; color:#fff;
+    font-family: Arial, Helvetica, sans-serif;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    height:100vh; user-select:none; overflow:hidden;
+  }
+  .logo { font-size:32px; font-weight:bold; letter-spacing:1px; margin-bottom:6px; }
+  .sub  { font-size:14px; color:#93c5fd; margin-bottom:40px; }
+  .bar-wrap { width:280px; height:4px; background:rgba(255,255,255,0.2); border-radius:2px; overflow:hidden; }
+  .bar {
+    width:40%; height:100%; background:#60a5fa; border-radius:2px;
+    animation: slide 1.2s ease-in-out infinite alternate;
+  }
+  @keyframes slide { from{margin-left:0} to{margin-left:60%} }
+  .ver { margin-top:28px; font-size:11px; color:rgba(255,255,255,0.35); }
+</style>
+</head>
+<body>
+  <div class="logo">TradeLink247 POS</div>
+  <div class="sub">Point of Sale</div>
+  <div class="bar-wrap"><div class="bar"></div></div>
+  <div class="ver" id="ver"></div>
+  <script>
+    try {
+      const p = window.require ? window.require("electron") : null;
+      if (p) document.getElementById("ver").textContent = "v" + p.ipcRenderer.sendSync("app:version");
+    } catch(_){}
+  </script>
+</body>
+</html>
