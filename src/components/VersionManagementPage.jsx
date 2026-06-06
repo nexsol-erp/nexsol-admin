@@ -12,8 +12,14 @@ import FolderOffIcon  from "@mui/icons-material/FolderOff";
 import HistoryIcon    from "@mui/icons-material/History";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 
-const PLATFORMS = ["WINDOWS", "LINUX", "MAC"];
-const STATUSES  = ["OPTIONAL", "REQUIRED", "OBSOLETE"];
+const PLATFORMS     = ["WINDOWS", "LINUX", "MAC"];
+const STATUSES      = ["OPTIONAL", "REQUIRED", "OBSOLETE"];
+const RELEASE_TYPES = ["APPLICATION_UPDATE", "FULL_INSTALLER"];
+
+const RELEASE_TYPE_LABEL = {
+  APPLICATION_UPDATE: "App Update",
+  FULL_INSTALLER:     "Full Installer",
+};
 
 const STATUS_COLOR = { OPTIONAL: "success", REQUIRED: "warning", OBSOLETE: "error" };
 
@@ -45,7 +51,7 @@ export default function VersionManagementPage() {
   const [uploading,  setUploading]  = useState(false);
   const [form, setForm] = useState({
     version: "", buildNumber: "", platform: "WINDOWS",
-    status: "OPTIONAL", releaseNotes: "",
+    status: "OPTIONAL", releaseNotes: "", releaseType: "APPLICATION_UPDATE",
   });
   const fileRef = useRef();
   const [selectedFile, setSelectedFile] = useState(null);
@@ -91,6 +97,7 @@ export default function VersionManagementPage() {
         buildNumber: form.buildNumber ? Number(form.buildNumber) : null,
         platform: form.platform,
         status: form.status,
+        releaseType: form.releaseType,
         releaseNotes: form.releaseNotes,
       };
       fd.append("metadata", new Blob([JSON.stringify(meta)], { type: "application/json" }));
@@ -104,7 +111,7 @@ export default function VersionManagementPage() {
       if (!res.ok) throw new Error(`Upload failed (${res.status})`);
       setSuccess(`Version ${form.version} created`);
       setUploadOpen(false);
-      setForm({ version: "", buildNumber: "", platform: "WINDOWS", status: "OPTIONAL", releaseNotes: "" });
+      setForm({ version: "", buildNumber: "", platform: "WINDOWS", status: "OPTIONAL", releaseNotes: "", releaseType: "APPLICATION_UPDATE" });
       setSelectedFile(null);
       load();
     } catch (e) { setError(e.message); }
@@ -209,7 +216,7 @@ export default function VersionManagementPage() {
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                  {["Version","Build","Platform","Status","File Name","File Size",
+                  {["Version","Build","Platform","Type","Status","File Name","File Size",
                     "Uploaded By","Uploaded Date","Actions"].map(h => (
                     <TableCell key={h}><strong>{h}</strong></TableCell>
                   ))}
@@ -218,7 +225,7 @@ export default function VersionManagementPage() {
               <TableBody>
                 {versions.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                    <TableCell colSpan={10} align="center" sx={{ py: 4, color: "text.secondary" }}>
                       No versions found for {platform}
                     </TableCell>
                   </TableRow>
@@ -230,6 +237,14 @@ export default function VersionManagementPage() {
                     <TableCell><strong>{v.version}</strong></TableCell>
                     <TableCell>{v.buildNumber ?? "—"}</TableCell>
                     <TableCell>{v.platform}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={RELEASE_TYPE_LABEL[v.releaseType] || v.releaseType || "App Update"}
+                        size="small"
+                        variant="outlined"
+                        color={v.releaseType === "FULL_INSTALLER" ? "secondary" : "primary"}
+                      />
+                    </TableCell>
                     <TableCell>
                       <FormControl size="small" sx={{ minWidth: 130 }}>
                         <Select
@@ -319,6 +334,18 @@ export default function VersionManagementPage() {
               </Select>
             </FormControl>
           </Box>
+          <FormControl size="small" fullWidth>
+            <InputLabel>Release Type</InputLabel>
+            <Select value={form.releaseType} label="Release Type"
+              onChange={e => setForm(p => ({ ...p, releaseType: e.target.value }))}>
+              <MenuItem value="APPLICATION_UPDATE">
+                Application Update — upload pos-electron.exe only (~80% smaller)
+              </MenuItem>
+              <MenuItem value="FULL_INSTALLER">
+                Full Installer — includes Launcher, runtime, and all dependencies
+              </MenuItem>
+            </Select>
+          </FormControl>
           <TextField label="Release Notes" size="small" multiline rows={3}
             value={form.releaseNotes}
             onChange={e => setForm(p => ({ ...p, releaseNotes: e.target.value }))}
@@ -329,7 +356,10 @@ export default function VersionManagementPage() {
               onChange={e => setSelectedFile(e.target.files[0] || null)} />
             <Button variant="outlined" startIcon={<UploadFileIcon />}
               onClick={() => fileRef.current.click()}>
-              {selectedFile ? selectedFile.name : "Choose installer file (optional)"}
+              {selectedFile ? selectedFile.name
+                : form.releaseType === "FULL_INSTALLER"
+                  ? "Choose full installer (optional)"
+                  : "Choose pos-electron.exe (optional)"}
             </Button>
             {selectedFile && (
               <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
