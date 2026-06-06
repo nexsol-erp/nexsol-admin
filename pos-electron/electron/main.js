@@ -113,7 +113,7 @@ function buildAppMenu() {
         { label: "Day End", click: () => win?.webContents?.send("app:navigate", "day-end") },
         { label: "Stock Transfer", click: () => win?.webContents?.send("app:navigate", "stock-transfer") },
         { label: "Accept Stock", click: () => win?.webContents?.send("app:navigate", "accept-stock") },
-        { label: "WB", click: () => win?.webContents?.send("app:navigate", "weigh-bridge") },
+        { label: "Weigh Bridge", click: () => win?.webContents?.send("app:navigate", "weigh-bridge") },
       ],
     },
     {
