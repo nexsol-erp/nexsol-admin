@@ -8,9 +8,10 @@
     "dev:electron": "wait-on http://localhost:5173 && node scripts/launch-electron.js",
     "dev": "concurrently -k \"npm:dev:ui\" \"npm:dev:electron\"",
     "build": "vite build",
-    "dist:win": "npm run build && electron-builder --win portable",
     "dist:installer": "npm run build && electron-builder --win nsis",
-    "dist": "npm run dist:win"
+    "dist:portable": "npm run build && electron-builder --win portable",
+    "dist:asar": "npm run build && node scripts/extract-asar.js",
+    "dist": "npm run dist:installer"
   },
   "dependencies": {
     "antd": "^6.3.3",
@@ -48,16 +49,21 @@
     ],
     "win": {
       "target": [
+        { "target": "nsis",     "arch": ["x64"] },
         { "target": "portable", "arch": ["x64"] }
       ],
-      "artifactName": "TradeLink247-POS-${version}.${ext}"
+      "artifactName": "TradeLink247-POS-Setup-${version}.${ext}"
     },
     "portable": {
-      "artifactName": "TradeLink247-POS-${version}.exe"
+      "artifactName": "pos-electron.exe"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": false,
+      "installerIcon": null,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TradeLink247 POS"
     }
   }
 }

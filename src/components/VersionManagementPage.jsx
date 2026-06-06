@@ -11,6 +11,7 @@ import DeleteIcon     from "@mui/icons-material/Delete";
 import FolderOffIcon  from "@mui/icons-material/FolderOff";
 import HistoryIcon    from "@mui/icons-material/History";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import BoltIcon       from "@mui/icons-material/Bolt";
 
 const PLATFORMS     = ["WINDOWS", "LINUX", "MAC"];
 const STATUSES      = ["OPTIONAL", "REQUIRED", "OBSOLETE"];
@@ -42,6 +43,7 @@ export default function VersionManagementPage() {
 
   const [platform,  setPlatform]  = useState("WINDOWS");
   const [versions,  setVersions]  = useState([]);
+  const [patches,   setPatches]   = useState({});  // toVersion → {patchSize, savings%}
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState(null);
   const [success,   setSuccess]   = useState(null);
@@ -78,7 +80,23 @@ export default function VersionManagementPage() {
         { headers }
       );
       if (!res.ok) throw new Error(`Load failed (${res.status})`);
-      setVersions(await res.json());
+      const data = await res.json();
+      setVersions(data);
+
+      // Load delta patch info for all versions
+      const patchRes = await fetch(
+        `/api/${tenantId}/admin/pos-app/patches?platform=${platform}`,
+        { headers }
+      );
+      if (patchRes.ok) {
+        const patchList = await patchRes.json();
+        const patchMap = {};
+        patchList.forEach(p => {
+          if (!patchMap[p.toVersion] || p.patchSize < (patchMap[p.toVersion]?.patchSize ?? Infinity))
+            patchMap[p.toVersion] = p;
+        });
+        setPatches(patchMap);
+      }
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   }, [platform, tenantId, token]);
@@ -216,7 +234,7 @@ export default function VersionManagementPage() {
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                  {["Version","Build","Platform","Type","Status","File Name","File Size",
+                  {["Version","Build","Platform","Type","Status","File Size","Delta Patch",
                     "Uploaded By","Uploaded Date","Actions"].map(h => (
                     <TableCell key={h}><strong>{h}</strong></TableCell>
                   ))}
@@ -225,7 +243,7 @@ export default function VersionManagementPage() {
               <TableBody>
                 {versions.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={10} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                    <TableCell colSpan={11} align="center" sx={{ py: 4, color: "text.secondary" }}>
                       No versions found for {platform}
                     </TableCell>
                   </TableRow>
@@ -270,6 +288,26 @@ export default function VersionManagementPage() {
                         : (v.fileName || "—")}
                     </TableCell>
                     <TableCell>{fmt(v.fileSize)}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const p = patches[v.version];
+                        if (!p) return <Typography variant="caption" color="text.disabled">—</Typography>;
+                        if (p.status === "PENDING") return <Chip icon={<BoltIcon />} label="Generating…" size="small" variant="outlined" />;
+                        if (p.status === "FAILED")  return <Chip label="Failed" size="small" color="error" variant="outlined" />;
+                        const saving = v.fileSize ? Math.round(100 - (100 * p.patchSize / v.fileSize)) : null;
+                        return (
+                          <Tooltip title={`Smallest available delta patch: ${fmt(p.patchSize)}`}>
+                            <Chip
+                              icon={<BoltIcon />}
+                              label={saving != null ? `${fmt(p.patchSize)} (−${saving}%)` : fmt(p.patchSize)}
+                              size="small"
+                              color="success"
+                              variant="outlined"
+                            />
+                          </Tooltip>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell sx={{ fontSize: 12 }}>{v.uploadedBy || "—"}</TableCell>
                     <TableCell sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
                       {fmtDate(v.uploadedAt)}

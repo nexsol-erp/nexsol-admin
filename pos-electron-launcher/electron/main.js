@@ -6,17 +6,27 @@
  *   1. Read installed version from versions/current.txt
  *   2. Check update server for newer version
  *   3. Present OPTIONAL / REQUIRED / OBSOLETE update UI
- *   4. Download pos-electron.exe into versions/{version}/
+ *   4. Attempt delta patch download (POSDELTA1 format, ~90% smaller)
+ *      → Fall back to full exe download if patch fails
  *   5. Verify SHA-256 checksum
  *   6. Update versions/current.txt
  *   7. Clean up old versions (keep current + 1 previous)
  *   8. Launch versions/{version}/pos-electron.exe and exit
+ *
+ * Delta patch format (POSDELTA1):
+ *   "POSDELTA1"        9 bytes  magic
+ *   newFileSize        8 bytes  big-endian int64
+ *   sha256(newFile)   64 bytes  ASCII hex
+ *   gzip(commands)             compressed command stream
+ *     0x01 | srcOffset(8B BE) | length(4B BE)  COPY from old file
+ *     0x02 | length(4B BE)    | data[length]   NEW literal bytes
  */
 
 const { app, BrowserWindow, ipcMain, net } = require("electron");
 const path   = require("path");
 const fs     = require("fs");
 const crypto = require("crypto");
+const zlib   = require("zlib");
 const { spawn } = require("child_process");
 
 // ── Paths ──────────────────────────────────────────────────────────────────────
@@ -290,6 +300,78 @@ function launchPos(version) {
   child.unref();
 }
 
+// ── Delta patch applicator ────────────────────────────────────────────────────
+
+const DELTA_MAGIC    = "POSDELTA1";
+const DELTA_CMD_COPY = 0x01;
+const DELTA_CMD_NEW  = 0x02;
+
+/**
+ * Apply a POSDELTA1 binary patch.
+ * Reads oldPath + patchPath entirely into memory, writes result to newPath.
+ * RAM usage: ~2 × exeSize (acceptable for a 79 MB file on a desktop PC).
+ *
+ * Throws if magic is wrong, write position is off, or checksum fails.
+ */
+function applyPatch(oldPath, patchPath, newPath) {
+  const patchBuf = fs.readFileSync(patchPath);
+
+  // ── Validate magic ────────────────────────────────────────────────────────
+  if (patchBuf.toString("ascii", 0, 9) !== DELTA_MAGIC)
+    throw new Error("Invalid patch file: bad magic header");
+
+  // ── Read header ───────────────────────────────────────────────────────────
+  const newSize          = Number(patchBuf.readBigInt64BE(9));
+  const expectedChecksum = patchBuf.toString("ascii", 17, 81);
+
+  // ── Decompress command stream ─────────────────────────────────────────────
+  const compressed = patchBuf.subarray(81);
+  const commands   = zlib.gunzipSync(compressed);
+
+  // ── Read source file ──────────────────────────────────────────────────────
+  const oldData = fs.readFileSync(oldPath);
+  const newData = Buffer.alloc(newSize);
+
+  let cmdPos = 0, writePos = 0;
+
+  while (writePos < newSize) {
+    if (cmdPos >= commands.length)
+      throw new Error(`Patch truncated at byte ${writePos} of ${newSize}`);
+
+    const cmd = commands.readUInt8(cmdPos++);
+
+    if (cmd === DELTA_CMD_COPY) {
+      const srcOff = Number(commands.readBigInt64BE(cmdPos)); cmdPos += 8;
+      const length = commands.readUInt32BE(cmdPos);           cmdPos += 4;
+      if (srcOff + length > oldData.length)
+        throw new Error(`COPY out of bounds: offset=${srcOff} length=${length}`);
+      oldData.copy(newData, writePos, srcOff, srcOff + length);
+      writePos += length;
+
+    } else if (cmd === DELTA_CMD_NEW) {
+      const length = commands.readUInt32BE(cmdPos); cmdPos += 4;
+      commands.copy(newData, writePos, cmdPos, cmdPos + length);
+      cmdPos   += length;
+      writePos += length;
+
+    } else {
+      throw new Error(`Unknown patch command: 0x${cmd.toString(16)} at cmd offset ${cmdPos - 1}`);
+    }
+  }
+
+  if (writePos !== newSize)
+    throw new Error(`Patch incomplete: wrote ${writePos} of ${newSize} bytes`);
+
+  // ── Verify SHA-256 ────────────────────────────────────────────────────────
+  const actualChecksum = crypto.createHash("sha256").update(newData).digest("hex");
+  if (actualChecksum !== expectedChecksum)
+    throw new Error(`Checksum mismatch after patch — file may be corrupt`);
+
+  // ── Write result ──────────────────────────────────────────────────────────
+  fs.writeFileSync(newPath, newData);
+  log("info", `[patch] Applied successfully → ${writePos} bytes, checksum OK`);
+}
+
 // ── Core flow ─────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -369,7 +451,7 @@ async function main() {
     await waitForUserChoice(); // only "download" button is shown
   }
 
-  // ── 4. Download ───────────────────────────────────────────────────────────
+  // ── 4. Download (delta first, full fallback) ──────────────────────────────
   const resolvedUrl = downloadUrl.startsWith("/") ? apiServer + downloadUrl : downloadUrl;
   const destDir     = path.join(VERSIONS_DIR(), latestVersion);
   const destPath    = path.join(destDir, POS_EXE_NAME);
@@ -377,37 +459,56 @@ async function main() {
   fs.mkdirSync(destDir, { recursive: true });
 
   sendState("download");
-  log("info", `[main] Downloading ${latestVersion} from ${resolvedUrl}`);
 
-  try {
-    await downloadFile(resolvedUrl, destPath, (pct) => sendProgress(pct));
-  } catch (e) {
-    log("error", "[main] Download failed:", e.message);
-    fs.rmSync(destDir, { recursive: true, force: true });
-    sendState("error", {
-      message: `Download failed: ${e.message}`,
-      canLaunch: !!(currentVersion && versionExeExists(currentVersion)),
-    });
-    const choice = await waitForRetry();
-    if (choice === "launch-anyway" && currentVersion && versionExeExists(currentVersion)) {
-      sendState("launching");
-      launchPos(currentVersion);
-      setTimeout(() => app.quit(), 1500);
-    } else {
-      app.quit();
+  let downloadOk = false;
+
+  // ── 4a. Try delta patch ───────────────────────────────────────────────────
+  if (updateData.deltaAvailable && currentVersion && versionExeExists(currentVersion)) {
+    const patchUrl  = updateData.patchUrl.startsWith("/")
+      ? apiServer + updateData.patchUrl : updateData.patchUrl;
+    const patchPath = path.join(destDir, `patch-${currentVersion}-to-${latestVersion}.pos-patch`);
+
+    log("info", `[main] Attempting delta: ${patchUrl} (${Math.round((updateData.patchSize || 0) / 1024)} KB)`);
+
+    try {
+      await downloadFile(patchUrl, patchPath, (pct) => sendProgress(pct));
+
+      // Verify patch checksum
+      if (updateData.patchChecksum) {
+        const actual = await sha256File(patchPath);
+        if (actual.toLowerCase() !== updateData.patchChecksum.toLowerCase())
+          throw new Error("Patch file checksum mismatch — downloaded file may be corrupt");
+      }
+
+      log("info", "[main] Applying delta patch…");
+      sendProgress(99);
+
+      const currentExe = getPosExePath(currentVersion);
+      applyPatch(currentExe, patchPath, destPath);
+
+      // applyPatch already verifies the SHA-256 of the result internally
+      // (the expected checksum is embedded in the patch header)
+      try { fs.unlinkSync(patchPath); } catch (_) {}
+
+      downloadOk = true;
+      log("info", `[main] Delta update complete → ${latestVersion}`);
+    } catch (e) {
+      log("warn", `[main] Delta failed (${e.message}), falling back to full download`);
+      try { fs.rmSync(destDir, { recursive: true, force: true }); } catch (_) {}
+      fs.mkdirSync(destDir, { recursive: true });
     }
-    return;
   }
 
-  // ── 5. Verify checksum ────────────────────────────────────────────────────
-  if (checksum) {
-    log("info", "[main] Verifying checksum…");
-    const actual = await sha256File(destPath);
-    if (actual.toLowerCase() !== checksum.toLowerCase()) {
-      log("error", `[main] Checksum mismatch! Expected ${checksum}, got ${actual}`);
+  // ── 4b. Full download fallback ────────────────────────────────────────────
+  if (!downloadOk) {
+    log("info", `[main] Full download: ${resolvedUrl}`);
+    try {
+      await downloadFile(resolvedUrl, destPath, (pct) => sendProgress(pct));
+    } catch (e) {
+      log("error", "[main] Full download failed:", e.message);
       fs.rmSync(destDir, { recursive: true, force: true });
       sendState("error", {
-        message: "Download verification failed (checksum mismatch). The file may be corrupted.",
+        message: `Download failed: ${e.message}`,
         canLaunch: !!(currentVersion && versionExeExists(currentVersion)),
       });
       const choice = await waitForRetry();
@@ -420,7 +521,30 @@ async function main() {
       }
       return;
     }
-    log("info", "[main] Checksum OK");
+
+    // ── 5. Verify full exe checksum ─────────────────────────────────────────
+    if (checksum) {
+      log("info", "[main] Verifying checksum…");
+      const actual = await sha256File(destPath);
+      if (actual.toLowerCase() !== checksum.toLowerCase()) {
+        log("error", `[main] Checksum mismatch! Expected ${checksum}, got ${actual}`);
+        fs.rmSync(destDir, { recursive: true, force: true });
+        sendState("error", {
+          message: "Download verification failed (checksum mismatch). The file may be corrupted.",
+          canLaunch: !!(currentVersion && versionExeExists(currentVersion)),
+        });
+        const choice = await waitForRetry();
+        if (choice === "launch-anyway" && currentVersion && versionExeExists(currentVersion)) {
+          sendState("launching");
+          launchPos(currentVersion);
+          setTimeout(() => app.quit(), 1500);
+        } else {
+          app.quit();
+        }
+        return;
+      }
+      log("info", "[main] Checksum OK");
+    }
   }
 
   // ── 6. Activate new version ───────────────────────────────────────────────
