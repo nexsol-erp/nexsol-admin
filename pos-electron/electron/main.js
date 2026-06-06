@@ -88,9 +88,9 @@ function savePosConfig(cfg) {
   fs.writeFileSync(p, JSON.stringify(cfg, null, 2), "utf8");
 }
 
-// Path for the persisted installed-version file — sits next to the exe.
+// Path for the persisted installed-version file.
 function installedVersionFile() {
-  return path.join(exeDir(), "installed-version.txt");
+  return path.join(app.getPath("userData"), "installed-version.txt");
 }
 
 // The version we treat as "installed".
@@ -121,7 +121,7 @@ function getApiServer() {
   const cfg = getPosConfig();
   if (cfg.apiServer) return String(cfg.apiServer).replace(/\/$/, "");
   if (process.env.VITE_API_SERVER) return String(process.env.VITE_API_SERVER).replace(/\/$/, "");
-  return "http://localhost:8084";
+  return "https://www.tradelink247.com";
 }
 
 function getWsServer() {
