@@ -78,25 +78,25 @@ jobs:
       - name: Fix installer permissions
         run: chmod 644 "public/downloads/TradeLink247-POS-${{ steps.pos-ver.outputs.version }}.exe"
 
-      - name: Clear old installers on server
+      - name: Prepare versioned folder on server
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            mkdir -p ${{ env.UPDATE_ASSETS_DIR }}
-            chmod 775 ${{ env.UPDATE_ASSETS_DIR }}
-            rm -f ${{ env.UPDATE_ASSETS_DIR }}/TradeLink247-POS-*.exe || true
+            # Keep all version folders — server needs old exes to generate delta patches
+            mkdir -p ${{ env.UPDATE_ASSETS_DIR }}/windows
+            chmod -R 775 ${{ env.UPDATE_ASSETS_DIR }}
 
-      - name: Copy versioned installer to update server
+      - name: Copy portable exe to versioned windows folder
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "public/downloads/TradeLink247-POS-${{ steps.pos-ver.outputs.version }}.exe"
-          target: "${{ env.UPDATE_ASSETS_DIR }}/"
+          target: "${{ env.UPDATE_ASSETS_DIR }}/windows/"
           strip_components: 2
           overwrite: true
 
@@ -107,10 +107,9 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            mkdir -p ${{ env.UPDATE_ASSETS_DIR }}
             echo "${{ steps.pos-ver.outputs.version }}" > ${{ env.UPDATE_ASSETS_DIR }}/latest.txt
-            echo "latest.txt updated to ${{ steps.pos-ver.outputs.version }}"
-            ls -lh ${{ env.UPDATE_ASSETS_DIR }}/
+            echo "Deployed v${{ steps.pos-ver.outputs.version }}"
+            ls -lh ${{ env.UPDATE_ASSETS_DIR }}/windows/
 
       - name: Install dependencies
         run: npm install
@@ -148,8 +147,8 @@ jobs:
             sudo cp -r /home/deploy/tmp-deploy/build/* /var/www/html/
             sudo mkdir -p /var/www/html/downloads
             LATEST=$(cat /home/deploy/tradelink-pos/latest.txt 2>/dev/null || echo "")
-            if [ -n "$LATEST" ] && [ -f "/home/deploy/tradelink-pos/TradeLink247-POS-$LATEST.exe" ]; then
-              sudo cp "/home/deploy/tradelink-pos/TradeLink247-POS-$LATEST.exe" /var/www/html/downloads/TradeLink247-POS-Setup.exe
+            if [ -n "$LATEST" ] && [ -f "/home/deploy/tradelink-pos/windows/TradeLink247-POS-$LATEST.exe" ]; then
+              sudo cp "/home/deploy/tradelink-pos/windows/TradeLink247-POS-$LATEST.exe" /var/www/html/downloads/TradeLink247-POS-Setup.exe
               sudo chmod 644 /var/www/html/downloads/TradeLink247-POS-Setup.exe
             fi
             sudo systemctl reload nginx
