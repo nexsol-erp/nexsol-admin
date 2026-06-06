@@ -6,12 +6,13 @@ import {
   TableCell, TableContainer, TableHead, TableRow, Tabs, TextField,
   Tooltip, Typography,
 } from "@mui/material";
-import AddIcon        from "@mui/icons-material/Add";
-import DeleteIcon     from "@mui/icons-material/Delete";
-import FolderOffIcon  from "@mui/icons-material/FolderOff";
-import HistoryIcon    from "@mui/icons-material/History";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
-import BoltIcon       from "@mui/icons-material/Bolt";
+import AddIcon          from "@mui/icons-material/Add";
+import DeleteIcon       from "@mui/icons-material/Delete";
+import DownloadIcon     from "@mui/icons-material/Download";
+import FolderOffIcon    from "@mui/icons-material/FolderOff";
+import HistoryIcon      from "@mui/icons-material/History";
+import UploadFileIcon   from "@mui/icons-material/UploadFile";
+import BoltIcon         from "@mui/icons-material/Bolt";
 
 const PLATFORMS     = ["WINDOWS", "LINUX", "MAC"];
 const STATUSES      = ["OPTIONAL", "REQUIRED", "OBSOLETE"];
@@ -200,6 +201,17 @@ export default function VersionManagementPage() {
     } catch (e) { setError(e.message); }
   };
 
+  // ── Download ──────────────────────────────────────────────────────────────────
+
+  const downloadVersion = (v) => {
+    const a = document.createElement("a");
+    a.href = `/api/pos-app/download/${v.id}`;
+    a.download = v.fileName || `TradeLink247-POS-${v.version}.exe`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   // ── Audit ─────────────────────────────────────────────────────────────────────
 
   const openAudit = async (v) => {
@@ -338,6 +350,14 @@ export default function VersionManagementPage() {
                             <HistoryIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
+                        {!v.isFileDeleted && v.filePath && (
+                          <Tooltip title={`Download ${v.fileName || "exe"}`}>
+                            <IconButton size="small" color="primary"
+                              onClick={() => downloadVersion(v)}>
+                              <DownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                         {v.status === "OBSOLETE" && !v.isFileDeleted && (
                           <Tooltip title="Delete installer files from server">
                             <IconButton size="small" color="warning"
