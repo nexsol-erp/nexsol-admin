@@ -8,10 +8,11 @@
     "dev:electron": "wait-on http://localhost:5173 && node scripts/launch-electron.js",
     "dev": "concurrently -k \"npm:dev:ui\" \"npm:dev:electron\"",
     "build": "vite build",
+    "dist:win": "npm run build && electron-builder --win",
     "dist:installer": "npm run build && electron-builder --win nsis",
     "dist:portable": "npm run build && electron-builder --win portable",
     "dist:asar": "npm run build && node scripts/extract-asar.js",
-    "dist": "npm run dist:installer"
+    "dist": "npm run dist:win"
   },
   "dependencies": {
     "antd": "^6.3.3",
@@ -55,7 +56,7 @@
       "artifactName": "TradeLink247-POS-Setup-${version}.${ext}"
     },
     "portable": {
-      "artifactName": "pos-electron.exe"
+      "artifactName": "TradeLink247-POS-${version}.exe"
     },
     "nsis": {
       "oneClick": false,
