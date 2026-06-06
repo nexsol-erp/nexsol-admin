@@ -1,0 +1,33 @@
+{
+  "name": "tradelink247-pos-launcher",
+  "version": "1.0.0",
+  "description": "Lightweight launcher for TradeLink247 POS — checks for updates and launches the correct version",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --config electron-builder.json"
+  },
+  "build": {
+    "appId": "com.nexsol.tradelink247.launcher",
+    "productName": "TradeLink247-POS-Launcher",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "portable",
+      "artifactName": "TradeLink247-POS-Launcher.exe",
+      "requestedExecutionLevel": "highestAvailable"
+    },
+    "portable": {
+      "artifactName": "TradeLink247-POS-Launcher.exe"
+    },
+    "files": [
+      "electron/**",
+      "ui/**"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^32.3.3",
+    "electron-builder": "^25.1.8"
+  }
+}
