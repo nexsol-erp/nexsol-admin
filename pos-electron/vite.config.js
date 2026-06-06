@@ -8,7 +8,7 @@ export default defineConfig({
   // absolute paths like /assets/index.js which fail under file://.
   base: "./",
   define: {
-    "import.meta.env.VITE_API_SERVER": JSON.stringify(process.env.VITE_API_SERVER || "http://localhost:8084"),
+    "import.meta.env.VITE_API_SERVER": JSON.stringify(process.env.VITE_API_SERVER || "https://www.tradelink247.com"),
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(process.env.npm_package_version || "1.0.0"),
   },
   server: {
