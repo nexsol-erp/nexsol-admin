@@ -1,6 +1,7 @@
 {
   "apiServer": "https://www.tradelink247.com",
   "aiServer": "https://www.tradelink247.com",
+  "wsServer": "wss://www.tradelink247.com",
   "printer": {
     "paperWidthMm": 72,
     "paperHeightMm": 3276
