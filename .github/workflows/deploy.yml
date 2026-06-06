@@ -76,26 +76,39 @@ jobs:
           path: public/downloads/
 
       - name: Fix installer permissions
-        run: chmod 644 "public/downloads/TradeLink247-POS-${{ steps.pos-ver.outputs.version }}.exe"
+        run: |
+          chmod 644 "public/downloads/TradeLink247-POS-${{ steps.pos-ver.outputs.version }}.exe"
+          chmod 644 "public/downloads/TradeLink247-POS-Setup-${{ steps.pos-ver.outputs.version }}.exe"
 
-      - name: Prepare versioned folder on server
+      - name: Prepare versioned folders on server
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Keep all version folders — server needs old exes to generate delta patches
+            # Keep all version files — server needs old portable exes to generate delta patches
             mkdir -p ${{ env.UPDATE_ASSETS_DIR }}/windows
             chmod -R 775 ${{ env.UPDATE_ASSETS_DIR }}
 
-      - name: Copy portable exe to versioned windows folder
+      - name: Copy portable exe to windows folder
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "public/downloads/TradeLink247-POS-${{ steps.pos-ver.outputs.version }}.exe"
+          target: "${{ env.UPDATE_ASSETS_DIR }}/windows/"
+          strip_components: 2
+          overwrite: true
+
+      - name: Copy NSIS full installer to windows folder
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "public/downloads/TradeLink247-POS-Setup-${{ steps.pos-ver.outputs.version }}.exe"
           target: "${{ env.UPDATE_ASSETS_DIR }}/windows/"
           strip_components: 2
           overwrite: true

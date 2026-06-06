@@ -23,20 +23,6 @@ contextBridge.exposeInMainWorld("POS", {
   // Logger — writes to <userData>/logs/pos.log
   log: (level, message) => ipcRenderer.invoke("log:write", level, message),
 
-  // Auto-updater
-  downloadAndInstall: (url) => ipcRenderer.invoke("update:download-install", url),
-  onDownloadProgress: (cb) => {
-    const handler = (_evt, pct) => cb(pct);
-    ipcRenderer.on("update:progress", handler);
-    return () => ipcRenderer.removeListener("update:progress", handler);
-  },
-  onDownloadDone: (cb) => {
-    ipcRenderer.once("update:done", () => cb());
-  },
-  onDownloadError: (cb) => {
-    ipcRenderer.once("update:error", (_evt, msg) => cb(msg));
-  },
-
   // UPI customer display (second monitor)
   upi: {
     showCustomerDisplay: (payload) => ipcRenderer.invoke("upi:show-customer-display", payload),
