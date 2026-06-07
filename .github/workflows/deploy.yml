@@ -7,44 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ── Job 1: Build the Launcher (permanent user entry point) ──────────────────
-  build-launcher:
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Configure API server in launcher-config.json
-        if: ${{ vars.POS_API_SERVER != '' }}
-        shell: pwsh
-        run: |
-          $cfg = Get-Content pos-electron-launcher/launcher-config.json | ConvertFrom-Json
-          $cfg.apiServer = "${{ vars.POS_API_SERVER }}"
-          $cfg | ConvertTo-Json | Set-Content pos-electron-launcher/launcher-config.json
-          Write-Host "Launcher API server set to: ${{ vars.POS_API_SERVER }}"
-
-      - name: Install launcher dependencies
-        working-directory: pos-electron-launcher
-        run: npm install
-
-      - name: Build Launcher
-        working-directory: pos-electron-launcher
-        run: npm run dist
-
-      - name: Upload launcher artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: pos-launcher
-          path: pos-electron-launcher/release/*.exe
-          retention-days: 30
-
-  # ── Job 2: Build the Cashier POS Electron app ───────────────────────────────
+  # ── Job 1: Build POS app + Launcher (same runner, shares electron-builder) ──
   build-pos:
     runs-on: windows-latest
 
@@ -68,25 +31,49 @@ jobs:
           $cfg | ConvertTo-Json | Set-Content pos-electron/pos-config.json
           Write-Host "API server set to: ${{ vars.POS_API_SERVER }}"
 
+      - name: Configure API server in launcher-config.json
+        if: ${{ vars.POS_API_SERVER != '' }}
+        shell: pwsh
+        run: |
+          $cfg = Get-Content pos-electron-launcher/launcher-config.json | ConvertFrom-Json
+          $cfg.apiServer = "${{ vars.POS_API_SERVER }}"
+          $cfg | ConvertTo-Json | Set-Content pos-electron-launcher/launcher-config.json
+          Write-Host "Launcher API server set to: ${{ vars.POS_API_SERVER }}"
+
       - name: Install pos-electron dependencies
         working-directory: pos-electron
-        run: npm install
+        run: npm ci
 
       - name: Build Cashier POS installer
         working-directory: pos-electron
         run: npm run dist:win
 
-      - name: Upload installer artifact
+      - name: Install launcher dependencies (electron only — reuses pos-electron's electron-builder)
+        working-directory: pos-electron-launcher
+        run: npm install
+
+      - name: Build Launcher (using pos-electron's electron-builder)
+        working-directory: pos-electron-launcher
+        run: ..\pos-electron\node_modules\.bin\electron-builder --win
+
+      - name: Upload POS installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: pos-installer
           path: pos-electron/release/*.exe
           retention-days: 7
 
-  # ── Job 3: Deploy everything (depends on both build jobs) ───────────────────
+      - name: Upload Launcher artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pos-launcher
+          path: pos-electron-launcher/release/*.exe
+          retention-days: 30
+
+  # ── Job 2: Deploy everything ─────────────────────────────────────────────────
   build-and-deploy:
     runs-on: ubuntu-latest
-    needs: [build-launcher, build-pos]
+    needs: [build-pos]
 
     env:
       TEMP_DEPLOY_DIR: /home/deploy/tmp-deploy
