@@ -305,7 +305,7 @@ export default function VersionManagementPage() {
             <Typography variant="subtitle1" fontWeight={600}>
               TradeLink247 POS Launcher
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "#374151" }}>
               Permanent entry point for end users. Installed once — handles all future POS updates automatically via delta patches.
             </Typography>
           </Box>
