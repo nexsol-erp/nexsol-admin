@@ -389,7 +389,7 @@ async function main() {
     const params = new URLSearchParams({ platform: "WINDOWS" });
     if (currentVersion) params.set("currentVersion", currentVersion);
 
-    const res = await fetch(`${apiServer}/api/pos-app/update-check?${params}`);
+    const res = await fetch(`${apiServer}/pos-app/update-check?${params}`);
     if (!res.ok) throw new Error(`Update check returned ${res.status}`);
     updateData = await res.json();
     log("info", "[main] Update check:", JSON.stringify(updateData));
