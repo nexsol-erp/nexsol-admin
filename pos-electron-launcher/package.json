@@ -5,29 +5,46 @@
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win --config electron-builder.json"
+    "dist": "electron-builder --win"
   },
   "build": {
     "appId": "com.nexsol.tradelink247.launcher",
-    "productName": "TradeLink247-POS-Launcher",
+    "productName": "TradeLink247 POS Launcher",
     "directories": {
       "output": "release"
-    },
-    "win": {
-      "target": "portable",
-      "artifactName": "TradeLink247-POS-Launcher.exe",
-      "requestedExecutionLevel": "highestAvailable"
-    },
-    "portable": {
-      "artifactName": "TradeLink247-POS-Launcher.exe"
     },
     "files": [
       "electron/**",
       "ui/**"
-    ]
+    ],
+    "extraFiles": [
+      {
+        "from": "launcher-config.json",
+        "to": "launcher-config.json"
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis",     "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "artifactName": "TradeLink247-POS-Launcher-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "TradeLink247-POS-Launcher.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TradeLink247 POS",
+      "installerIcon": null,
+      "uninstallerIcon": null
+    }
   },
   "devDependencies": {
     "electron": "^32.3.3",
-    "electron-builder": "^25.1.8"
+    "electron-builder": "^26.0.12"
   }
 }
