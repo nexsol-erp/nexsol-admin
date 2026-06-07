@@ -203,13 +203,30 @@ export default function VersionManagementPage() {
 
   // ── Download ──────────────────────────────────────────────────────────────────
 
-  const downloadVersion = (v) => {
-    const a = document.createElement("a");
-    a.href = `/api/pos-app/download/${v.id}`;
-    a.download = v.fileName || `TradeLink247-POS-${v.version}.exe`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const [downloading, setDownloading] = useState(null); // version id being downloaded
+
+  const downloadVersion = async (v) => {
+    setDownloading(v.id);
+    try {
+      const res = await fetch(
+        `/api/${tenantId}/admin/pos-app/versions/${v.id}/download`,
+        { headers }
+      );
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = v.fileName || `TradeLink247-POS-${v.version}.exe`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(`Download failed for v${v.version}: ${e.message}`);
+    } finally {
+      setDownloading(null);
+    }
   };
 
   // ── Audit ─────────────────────────────────────────────────────────────────────
@@ -351,11 +368,16 @@ export default function VersionManagementPage() {
                           </IconButton>
                         </Tooltip>
                         {!v.isFileDeleted && v.filePath && (
-                          <Tooltip title={`Download ${v.fileName || "exe"}`}>
-                            <IconButton size="small" color="primary"
-                              onClick={() => downloadVersion(v)}>
-                              <DownloadIcon fontSize="small" />
-                            </IconButton>
+                          <Tooltip title={downloading === v.id ? "Downloading…" : `Download ${v.fileName || "exe"}`}>
+                            <span>
+                              <IconButton size="small" color="primary"
+                                disabled={downloading === v.id}
+                                onClick={() => downloadVersion(v)}>
+                                {downloading === v.id
+                                  ? <CircularProgress size={16} />
+                                  : <DownloadIcon fontSize="small" />}
+                              </IconButton>
+                            </span>
                           </Tooltip>
                         )}
                         {v.status === "OBSOLETE" && !v.isFileDeleted && (
