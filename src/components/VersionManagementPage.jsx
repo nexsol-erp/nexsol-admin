@@ -36,7 +36,7 @@ const fmtDate = (s) =>
   s ? new Date(s).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—";
 
 export default function VersionManagementPage() {
-  const tenantId = localStorage.getItem("tenancyId") || "";
+  const tenantId = "nexsoldb";
   const token    = localStorage.getItem("jwtToken")  || "";
   const headers  = { Authorization: `Bearer ${token}` };
   const jsonHdrs = { ...headers, "Content-Type": "application/json" };
