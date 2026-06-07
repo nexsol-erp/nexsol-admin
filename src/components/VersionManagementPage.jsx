@@ -203,7 +203,32 @@ export default function VersionManagementPage() {
 
   // ── Download ──────────────────────────────────────────────────────────────────
 
-  const [downloading, setDownloading] = useState(null); // version id being downloaded
+  const [downloading,         setDownloading]         = useState(null);  // version id
+  const [launcherDownloading, setLauncherDownloading] = useState(false);
+
+  const downloadLauncher = async (filename) => {
+    setLauncherDownloading(true);
+    try {
+      const res = await fetch(
+        `/api/${tenantId}/admin/pos-app/launcher/download?file=${encodeURIComponent(filename)}`,
+        { headers }
+      );
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(`Launcher download failed: ${e.message}`);
+    } finally {
+      setLauncherDownloading(false);
+    }
+  };
 
   const downloadVersion = async (v) => {
     setDownloading(v.id);
@@ -272,6 +297,40 @@ export default function VersionManagementPage() {
           Add Version
         </Button>
       </Box>
+
+      {/* Launcher download card */}
+      <Paper elevation={1} sx={{ p: 2, mb: 2, bgcolor: "#f0f7ff", border: "1px solid #bfdbfe" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="subtitle1" fontWeight={600}>
+              TradeLink247 POS Launcher
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Permanent entry point for end users. Installed once — handles all future POS updates automatically via delta patches.
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={launcherDownloading ? <CircularProgress size={14} /> : <DownloadIcon />}
+              disabled={launcherDownloading}
+              onClick={() => downloadLauncher("TradeLink247-POS-Launcher.exe")}
+            >
+              Portable (.exe)
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={launcherDownloading ? <CircularProgress size={14} /> : <DownloadIcon />}
+              disabled={launcherDownloading}
+              onClick={() => downloadLauncher("TradeLink247-POS-Launcher-Setup.exe")}
+            >
+              Installer (.exe)
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
 
       {/* Main table */}
       {loading ? (
