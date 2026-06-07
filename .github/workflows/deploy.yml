@@ -19,8 +19,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: pos-electron-launcher/package.json
 
       - name: Configure API server in launcher-config.json
         if: ${{ vars.POS_API_SERVER != '' }}
