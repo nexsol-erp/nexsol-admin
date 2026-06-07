@@ -389,13 +389,22 @@ async function main() {
     const params = new URLSearchParams({ platform: "WINDOWS" });
     if (currentVersion) params.set("currentVersion", currentVersion);
 
-    const res = await fetch(`${apiServer}/pos-app/update-check?${params}`);
-    if (!res.ok) throw new Error(`Update check returned ${res.status}`);
-    updateData = await res.json();
-    log("info", "[main] Update check:", JSON.stringify(updateData));
+    const controller = new AbortController();
+    const timeoutId  = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await fetch(`${apiServer}/pos-app/update-check?${params}`,
+                              { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!res.ok) throw new Error(`Update check returned ${res.status}`);
+      updateData = await res.json();
+      log("info", "[main] Update check:", JSON.stringify(updateData));
+    } catch (fetchErr) {
+      clearTimeout(timeoutId);
+      throw fetchErr;
+    }
   } catch (e) {
     log("warn", "[main] Update check failed:", e.message);
-    // Non-fatal: try to launch whatever we have
+    // Non-fatal: launch whatever is installed locally
     if (currentVersion && versionExeExists(currentVersion)) {
       sendState("launching");
       launchPos(currentVersion);
@@ -403,7 +412,7 @@ async function main() {
       return;
     }
     sendState("error", {
-      message: `Cannot reach update server and no local version found.\n${e.message}`,
+      message: `Cannot reach update server and no local version is installed.\n${e.message}`,
       canLaunch: false,
     });
     return;
@@ -439,9 +448,17 @@ async function main() {
     const choice = await waitForUserChoice();
 
     if (choice === "later" || choice === "skip") {
-      sendState("launching");
-      launchPos(currentVersion);
-      setTimeout(() => app.quit(), 1500);
+      try {
+        sendState("launching");
+        launchPos(currentVersion);
+        setTimeout(() => app.quit(), 1500);
+      } catch (e) {
+        log("warn", "[main] Launch failed after skip/later:", e.message);
+        sendState("error", {
+          message: `Could not start the current version.\n${e.message}`,
+          canLaunch: false,
+        });
+      }
       return;
     }
     // choice === "download" → fall through
