@@ -37,8 +37,11 @@ function launcherDir() {
     : path.join(__dirname, "..");
 }
 
-const VERSIONS_DIR   = () => path.join(launcherDir(), "versions");
-const CURRENT_FILE   = () => path.join(VERSIONS_DIR(), "current.txt");
+// Version data lives in userData (AppData\Roaming\...) — constant regardless
+// of where the Launcher exe is placed, and always writable without admin rights.
+const DATA_DIR       = () => app.getPath("userData");
+const VERSIONS_DIR   = () => path.join(DATA_DIR(), "versions");
+const CURRENT_FILE   = () => path.join(DATA_DIR(), "current.txt");
 const CONFIG_FILE    = () => path.join(launcherDir(), "launcher-config.json");
 const POS_EXE_NAME   = "pos-electron.exe";
 
