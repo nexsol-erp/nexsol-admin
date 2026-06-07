@@ -5,7 +5,7 @@
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win"
+    "dist": "node ../pos-electron/node_modules/.bin/electron-builder --win"
   },
   "build": {
     "appId": "com.nexsol.tradelink247.launcher",
@@ -44,10 +44,6 @@
     }
   },
   "devDependencies": {
-    "electron": "^32.3.3",
-    "electron-builder": "^26.0.12"
-  },
-  "overrides": {
-    "@noble/hashes": "1.6.1"
+    "electron": "^32.3.3"
   }
 }
