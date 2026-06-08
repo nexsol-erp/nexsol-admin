@@ -50,3 +50,15 @@ db.version(5).stores({
   await tx.table("items").clear();
   await tx.table("meta").put({ key: "items_loaded", value: "0" });
 });
+
+// v6: adds receipt_modes store for offline billing
+db.version(6).stores({
+  items: "itemId, barcode, itemName, category",
+  meta: "key",
+  pending_sales: "++id, status, queuedAt",
+  pending_stock_transfers: "++id, status, queuedAt",
+  kot_headers: "++id, tableId, kotDate, status",
+  kot_lines: "++id, headerId",
+  kot_sequence: "seqDate",
+  receipt_modes: "key",
+});
