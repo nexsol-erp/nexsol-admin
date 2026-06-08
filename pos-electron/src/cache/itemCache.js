@@ -102,6 +102,36 @@ export async function clearItemCache() {
   });
 }
 
+// ── Receipt mode cache ────────────────────────────────────────────────────────
+
+export async function saveReceiptModesToCache(modes) {
+  if (!Array.isArray(modes) || !modes.length) return;
+  await db.receipt_modes.put({ key: "receipt_modes", data: modes });
+}
+
+export async function loadReceiptModesFromCache() {
+  const row = await db.receipt_modes.get("receipt_modes");
+  return Array.isArray(row?.data) ? row.data : [];
+}
+
+export async function refreshReceiptModesCache() {
+  const tenancyId = localStorage.getItem("tenancyId");
+  const token     = localStorage.getItem("jwtToken");
+  if (!tenancyId || !token) return;
+  try {
+    const res = await fetch(apiUrl(`/api/${tenancyId}/receipt-modes`), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (Array.isArray(rows) && rows.length > 0) {
+      await saveReceiptModesToCache(rows);
+    }
+  } catch (_) {
+    // network unavailable — cached data remains
+  }
+}
+
 export async function hasCache() {
   const v = await db.meta.get("items_loaded");
   return v?.value === "1";
@@ -172,6 +202,10 @@ export async function loadAllItemsToCache({ pageSize = 500, onProgress } = {}) {
   });
 
   console.log("loadAllItemsToCache completed. Unique items:", loaded);
+
+  // Refresh receipt modes alongside items so offline billing always has fresh data
+  await refreshReceiptModesCache();
+
   return { loaded, total };
 }
 

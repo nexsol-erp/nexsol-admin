@@ -4,7 +4,7 @@ import { SyncOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined }
 import { logout } from "../auth/auth";
 import ItemLookupModal from "../components/ItemLookupModal";
 import UpiPaymentModal from "./UpiPaymentModal";
-import { applySaleToCache, findItemByName } from "../cache/itemCache";
+import { applySaleToCache, findItemByName, loadReceiptModesFromCache, saveReceiptModesToCache } from "../cache/itemCache";
 import { evaluateSchemes, buildOfferRows } from "./schemeEngine";
 import { log, warn, error as logError } from "../utils/logger";
 import { apiUrl } from "../utils/apiUrl";
@@ -164,19 +164,29 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       })
       .catch(() => {});
 
-    fetch(`/api/${tenantId}/receipt-modes`, { headers: hdr })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((rows) => {
-        if (!Array.isArray(rows) || rows.length === 0) return;
-        setReceipts(
-          rows.map((r) => ({
-            key: r.receiptMode,
-            receipt_mode: r.receiptMode,
-            amount: 0,
-          }))
-        );
-      })
-      .catch(() => {});
+    // Load receipt modes: cache first (works offline), then refresh from server
+    (async () => {
+      const normalize = (rows) =>
+        rows.map((r) => ({ key: r.receiptMode, receipt_mode: r.receiptMode, amount: 0 }));
+
+      // 1. Load from cache immediately so billing works even with no internet
+      const cached = await loadReceiptModesFromCache();
+      if (cached.length > 0) setReceipts(normalize(cached));
+
+      // 2. Try server in background; update cache and state if reachable
+      try {
+        const res = await fetch(`/api/${tenantId}/receipt-modes`, { headers: hdr });
+        if (res.ok) {
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows.length > 0) {
+            await saveReceiptModesToCache(rows);
+            setReceipts(normalize(rows));
+          }
+        }
+      } catch (_) {
+        // offline — cached data already applied above
+      }
+    })();
   }, []);
 
   // Load items pre-filled from KOT Convert-to-POS
