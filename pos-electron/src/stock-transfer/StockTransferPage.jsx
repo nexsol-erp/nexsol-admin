@@ -39,7 +39,9 @@ function writeHoldList(rows) {
 }
 
 export default function StockTransferPage({ onClose }) {
-  const itemSearchRef = useRef(null);
+  const itemSearchRef      = useRef(null);
+  const qtyRefs            = useRef(new Map()); // rowKey → InputNumber instance
+  const pendingQtyFocusKey = useRef(null);
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupQuery, setLookupQuery] = useState("");
 
@@ -306,8 +308,9 @@ export default function StockTransferPage({ onClose }) {
     const existing = items.find((r) => r.item_id === itm.itemId && (r.batch || "") === batch);
     if (existing) {
       updateRow(existing.key, { qty: (Number(existing.qty) || 0) + 1 });
-      setLookupOpen(false);
+      pendingQtyFocusKey.current = existing.key;
       setItemQuery("");
+      setLookupOpen(false);
       return;
     }
 
@@ -324,9 +327,10 @@ export default function StockTransferPage({ onClose }) {
       unit: itm.unitName || "",
       expiry: itm.expiry || "",
     };
+    pendingQtyFocusKey.current = row.key;
     setItems((prev) => [row, ...prev]);
-    setLookupOpen(false);
     setItemQuery("");
+    setLookupOpen(false);
   };
 
   const resetForm = () => {
@@ -581,6 +585,10 @@ export default function StockTransferPage({ onClose }) {
       width: 80,
       render: (_, row) => (
         <InputNumber
+          ref={(el) => {
+            if (el) qtyRefs.current.set(row.key, el);
+            else qtyRefs.current.delete(row.key);
+          }}
           min={0}
           value={row.qty}
           onChange={(v) => updateRow(row.key, { qty: Number(v || 0) })}
@@ -800,6 +808,13 @@ export default function StockTransferPage({ onClose }) {
         initialQuery={lookupQuery}
         onClose={() => setLookupOpen(false)}
         onPick={onPickItem}
+        onAfterClose={() => {
+          const key = pendingQtyFocusKey.current;
+          if (key) {
+            pendingQtyFocusKey.current = null;
+            qtyRefs.current.get(key)?.focus();
+          }
+        }}
       />
 
       <Modal
