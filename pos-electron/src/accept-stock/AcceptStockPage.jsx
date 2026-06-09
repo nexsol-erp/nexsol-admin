@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Button, Input, Space, Table, Typography, message } from "antd";
 import { apiUrl } from "../utils/apiUrl";
+import { applyStockReceiptToCache } from "../cache/itemCache";
 
 const { Title, Text } = Typography;
 
@@ -231,6 +232,9 @@ export default function AcceptStockPage({ onClose }) {
 
       if (!ok) throw new Error(lastErr || "Unable to save accept stock");
 
+      applyStockReceiptToCache(
+        detailRows.map((r) => ({ itemId: r.item_id, qty: r.qty }))
+      ).catch(() => {});
       setHeaders((prev) => prev.filter((h) => h.id !== selectedHeaderId));
       setSelectedHeaderId("");
       setDetailRows([]);
