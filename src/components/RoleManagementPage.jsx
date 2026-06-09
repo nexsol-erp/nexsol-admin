@@ -23,7 +23,7 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-const PROTECTED_ROLES = ["admin", "user", "manager", "franchiseeuser", "cgn", "WB", "system-admin"];
+const PROTECTED_ROLES = ["admin", "user", "manager", "franchiseeuser", "cgn", "WB", "system-admin","PHYSICAL_STOCK","PHYSICAL_STOCK_REDUCE"];
 
 const RoleManagementPage = () => {
   const [roles, setRoles] = useState([]);

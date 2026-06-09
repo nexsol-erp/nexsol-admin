@@ -14,7 +14,8 @@ function toNum(v) {
 }
 
 export default function StockTransferHistoryPage({ onClose }) {
-  const [date, setDate] = useState(dayjs());
+  const [fromDate, setFromDate] = useState(dayjs().startOf("month"));
+  const [toDate, setToDate]     = useState(dayjs());
   const [vouchers, setVouchers] = useState([]);
   const [selectedKey, setSelectedKey] = useState("");
   const [loading, setLoading] = useState(false);
@@ -60,11 +61,12 @@ export default function StockTransferHistoryPage({ onClose }) {
 
   const fetchHistory = async () => {
     if (!tenantId || !token) { message.error("Missing login session."); return; }
-    if (!date) { message.warning("Select a date."); return; }
+    if (!fromDate || !toDate) { message.warning("Select from and to dates."); return; }
 
-    const d = date.format("YYYY-MM-DD");
+    const from = fromDate.format("YYYY-MM-DD");
+    const to   = toDate.format("YYYY-MM-DD");
     const url = apiUrl(
-      `/api/${tenantId}/stock-transfers/out?fromBranch=${encodeURIComponent(branchCode || "ALL")}&toBranch=ALL&fromDate=${d}&toDate=${d}`
+      `/api/${tenantId}/stock-transfers/out?fromBranch=${encodeURIComponent(branchCode || "ALL")}&toBranch=ALL&fromDate=${from}&toDate=${to}`
     );
 
     try {
@@ -113,7 +115,7 @@ export default function StockTransferHistoryPage({ onClose }) {
         : grouped;
 
       setVouchers(filtered);
-      if (!filtered.length) message.info("No stock transfers found for this date.");
+      if (!filtered.length) message.info("No stock transfers found for this date range.");
     } catch (e) {
       message.error("Fetch failed: " + (e.message || "Unknown error"));
     } finally {
@@ -188,7 +190,8 @@ export default function StockTransferHistoryPage({ onClose }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <Title level={3} style={{ margin: 0, color: "#0b3a75" }}>Stock Transfer History</Title>
         <Space>
-          <DatePicker value={date} onChange={setDate} allowClear={false} />
+          <DatePicker value={fromDate} onChange={setFromDate} allowClear={false} format="DD-MM-YYYY" placeholder="From date" />
+          <DatePicker value={toDate}   onChange={setToDate}   allowClear={false} format="DD-MM-YYYY" placeholder="To date" />
           <Button type="primary" onClick={fetchHistory} loading={loading}>Fetch</Button>
           <Radio.Group
             options={[{ label: "A4", value: "a4" }, { label: "Thermal", value: "thermal" }]}

@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import {
-  Button, Input, InputNumber, Table, Typography, Divider,
+  Button, Input, InputNumber, Table, Typography,
   Space, Tag, message, Tabs, DatePicker,
 } from "antd";
 import dayjs from "dayjs";
@@ -13,11 +13,13 @@ const { Title, Text } = Typography;
 
 function r2(v) { return Math.round((Number(v) || 0) * 100) / 100; }
 
-export default function PhysicalStockPage({ onClose }) {
+export default function PhysicalStockPage({ onClose, roles = [] }) {
   const tenantId   = localStorage.getItem("tenancyId") || "";
   const branchCode = localStorage.getItem("selectedBranchCode") || "";
   const token      = localStorage.getItem("jwtToken") || "";
   const headers    = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+  const canReduce = roles.includes("PHYSICAL_STOCK_REDUCE");
 
   // ── Entry state ──────────────────────────────────────────────────────────
   const [items, setItems]           = useState([]);
@@ -35,7 +37,7 @@ export default function PhysicalStockPage({ onClose }) {
   const updateRow = (key, patch) => {
     setItems((prev) => prev.map((r) => {
       if (r.key !== key) return r;
-      const next = { ...r, ...patch };
+      const next = { ...r, ...patch, error: false };
       next.amount = r2(next.qty * next.rate);
       return next;
     }));
@@ -58,12 +60,14 @@ export default function PhysicalStockPage({ onClose }) {
         item_code: itm.itemCode || "",
         barcode: itm.barcode || "",
         qty: 1,
+        current_stock: Number(itm.availableQty ?? 0),
         rate: Number(itm.standardPrice || 0),
         standard_price: Number(itm.standardPrice || 0),
         tax_rate: Number(itm.taxRate || 0),
         unit: itm.unitName || "",
         batch: itm.batchCode || "NB",
         amount: r2(itm.standardPrice || 0),
+        error: false,
       },
     ]);
     setLookupOpen(false);
@@ -72,6 +76,18 @@ export default function PhysicalStockPage({ onClose }) {
 
   const handleSave = async () => {
     if (!items.length) { message.warning("Add at least one item"); return; }
+
+    if (!canReduce) {
+      const reducingKeys = new Set(
+        items.filter((r) => r.qty < r.current_stock).map((r) => r.key)
+      );
+      if (reducingKeys.size) {
+        setItems((prev) => prev.map((r) => ({ ...r, error: reducingKeys.has(r.key) })));
+        message.error("Highlighted items would reduce stock. The PHYSICAL_STOCK_REDUCE role is required.");
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const body = {
@@ -98,8 +114,6 @@ export default function PhysicalStockPage({ onClose }) {
       if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
       message.success(`Saved! Voucher: ${data.voucherNumber}`);
       setLastVoucher(data.voucherNumber);
-      // Directly stamp the counted qty into cache so the popup reflects the new
-      // physical count immediately without a full reload.
       applyPhysicalStockToCache(items.map((r) => ({ itemId: r.item_id, qty: r.qty }))).catch((e) =>
         logError("cache update after physical stock:", e.message)
       );
@@ -181,6 +195,7 @@ export default function PhysicalStockPage({ onClose }) {
 
   return (
     <div style={{ padding: "12px 16px", maxWidth: 1000, margin: "0 auto" }}>
+      <style>{`.ps-error-row td { background: #fff1f0 !important; border-left: 3px solid #ff4d4f !important; }`}</style>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
         <Title level={4} style={{ margin: 0, color: "#0b3a75" }}>Physical Stock Entry</Title>
@@ -226,6 +241,7 @@ export default function PhysicalStockPage({ onClose }) {
                   columns={entryColumns}
                   pagination={false}
                   rowKey="key"
+                  rowClassName={(r) => r.error ? "ps-error-row" : ""}
                   scroll={{ x: 900, y: 340 }}
                   locale={{ emptyText: "No items added — scan a barcode or use Browse" }}
                 />

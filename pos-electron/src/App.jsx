@@ -51,6 +51,7 @@ export default function App() {
 
   const prevBranchRef = useRef(null);
   const hasWB = roles.includes("WB");
+  const hasPhysicalStock = roles.includes("PHYSICAL_STOCK") || roles.includes("PHYSICAL_STOCK_REDUCE");
 
   // Load branch options whenever user logs in
   useEffect(() => {
@@ -130,13 +131,14 @@ export default function App() {
 
   useEffect(() => {
     if (!window.POS?.onNavigate) return undefined;
-    const allowedPages = ["pos", "kot", "day-end", "accept-stock", "stock-transfer", "st-history", "physical-stock"];
+    const allowedPages = ["pos", "kot", "day-end", "accept-stock", "stock-transfer", "st-history"];
     if (hasWB) allowedPages.push("weigh-bridge");
+    if (hasPhysicalStock) allowedPages.push("physical-stock");
     const unsubscribe = window.POS.onNavigate((page) => {
       if (allowedPages.includes(page)) setActivePage(page);
     });
     return () => unsubscribe?.();
-  }, [hasWB]);
+  }, [hasWB, hasPhysicalStock]);
 
   return (
     <div style={{ minHeight: "100vh", background: "#f0f2f5" }}>
@@ -160,7 +162,7 @@ export default function App() {
                 { key: "day-end", label: "Day End" },
                 { key: "accept-stock", label: "Accept Stock" },
                 ...(hasWB ? [{ key: "weigh-bridge", label: "Weigh Bridge" }] : []),
-                { key: "physical-stock", label: "Physical Stock" },
+                ...(hasPhysicalStock ? [{ key: "physical-stock", label: "Physical Stock" }] : []),
                 { key: "salesman-report", label: "Salesman" },
                 { key: "item-sales-report", label: "Item Sales" },
               ]}
@@ -211,7 +213,7 @@ export default function App() {
           {activePage === "day-end" && <DayEndPage />}
           {activePage === "accept-stock" && <AcceptStockPage onClose={() => setActivePage("pos")} />}
           {activePage === "weigh-bridge" && hasWB && <WeighBridgePage />}
-          {activePage === "physical-stock" && <PhysicalStockPage onClose={() => setActivePage("pos")} />}
+          {activePage === "physical-stock" && hasPhysicalStock && <PhysicalStockPage roles={roles} onClose={() => setActivePage("pos")} />}
           {activePage === "salesman-report" && <SalesmanReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "item-sales-report" && <ItemSalesReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "kot" && <KOTPage selectedBranchCode={selectedBranchCode} onConvertToPOS={handleKotConvertToPOS} />}
