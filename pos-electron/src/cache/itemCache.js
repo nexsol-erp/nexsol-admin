@@ -94,6 +94,24 @@ export async function applyPhysicalStockToCache(lines = []) {
   });
 }
 
+export async function applyStockReceiptToCache(lines = []) {
+  if (!Array.isArray(lines) || !lines.length) return;
+  await db.transaction("rw", db.items, async () => {
+    for (const line of lines) {
+      const itemId = String(line.itemId ?? "").trim();
+      const qty = Number(line.qty ?? 0);
+      if (!itemId || qty <= 0) continue;
+      const item = await db.items.get(itemId);
+      if (!item) continue;
+      const current = Number(item.availableQty);
+      await db.items.put({
+        ...item,
+        availableQty: Number.isFinite(current) ? current + qty : qty,
+      });
+    }
+  });
+}
+
 export async function clearItemCache() {
   await db.transaction("rw", db.items, db.meta, async () => {
     await db.items.clear();
