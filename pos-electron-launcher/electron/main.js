@@ -442,11 +442,14 @@ async function main() {
   const { updateType, latestVersion, downloadUrl, checksum, fileSize,
           releaseNotes, reason } = updateData;
 
-  const isObsolete = reason === "CURRENT_VERSION_OBSOLETE";
-  const isRequired = updateType === "REQUIRED" || isObsolete;
+  const isObsolete  = reason === "CURRENT_VERSION_OBSOLETE";
+  const isRequired  = updateType === "REQUIRED" || isObsolete;
+  const hasLocalExe = !!(currentVersion && versionExeExists(currentVersion));
 
-  // If update is OPTIONAL and we already have a running version, ask the user
-  if (!isRequired && currentVersion && versionExeExists(currentVersion)) {
+  // Only ask the user when the update is optional AND there is already a
+  // working local version they can continue using.  Every other case
+  // (first install, required, obsolete) downloads automatically.
+  if (!isRequired && hasLocalExe) {
     sendState("update", updateData);
     const choice = await waitForUserChoice();
 
@@ -464,12 +467,9 @@ async function main() {
       }
       return;
     }
-    // choice === "download" → fall through
-  } else {
-    // REQUIRED or OBSOLETE: show dialog but don't offer skip
-    sendState("update", updateData);
-    await waitForUserChoice(); // only "download" button is shown
+    // choice === "download" → fall through to download
   }
+  // else: auto-download (first install / required / obsolete) — go straight to download
 
   // ── 4. Download (delta first, full fallback) ──────────────────────────────
   const resolvedUrl = downloadUrl.startsWith("/") ? apiServer + downloadUrl : downloadUrl;
@@ -477,8 +477,8 @@ async function main() {
   const destPath    = path.join(destDir, POS_EXE_NAME);
 
   fs.mkdirSync(destDir, { recursive: true });
-
   sendState("download");
+  log("info", `[main] Downloading version ${latestVersion}`);
 
   let downloadOk = false;
 
