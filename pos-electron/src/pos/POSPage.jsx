@@ -4,7 +4,8 @@ import { SyncOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined }
 import { logout } from "../auth/auth";
 import ItemLookupModal from "../components/ItemLookupModal";
 import UpiPaymentModal from "./UpiPaymentModal";
-import { applySaleToCache, findItemByName, loadReceiptModesFromCache, saveReceiptModesToCache, incrementItemFreq, getTopItems } from "../cache/itemCache";
+import { applySaleToCache, findItemByName, loadReceiptModesFromCache, saveReceiptModesToCache, getShortcutItems } from "../cache/itemCache";
+import ShortcutManageModal from "./ShortcutManageModal";
 import { evaluateSchemes, buildOfferRows } from "./schemeEngine";
 import { log, warn, error as logError } from "../utils/logger";
 import { apiUrl } from "../utils/apiUrl";
@@ -42,7 +43,8 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const [wsOnline, setWsOnline] = useState(false);
   const [schemes, setSchemes] = useState([]);
   const [categoryMap, setCategoryMap] = useState({});
-  const [quickItems, setQuickItems] = useState([]);
+  const [quickItems,        setQuickItems]        = useState([]);
+  const [shortcutMgrOpen,   setShortcutMgrOpen]   = useState(false);
 
   // Offline queue — poll every 10 s; sync only when idle >= 30 s and online
   useEffect(() => {
@@ -81,7 +83,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   useEffect(() => { log("POSPage mounted"); }, []);
 
-  const refreshQuickItems = () => getTopItems(10).then(setQuickItems).catch(() => {});
+  const refreshQuickItems = () => getShortcutItems().then(setQuickItems).catch(() => {});
   useEffect(() => { refreshQuickItems(); }, []);
 
   // Alt+1…Alt+9 = quick items 1–9, Alt+0 = item 10
@@ -325,7 +327,6 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       if (closeModal) closeLookup({ focusSearch: false });
       else focusQtyInput(row.key, 80);
     }
-    incrementItemFreq(itm.itemId).then(refreshQuickItems).catch(() => {});
   };
   addItemToBillRef.current = addItemToBill;
 
@@ -1084,37 +1085,47 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             </div>
           </div>
 
-          {/* Quick-pick bar — top 10 fast-moving items (Alt+1…Alt+0) */}
-          {quickItems.length > 0 && (
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 5 }}>
-              {quickItems.map((itm, idx) => {
-                const shortcut = idx < 9 ? `Alt+${idx + 1}` : "Alt+0";
-                return (
-                  <button
-                    key={itm.itemId}
-                    onClick={() => addItemToBill(itm)}
-                    title={`${itm.itemName}  •  ₹${Number(itm.standardPrice || 0).toFixed(2)}  •  ${shortcut}`}
-                    style={{
-                      position: "relative", padding: "3px 10px 3px 26px",
-                      fontSize: 12, cursor: "pointer",
-                      background: "#1e3a5f", color: "#fff", border: "none",
-                      borderRadius: 3, whiteSpace: "nowrap", maxWidth: 170,
-                      overflow: "hidden", textOverflow: "ellipsis",
-                    }}
-                  >
-                    <span style={{
-                      position: "absolute", left: 3, top: "50%", transform: "translateY(-50%)",
-                      background: "rgba(255,255,255,0.25)", borderRadius: 2,
-                      fontSize: 9, fontWeight: "bold", padding: "1px 3px", lineHeight: 1,
-                    }}>
-                      {idx < 9 ? idx + 1 : 0}
-                    </span>
-                    {itm.itemName}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          {/* Quick-pick bar — fixed shortcuts (Alt+1…Alt+0) */}
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 5, alignItems: "center" }}>
+            {quickItems.map((itm, idx) => {
+              const shortcut = idx < 9 ? `Alt+${idx + 1}` : "Alt+0";
+              return (
+                <button
+                  key={itm.itemId}
+                  onClick={() => addItemToBill(itm)}
+                  title={`${itm.itemName}  •  ₹${Number(itm.standardPrice || 0).toFixed(2)}  •  ${shortcut}`}
+                  style={{
+                    position: "relative", padding: "3px 10px 3px 26px",
+                    fontSize: 12, cursor: "pointer",
+                    background: "#1e3a5f", color: "#fff", border: "none",
+                    borderRadius: 3, whiteSpace: "nowrap", maxWidth: 170,
+                    overflow: "hidden", textOverflow: "ellipsis",
+                  }}
+                >
+                  <span style={{
+                    position: "absolute", left: 3, top: "50%", transform: "translateY(-50%)",
+                    background: "rgba(255,255,255,0.25)", borderRadius: 2,
+                    fontSize: 9, fontWeight: "bold", padding: "1px 3px", lineHeight: 1,
+                  }}>
+                    {idx < 9 ? idx + 1 : 0}
+                  </span>
+                  {itm.itemName}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setShortcutMgrOpen(true)}
+              title="Manage shortcut items"
+              style={{
+                padding: "3px 8px", fontSize: 12, cursor: "pointer",
+                background: "transparent", color: "#555",
+                border: "1px dashed #aaa", borderRadius: 3,
+                whiteSpace: "nowrap", flexShrink: 0,
+              }}
+            >
+              ⚙ Shortcuts
+            </button>
+          </div>
 
           {/* Items table — olive/khaki */}
           <Table
@@ -1143,6 +1154,12 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
           setUpiSession({ open: false, merchantTransactionId: null, amount: 0, qrData: "" });
           setReceipts((prev) => prev.map((r) => ({ ...r, amount: 0 })));
         }}
+      />
+
+      <ShortcutManageModal
+        open={shortcutMgrOpen}
+        onClose={() => setShortcutMgrOpen(false)}
+        onChanged={(updated) => setQuickItems(updated)}
       />
 
       <ItemLookupModal

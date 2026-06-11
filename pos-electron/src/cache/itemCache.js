@@ -298,20 +298,23 @@ export async function applySaleToCache(lines = []) {
   });
 }
 
-// ── Quick-pick frequency tracking ────────────────────────────────────────────
+// ── Shortcut bar (fixed, manually managed) ───────────────────────────────────
 
-export async function incrementItemFreq(itemId) {
-  if (!itemId) return;
-  const existing = await db.item_freq.get(itemId);
-  await db.item_freq.put({ itemId, count: (existing?.count || 0) + 1 });
+const SHORTCUT_META_KEY = "shortcut_items";
+
+export async function getShortcutItemIds() {
+  const row = await db.meta.get(SHORTCUT_META_KEY);
+  return Array.isArray(row?.value) ? row.value : [];
 }
 
-export async function getTopItems(n = 10) {
-  const freqRows = await db.item_freq.toArray();
-  freqRows.sort((a, b) => b.count - a.count);
-  const topIds = freqRows.slice(0, n).map((r) => r.itemId);
-  if (!topIds.length) return [];
-  const items = await Promise.all(topIds.map((id) => db.items.get(id)));
+export async function saveShortcutItemIds(ids) {
+  await db.meta.put({ key: SHORTCUT_META_KEY, value: ids.slice(0, 10) });
+}
+
+export async function getShortcutItems() {
+  const ids = await getShortcutItemIds();
+  if (!ids.length) return [];
+  const items = await Promise.all(ids.map((id) => db.items.get(id)));
   return items.filter(Boolean);
 }
 
