@@ -86,12 +86,19 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const refreshQuickItems = () => getShortcutItems().then(setQuickItems).catch(() => {});
   useEffect(() => { refreshQuickItems(); }, []);
 
-  // Alt+1…Alt+9 = quick items 1–9, Alt+0 = item 10
+  // Alt+1…Alt+9 = quick items 1–9, Alt+0 = item 10, Alt+S = save invoice
   const quickItemsRef = useRef([]);
+  const onSaveRef     = useRef(null);
+  const canSaveRef    = useRef(false);
   useEffect(() => { quickItemsRef.current = quickItems; }, [quickItems]);
   useEffect(() => {
     const handler = (e) => {
       if (!e.altKey) return;
+      if (e.key === "s" || e.key === "S") {
+        e.preventDefault();
+        if (canSaveRef.current) onSaveRef.current?.();
+        return;
+      }
       const digit = e.key >= "1" && e.key <= "9" ? Number(e.key) - 1
                   : e.key === "0" ? 9 : -1;
       if (digit < 0) return;
@@ -574,6 +581,8 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       setIsSaving(false);
     }
   };
+  onSaveRef.current  = onSave;
+  canSaveRef.current = canSave;
 
   // Branch info (name, address, GST) for receipt header
   useEffect(() => {
