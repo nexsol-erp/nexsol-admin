@@ -88,7 +88,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             mkdir -p ${{ env.UPDATE_ASSETS_DIR }}/windows
-            chmod -R 775 ${{ env.UPDATE_ASSETS_DIR }}
+            chmod -R 775 ${{ env.UPDATE_ASSETS_DIR }}/windows
 
       - name: Deploy portable POS exe
         uses: appleboy/scp-action@master
