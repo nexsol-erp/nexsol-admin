@@ -12,6 +12,7 @@ import KOTPage from "./pos/KOTPage";
 import SalesmanReportPage from "./pos/SalesmanReportPage";
 import ItemSalesReportPage from "./pos/ItemSalesReportPage";
 import ItemMovementReportPage from "./pos/ItemMovementReportPage";
+import StockTransferInReportPage from "./pos/StockTransferInReportPage";
 import UpdateChecker from "./components/UpdateChecker";
 import { isLoggedIn, logout } from "./auth/auth";
 import { clearItemCache, hasCache, loadAllItemsToCache } from "./cache/itemCache";
@@ -168,9 +169,10 @@ export default function App() {
                   key: "reports",
                   label: "Reports",
                   children: [
-                    { key: "salesman-report",      label: "Salesman" },
-                    { key: "item-sales-report",    label: "Item Sales" },
-                    { key: "item-movement-report", label: "Item Movement" },
+                    { key: "salesman-report",          label: "Salesman" },
+                    { key: "item-sales-report",        label: "Item Sales" },
+                    { key: "item-movement-report",     label: "Item Movement" },
+                    { key: "st-in-report",             label: "Stock Transfer In" },
                   ],
                 },
               ]}
@@ -225,6 +227,7 @@ export default function App() {
           {activePage === "salesman-report" && <SalesmanReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "item-sales-report" && <ItemSalesReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "item-movement-report" && <ItemMovementReportPage selectedBranchCode={selectedBranchCode} />}
+          {activePage === "st-in-report" && <StockTransferInReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "kot" && <KOTPage selectedBranchCode={selectedBranchCode} onConvertToPOS={handleKotConvertToPOS} />}
         </div>
       )}
