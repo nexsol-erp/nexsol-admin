@@ -1,7 +1,8 @@
-import React, { useState } from "react";
-import { Button, DatePicker, Space, Table, Typography, message } from "antd";
+import React, { useEffect, useState } from "react";
+import { Button, DatePicker, Select, Space, Table, Typography, message } from "antd";
 import dayjs from "dayjs";
 import { apiUrl } from "../utils/apiUrl";
+import { localSearchItems } from "../cache/itemCache";
 
 const { Title, Text } = Typography;
 
@@ -108,6 +109,20 @@ export default function ItemSalesReportPage({ selectedBranchCode }) {
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
 
+  const [itemOptions,   setItemOptions]   = useState([]);
+  const [itemSearch,    setItemSearch]    = useState("");
+  const [selectedItem,  setSelectedItem]  = useState(null); // { value: itemId, label: itemName }
+
+  // Search items from local cache as user types
+  useEffect(() => {
+    let cancelled = false;
+    localSearchItems(itemSearch, 30).then((items) => {
+      if (cancelled) return;
+      setItemOptions(items.map((it) => ({ value: it.itemId, label: it.itemName })));
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [itemSearch]);
+
   const branchCode = String(
     selectedBranchCode || globalThis.POS_BRANCH_CODE ||
     localStorage.getItem("selectedBranchCode") || ""
@@ -139,11 +154,11 @@ export default function ItemSalesReportPage({ selectedBranchCode }) {
 
   const printReport = async () => {
     if (!window.POS?.printHtml) { message.error("Print API not available"); return; }
-    if (!rows.length)            { message.warning("No data to print");       return; }
+    if (!filteredRows.length)   { message.warning("No data to print");       return; }
 
     // Group rows by salesman for the print layout
     const grouped = {};
-    rows.forEach((r) => {
+    filteredRows.forEach((r) => {
       const key = r.salesmanName || "Unassigned";
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(r);
@@ -158,7 +173,11 @@ export default function ItemSalesReportPage({ selectedBranchCode }) {
     }
   };
 
-  const totalQty = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+  const filteredRows = selectedItem
+    ? rows.filter((r) => r.itemName === selectedItem.label)
+    : rows;
+
+  const totalQty = filteredRows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
 
   return (
     <div style={{ padding: 8 }}>
@@ -166,25 +185,37 @@ export default function ItemSalesReportPage({ selectedBranchCode }) {
         <Title level={3} style={{ margin: 0, color: "#0b3a75" }}>
           Item Sales Report
         </Title>
-        <Space>
+        <Space wrap>
           <Text style={{ color: "#374151" }}>Branch:</Text>
           <Text strong style={{ color: "#1f2937" }}>{branchCode || "-"}</Text>
+          <Select
+            showSearch
+            placeholder="All items"
+            style={{ width: 200 }}
+            value={selectedItem?.value ?? undefined}
+            filterOption={false}
+            onSearch={setItemSearch}
+            onChange={(val, opt) => setSelectedItem(opt ?? null)}
+            options={itemOptions}
+            allowClear
+            onClear={() => setSelectedItem(null)}
+          />
           <DatePicker
             value={reportDate}
             onChange={(d) => { setReportDate(d || dayjs()); setFetched(false); }}
           />
           <Button type="primary" onClick={fetchReport} loading={loading}>Load</Button>
-          <Button onClick={printReport} disabled={!rows.length}>Print</Button>
+          <Button onClick={printReport} disabled={!filteredRows.length}>Print</Button>
         </Space>
       </div>
 
       <Table
         size="small"
-        dataSource={rows}
+        dataSource={filteredRows}
         columns={columns}
         pagination={false}
         rowKey={(r, i) => `${r.salesmanName}-${r.itemName}-${i}`}
-        locale={{ emptyText: fetched ? "No sales for this date" : "Select date and click Load" }}
+        locale={{ emptyText: fetched ? "No sales for this period" : "Select date and click Load" }}
         summary={() =>
           rows.length > 0 ? (
             <Table.Summary.Row>
