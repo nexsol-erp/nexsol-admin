@@ -1,6 +1,6 @@
 {
   "name": "tradelink247-pos-launcher",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Lightweight launcher for TradeLink247 POS — checks for updates and launches the correct version",
   "main": "electron/main.js",
   "scripts": {
