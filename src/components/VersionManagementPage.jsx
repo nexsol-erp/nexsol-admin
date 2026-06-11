@@ -203,31 +203,15 @@ export default function VersionManagementPage() {
 
   // ── Download ──────────────────────────────────────────────────────────────────
 
-  const [downloading,         setDownloading]         = useState(null);  // version id
-  const [launcherDownloading, setLauncherDownloading] = useState(false);
+  const [downloading, setDownloading] = useState(null);  // version id
 
-  const downloadLauncher = async (filename) => {
-    setLauncherDownloading(true);
-    try {
-      const res = await fetch(
-        `/api/${tenantId}/admin/pos-app/launcher/download?file=${encodeURIComponent(filename)}`,
-        { headers }
-      );
-      if (!res.ok) throw new Error(`Server returned ${res.status}`);
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setError(`Launcher download failed: ${e.message}`);
-    } finally {
-      setLauncherDownloading(false);
-    }
+  const downloadLauncher = () => {
+    const a = document.createElement("a");
+    a.href = "/downloads/launcher/launchPOSClinet.exe";
+    a.setAttribute("download", "TradeLink247-POS-Launcher.exe");
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const downloadVersion = async (v) => {
@@ -270,10 +254,12 @@ export default function VersionManagementPage() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" gutterBottom>POS Electron Version Management</Typography>
+      <Typography variant="h5" gutterBottom>POS Version Management</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Manage POS Electron release versions. Control whether updates are Optional, Required, or
-        mark versions as Obsolete. Only Obsolete version files can be deleted from the server.
+        Manage POS release versions deployed to cashier PCs. The Qt launcher (<strong>launchPOSClinet.exe</strong>) is
+        the permanent entry point — it checks this list on every start and downloads the latest
+        <strong> APPLICATION_UPDATE</strong> automatically. Set a version to <strong>REQUIRED</strong> to force all
+        clients to update, or <strong>OBSOLETE</strong> to block that version.
       </Typography>
 
       {error   && <Alert severity="error"   sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
@@ -298,37 +284,32 @@ export default function VersionManagementPage() {
         </Button>
       </Box>
 
-      {/* Launcher download card */}
-      <Paper elevation={1} sx={{ p: 2, mb: 2, bgcolor: "#f0f7ff", border: "1px solid #bfdbfe" }}>
+      {/* Launcher banner */}
+      <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: "#f0f7ff", border: "1px solid #bfdbfe", borderRadius: 2 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="subtitle1" fontWeight={600}>
-              TradeLink247 POS Launcher
-            </Typography>
-            <Typography variant="body2" sx={{ color: "#374151" }}>
-              Permanent entry point for end users. Installed once — handles all future POS updates automatically via delta patches.
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+              <Typography variant="subtitle1" fontWeight={700}>
+                POS Launcher
+              </Typography>
+              <Chip label="Qt / Windows" size="small" color="primary" variant="outlined" />
+              <Chip label="Installed once" size="small" color="success" variant="outlined" />
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              <strong>launchPOSClinet.exe</strong> — deployed to each cashier PC once.
+              On every launch it checks for a new <em>APPLICATION_UPDATE</em> below and
+              downloads it automatically before opening the POS.
             </Typography>
           </Box>
-          <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={launcherDownloading ? <CircularProgress size={14} /> : <DownloadIcon />}
-              disabled={launcherDownloading}
-              onClick={() => downloadLauncher("TradeLink247-POS-Launcher.exe")}
-            >
-              Portable (.exe)
-            </Button>
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={launcherDownloading ? <CircularProgress size={14} /> : <DownloadIcon />}
-              disabled={launcherDownloading}
-              onClick={() => downloadLauncher("TradeLink247-POS-Launcher-Setup.exe")}
-            >
-              Installer (.exe)
-            </Button>
-          </Box>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<DownloadIcon />}
+            onClick={downloadLauncher}
+            sx={{ flexShrink: 0 }}
+          >
+            Download Launcher
+          </Button>
         </Box>
       </Paper>
 
@@ -497,10 +478,10 @@ export default function VersionManagementPage() {
             <Select value={form.releaseType} label="Release Type"
               onChange={e => setForm(p => ({ ...p, releaseType: e.target.value }))}>
               <MenuItem value="APPLICATION_UPDATE">
-                Application Update — upload pos-electron.exe only (~80% smaller)
+                Application Update (portable .exe) — downloaded automatically by the Qt launcher
               </MenuItem>
               <MenuItem value="FULL_INSTALLER">
-                Full Installer — includes Launcher, runtime, and all dependencies
+                Full Installer (NSIS setup .exe) — for manual / offline installation only
               </MenuItem>
             </Select>
           </FormControl>
