@@ -18,14 +18,13 @@ function esc(s) {
 
 // ── Print ─────────────────────────────────────────────────────────────────────
 
-function buildPrintHtml({ itemName, branchCode, fromDate, toDate, rows }) {
+function buildPrintHtml({ itemName, branchCode, fromDate, toDate, openingBalance, rows, closingBalance }) {
   const printedAt = new Date().toLocaleString("en-IN", {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
   const totalIn  = rows.reduce((s, r) => s + (Number(r.qtyIn)  || 0), 0);
   const totalOut = rows.reduce((s, r) => s + (Number(r.qtyOut) || 0), 0);
-  const lastBal  = rows.length ? rows[rows.length - 1].balance : 0;
 
   const bodyRows = rows.map((r) => `
     <tr>
@@ -68,6 +67,8 @@ function buildPrintHtml({ itemName, branchCode, fromDate, toDate, rows }) {
   <div class="meta"><span>${esc(fromDate)} – ${esc(toDate)}</span></div>
   <div class="meta" style="justify-content:flex-end">Printed: ${esc(printedAt)}</div>
   <hr class="dash"/>
+  <div class="total"><span>Opening Balance</span><span>${r2(openingBalance).toFixed(2)}</span></div>
+  <hr class="dash"/>
   <table>
     <thead>
       <tr>
@@ -80,7 +81,7 @@ function buildPrintHtml({ itemName, branchCode, fromDate, toDate, rows }) {
   <hr class="dash"/>
   <div class="total"><span>Total In</span><span>${r2(totalIn).toFixed(2)}</span></div>
   <div class="total"><span>Total Out</span><span>${r2(totalOut).toFixed(2)}</span></div>
-  <div class="total"><span>Closing Bal</span><span>${r2(lastBal).toFixed(2)}</span></div>
+  <div class="total"><span>Closing Balance</span><span>${r2(closingBalance).toFixed(2)}</span></div>
   <hr class="solid"/>
   <div class="footer">*** End of Item Movement Report ***</div>
   <br/><br/>
@@ -103,35 +104,34 @@ const columns = [
     render: (v) => fmt(v) },
   { title: "Qty Out", dataIndex: "qtyOut", key: "qtyOut", align: "right", width: 80,
     render: (v) => fmt(v) },
-  { title: "Balance",  dataIndex: "balance", key: "balance", align: "right", width: 90,
+  { title: "Balance", dataIndex: "balance", key: "balance", align: "right", width: 90,
     render: (v) => <Text strong>{r2(v).toFixed(2)}</Text> },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ItemMovementReportPage({ selectedBranchCode }) {
-  const [dateRange, setDateRange] = useState([dayjs().startOf("week"), dayjs()]);
-  const [rows,      setRows]      = useState([]);
-  const [loading,   setLoading]   = useState(false);
-  const [fetched,   setFetched]   = useState(false);
+  const [dateRange,       setDateRange]       = useState([dayjs().startOf("week"), dayjs()]);
+  const [rows,            setRows]            = useState([]);
+  const [openingBalance,  setOpeningBalance]  = useState(null);
+  const [closingBalance,  setClosingBalance]  = useState(null);
+  const [loading,         setLoading]         = useState(false);
+  const [fetched,         setFetched]         = useState(false);
 
-  const [itemOptions, setItemOptions]   = useState([]);
-  const [itemSearch,  setItemSearch]    = useState("");
-  const [selectedItem, setSelectedItem] = useState(null); // { value: itemId, label: itemName }
+  const [itemOptions,  setItemOptions]  = useState([]);
+  const [itemSearch,   setItemSearch]   = useState("");
+  const [selectedItem, setSelectedItem] = useState(null);
 
   const branchCode = String(
     selectedBranchCode || globalThis.POS_BRANCH_CODE ||
     localStorage.getItem("selectedBranchCode") || ""
   ).trim();
 
-  // Search items from local cache as user types
   useEffect(() => {
     let cancelled = false;
     localSearchItems(itemSearch, 30).then((items) => {
       if (cancelled) return;
-      setItemOptions(
-        items.map((it) => ({ value: it.itemId, label: it.itemName, item: it }))
-      );
+      setItemOptions(items.map((it) => ({ value: it.itemId, label: it.itemName, item: it })));
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [itemSearch]);
@@ -149,19 +149,16 @@ export default function ItemMovementReportPage({ selectedBranchCode }) {
 
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        itemId: selectedItem.value,
-        branchCode,
-        fromDate,
-        toDate,
-      });
+      const params = new URLSearchParams({ itemId: selectedItem.value, branchCode, fromDate, toDate });
       const res = await fetch(
         apiUrl(`/api/${tenantId}/reports/item-movement?${params}`),
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) throw new Error(await res.text().catch(() => `Error ${res.status}`));
       const data = await res.json();
-      setRows(Array.isArray(data) ? data : []);
+      setRows(Array.isArray(data.rows) ? data.rows : []);
+      setOpeningBalance(data.openingBalance ?? 0);
+      setClosingBalance(data.closingBalance ?? 0);
       setFetched(true);
     } catch (e) {
       message.error("Failed to load report: " + (e.message || "Unknown error"));
@@ -174,11 +171,13 @@ export default function ItemMovementReportPage({ selectedBranchCode }) {
     if (!window.POS?.printHtml) { message.error("Print API not available"); return; }
     if (!rows.length)            { message.warning("No data to print");      return; }
     const html = buildPrintHtml({
-      itemName:   selectedItem?.label || "",
+      itemName:       selectedItem?.label || "",
       branchCode,
-      fromDate:   dateRange[0].format("YYYY-MM-DD"),
-      toDate:     dateRange[1].format("YYYY-MM-DD"),
+      fromDate:       dateRange[0].format("YYYY-MM-DD"),
+      toDate:         dateRange[1].format("YYYY-MM-DD"),
+      openingBalance: openingBalance ?? 0,
       rows,
+      closingBalance: closingBalance ?? 0,
     });
     try {
       await window.POS.printHtml({ html, silent: false, deviceName: "" });
@@ -190,7 +189,6 @@ export default function ItemMovementReportPage({ selectedBranchCode }) {
 
   const totalIn  = rows.reduce((s, r) => s + (Number(r.qtyIn)  || 0), 0);
   const totalOut = rows.reduce((s, r) => s + (Number(r.qtyOut) || 0), 0);
-  const closing  = rows.length ? rows[rows.length - 1].balance : 0;
 
   return (
     <div style={{ padding: 8 }}>
@@ -210,10 +208,10 @@ export default function ItemMovementReportPage({ selectedBranchCode }) {
             value={selectedItem?.value ?? undefined}
             filterOption={false}
             onSearch={setItemSearch}
-            onChange={(val, opt) => { setSelectedItem(opt); setFetched(false); }}
+            onChange={(val, opt) => { setSelectedItem(opt); setFetched(false); setRows([]); setOpeningBalance(null); setClosingBalance(null); }}
             options={itemOptions}
             allowClear
-            onClear={() => setSelectedItem(null)}
+            onClear={() => { setSelectedItem(null); setRows([]); setOpeningBalance(null); setClosingBalance(null); }}
           />
 
           <RangePicker
@@ -227,6 +225,20 @@ export default function ItemMovementReportPage({ selectedBranchCode }) {
         </Space>
       </div>
 
+      {/* Opening balance banner */}
+      {fetched && openingBalance !== null && (
+        <div style={{
+          display: "flex", justifyContent: "space-between",
+          background: "#f0f4ff", border: "1px solid #c7d2fe",
+          borderRadius: 6, padding: "6px 12px", marginBottom: 6,
+        }}>
+          <Text strong style={{ color: "#3730a3" }}>Opening Balance</Text>
+          <Text strong style={{ color: openingBalance >= 0 ? "#16a34a" : "#dc2626", fontSize: 15 }}>
+            {r2(openingBalance).toFixed(2)}
+          </Text>
+        </div>
+      )}
+
       {/* Table */}
       <Table
         size="small"
@@ -238,19 +250,25 @@ export default function ItemMovementReportPage({ selectedBranchCode }) {
         summary={() =>
           rows.length > 0 ? (
             <Table.Summary fixed>
-              <Table.Summary.Row>
+              <Table.Summary.Row style={{ background: "#f9fafb" }}>
                 <Table.Summary.Cell colSpan={4} align="right">
-                  <Text strong>Totals</Text>
+                  <Text strong>Total In / Out</Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell align="right">
-                  <Text strong>{r2(totalIn).toFixed(2)}</Text>
+                  <Text strong style={{ color: "#16a34a" }}>{r2(totalIn).toFixed(2)}</Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell align="right">
-                  <Text strong>{r2(totalOut).toFixed(2)}</Text>
+                  <Text strong style={{ color: "#dc2626" }}>{r2(totalOut).toFixed(2)}</Text>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell align="right" />
+              </Table.Summary.Row>
+              <Table.Summary.Row style={{ background: "#eff6ff" }}>
+                <Table.Summary.Cell colSpan={6} align="right">
+                  <Text strong style={{ color: "#1d4ed8" }}>Closing Balance</Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell align="right">
-                  <Text strong style={{ color: closing >= 0 ? "#16a34a" : "#dc2626" }}>
-                    {r2(closing).toFixed(2)}
+                  <Text strong style={{ fontSize: 14, color: (closingBalance ?? 0) >= 0 ? "#16a34a" : "#dc2626" }}>
+                    {r2(closingBalance ?? 0).toFixed(2)}
                   </Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
