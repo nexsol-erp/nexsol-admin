@@ -4,7 +4,7 @@ import { SyncOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined }
 import { logout } from "../auth/auth";
 import ItemLookupModal from "../components/ItemLookupModal";
 import UpiPaymentModal from "./UpiPaymentModal";
-import { applySaleToCache, findItemByName, loadReceiptModesFromCache, saveReceiptModesToCache } from "../cache/itemCache";
+import { applySaleToCache, findItemByName, loadReceiptModesFromCache, saveReceiptModesToCache, incrementItemFreq, getTopItems } from "../cache/itemCache";
 import { evaluateSchemes, buildOfferRows } from "./schemeEngine";
 import { log, warn, error as logError } from "../utils/logger";
 import { apiUrl } from "../utils/apiUrl";
@@ -42,6 +42,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const [wsOnline, setWsOnline] = useState(false);
   const [schemes, setSchemes] = useState([]);
   const [categoryMap, setCategoryMap] = useState({});
+  const [quickItems, setQuickItems] = useState([]);
 
   // Offline queue — poll every 10 s; sync only when idle >= 30 s and online
   useEffect(() => {
@@ -79,6 +80,27 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   }, []);
 
   useEffect(() => { log("POSPage mounted"); }, []);
+
+  const refreshQuickItems = () => getTopItems(10).then(setQuickItems).catch(() => {});
+  useEffect(() => { refreshQuickItems(); }, []);
+
+  // Alt+1…Alt+9 = quick items 1–9, Alt+0 = item 10
+  const quickItemsRef = useRef([]);
+  useEffect(() => { quickItemsRef.current = quickItems; }, [quickItems]);
+  useEffect(() => {
+    const handler = (e) => {
+      if (!e.altKey) return;
+      const digit = e.key >= "1" && e.key <= "9" ? Number(e.key) - 1
+                  : e.key === "0" ? 9 : -1;
+      if (digit < 0) return;
+      const itm = quickItemsRef.current[digit];
+      if (!itm) return;
+      e.preventDefault();
+      addItemToBillRef.current(itm);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   // WebSocket — connect once branch is known, reconnect if branch changes
   useEffect(() => {
@@ -273,6 +295,39 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   };
 
   const deleteItem = (key) => setItems((p) => p.filter((r) => r.key !== key));
+
+  const addItemToBillRef = useRef(null);
+  const addItemToBill = (itm, { closeModal = false } = {}) => {
+    const batch     = itm.batchCode || "";
+    const available = Number.isFinite(Number(itm.availableQty)) ? Number(itm.availableQty) : null;
+    const existing  = items.find((r) => r.item_id === itm.itemId && (r.batch || "") === batch);
+
+    if (existing) {
+      const nextQty = (Number(existing.qty) || 0) + 1;
+      const allowed = getAvailableQty(existing) ?? available;
+      if (allowed !== null && nextQty > allowed) { message.warning(`Only ${allowed} in stock for ${existing.item_name}`); return; }
+      updateItem(existing.key, { qty: nextQty, available_qty: allowed });
+      setItemQuery(""); pendingQtyFocusKey.current = existing.key;
+      if (closeModal) closeLookup({ focusSearch: false });
+      else focusQtyInput(existing.key, 50);
+    } else {
+      if (available !== null && available <= 0) { message.warning(`No stock for ${itm.itemName}`); return; }
+      const row = {
+        key: crypto.randomUUID(), item_id: itm.itemId, item_name: itm.itemName,
+        barcode: itm.barcode, qty: 1, available_qty: available,
+        tax_rate: itm.taxRate, standard_price: itm.standardPrice,
+        amount: round2n(Number(itm.standardPrice) || 0),
+        batch, unit: itm.unitName || "", expiry: itm.expiry || "",
+        category: itm.category || "",
+      };
+      setItems((p) => [row, ...p]);
+      setItemQuery(""); pendingQtyFocusKey.current = row.key;
+      if (closeModal) closeLookup({ focusSearch: false });
+      else focusQtyInput(row.key, 80);
+    }
+    incrementItemFreq(itm.itemId).then(refreshQuickItems).catch(() => {});
+  };
+  addItemToBillRef.current = addItemToBill;
 
   const initiateUpiPayment = async (amount) => {
     const tenantId  = localStorage.getItem("tenancyId") || "";
@@ -639,6 +694,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
           ref={(el) => { if (el) qtyInputRefs.current[row.key] = el; else delete qtyInputRefs.current[row.key]; }}
           value={row.qty} min={0}
           onChange={(val) => updateItem(row.key, { qty: val })}
+          onFocus={(e) => e.target.select()}
           onPressEnter={() => itemSearchRef.current?.focus?.()}
           style={{ width: "100%", borderRadius: 0 }}
         />
@@ -1028,6 +1084,38 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             </div>
           </div>
 
+          {/* Quick-pick bar — top 10 fast-moving items (Alt+1…Alt+0) */}
+          {quickItems.length > 0 && (
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 5 }}>
+              {quickItems.map((itm, idx) => {
+                const shortcut = idx < 9 ? `Alt+${idx + 1}` : "Alt+0";
+                return (
+                  <button
+                    key={itm.itemId}
+                    onClick={() => addItemToBill(itm)}
+                    title={`${itm.itemName}  •  ₹${Number(itm.standardPrice || 0).toFixed(2)}  •  ${shortcut}`}
+                    style={{
+                      position: "relative", padding: "3px 10px 3px 26px",
+                      fontSize: 12, cursor: "pointer",
+                      background: "#1e3a5f", color: "#fff", border: "none",
+                      borderRadius: 3, whiteSpace: "nowrap", maxWidth: 170,
+                      overflow: "hidden", textOverflow: "ellipsis",
+                    }}
+                  >
+                    <span style={{
+                      position: "absolute", left: 3, top: "50%", transform: "translateY(-50%)",
+                      background: "rgba(255,255,255,0.25)", borderRadius: 2,
+                      fontSize: 9, fontWeight: "bold", padding: "1px 3px", lineHeight: 1,
+                    }}>
+                      {idx < 9 ? idx + 1 : 0}
+                    </span>
+                    {itm.itemName}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Items table — olive/khaki */}
           <Table
             className="qt-items-table"
@@ -1068,32 +1156,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             qtyInputRefs.current[key]?.focus?.();
           }
         }}
-        onPick={(itm) => {
-          const batch     = itm.batchCode || "";
-          const available = Number.isFinite(Number(itm.availableQty)) ? Number(itm.availableQty) : null;
-          const existing  = items.find((r) => r.item_id === itm.itemId && (r.batch || "") === batch);
-
-          if (existing) {
-            const nextQty = (Number(existing.qty) || 0) + 1;
-            const allowed = getAvailableQty(existing) ?? available;
-            if (allowed !== null && nextQty > allowed) { message.warning(`Only ${allowed} in stock for ${existing.item_name}`); return; }
-            updateItem(existing.key, { qty: nextQty, available_qty: allowed });
-            setItemQuery(""); pendingQtyFocusKey.current = existing.key; closeLookup({ focusSearch: false });
-            return;
-          }
-          if (available !== null && available <= 0) { message.warning(`No stock for ${itm.itemName}`); return; }
-
-          const row = {
-            key: crypto.randomUUID(), item_id: itm.itemId, item_name: itm.itemName,
-            barcode: itm.barcode, qty: 1, available_qty: available,
-            tax_rate: itm.taxRate, standard_price: itm.standardPrice,
-            amount: round2n(Number(itm.standardPrice) || 0),
-            batch, unit: itm.unitName || "", expiry: itm.expiry || "",
-            category: itm.category || "",
-          };
-          setItems((p) => [row, ...p]);
-          setItemQuery(""); pendingQtyFocusKey.current = row.key; closeLookup({ focusSearch: false });
-        }}
+        onPick={(itm) => addItemToBill(itm, { closeModal: true })}
       />
 
     </div>
