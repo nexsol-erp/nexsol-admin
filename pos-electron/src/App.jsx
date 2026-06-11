@@ -164,9 +164,15 @@ export default function App() {
                 { key: "accept-stock", label: "Accept Stock" },
                 ...(hasWB ? [{ key: "weigh-bridge", label: "Weigh Bridge" }] : []),
                 ...(hasPhysicalStock ? [{ key: "physical-stock", label: "Physical Stock" }] : []),
-                { key: "salesman-report", label: "Salesman" },
-                { key: "item-sales-report", label: "Item Sales" },
-                { key: "item-movement-report", label: "Item Movement" },
+                {
+                  key: "reports",
+                  label: "Reports",
+                  children: [
+                    { key: "salesman-report",      label: "Salesman" },
+                    { key: "item-sales-report",    label: "Item Sales" },
+                    { key: "item-movement-report", label: "Item Movement" },
+                  ],
+                },
               ]}
               style={{ flex: 1, borderBottom: "none", minWidth: 0 }}
             />
