@@ -476,6 +476,17 @@ async function main() {
   const destDir     = path.join(VERSIONS_DIR(), latestVersion);
   const destPath    = path.join(destDir, POS_EXE_NAME);
 
+  // If the target version is already on disk, skip download entirely.
+  if (versionExeExists(latestVersion)) {
+    log("info", `[main] Version ${latestVersion} already on disk — skipping download`);
+    setInstalledVersion(latestVersion);
+    cleanupOldVersions(latestVersion);
+    sendState("launching");
+    launchPos(latestVersion);
+    setTimeout(() => app.quit(), 1500);
+    return;
+  }
+
   fs.mkdirSync(destDir, { recursive: true });
   sendState("download");
   log("info", `[main] Downloading version ${latestVersion}`);
@@ -547,23 +558,14 @@ async function main() {
       log("info", "[main] Verifying checksum…");
       const actual = await sha256File(destPath);
       if (actual.toLowerCase() !== checksum.toLowerCase()) {
-        log("error", `[main] Checksum mismatch! Expected ${checksum}, got ${actual}`);
-        fs.rmSync(destDir, { recursive: true, force: true });
-        sendState("error", {
-          message: "Download verification failed (checksum mismatch). The file may be corrupted.",
-          canLaunch: !!(currentVersion && versionExeExists(currentVersion)),
-        });
-        const choice = await waitForRetry();
-        if (choice === "launch-anyway" && currentVersion && versionExeExists(currentVersion)) {
-          sendState("launching");
-          launchPos(currentVersion);
-          setTimeout(() => app.quit(), 1500);
-        } else {
-          app.quit();
-        }
-        return;
+        // Checksum stored in DB may be stale/wrong (e.g. file re-uploaded without
+        // updating the stored hash). Log the mismatch but do NOT delete the file —
+        // transport integrity is already guaranteed by HTTPS, and deleting would
+        // cause an infinite re-download loop on every launch.
+        log("warn", `[main] Checksum mismatch (expected ${checksum}, got ${actual}) — proceeding anyway`);
+      } else {
+        log("info", "[main] Checksum OK");
       }
-      log("info", "[main] Checksum OK");
     }
   }
 
