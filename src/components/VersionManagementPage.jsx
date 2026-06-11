@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
-  DialogContent, DialogTitle, Divider, FormControl, IconButton,
+  DialogContent, DialogTitle, FormControl, IconButton,
   InputLabel, MenuItem, Paper, Select, Tab, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Tabs, TextField,
   Tooltip, Typography,
@@ -12,16 +12,9 @@ import DownloadIcon     from "@mui/icons-material/Download";
 import FolderOffIcon    from "@mui/icons-material/FolderOff";
 import HistoryIcon      from "@mui/icons-material/History";
 import UploadFileIcon   from "@mui/icons-material/UploadFile";
-import BoltIcon         from "@mui/icons-material/Bolt";
 
-const PLATFORMS     = ["WINDOWS", "LINUX", "MAC"];
-const STATUSES      = ["OPTIONAL", "REQUIRED", "OBSOLETE"];
-const RELEASE_TYPES = ["APPLICATION_UPDATE", "FULL_INSTALLER"];
-
-const RELEASE_TYPE_LABEL = {
-  APPLICATION_UPDATE: "App Update",
-  FULL_INSTALLER:     "Full Installer",
-};
+const PLATFORMS = ["WINDOWS", "LINUX", "MAC"];
+const STATUSES  = ["OPTIONAL", "REQUIRED", "OBSOLETE"];
 
 const STATUS_COLOR = { OPTIONAL: "success", REQUIRED: "warning", OBSOLETE: "error" };
 
@@ -44,7 +37,6 @@ export default function VersionManagementPage() {
 
   const [platform,  setPlatform]  = useState("WINDOWS");
   const [versions,  setVersions]  = useState([]);
-  const [patches,   setPatches]   = useState({});  // toVersion → {patchSize, savings%}
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState(null);
   const [success,   setSuccess]   = useState(null);
@@ -54,7 +46,7 @@ export default function VersionManagementPage() {
   const [uploading,  setUploading]  = useState(false);
   const [form, setForm] = useState({
     version: "", buildNumber: "", platform: "WINDOWS",
-    status: "OPTIONAL", releaseNotes: "", releaseType: "APPLICATION_UPDATE",
+    status: "OPTIONAL", releaseNotes: "",
   });
   const fileRef = useRef();
   const [selectedFile, setSelectedFile] = useState(null);
@@ -73,10 +65,8 @@ export default function VersionManagementPage() {
 
   // ── Load ─────────────────────────────────────────────────────────────────────
 
-  const pollRef = useRef(null);
-
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
+  const load = useCallback(async () => {
+    setLoading(true);
     setError(null);
     try {
       const res = await fetch(
@@ -84,36 +74,12 @@ export default function VersionManagementPage() {
         { headers }
       );
       if (!res.ok) throw new Error(`Load failed (${res.status})`);
-      const data = await res.json();
-      setVersions(data);
-
-      // Load delta patch info for all versions
-      const patchRes = await fetch(
-        `/api/${tenantId}/admin/pos-app/patches?platform=${platform}`,
-        { headers }
-      );
-      if (patchRes.ok) {
-        const patchList = await patchRes.json();
-        const patchMap = {};
-        patchList.forEach(p => {
-          if (!patchMap[p.toVersion] || p.patchSize < (patchMap[p.toVersion]?.patchSize ?? Infinity))
-            patchMap[p.toVersion] = p;
-        });
-        setPatches(patchMap);
-      }
+      setVersions(await res.json());
     } catch (e) { setError(e.message); }
-    finally { if (!silent) setLoading(false); }
+    finally { setLoading(false); }
   }, [platform, tenantId, token]);
 
   useEffect(() => { load(); }, [load]);
-
-  // Auto-refresh: poll every 5 s while any delta is still generating
-  useEffect(() => {
-    if (pollRef.current) clearTimeout(pollRef.current);
-    const hasPending = Object.values(patches).some(p => p.status === "PENDING");
-    if (hasPending) pollRef.current = setTimeout(() => load(true), 5000);
-    return () => { if (pollRef.current) clearTimeout(pollRef.current); };
-  }, [patches, load]);
 
   // ── Upload ────────────────────────────────────────────────────────────────────
 
@@ -127,7 +93,7 @@ export default function VersionManagementPage() {
         buildNumber: form.buildNumber ? Number(form.buildNumber) : null,
         platform: form.platform,
         status: form.status,
-        releaseType: form.releaseType,
+        releaseType: "APPLICATION_UPDATE",
         releaseNotes: form.releaseNotes,
       };
       fd.append("metadata", new Blob([JSON.stringify(meta)], { type: "application/json" }));
@@ -141,7 +107,7 @@ export default function VersionManagementPage() {
       if (!res.ok) throw new Error(`Upload failed (${res.status})`);
       setSuccess(`Version ${form.version} created`);
       setUploadOpen(false);
-      setForm({ version: "", buildNumber: "", platform: "WINDOWS", status: "OPTIONAL", releaseNotes: "", releaseType: "APPLICATION_UPDATE" });
+      setForm({ version: "", buildNumber: "", platform: "WINDOWS", status: "OPTIONAL", releaseNotes: "" });
       setSelectedFile(null);
       load();
     } catch (e) { setError(e.message); }
@@ -203,7 +169,7 @@ export default function VersionManagementPage() {
 
   // ── Download ──────────────────────────────────────────────────────────────────
 
-  const [downloading, setDownloading] = useState(null);  // version id
+  const [downloading, setDownloading] = useState(null);
 
   const downloadLauncher = () => {
     const a = document.createElement("a");
@@ -270,14 +236,6 @@ export default function VersionManagementPage() {
         <Tabs value={platform} onChange={(_, v) => setPlatform(v)} sx={{ minHeight: 36 }}>
           {PLATFORMS.map(p => <Tab key={p} label={p} value={p} sx={{ minHeight: 36, py: 0 }} />)}
         </Tabs>
-        {Object.values(patches).some(p => p.status === "PENDING") && (
-          <Tooltip title="Delta patches are being generated — refreshing automatically">
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "text.secondary" }}>
-              <CircularProgress size={14} thickness={5} />
-              <Typography variant="caption">Generating deltas…</Typography>
-            </Box>
-          </Tooltip>
-        )}
         <Box sx={{ flex: 1 }} />
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setUploadOpen(true)}>
           Add Version
@@ -322,8 +280,8 @@ export default function VersionManagementPage() {
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                  {["Version","Build","Platform","Type","Status","File Name","File Size",
-                    "Delta Patch","Uploaded By","Uploaded Date","Actions"].map(h => (
+                  {["Version","Build","Platform","Status","File Name","File Size",
+                    "Uploaded By","Uploaded Date","Actions"].map(h => (
                     <TableCell key={h}><strong>{h}</strong></TableCell>
                   ))}
                 </TableRow>
@@ -331,7 +289,7 @@ export default function VersionManagementPage() {
               <TableBody>
                 {versions.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={12} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                    <TableCell colSpan={9} align="center" sx={{ py: 4, color: "text.secondary" }}>
                       No versions found for {platform}
                     </TableCell>
                   </TableRow>
@@ -343,14 +301,6 @@ export default function VersionManagementPage() {
                     <TableCell><strong>{v.version}</strong></TableCell>
                     <TableCell>{v.buildNumber ?? "—"}</TableCell>
                     <TableCell>{v.platform}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={RELEASE_TYPE_LABEL[v.releaseType] || v.releaseType || "App Update"}
-                        size="small"
-                        variant="outlined"
-                        color={v.releaseType === "FULL_INSTALLER" ? "secondary" : "primary"}
-                      />
-                    </TableCell>
                     <TableCell>
                       <FormControl size="small" sx={{ minWidth: 130 }}>
                         <Select
@@ -376,26 +326,6 @@ export default function VersionManagementPage() {
                         : (v.fileName || "—")}
                     </TableCell>
                     <TableCell>{fmt(v.fileSize)}</TableCell>
-                    <TableCell>
-                      {(() => {
-                        const p = patches[v.version];
-                        if (!p) return <Typography variant="caption" color="text.disabled">—</Typography>;
-                        if (p.status === "PENDING") return <Chip icon={<BoltIcon />} label="Generating…" size="small" variant="outlined" />;
-                        if (p.status === "FAILED")  return <Chip label="Failed" size="small" color="error" variant="outlined" />;
-                        const saving = v.fileSize ? Math.round(100 - (100 * p.patchSize / v.fileSize)) : null;
-                        return (
-                          <Tooltip title={`Smallest available delta patch: ${fmt(p.patchSize)}`}>
-                            <Chip
-                              icon={<BoltIcon />}
-                              label={saving != null ? `${fmt(p.patchSize)} (−${saving}%)` : fmt(p.patchSize)}
-                              size="small"
-                              color="success"
-                              variant="outlined"
-                            />
-                          </Tooltip>
-                        );
-                      })()}
-                    </TableCell>
                     <TableCell sx={{ fontSize: 12 }}>{v.uploadedBy || "—"}</TableCell>
                     <TableCell sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
                       {fmtDate(v.uploadedAt)}
@@ -473,18 +403,6 @@ export default function VersionManagementPage() {
               </Select>
             </FormControl>
           </Box>
-          <FormControl size="small" fullWidth>
-            <InputLabel>Release Type</InputLabel>
-            <Select value={form.releaseType} label="Release Type"
-              onChange={e => setForm(p => ({ ...p, releaseType: e.target.value }))}>
-              <MenuItem value="APPLICATION_UPDATE">
-                Application Update (portable .exe) — downloaded automatically by the Qt launcher
-              </MenuItem>
-              <MenuItem value="FULL_INSTALLER">
-                Full Installer (NSIS setup .exe) — for manual / offline installation only
-              </MenuItem>
-            </Select>
-          </FormControl>
           <TextField label="Release Notes" size="small" multiline rows={3}
             value={form.releaseNotes}
             onChange={e => setForm(p => ({ ...p, releaseNotes: e.target.value }))}
@@ -495,10 +413,7 @@ export default function VersionManagementPage() {
               onChange={e => setSelectedFile(e.target.files[0] || null)} />
             <Button variant="outlined" startIcon={<UploadFileIcon />}
               onClick={() => fileRef.current.click()}>
-              {selectedFile ? selectedFile.name
-                : form.releaseType === "FULL_INSTALLER"
-                  ? "Choose full installer (optional)"
-                  : "Choose pos-electron.exe (optional)"}
+              {selectedFile ? selectedFile.name : "Choose portable .exe (optional)"}
             </Button>
             {selectedFile && (
               <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
