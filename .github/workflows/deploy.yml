@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ── Job 1: Build POS app + Launcher (same runner, shares electron-builder) ──
+  # ── Job 1: Build POS app ─────────────────────────────────────────────────────
   build-pos:
     runs-on: windows-latest
 
@@ -31,15 +31,6 @@ jobs:
           $cfg | ConvertTo-Json | Set-Content pos-electron/pos-config.json
           Write-Host "API server set to: ${{ vars.POS_API_SERVER }}"
 
-      - name: Configure API server in launcher-config.json
-        if: ${{ vars.POS_API_SERVER != '' }}
-        shell: pwsh
-        run: |
-          $cfg = Get-Content pos-electron-launcher/launcher-config.json | ConvertFrom-Json
-          $cfg.apiServer = "${{ vars.POS_API_SERVER }}"
-          $cfg | ConvertTo-Json | Set-Content pos-electron-launcher/launcher-config.json
-          Write-Host "Launcher API server set to: ${{ vars.POS_API_SERVER }}"
-
       - name: Install pos-electron dependencies
         working-directory: pos-electron
         run: npm install
@@ -48,27 +39,12 @@ jobs:
         working-directory: pos-electron
         run: npm run dist:win
 
-      - name: Install launcher dependencies (electron only — reuses pos-electron's electron-builder)
-        working-directory: pos-electron-launcher
-        run: npm install
-
-      - name: Build Launcher (using pos-electron's electron-builder)
-        working-directory: pos-electron-launcher
-        run: ..\pos-electron\node_modules\.bin\electron-builder --win
-
-      - name: Upload POS installer artifact
+      - name: Upload POS artifact
         uses: actions/upload-artifact@v4
         with:
           name: pos-installer
           path: pos-electron/release/*.exe
           retention-days: 7
-
-      - name: Upload Launcher artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: pos-launcher
-          path: pos-electron-launcher/release/*.exe
-          retention-days: 30
 
   # ── Job 2: Deploy everything ─────────────────────────────────────────────────
   build-and-deploy:
@@ -93,24 +69,16 @@ jobs:
         id: pos-ver
         run: echo "version=$(node -p "require('./pos-electron/package.json').version")" >> $GITHUB_OUTPUT
 
-      - name: Download POS installer artifact
+      - name: Download POS artifact
         uses: actions/download-artifact@v4
         with:
           name: pos-installer
-          path: public/downloads/
-
-      - name: Download Launcher artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: pos-launcher
           path: public/downloads/
 
       - name: Fix file permissions
         run: |
           chmod 644 "public/downloads/TradeLink247-POS-${{ steps.pos-ver.outputs.version }}.exe"
           chmod 644 "public/downloads/TradeLink247-POS-Setup-${{ steps.pos-ver.outputs.version }}.exe"
-          chmod 644 "public/downloads/TradeLink247-POS-Launcher.exe"
-          chmod 644 "public/downloads/TradeLink247-POS-Launcher-Setup.exe"
 
       - name: Prepare folders on server
         uses: appleboy/ssh-action@master
@@ -120,7 +88,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             mkdir -p ${{ env.UPDATE_ASSETS_DIR }}/windows
-            mkdir -p ${{ env.UPDATE_ASSETS_DIR }}/launcher
             chmod -R 775 ${{ env.UPDATE_ASSETS_DIR }}
 
       - name: Deploy portable POS exe
@@ -145,28 +112,6 @@ jobs:
           strip_components: 2
           overwrite: true
 
-      - name: Deploy Launcher (portable)
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "public/downloads/TradeLink247-POS-Launcher.exe"
-          target: "${{ env.UPDATE_ASSETS_DIR }}/launcher/"
-          strip_components: 2
-          overwrite: true
-
-      - name: Deploy Launcher installer
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "public/downloads/TradeLink247-POS-Launcher-Setup.exe"
-          target: "${{ env.UPDATE_ASSETS_DIR }}/launcher/"
-          strip_components: 2
-          overwrite: true
-
       - name: Update latest.txt on server
         uses: appleboy/ssh-action@master
         with:
@@ -177,7 +122,6 @@ jobs:
             echo "${{ steps.pos-ver.outputs.version }}" > ${{ env.UPDATE_ASSETS_DIR }}/latest.txt
             echo "Deployed v${{ steps.pos-ver.outputs.version }}"
             ls -lh ${{ env.UPDATE_ASSETS_DIR }}/windows/
-            ls -lh ${{ env.UPDATE_ASSETS_DIR }}/launcher/
 
       - name: Install dependencies
         run: npm install
