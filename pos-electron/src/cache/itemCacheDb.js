@@ -70,3 +70,16 @@ db.version(6).stores({
   kot_sequence: "seqDate",
   receipt_modes: "key",
 });
+
+// v7: tracks per-item pick frequency for the quick-pick bar
+db.version(7).stores({
+  items: "itemId, barcode, itemName, category",
+  meta: "key",
+  pending_sales: "++id, status, queuedAt",
+  pending_stock_transfers: "++id, status, queuedAt",
+  kot_headers: "++id, tableId, kotDate, status",
+  kot_lines: "++id, headerId",
+  kot_sequence: "seqDate",
+  receipt_modes: "key",
+  item_freq: "itemId",
+});
