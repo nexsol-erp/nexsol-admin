@@ -173,8 +173,8 @@ export default function VersionManagementPage() {
 
   const downloadLauncher = () => {
     const a = document.createElement("a");
-    a.href = "/downloads/launcher/launchPOSClinet.exe";
-    a.setAttribute("download", "TradeLink247-POS-Launcher.exe");
+    a.href = "/downloads/launcher/LaunchPOSClinet.zip";
+    a.setAttribute("download", "TradeLink247-POS-Launcher.zip");
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -254,9 +254,9 @@ export default function VersionManagementPage() {
               <Chip label="Installed once" size="small" sx={{ bgcolor: "rgba(255,255,255,0.15)", color: "#ffffff", borderColor: "rgba(255,255,255,0.4)", border: "1px solid" }} />
             </Box>
             <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)" }}>
-              <strong>launchPOSClinet.exe</strong> — deployed to each cashier PC once.
+              Download the zip, extract to any folder (e.g. <code>C:\TradeLink247\</code>), and run <strong>launchPOSClinet.exe</strong>.
               On every launch it checks for a new <em>APPLICATION_UPDATE</em> below and
-              downloads it automatically before opening the POS.
+              downloads it automatically before opening the POS. No reinstall needed for future updates.
             </Typography>
           </Box>
           <Button
