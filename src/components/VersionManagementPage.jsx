@@ -285,17 +285,17 @@ export default function VersionManagementPage() {
       </Box>
 
       {/* Launcher banner */}
-      <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: "#f0f7ff", border: "1px solid #bfdbfe", borderRadius: 2 }}>
+      <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: "#1e3a5f", borderRadius: 2 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-              <Typography variant="subtitle1" fontWeight={700}>
+              <Typography variant="subtitle1" fontWeight={700} sx={{ color: "#ffffff" }}>
                 POS Launcher
               </Typography>
-              <Chip label="Qt / Windows" size="small" color="primary" variant="outlined" />
-              <Chip label="Installed once" size="small" color="success" variant="outlined" />
+              <Chip label="Qt / Windows" size="small" sx={{ bgcolor: "rgba(255,255,255,0.15)", color: "#ffffff", borderColor: "rgba(255,255,255,0.4)", border: "1px solid" }} />
+              <Chip label="Installed once" size="small" sx={{ bgcolor: "rgba(255,255,255,0.15)", color: "#ffffff", borderColor: "rgba(255,255,255,0.4)", border: "1px solid" }} />
             </Box>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)" }}>
               <strong>launchPOSClinet.exe</strong> — deployed to each cashier PC once.
               On every launch it checks for a new <em>APPLICATION_UPDATE</em> below and
               downloads it automatically before opening the POS.
@@ -306,7 +306,7 @@ export default function VersionManagementPage() {
             size="small"
             startIcon={<DownloadIcon />}
             onClick={downloadLauncher}
-            sx={{ flexShrink: 0 }}
+            sx={{ flexShrink: 0, bgcolor: "#ffffff", color: "#1e3a5f", "&:hover": { bgcolor: "#e2e8f0" } }}
           >
             Download Launcher
           </Button>
