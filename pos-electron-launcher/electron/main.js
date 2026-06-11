@@ -395,7 +395,7 @@ async function main() {
     const controller = new AbortController();
     const timeoutId  = setTimeout(() => controller.abort(), 8000);
     try {
-      const res = await fetch(`${apiServer}/pos-app/update-check?${params}`,
+      const res = await fetch(`${apiServer}/api/pos-app/update-check?${params}`,
                               { signal: controller.signal });
       clearTimeout(timeoutId);
       if (!res.ok) throw new Error(`Update check returned ${res.status}`);
