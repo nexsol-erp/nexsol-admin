@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Input, InputNumber, Select, Table, message, Tag, Tooltip, Modal, Badge } from "antd";
+import { AutoComplete, Button, Input, InputNumber, Select, Table, message, Tag, Tooltip, Modal, Badge } from "antd";
 import { SyncOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined } from "@ant-design/icons";
 import { logout } from "../auth/auth";
 import ItemLookupModal from "../components/ItemLookupModal";
@@ -45,6 +45,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const [categoryMap, setCategoryMap] = useState({});
   const [quickItems,        setQuickItems]        = useState([]);
   const [shortcutMgrOpen,   setShortcutMgrOpen]   = useState(false);
+  const [salesmanOptions,   setSalesmanOptions]   = useState([]);
 
   // Offline queue — poll every 10 s; sync only when idle >= 30 s and online
   useEffect(() => {
@@ -85,6 +86,23 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   const refreshQuickItems = () => getShortcutItems().then(setQuickItems).catch(() => {});
   useEffect(() => { refreshQuickItems(); }, []);
+
+  const loadSalesmanOptions = async () => {
+    try {
+      const rows = await db.salesmen.orderBy("code").toArray();
+      setSalesmanOptions(rows.map((r) => ({ value: r.code })));
+    } catch (_) {}
+  };
+  useEffect(() => { loadSalesmanOptions(); }, []);
+
+  const persistSalesmanCode = async (code) => {
+    const trimmed = (code || "").trim();
+    if (!trimmed) return;
+    try {
+      await db.salesmen.put({ code: trimmed });
+      loadSalesmanOptions();
+    } catch (_) {}
+  };
 
   // Alt+1…Alt+9 = quick items 1–9, Alt+0 = item 10, Alt+S = save invoice
   const quickItemsRef = useRef([]);
@@ -372,7 +390,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const clearForm = () => {
     setItems([]); setTendered(0);
     setReceipts((prev) => prev.map((r) => ({ ...r, amount: 0 })));
-    setCustomerMobile(""); setSalesmanCode(""); setSalesmanName("");
+    setCustomerMobile("");
     setTimeout(() => itemSearchRef.current?.focus?.(), 50);
   };
 
@@ -548,6 +566,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
         itemId: item.item_id, batchCode: item.batch || "", qty: Number(item.qty) || 0,
       })));
       message.success("Sales saved successfully");
+      persistSalesmanCode(salesmanCode);
       doPrint({ snapshot: [...finalItems], voucherNumber });
       clearForm();
     } catch (e) {
@@ -566,6 +585,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
           message.warning(isNetworkError
             ? "No network — sale saved offline, will sync automatically when connected"
             : `Server error (${e.httpStatus}) — sale saved offline, will retry when server recovers`);
+          persistSalesmanCode(salesmanCode);
           doPrint({ snapshot: [...finalItems], voucherNumber });
           clearForm();
           setPendingCount((c) => c + 1);
@@ -826,14 +846,15 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
           {/* Salesman */}
           <div>
             {qtLabel("SalesMan Code")}
-            <Input
-              size="small" value={salesmanCode}
-              onChange={(e) => { setSalesmanCode(e.target.value); setSalesmanName(e.target.value); }}
-              style={{ borderRadius: 0 }}
-            />
-            <Input
-              size="small" value={salesmanName} disabled
-              style={{ borderRadius: 0, marginTop: 2 }}
+            <AutoComplete
+              size="small"
+              value={salesmanCode}
+              options={salesmanOptions}
+              filterOption={(input, opt) =>
+                opt.value.toLowerCase().includes(input.toLowerCase())
+              }
+              onChange={(val) => { setSalesmanCode(val); setSalesmanName(val); }}
+              style={{ width: "100%", borderRadius: 0 }}
             />
           </div>
 

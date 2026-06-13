@@ -21,6 +21,64 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+/* ── Mobile responsive ───────────────────────────────────────────────────── */
+@media (max-width: 599px) {
+  /* Prevent horizontal page overflow */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Table containers scroll horizontally on small screens */
+  .MuiTableContainer-root {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* DataGrid must not exceed viewport width */
+  .MuiDataGrid-root {
+    min-width: 0 !important;
+    overflow-x: auto;
+  }
+  .MuiDataGrid-virtualScroller {
+    overflow-x: auto !important;
+  }
+
+  /* All form controls / inputs stretch to full width */
+  .MuiFormControl-root,
+  .MuiTextField-root {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  /* Ensure contained Boxes don't overflow */
+  .MuiBox-root {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Reduce padding on Paper cards */
+  .MuiPaper-root {
+    padding: 8px !important;
+  }
+
+  /* Buttons wrap text instead of overflowing */
+  .MuiButton-root {
+    white-space: normal;
+    text-align: center;
+  }
+
+  /* Grid containers don't create horizontal scroll */
+  .MuiGrid-container {
+    overflow-x: hidden;
+  }
+
+  /* Full-width date pickers */
+  .MuiPickersTextField-root {
+    width: 100% !important;
+  }
+}
+
 /* Reduce connection thickness on hover */
 .bjs-container .djs-connection-hover path {
   stroke-width: 2 !important;  /* lower than the default 4 */

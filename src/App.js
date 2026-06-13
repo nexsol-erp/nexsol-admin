@@ -3,10 +3,12 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
+  Navigate,
   useNavigate,
 } from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { CssBaseline, Box, CircularProgress } from "@mui/material";
+import { CssBaseline, Box, CircularProgress, AppBar, Toolbar, IconButton, Typography } from "@mui/material";
+import { Menu as MenuIcon } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 
 // Components
@@ -106,11 +108,12 @@ import RoleManagementPage from "./components/RoleManagementPage";
 // ========================
 const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
   const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleLogin = (roles) => {
-    localStorage.setItem("roles", JSON.stringify(roles));
-    setRoles(roles);
-    navigate("/main");
+  const handleLogin = (loginRoles) => {
+    localStorage.setItem("roles", JSON.stringify(loginRoles));
+    setRoles(loginRoles);
+    navigate("/dashboard");
   };
 
   const isAuthenticated = !!roles.length;
@@ -121,10 +124,35 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 
   return (
     <>
-      <Sidebar mode={mode} setMode={setMode} roles={roles} />
-      <Box sx={{ display: "flex", flexGrow: 1, ml: { xs: 0, sm: "240px" }, mt: 8 }}>
+      {/* Mobile-only top app bar */}
+      <AppBar
+        position="fixed"
+        elevation={2}
+        sx={{
+          display: { xs: "flex", sm: "none" },
+          bgcolor: "#141a2e",
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+        }}
+      >
+        <Toolbar variant="dense" sx={{ minHeight: 48 }}>
+          <IconButton
+            edge="start"
+            onClick={() => setMobileOpen(true)}
+            sx={{ mr: 1, color: "#ffe3a3" }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Typography sx={{ fontWeight: 700, fontSize: 15, color: "#ffe3a3", letterSpacing: "0.3px" }}>
+            TradeLink 247
+          </Typography>
+        </Toolbar>
+      </AppBar>
+
+      <Sidebar mode={mode} setMode={setMode} roles={roles} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
+      <Box sx={{ display: "flex", flexGrow: 1, ml: { xs: 0, sm: "240px" }, mt: { xs: "48px", sm: 8 } }}>
         <WebSocketProvider>
           <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/sales" element={<SalesDetail />} />
             <Route path="/hsnsales" element={<HSNSalesDetail />} />
