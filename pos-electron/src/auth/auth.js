@@ -36,3 +36,34 @@ export function decodeJwtPayload(token) {
     return null;
   }
 }
+
+// ── Branch lock ───────────────────────────────────────────────────────────────
+// Locks this installation to the first normal user that logs in.
+// Stored as { userCode, branchCode } (both lowercase) in localStorage.
+// Admins bypass the lock; only an admin can clear it to allow re-assignment.
+
+const BRANCH_LOCK_KEY = "posDeviceBranchLock";
+
+export function getBranchLock() {
+  try {
+    const raw = localStorage.getItem(BRANCH_LOCK_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+export function setBranchLock(userCode, branchCode) {
+  localStorage.setItem(BRANCH_LOCK_KEY, JSON.stringify({
+    userCode:   userCode.trim().toLowerCase(),
+    branchCode: branchCode.trim().toLowerCase(),
+  }));
+}
+
+export function clearBranchLock() {
+  localStorage.removeItem(BRANCH_LOCK_KEY);
+}
+
+export function isAdminRole(roles) {
+  return Array.isArray(roles) && roles.some((r) =>
+    ["ADMIN", "admin", "SYSTEM_ADMIN", "system-admin"].includes(r)
+  );
+}
