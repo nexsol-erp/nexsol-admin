@@ -36,6 +36,7 @@ import SupplierCreationForm from "./components/SupplierCreationForm";
 import PurchaseEntryForm from "./components/PurchaseEntryForm";
 import SalesEntryForm from "./components/SalesEntryForm";
 import StockMovementReport from "./components/StockMovementReport";
+import ItemMovementReport from "./components/ItemMovementReport";
 import BillSeriesReport from "./components/BillSeriesReport";
 import UploadPage from "./components/UploadPage";
 import Invoicedesigner from "./components/InvoiceDesigner";
@@ -178,6 +179,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/createitemmaster" element={<CreateItemMaster />} />
             <Route path="/salessummaryreport" element={<SalesSummaryReport />} />
             <Route path="/stockmovementreport" element={<StockMovementReport />} />
+            <Route path="/item-movement-report" element={<ItemMovementReport />} />
             <Route path="/invoicedesigner" element={<Invoicedesigner />} />
             <Route path="/workflowdesign" element={<WorkflowDesigner />} />
             <Route path="/stock-turnover" element={<StockTurnoverReport />} />
