@@ -14,7 +14,7 @@ import ItemSalesReportPage from "./pos/ItemSalesReportPage";
 import ItemMovementReportPage from "./pos/ItemMovementReportPage";
 import StockTransferInReportPage from "./pos/StockTransferInReportPage";
 import UpdateChecker from "./components/UpdateChecker";
-import { isLoggedIn, logout } from "./auth/auth";
+import { isLoggedIn, logout, isAdminRole, getBranchLock, clearBranchLock } from "./auth/auth";
 import { clearItemCache, hasCache, loadAllItemsToCache } from "./cache/itemCache";
 import { registerMachine } from "./utils/posDevice";
 import { log } from "./utils/logger";
@@ -207,6 +207,21 @@ export default function App() {
                   Clear Cache
                 </Button>
               </Popconfirm>
+              {isAdminRole(roles) && (() => {
+                const lock = getBranchLock();
+                return lock ? (
+                  <Popconfirm
+                    title="Unlock this installation?"
+                    description={`Locked to: ${lock.userCode.toUpperCase()} / ${lock.branchCode.toUpperCase()}. Remove lock to allow a different branch?`}
+                    onConfirm={() => { clearBranchLock(); message.success("Branch lock cleared"); }}
+                    okText="Unlock"
+                    okButtonProps={{ danger: true }}
+                    cancelText="Cancel"
+                  >
+                    <Button size="small" danger>Unlock Branch</Button>
+                  </Popconfirm>
+                ) : null;
+              })()}
               <Button
                 size="small"
                 danger
