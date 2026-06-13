@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button, Card, Input, Typography, message, Select, Space } from "antd";
-import { decodeJwtPayload } from "./auth";
+import { decodeJwtPayload, getBranchLock, setBranchLock, isAdminRole } from "./auth";
 import { apiUrl } from "../utils/apiUrl";
 import { log, error as logError } from "../utils/logger";
 
@@ -48,15 +48,44 @@ export default function LoginPage({ onLoggedIn }) {
       }
 
       log("login success | tenancyId:", data.tenancyId, "| roles:", JSON.stringify(data.roles));
-      localStorage.setItem("jwtToken", data.token);
-      localStorage.setItem("tenancyId", data.tenancyId);
-      localStorage.setItem("roles", JSON.stringify(data.roles || []));
 
       const payload = decodeJwtPayload(data.token);
       const allowedBranches = payload && Array.isArray(payload.branches) ? payload.branches : [];
+
+      // ── Branch lock check (normal users only) ─────────────────────────────
+      const roles = data.roles || [];
+      if (!isAdminRole(roles)) {
+        // Resolve the first branch code from the JWT payload
+        const raw = allowedBranches[0];
+        const firstBranch = (
+          typeof raw === "string" ? raw.trim() :
+          String(raw?.branchCode ?? raw?.code ?? raw?.branch ?? raw?.value ?? raw?.id ?? "").trim()
+        ).toLowerCase();
+
+        const lock = getBranchLock();
+        if (lock) {
+          // Installation is already locked — enforce exact match (case insensitive)
+          if (username.trim().toLowerCase() !== lock.userCode || firstBranch !== lock.branchCode) {
+            logError("branch lock mismatch | attempt:", username, firstBranch, "| lock:", lock.userCode, lock.branchCode);
+            message.error(
+              `This installation is locked to branch "${lock.branchCode.toUpperCase()}". Contact admin to unlock.`
+            );
+            return;
+          }
+        } else if (firstBranch) {
+          // First normal-user login — lock this installation to this user + branch
+          setBranchLock(username.trim(), firstBranch);
+          log("branch lock set | userCode:", username.trim().toLowerCase(), "| branchCode:", firstBranch);
+        }
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
+      localStorage.setItem("jwtToken", data.token);
+      localStorage.setItem("tenancyId", data.tenancyId);
+      localStorage.setItem("roles", JSON.stringify(roles));
       localStorage.setItem("allowedBranches", JSON.stringify(allowedBranches));
 
-      window.POS?.setUserRoles?.(data.roles || []);
+      window.POS?.setUserRoles?.(roles);
 
       message.success("Login success");
       onLoggedIn?.();

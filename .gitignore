@@ -1,5 +1,5 @@
 node_modules
-build
+build/
 public/downloads/*.exe
 
 # pos-electron build artifacts (source files are committed, built outputs are not)
