@@ -20,6 +20,9 @@ contextBridge.exposeInMainWorld("POS", {
     return () => ipcRenderer.removeListener("app:navigate", handler);
   },
 
+  // Notify main process of the logged-in user's roles so it can show/hide DevTools menu
+  setUserRoles: (roles) => ipcRenderer.send("auth:roles-changed", roles),
+
   // Logger — writes to <userData>/logs/pos.log
   log: (level, message) => ipcRenderer.invoke("log:write", level, message),
 

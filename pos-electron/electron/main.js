@@ -104,19 +104,30 @@ function getWsServer() {
   return api.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
 }
 
+let _userRoles = [];
+
+function isDevUser() {
+  return _userRoles.some((r) =>
+    r === "ADMIN" || r === "admin" || r === "SYSTEM_ADMIN" || r === "system-admin"
+  );
+}
+
 function buildAppMenu() {
   const template = [
     {
       label: "Navigate",
       submenu: [
-        { label: "POS", click: () => win?.webContents?.send("app:navigate", "pos") },
-        { label: "Day End", click: () => win?.webContents?.send("app:navigate", "day-end") },
+        { label: "POS",            click: () => win?.webContents?.send("app:navigate", "pos") },
+        { label: "Day End",        click: () => win?.webContents?.send("app:navigate", "day-end") },
         { label: "Stock Transfer", click: () => win?.webContents?.send("app:navigate", "stock-transfer") },
-        { label: "Accept Stock", click: () => win?.webContents?.send("app:navigate", "accept-stock") },
-        { label: "Weigh Bridge", click: () => win?.webContents?.send("app:navigate", "weigh-bridge") },
+        { label: "Accept Stock",   click: () => win?.webContents?.send("app:navigate", "accept-stock") },
+        { label: "Weigh Bridge",   click: () => win?.webContents?.send("app:navigate", "weigh-bridge") },
       ],
     },
-    {
+  ];
+
+  if (isDevUser()) {
+    template.push({
       label: "Tools",
       submenu: [
         {
@@ -125,10 +136,16 @@ function buildAppMenu() {
           click: () => win?.webContents?.toggleDevTools(),
         },
       ],
-    },
-  ];
+    });
+  }
+
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
+
+ipcMain.on("auth:roles-changed", (_evt, roles) => {
+  _userRoles = Array.isArray(roles) ? roles : [];
+  buildAppMenu();
+});
 
 
 function createSplash() {
