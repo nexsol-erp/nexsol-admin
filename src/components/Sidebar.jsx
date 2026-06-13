@@ -43,7 +43,6 @@ import {
   Info,
   HelpOutline,
   ExitToApp,
-  Menu as MenuIcon,
   ExpandLess,
   ExpandMore,
   ModeNightRounded,
@@ -71,11 +70,10 @@ const C = {
 
 const ic = (node) => React.cloneElement(node, { fontSize: "small" });
 
-const Sidebar = ({ mode, setMode, roles = [] }) => {
+const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
   const { t } = useTranslation();
   const location = useLocation();
 
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [openMenus, setOpenMenus] = useState({});
   const [branches, setBranches] = useState([]);
   const [branch, setBranch] = useState("");
@@ -165,6 +163,8 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
 
   const toggleMenu = (idx) =>
     setOpenMenus((prev) => ({ ...prev, [idx]: !prev[idx] }));
+
+  const handleNavClick = () => setMobileOpen(false);
 
   const isActive = (link) => !!link && location.pathname === link;
 
@@ -684,6 +684,7 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
                           key={sIdx}
                           component={Link}
                           to={sub.link}
+                          onClick={handleNavClick}
                           sx={subItemButtonSx(sub.link)}
                         >
                           <ListItemText primary={sub.label} />
@@ -701,6 +702,7 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
                 key={idx}
                 component={Link}
                 to={item.link}
+                onClick={handleNavClick}
                 sx={itemButtonSx(item.link)}
               >
                 <ListItemIcon>{ic(item.icon)}</ListItemIcon>
@@ -775,13 +777,6 @@ const Sidebar = ({ mode, setMode, roles = [] }) => {
 
   return (
     <Box sx={{ display: "flex" }}>
-      <IconButton
-        onClick={() => setMobileOpen(!mobileOpen)}
-        sx={{ display: { sm: "none" }, color: C.textActive, position: "fixed", top: 8, left: 8, zIndex: 1300 }}
-      >
-        <MenuIcon />
-      </IconButton>
-
       {/* Mobile drawer */}
       <Drawer
         variant="temporary"

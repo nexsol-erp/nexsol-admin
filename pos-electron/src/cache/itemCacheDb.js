@@ -83,3 +83,17 @@ db.version(7).stores({
   receipt_modes: "key",
   item_freq: "itemId",
 });
+
+// v8: stores known salesman codes for autocomplete suggestions
+db.version(8).stores({
+  items: "itemId, barcode, itemName, category",
+  meta: "key",
+  pending_sales: "++id, status, queuedAt",
+  pending_stock_transfers: "++id, status, queuedAt",
+  kot_headers: "++id, tableId, kotDate, status",
+  kot_lines: "++id, headerId",
+  kot_sequence: "seqDate",
+  receipt_modes: "key",
+  item_freq: "itemId",
+  salesmen: "code",
+});
