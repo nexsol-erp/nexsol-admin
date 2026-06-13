@@ -24,6 +24,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const lastActivityRef = useRef(Date.now());
   const pendingQtyFocusKey = useRef(null);
   const savingRef = useRef(false);
+  const categoryMapRef = useRef({});
 
   const [isSaving, setIsSaving] = useState(false);
   const [customerMobile, setCustomerMobile] = useState("");
@@ -109,6 +110,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const onSaveRef     = useRef(null);
   const canSaveRef    = useRef(false);
   useEffect(() => { quickItemsRef.current = quickItems; }, [quickItems]);
+  useEffect(() => { categoryMapRef.current = categoryMap; }, [categoryMap]);
   useEffect(() => {
     const handler = (e) => {
       if (!e.altKey) return;
@@ -246,6 +248,9 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     setTimeout(() => itemSearchRef.current?.focus?.(), 100);
   }, [prefillItems]);
 
+  const isItemDynamic = (itemId) =>
+    (categoryMapRef.current[String(itemId || "")] || []).includes("DYNAMIC");
+
   const openLookup = (q = "") => { log("openLookup:", q); setLookupQuery(q); setLookupOpen(true); };
   const focusQtyInput = (rowKey, delay = 0) => {
     setTimeout(() => qtyInputRefs.current[rowKey]?.focus?.(), delay);
@@ -311,7 +316,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
         const next = { ...r, ...patch };
         const available   = getAvailableQty(next);
         const requestedQty = Number(next.qty) || 0;
-        if (Object.hasOwn(patch, "qty") && available !== null && requestedQty > available) {
+        if (!isItemDynamic(next.item_id) && Object.hasOwn(patch, "qty") && available !== null && requestedQty > available) {
           next.qty = available;
           message.warning(`Only ${available} in stock for ${next.item_name}`);
         }
@@ -332,13 +337,13 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     if (existing) {
       const nextQty = (Number(existing.qty) || 0) + 1;
       const allowed = getAvailableQty(existing) ?? available;
-      if (allowed !== null && nextQty > allowed) { message.warning(`Only ${allowed} in stock for ${existing.item_name}`); return; }
+      if (!isItemDynamic(itm.itemId) && allowed !== null && nextQty > allowed) { message.warning(`Only ${allowed} in stock for ${existing.item_name}`); return; }
       updateItem(existing.key, { qty: nextQty, available_qty: allowed });
       setItemQuery(""); pendingQtyFocusKey.current = existing.key;
       if (closeModal) closeLookup({ focusSearch: false });
       else focusQtyInput(existing.key, 50);
     } else {
-      if (available !== null && available <= 0) { message.warning(`No stock for ${itm.itemName}`); return; }
+      if (!isItemDynamic(itm.itemId) && available !== null && available <= 0) { message.warning(`No stock for ${itm.itemName}`); return; }
       const row = {
         key: crypto.randomUUID(), item_id: itm.itemId, item_name: itm.itemName,
         barcode: itm.barcode, qty: 1, available_qty: available,
