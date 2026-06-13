@@ -95,15 +95,35 @@ const BranchStockViewReport = () => {
     }
   };
 
+  const grandTotal = stockData.reduce((sum, row) => {
+    const qty = parseFloat(row.totalQty ?? 0);
+    const price = parseFloat(row.standardPrice ?? 0);
+    return sum + qty * price;
+  }, 0);
+
   const handleExportToExcel = () => {
-    const rows = stockData.map((row) => ({
-      "Item Code": row.itemId ?? "",
-      "Item Name": row.itemName ?? "",
-      "Qty": parseFloat(row.totalQty ?? 0),
-      "Unit": row.unit ?? "",
-      "HSN": row.hsn ?? "",
-      "Standard Price": row.mrp != null ? parseFloat(row.mrp) : "",
-    }));
+    const rows = stockData.map((row) => {
+      const qty = parseFloat(row.totalQty ?? 0);
+      const price = parseFloat(row.standardPrice ?? 0);
+      return {
+        "Item Code": row.itemId ?? "",
+        "Item Name": row.itemName ?? "",
+        "Qty": qty,
+        "Unit": row.unit ?? "",
+        "HSN": row.hsn ?? "",
+        "Standard Price": price || "",
+        "Stock Value": price ? parseFloat((qty * price).toFixed(2)) : "",
+      };
+    });
+    rows.push({
+      "Item Code": "",
+      "Item Name": "TOTAL",
+      "Qty": "",
+      "Unit": "",
+      "HSN": "",
+      "Standard Price": "",
+      "Stock Value": parseFloat(grandTotal.toFixed(2)),
+    });
     const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Branch Stock");
@@ -167,21 +187,41 @@ const BranchStockViewReport = () => {
                 <TableCell>Unit</TableCell>
                 <TableCell>HSN</TableCell>
                 <TableCell align="right">Standard Price</TableCell>
+                <TableCell align="right">Stock Value</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {stockData.map((row, idx) => (
-                <TableRow key={idx}>
-                  <TableCell>{row.itemId}</TableCell>
-                  <TableCell>{row.itemName ?? ""}</TableCell>
-                  <TableCell align="right">{parseFloat(row.totalQty ?? 0).toFixed(2)}</TableCell>
-                  <TableCell>{row.unit ?? ""}</TableCell>
-                  <TableCell>{row.hsn ?? ""}</TableCell>
-                  <TableCell align="right">
-                    {row.mrp != null ? parseFloat(row.mrp).toFixed(2) : ""}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {stockData.map((row, idx) => {
+                const qty = parseFloat(row.totalQty ?? 0);
+                const price = parseFloat(row.standardPrice ?? 0);
+                const value = qty * price;
+                return (
+                  <TableRow key={idx}>
+                    <TableCell>{row.itemId}</TableCell>
+                    <TableCell>{row.itemName ?? ""}</TableCell>
+                    <TableCell align="right">{qty.toFixed(2)}</TableCell>
+                    <TableCell>{row.unit ?? ""}</TableCell>
+                    <TableCell>{row.hsn ?? ""}</TableCell>
+                    <TableCell align="right">
+                      {price ? price.toFixed(2) : ""}
+                    </TableCell>
+                    <TableCell align="right">
+                      {price ? value.toFixed(2) : ""}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              <TableRow sx={{ bgcolor: "action.selected" }}>
+                <TableCell colSpan={5} />
+                <TableCell align="right">
+                  <Typography variant="body2" fontWeight={700}>Total Stock Value</Typography>
+                </TableCell>
+                <TableCell align="right">
+                  <Typography variant="body2" fontWeight={700}>
+                    {grandTotal.toFixed(2)}
+                  </Typography>
+                </TableCell>
+              </TableRow>
             </TableBody>
           </Table>
         </TableContainer>
