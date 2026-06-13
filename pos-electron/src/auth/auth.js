@@ -17,6 +17,7 @@ export function logout() {
   localStorage.removeItem("tenancyId");
   localStorage.removeItem("roles");
   localStorage.removeItem("allowedBranches");
+  window.POS?.setUserRoles?.([]);
 }
 
 export function decodeJwtPayload(token) {

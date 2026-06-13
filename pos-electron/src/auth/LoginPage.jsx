@@ -56,6 +56,8 @@ export default function LoginPage({ onLoggedIn }) {
       const allowedBranches = payload && Array.isArray(payload.branches) ? payload.branches : [];
       localStorage.setItem("allowedBranches", JSON.stringify(allowedBranches));
 
+      window.POS?.setUserRoles?.(data.roles || []);
+
       message.success("Login success");
       onLoggedIn?.();
     } catch (e) {
