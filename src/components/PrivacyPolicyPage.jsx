@@ -22,9 +22,9 @@ const ListItem = ({ children }) => (
   </Typography>
 );
 
-const PrivacyPolicyPage = () => {
+const PrivacyPolicyPage = ({ isPublic = false }) => {
   return (
-    <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
+    <Box sx={{ flexGrow: 1, p: 3, ml: isPublic ? 0 : "240px", mt: isPublic ? 0 : 2 }}>
       <Paper elevation={3} sx={{ p: 5, maxWidth: 860 }}>
 
         {/* Header */}
