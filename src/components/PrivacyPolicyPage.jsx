@@ -32,16 +32,17 @@ const PrivacyPolicyPage = ({ isPublic = false }) => {
           Privacy Policy
         </Typography>
         <Typography variant="body2" sx={{ color: "#888", mb: 1 }}>
-          Effective date: June 2025 &nbsp;|&nbsp; Platform: tradelink247.com
+          Effective date: June 2026 &nbsp;|&nbsp; Platform: tradelink247.com
         </Typography>
         <Divider sx={{ mb: 4 }} />
 
         <Para>
-          This Privacy Policy describes how <strong>St Marys Weigh Bridge</strong> and its affiliates
-          (collectively "St Marys Weigh Bridge", "we", "our", "us") collect, use, share, protect, and
+          This Privacy Policy describes how <strong>Maple ERP</strong> and its affiliates
+          (collectively "Maple ERP", "we", "our", "us") collect, use, share, protect, and
           otherwise process your information and personal data through our website{" "}
-          <strong>https://www.tradelink247.com</strong> and the TradeLink247 POS application
-          (hereinafter referred to as "Platform").
+          <strong>https://www.tradelink247.com</strong>, the TradeLink ERP web application, the
+          TradeLink ERP mobile application (Android), and the TradeLink247 POS desktop application
+          (hereinafter collectively referred to as "Platform").
         </Para>
         <Para>
           We do not offer any product or service under this Platform outside India, and your personal
@@ -80,7 +81,8 @@ const PrivacyPolicyPage = ({ isPublic = false }) => {
                 ["Subscription & billing", "Billing address, payment method details (processed via PCI-compliant gateway — we do not store card numbers)"],
                 ["Business data",          "Sales records, inventory items, purchase orders, stock transfers, vouchers, customer mobile numbers entered at POS"],
                 ["Usage data",             "Pages visited, features used, API calls, error logs, browser/OS type"],
-                ["Device information",     "IP address, device type, operating system, POS terminal identifier"],
+                ["Device information",     "IP address, device type, operating system, POS terminal identifier, Android device ID"],
+                ["Mobile app permissions", "Bluetooth (for receipt printing) — device pairing only, MAC address stored locally. Camera (for barcode scanning) — images are processed on-device and never uploaded."],
                 ["Communications",         "Support tickets, emails, chat messages sent to us"],
               ].map(([k, v]) => (
                 <TableRow key={k}>
@@ -182,7 +184,8 @@ const PrivacyPolicyPage = ({ isPublic = false }) => {
           </Box>
           <Para>
             We do not use third-party advertising cookies. The TradeLink247 POS desktop application
-            (Electron) does not use browser cookies; session data is stored locally on the device.
+            (Electron) and the TradeLink ERP mobile app (Android) do not use browser cookies; session
+            tokens are stored in encrypted local storage on the device (Android Keystore for the mobile app).
           </Para>
           <Para>
             You may disable cookies in your browser settings, but this may affect the functionality
@@ -334,8 +337,9 @@ const PrivacyPolicyPage = ({ isPublic = false }) => {
             <Typography variant="body2" sx={{ lineHeight: 2 }}>
               <strong>Grievance Officer:</strong> Regy George<br />
               <strong>Designation:</strong> Proprietor<br />
-              <strong>Company:</strong> St Marys Weigh Bridge<br />
+              <strong>Company:</strong> Maple ERP<br />
               <strong>Address:</strong> Kottarakkara, Kerala, India<br />
+              <strong>Email:</strong> support@tradelink247.com<br />
               <strong>Website:</strong> https://www.tradelink247.com<br />
               <strong>Support hours:</strong> Monday – Friday, 9:00 – 18:00 IST
             </Typography>
@@ -348,7 +352,7 @@ const PrivacyPolicyPage = ({ isPublic = false }) => {
 
         <Divider sx={{ mt: 4, mb: 2 }} />
         <Typography variant="caption" sx={{ color: "#aaa" }}>
-          Last updated: June 2025. This Privacy Policy supersedes all previous versions.
+          Last updated: June 2026. This Privacy Policy supersedes all previous versions.
         </Typography>
 
       </Paper>
