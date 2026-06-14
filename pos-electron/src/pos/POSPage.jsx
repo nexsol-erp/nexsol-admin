@@ -363,12 +363,15 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const initiateUpiPayment = async (amount) => {
     const tenantId  = localStorage.getItem("tenancyId") || "";
     const token     = localStorage.getItem("jwtToken") || "";
-    const { voucherNumber } = generateVoucherNumber(selectedBranchCode);
+    // Use a temporary reference — the real invoice number is only assigned when the
+    // bill is saved. Generating a voucher number here would burn the sequence if UPI
+    // fails or if the cashier cancels, creating gaps in bill numbers.
+    const tempRef = `UPI-${Date.now()}`;
     try {
       const res = await fetch(`/api/${tenantId}/upi/initiate`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ amount, voucherNumber, branchCode: selectedBranchCode }),
+        body: JSON.stringify({ amount, voucherNumber: tempRef, branchCode: selectedBranchCode }),
       });
       if (!res.ok) throw new Error(`UPI initiate failed: ${res.status}`);
       const { merchantTransactionId, qrData } = await res.json();
