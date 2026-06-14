@@ -108,16 +108,135 @@ import RoleMenuPage from "./components/RoleMenuPage";
 import RoleManagementPage from "./components/RoleManagementPage";
 
 // ========================
+// ORDERED MENU ROUTE MAP  (mirrors Sidebar menuItems order)
+// ========================
+const ROUTE_ORDER = [
+  { key: "Dashboard",                        path: "/dashboard" },
+  { key: "AI Stock Intelligence",            path: "/ai-dashboard" },
+  { key: "Admin Page",                       path: "/branch-request-list" },
+  { key: "Reprocess Voucher",               path: "/reprocess-voucher-form" },
+  { key: "POS",                              path: "/pos" },
+  { key: "KOT",                             path: "/kot" },
+  { key: "Sales Entry",                      path: "/salesentryform" },
+  { key: "HSN wise Sales",                   path: "/hsnsales" },
+  { key: "HSN wise Purchase",                path: "/hsnwise-purchase-report" },
+  { key: "Purchase Entry",                   path: "/purchaseentry" },
+  { key: "Goods Receipt",                    path: "/goodsreceipt" },
+  { key: "Production Def",                   path: "/production-def" },
+  { key: "Production Planning",              path: "/production-planning" },
+  { key: "Production Execution",             path: "/production-execution" },
+  { key: "Weighbridge",                      path: "/weighbridge" },
+  { key: "Weight-Count",                     path: "/bridge-count" },
+  { key: "WeighBridge Usage",                path: "/weighbridgeusage" },
+  { key: "Branch Details",                   path: "/branch-update" },
+  { key: "Version Management",               path: "/version-management" },
+  { key: "Scheme Creation",                  path: "/schemepage" },
+  { key: "Manage Scheme",                    path: "/publishschemepage" },
+  { key: "Menu Master",                      path: "/menu-master" },
+  { key: "Role Management",                  path: "/role-management" },
+  { key: "Role Menu Access",                 path: "/role-menu" },
+  { key: "Branch Creation",                  path: "/branchcreationpage" },
+  { key: "User Creation",                    path: "/usercreationpage" },
+  { key: "Branch Assignment",                path: "/branchassingment" },
+  { key: "Transfer Branch Permissions",      path: "/branch-transfer-assignment" },
+  { key: "Financial Year Setup",             path: "/financialyearpage" },
+  { key: "Receipt Modes",                    path: "/receipt-modes" },
+  { key: "UPI Payment Setup",               path: "/upi-config" },
+  { key: "Item Search",                      path: "/itemsearch" },
+  { key: "Item Creation",                    path: "/createitemmaster" },
+  { key: "Branch Price",                     path: "/branch-price" },
+  { key: "Price Edit Category Wise",         path: "/category-price-edit" },
+  { key: "Category Link",                    path: "/item-category-linker" },
+  { key: "Manage Account Heads",             path: "/manage-account-heads" },
+  { key: "Statement Of Account",             path: "/statement-of-account" },
+  { key: "Category Type",                    path: "/categorytypemaster" },
+  { key: "Category Name",                    path: "/categorynamemaster" },
+  { key: "Supplier Creation",                path: "/suppliercreation" },
+  { key: "Tax Update Manager",               path: "/tax-update-manager" },
+  { key: "Tax Update Preview",               path: "/tax-update-preview" },
+  { key: "Physical Stock Correction",        path: "/physical-stock-correction" },
+  { key: "Sales Re Print",                   path: "/salessummaryreport" },
+  { key: "Sales Report",                     path: "/sales" },
+  { key: "Sales Tax Summary",                path: "/salestaxsummary" },
+  { key: "Purchase Report",                  path: "/purchasereport" },
+  { key: "Stock Movement Report",            path: "/stockmovementreport" },
+  { key: "Item Movement Report",             path: "/item-movement-report" },
+  { key: "Item Velocity Report",             path: "/item-velocity-report" },
+  { key: "Physical Stock Report",            path: "/physicalstockreport" },
+  { key: "All Branch Stock Report",          path: "/stock-report-all-branch" },
+  { key: "Branch Stock Management",          path: "/branch-stock-report" },
+  { key: "All Branch Sales Report",          path: "/sales-report-all-branch" },
+  { key: "All Branch Categorywise Sales Report", path: "/sales-category-wise-report-all-branch" },
+  { key: "Item Stock Report",                path: "/item-stock-report" },
+  { key: "Day End Report",                   path: "/day-end-report" },
+  { key: "Bill Series Report",               path: "/billseriesreport" },
+  { key: "Season Sales Report",              path: "/seasonalreport" },
+  { key: "Stock Turnover Report",            path: "/stock-turnover" },
+  { key: "Item Sales Report",                path: "/item-sales" },
+  { key: "Documents List",                   path: "/documents-list" },
+  { key: "Branch Stock Diff Report",         path: "/branch-stock-diff-report" },
+  { key: "Branch Stock Report",              path: "/branch-stock-view" },
+  { key: "Branch Inventory Report",          path: "/branch-inventory" },
+  { key: "Branch Inventory Ledger",          path: "/branch-inventory-ledger" },
+  { key: "Stock Transfer Out Report",        path: "/stocktransfer-out-report" },
+  { key: "Stock Transfer In Report",         path: "/stocktransfer-in-report" },
+  { key: "Item Transfer Report",             path: "/item-transfer-report" },
+  { key: "Download",                         path: "/download" },
+  { key: "Upload",                           path: "/uploadpage" },
+  { key: "Invoice Designer",                 path: "/invoicedesigner" },
+  { key: "Workflow Designer",                path: "/bpmn-editorr" },
+  { key: "About",                            path: "/about" },
+  { key: "Help",                             path: "/help" },
+];
+
+/** Resolves the first route a user may land on after login. */
+async function resolveLoginLanding(loginRoles) {
+  if (loginRoles.includes("system-admin")) return "/dashboard";
+
+  const tenancyId = localStorage.getItem("tenancyId");
+  const token = localStorage.getItem("jwtToken");
+
+  try {
+    const res = await fetch(`/api/${tenancyId}/role-menus/accessible-menus`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(loginRoles),
+    });
+    const data = res.ok ? await res.json() : [];
+    const allowed = new Set(Array.isArray(data) ? data : []);
+
+    // No role-menu assignments configured — default to dashboard
+    if (allowed.size === 0) return "/dashboard";
+
+    const first = ROUTE_ORDER.find(({ key }) => allowed.has(key));
+    return first ? first.path : "/dashboard";
+  } catch {
+    return "/dashboard";
+  }
+}
+
+// Redirects "/" to the first route the current user is permitted to access.
+const LandingRedirect = ({ roles }) => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    resolveLoginLanding(roles).then((path) => navigate(path, { replace: true }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+};
+
+// ========================
 // AUTH WRAPPER COMPONENT
 // ========================
 const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleLogin = (loginRoles) => {
+  const handleLogin = async (loginRoles) => {
     localStorage.setItem("roles", JSON.stringify(loginRoles));
     setRoles(loginRoles);
-    navigate("/dashboard");
+    const landing = await resolveLoginLanding(loginRoles);
+    navigate(landing);
   };
 
   const isAuthenticated = !!roles.length;
@@ -156,7 +275,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
       <Box sx={{ display: "flex", flexGrow: 1, ml: { xs: 0, sm: "240px" }, mt: { xs: "48px", sm: 8 } }}>
         <WebSocketProvider>
           <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<LandingRedirect roles={roles} />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/sales" element={<SalesDetail />} />
             <Route path="/hsnsales" element={<HSNSalesDetail />} />
