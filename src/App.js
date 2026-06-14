@@ -99,6 +99,7 @@ import TermsAndConditionsPage from "./components/TermsAndConditionsPage";
 import RefundPolicyPage from "./components/RefundPolicyPage";
 import PrivacyPolicyPage from "./components/PrivacyPolicyPage";
 import BranchStockViewReport from "./components/BranchStockViewReport";
+import BranchInventoryReport from "./components/BranchInventoryReport";
 import ItemTransferReport from "./components/ItemTransferReport";
 import AIDashboardPage from "./components/AIDashboardPage";
 import MenuMasterPage from "./components/MenuMasterPage";
@@ -237,6 +238,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/receipt-modes" element={<ReceiptModePage />} />
 <Route path="/upi-config" element={<UpiConfigPage />} />
 <Route path="/branch-stock-view" element={<BranchStockViewReport />} />
+<Route path="/branch-inventory" element={<BranchInventoryReport />} />
 <Route path="/item-transfer-report" element={<ItemTransferReport />} />
 <Route path="/ai-dashboard" element={<AIDashboardPage />} />
 <Route path="/menu-master" element={<MenuMasterPage />} />
