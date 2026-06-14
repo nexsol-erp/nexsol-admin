@@ -174,7 +174,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
       label: t("Dashboard"),
       icon: <Dashboard />,
       link: "/dashboard",
-      roles: ["admin", "user", "manager", "WB"],
+      roles: ["admin",  "manager"],
     },
     {
       menuKey: "Initial Setup",
