@@ -30,14 +30,25 @@ const BranchPricePage = () => {
 
   const debounceRef = useRef(null);
 
-  // Load branches once
+  const allowedBranches = (() => {
+    try {
+      const raw = localStorage.getItem("allowedBranches");
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch { return []; }
+  })();
+
+  // Load branches once, filtered to allowed list
   useEffect(() => {
     fetch(`/api/${tenantId}/branches`, { headers })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         const list = Array.isArray(data) ? data : (data?.branches ?? data?.data ?? []);
-        setBranches(list);
-        if (list.length === 1) setSelectedBranch(list[0].branchCode);
+        const filtered = allowedBranches.length
+          ? list.filter(b => allowedBranches.includes(b.branchCode))
+          : list;
+        setBranches(filtered);
+        if (filtered.length === 1) setSelectedBranch(filtered[0].branchCode);
       })
       .catch(() => {});
   }, []);
