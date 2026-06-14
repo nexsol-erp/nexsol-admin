@@ -303,13 +303,6 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
       roles: ["admin"],
     },
     {
-      menuKey: "Branch Price",
-      label: t("Branch Price"),
-      icon: <Business />,
-      link: "/branch-price",
-      roles: ["admin"],
-    },
-    {
       menuKey: "Version Management",
       label: t("Version Management"),
       icon: <AdminPanelSettings />,
@@ -341,6 +334,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         { menuKey: "UPI Payment Setup", label: t("UPI Payment Setup"), link: "/upi-config", roles: ["admin"] },
         { menuKey: "Item Search", label: t("Item Search"), link: "/itemsearch", roles: ["admin", "user", "cgn", "franchiseeuser"] },
         { menuKey: "Item Creation", label: t("Item Creation"), link: "/createitemmaster", roles: ["admin", "user"] },
+        { menuKey: "Branch Price", label: t("Branch Price"), link: "/branch-price", roles: ["admin", "franchiseeuser"] },
         { menuKey: "Price Edit Category Wise", label: t("Price Edit Category Wise"), link: "/category-price-edit", roles: ["admin", "user"] },
         { menuKey: "Category Link", label: t("Category Link"), link: "/item-category-linker", roles: ["admin", "user"] },
         { menuKey: "Manage Account Heads", label: t("Manage Account Heads"), link: "/manage-account-heads", roles: ["admin", "user"] },
