@@ -412,12 +412,20 @@ const App = () => {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <Router>
-          <AuthenticatedApp
-            mode={mode}
-            setMode={setMode}
-            roles={roles}
-            setRoles={setRoles}
-          />
+          <Routes>
+            <Route path="/privacy" element={<PrivacyPolicyPage isPublic />} />
+            <Route
+              path="/*"
+              element={
+                <AuthenticatedApp
+                  mode={mode}
+                  setMode={setMode}
+                  roles={roles}
+                  setRoles={setRoles}
+                />
+              }
+            />
+          </Routes>
         </Router>
       </ThemeProvider>
     </Suspense>
