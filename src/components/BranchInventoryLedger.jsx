@@ -15,13 +15,15 @@ function TransactionDetail({ transactions }) {
   const totalIn  = transactions.reduce((s, t) => s + (Number(t.qtyIn)  || 0), 0);
   const totalOut = transactions.reduce((s, t) => s + (Number(t.qtyOut) || 0), 0);
 
+  const cellSx = { fontSize: 11, color: "#212121" };
+
   return (
     <Box sx={{ m: "4px 16px 12px 64px" }}>
       <Table size="small" sx={{ bgcolor: "#fafafa", border: "1px solid #e0e0e0" }}>
-        <TableHead sx={{ bgcolor: "#e8f5e9" }}>
+        <TableHead sx={{ bgcolor: "#c8e6c9" }}>
           <TableRow>
             {["Date / Time", "Voucher No", "Type", "Batch", "Description", "Qty In", "Qty Out"].map((h) => (
-              <TableCell key={h} sx={{ fontWeight: 700, fontSize: 11, py: 0.5 }}>{h}</TableCell>
+              <TableCell key={h} sx={{ fontWeight: 700, fontSize: 11, py: 0.5, color: "#1b5e20" }}>{h}</TableCell>
             ))}
           </TableRow>
         </TableHead>
@@ -33,32 +35,32 @@ function TransactionDetail({ transactions }) {
             const qIn  = Number(t.qtyIn)  || 0;
             const qOut = Number(t.qtyOut) || 0;
             return (
-              <TableRow key={i} hover>
-                <TableCell sx={{ fontSize: 11, whiteSpace: "nowrap" }}>{dateStr}</TableCell>
-                <TableCell sx={{ fontSize: 11 }}>{t.voucherNumber || ""}</TableCell>
-                <TableCell sx={{ fontSize: 11 }}>
+              <TableRow key={i} hover sx={{ "&:hover": { bgcolor: "#f0f4ff" } }}>
+                <TableCell sx={{ ...cellSx, whiteSpace: "nowrap" }}>{dateStr}</TableCell>
+                <TableCell sx={cellSx}>{t.voucherNumber || ""}</TableCell>
+                <TableCell sx={cellSx}>
                   {t.voucherType
                     ? <Chip label={t.voucherType} size="small" sx={{ fontSize: 10, height: 18 }} />
                     : ""}
                 </TableCell>
-                <TableCell sx={{ fontSize: 11 }}>{t.batchCode    || ""}</TableCell>
-                <TableCell sx={{ fontSize: 11 }}>{t.description  || ""}</TableCell>
-                <TableCell align="right" sx={{ fontSize: 11, color: qIn  > 0 ? "#2e7d32" : "#bbb" }}>
+                <TableCell sx={cellSx}>{t.batchCode    || ""}</TableCell>
+                <TableCell sx={cellSx}>{t.description  || ""}</TableCell>
+                <TableCell align="right" sx={{ ...cellSx, color: qIn  > 0 ? "#1b5e20" : "#757575" }}>
                   {qIn  > 0 ? qIn.toFixed(2)  : "—"}
                 </TableCell>
-                <TableCell align="right" sx={{ fontSize: 11, color: qOut > 0 ? "#c62828" : "#bbb" }}>
+                <TableCell align="right" sx={{ ...cellSx, color: qOut > 0 ? "#b71c1c" : "#757575" }}>
                   {qOut > 0 ? qOut.toFixed(2) : "—"}
                 </TableCell>
               </TableRow>
             );
           })}
           {/* Detail total */}
-          <TableRow sx={{ bgcolor: "#e8f5e9" }}>
-            <TableCell colSpan={5} align="right" sx={{ fontWeight: 700, fontSize: 11 }}>Sub-total</TableCell>
-            <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, color: "#2e7d32" }}>
+          <TableRow sx={{ bgcolor: "#c8e6c9" }}>
+            <TableCell colSpan={5} align="right" sx={{ fontWeight: 700, fontSize: 11, color: "#1b5e20" }}>Sub-total</TableCell>
+            <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, color: "#1b5e20" }}>
               {totalIn  > 0 ? totalIn.toFixed(2)  : "—"}
             </TableCell>
-            <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, color: "#c62828" }}>
+            <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, color: "#b71c1c" }}>
               {totalOut > 0 ? totalOut.toFixed(2) : "—"}
             </TableCell>
           </TableRow>
