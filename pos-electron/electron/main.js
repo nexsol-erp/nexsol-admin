@@ -173,6 +173,7 @@ function createWindow() {
     width: 1400,
     height: 900,
     show: false,
+    title: `TradeLink POS v${app.getVersion()}`,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
