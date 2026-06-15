@@ -1,362 +1,176 @@
 import React from "react";
-import { Box, Typography, Paper, Divider, Alert, Table, TableBody, TableCell, TableHead, TableRow } from "@mui/material";
 
-const Section = ({ title, children }) => (
-  <Box sx={{ mb: 4 }}>
-    <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: "#0b3a75" }}>
-      {title}
-    </Typography>
-    {children}
-  </Box>
-);
-
-const Para = ({ children }) => (
-  <Typography variant="body2" paragraph sx={{ color: "#333", lineHeight: 1.8 }}>
-    {children}
-  </Typography>
-);
-
-const ListItem = ({ children }) => (
-  <Typography variant="body2" sx={{ color: "#333", lineHeight: 1.8, mb: 0.5, display: "list-item", ml: 2 }}>
-    {children}
-  </Typography>
-);
+const s = {
+  page: {
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    background: "#f5f7fa",
+    color: "#4b5563",
+    lineHeight: 1.8,
+    minHeight: "100vh",
+  },
+  header: {
+    background: "linear-gradient(135deg, #1565C0, #00838F)",
+    color: "white",
+    padding: "48px 24px 36px",
+    textAlign: "center",
+  },
+  h1: { fontSize: "2rem", fontWeight: 700, marginBottom: 6 },
+  headerSub: { fontSize: "0.95rem", opacity: 0.85 },
+  main: { maxWidth: 800, margin: "40px auto", padding: "0 20px 60px" },
+  updated: { textAlign: "center", color: "#7f8c8d", fontSize: "0.85rem", marginBottom: 32 },
+  card: {
+    background: "white",
+    borderRadius: 12,
+    padding: 32,
+    marginBottom: 20,
+    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+  },
+  h2: {
+    fontSize: "1.15rem",
+    color: "#1565C0",
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottom: "2px solid #e3f2fd",
+  },
+  p: { marginBottom: 12, fontSize: "0.97rem", color: "#6b7280" },
+  ul: { paddingLeft: 20, marginBottom: 12 },
+  li: { marginBottom: 6, fontSize: "0.97rem", color: "#6b7280" },
+  contactBox: {
+    background: "#e3f2fd",
+    borderLeft: "4px solid #1565C0",
+    borderRadius: "0 8px 8px 0",
+    padding: "16px 20px",
+    marginTop: 12,
+  },
+  footer: { textAlign: "center", padding: 24, color: "#95a5a6", fontSize: "0.85rem" },
+};
 
 const PrivacyPolicyPage = ({ isPublic = false }) => {
   return (
-    <Box sx={{ flexGrow: 1, p: 3, ml: isPublic ? 0 : "240px", mt: isPublic ? 0 : 2 }}>
-      <Paper elevation={3} sx={{ p: 5, maxWidth: 860 }}>
+    <div style={{ ...s.page, marginLeft: isPublic ? 0 : 240, marginTop: isPublic ? 0 : 16 }}>
 
-        {/* Header */}
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: 800, color: "#0b3a75" }}>
-          Privacy Policy
-        </Typography>
-        <Typography variant="body2" sx={{ color: "#888", mb: 1 }}>
-          Effective date: June 2026 &nbsp;|&nbsp; Platform: tradelink247.com
-        </Typography>
-        <Divider sx={{ mb: 4 }} />
+      <div style={s.header}>
+        <h1 style={s.h1}>TradeLink ERP</h1>
+        <p style={s.headerSub}>Privacy Policy</p>
+      </div>
 
-        <Para>
-          This Privacy Policy describes how <strong>Maple ERP</strong> and its affiliates
-          (collectively "Maple ERP", "we", "our", "us") collect, use, share, protect, and
-          otherwise process your information and personal data through our website{" "}
-          <strong>https://www.tradelink247.com</strong>, the TradeLink ERP web application, the
-          TradeLink ERP mobile application (Android), and the TradeLink247 POS desktop application
-          (hereinafter collectively referred to as "Platform").
-        </Para>
-        <Para>
-          We do not offer any product or service under this Platform outside India, and your personal
-          data will primarily be stored and processed in India. By visiting this Platform, providing
-          your information, or availing any product or service offered on the Platform, you expressly
-          agree to be bound by the terms and conditions of this Privacy Policy, the Terms of Use, and
-          the applicable service terms and conditions, and agree to be governed by the laws of India
-          including but not limited to the laws applicable to data protection and privacy.
-        </Para>
+      <div style={s.main}>
+        <p style={s.updated}>Last updated: June 15, 2026</p>
 
-        <Alert severity="info" sx={{ mb: 4 }}>
-          <strong>In plain terms:</strong> We collect only the information needed to run your business
-          account. We do not sell your data. Your business data (sales, inventory, customers) belongs
-          to you and is never used for advertising or shared with third parties without your consent.
-        </Alert>
+        <div style={s.card}>
+          <h2 style={s.h2}>1. Introduction</h2>
+          <p style={s.p}>
+            <strong>Maple ERP</strong> ("we", "our", or "us") operates the TradeLink ERP mobile
+            application (the "App"). This Privacy Policy explains how we collect, use, and protect
+            information when you use our App. By using the App, you agree to the practices described
+            in this policy.
+          </p>
+          <p style={s.p}>
+            TradeLink ERP is a business-to-business (B2B) application designed for retail and
+            wholesale businesses to manage point-of-sale billing, inventory, and sales reporting.
+            It is intended for use by authorised business employees only.
+          </p>
+        </div>
 
-        <Divider sx={{ mb: 4 }} />
+        <div style={s.card}>
+          <h2 style={s.h2}>2. Information We Collect</h2>
+          <p style={s.p}>We collect only the minimum information necessary to provide the App's functionality:</p>
+          <ul style={s.ul}>
+            <li style={s.li}><strong>Account credentials</strong> — username and password used to authenticate with your organisation's ERP server.</li>
+            <li style={s.li}><strong>Business data</strong> — sales transactions, inventory records, and branch information entered or viewed through the App. This data belongs to your organisation.</li>
+            <li style={s.li}><strong>Device information</strong> — device model and OS version, collected only for troubleshooting purposes.</li>
+            <li style={s.li}><strong>Bluetooth device identifiers</strong> — MAC address of paired thermal printers, stored locally on your device only.</li>
+          </ul>
+          <p style={s.p}>We do <strong>not</strong> collect personal information such as your name, email address, location, contacts, photos, or any data unrelated to ERP business operations.</p>
+        </div>
 
-        <Section title="1. Information We Collect">
-          <Para>
-            We collect your personal data when you use our Platform, services, or otherwise interact
-            with us during the course of our relationship. The categories of data we collect include:
-          </Para>
+        <div style={s.card}>
+          <h2 style={s.h2}>3. How We Use Your Information</h2>
+          <p style={s.p}>Information collected is used solely to:</p>
+          <ul style={s.ul}>
+            <li style={s.li}>Authenticate users and maintain secure sessions with the ERP server.</li>
+            <li style={s.li}>Display and process business transactions (sales, inventory, reports).</li>
+            <li style={s.li}>Connect to and print receipts on Bluetooth thermal printers.</li>
+            <li style={s.li}>Improve App stability and fix technical issues.</li>
+          </ul>
+          <p style={s.p}>We do not use your information for advertising, profiling, or any purpose beyond operating the App.</p>
+        </div>
 
-          <Table size="small" sx={{ mb: 2, border: "1px solid #e0e0e0" }}>
-            <TableHead>
-              <TableRow sx={{ background: "#f5f7fa" }}>
-                <TableCell sx={{ fontWeight: 700, width: "35%" }}>Category</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Examples</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {[
-                ["Account information",    "Name, email address, phone number, company name, registered address"],
-                ["Authentication data",    "Username, hashed password, login timestamps, session tokens"],
-                ["Subscription & billing", "Billing address, payment method details (processed via PCI-compliant gateway — we do not store card numbers)"],
-                ["Business data",          "Sales records, inventory items, purchase orders, stock transfers, vouchers, customer mobile numbers entered at POS"],
-                ["Usage data",             "Pages visited, features used, API calls, error logs, browser/OS type"],
-                ["Device information",     "IP address, device type, operating system, POS terminal identifier, Android device ID"],
-                ["Mobile app permissions", "Bluetooth (for receipt printing) — device pairing only, MAC address stored locally. Camera (for barcode scanning) — images are processed on-device and never uploaded."],
-                ["Communications",         "Support tickets, emails, chat messages sent to us"],
-              ].map(([k, v]) => (
-                <TableRow key={k}>
-                  <TableCell sx={{ fontWeight: 600, color: "#555", verticalAlign: "top" }}>{k}</TableCell>
-                  <TableCell sx={{ color: "#333" }}>{v}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div style={s.card}>
+          <h2 style={s.h2}>4. Data Storage and Security</h2>
+          <ul style={s.ul}>
+            <li style={s.li}>Authentication tokens are stored in encrypted secure storage on your device (Android Keystore).</li>
+            <li style={s.li}>All communication between the App and the ERP server is encrypted using HTTPS/TLS.</li>
+            <li style={s.li}>Business data is stored on your organisation's own servers — we do not operate separate cloud storage for your data.</li>
+            <li style={s.li}>Printer settings are stored locally on your device and are never transmitted to external servers.</li>
+          </ul>
+        </div>
 
-          <Para>
-            Some sensitive personal data (such as payment instrument information) may be collected
-            with your consent and is handled in accordance with applicable law. You always have the
-            option not to provide certain information by choosing not to use a particular feature.
-          </Para>
-        </Section>
+        <div style={s.card}>
+          <h2 style={s.h2}>5. Data Sharing</h2>
+          <p style={s.p}>
+            We do <strong>not</strong> sell, trade, or share your information with third parties.
+            Business data entered into the App is transmitted only to your organisation's own ERP server
+            (tradelink247.com) as configured by your administrator.
+          </p>
+          <p style={s.p}>
+            We do not use any third-party analytics, advertising SDKs, or data brokers within the App.
+          </p>
+        </div>
 
-        <Section title="2. How We Use Your Information">
-          <Para>
-            We use the personal data we collect for the following purposes:
-          </Para>
-          <Box component="ul" sx={{ pl: 0, listStyle: "disc" }}>
-            <ListItem>To create and manage your account and provide the Services you have subscribed to</ListItem>
-            <ListItem>To process subscription payments and send billing receipts</ListItem>
-            <ListItem>To provide customer support and respond to your queries</ListItem>
-            <ListItem>To send service-related notifications (maintenance windows, feature updates, policy changes)</ListItem>
-            <ListItem>To monitor Platform performance, diagnose technical issues, and improve our Services</ListItem>
-            <ListItem>To detect and prevent fraud, abuse, and security breaches</ListItem>
-            <ListItem>To comply with legal obligations and enforce our Terms of Use</ListItem>
-            <ListItem>To analyse usage patterns in aggregate, anonymised form to improve product features</ListItem>
-          </Box>
-          <Para>
-            To the extent we use your personal data for marketing communications, we will provide you
-            with the ability to opt out. We will not send unsolicited marketing emails without your
-            prior consent.
-          </Para>
-        </Section>
+        <div style={s.card}>
+          <h2 style={s.h2}>6. Data Retention</h2>
+          <p style={s.p}>
+            The App stores authentication tokens locally until you log out. All business data resides
+            on your organisation's ERP server and is governed by your organisation's own data retention
+            policies. We do not independently retain any of your business data.
+          </p>
+        </div>
 
-        <Section title="3. Business Data — Your Data Stays Yours">
-          <Para>
-            All business data you create or upload on the Platform — including sales records, inventory,
-            customer information, purchase orders, and financial reports — belongs to you. We act solely
-            as a <strong>data processor</strong> on your behalf.
-          </Para>
-          <Box component="ul" sx={{ pl: 0, listStyle: "disc" }}>
-            <ListItem>We will not use your business data for advertising or profiling</ListItem>
-            <ListItem>We will not sell, rent, or share your business data with third parties for commercial purposes</ListItem>
-            <ListItem>We access your business data only to provide the Services or when required by law</ListItem>
-            <ListItem>
-              After subscription cancellation, your data remains accessible in read-only mode for
-              3 months, after which it is permanently deleted. See our Refund &amp; Cancellation
-              Policy for the full timeline.
-            </ListItem>
-          </Box>
-        </Section>
+        <div style={s.card}>
+          <h2 style={s.h2}>7. Children's Privacy</h2>
+          <p style={s.p}>
+            TradeLink ERP is a professional business application intended for users aged 18 and above.
+            We do not knowingly collect any information from minors. If you believe a minor is using
+            this App, please contact your organisation's administrator.
+          </p>
+        </div>
 
-        <Section title="4. Sharing of Information">
-          <Para>
-            We may share your personal data in the following limited circumstances:
-          </Para>
-          <Box component="ul" sx={{ pl: 0, listStyle: "disc" }}>
-            <ListItem>
-              <strong>Service providers:</strong> Third-party vendors who assist us in operating the
-              Platform (cloud hosting, payment processing, email delivery). These vendors are
-              contractually bound to process data only on our instructions and in accordance with this
-              Privacy Policy.
-            </ListItem>
-            <ListItem>
-              <strong>Payment gateways:</strong> When you pay via UPI, card, or net banking, your
-              payment details are processed by our payment gateway partner (PhonePe / Razorpay). We
-              do not store your full card or bank account details.
-            </ListItem>
-            <ListItem>
-              <strong>Legal compliance:</strong> We may disclose personal data to government agencies
-              or law enforcement if required to do so by law, court order, or in good faith belief that
-              such disclosure is necessary to comply with legal obligations or protect our rights.
-            </ListItem>
-            <ListItem>
-              <strong>Business transfers:</strong> In the event of a merger, acquisition, or sale of
-              all or part of our business, your data may be transferred to the acquiring entity.
-              We will notify you before such a transfer and the acquirer will be bound by this
-              Privacy Policy.
-            </ListItem>
-          </Box>
-          <Para>
-            We do not sell, trade, or otherwise transfer your personally identifiable information to
-            third parties for commercial or marketing purposes.
-          </Para>
-        </Section>
+        <div style={s.card}>
+          <h2 style={s.h2}>8. Your Rights</h2>
+          <p style={s.p}>As a user of the App, you have the right to:</p>
+          <ul style={s.ul}>
+            <li style={s.li}>Log out at any time, which removes your authentication token from the device.</li>
+            <li style={s.li}>Request deletion of your account by contacting your organisation's administrator.</li>
+            <li style={s.li}>Access the business data associated with your account through the App's reporting features.</li>
+          </ul>
+        </div>
 
-        <Section title="5. Cookies and Tracking">
-          <Para>
-            We use cookies and similar technologies on the web Platform to:
-          </Para>
-          <Box component="ul" sx={{ pl: 0, listStyle: "disc" }}>
-            <ListItem>Keep you logged in (session cookies)</ListItem>
-            <ListItem>Remember your preferences (e.g. language, selected branch)</ListItem>
-            <ListItem>Analyse usage patterns in aggregate to improve the product</ListItem>
-          </Box>
-          <Para>
-            We do not use third-party advertising cookies. The TradeLink247 POS desktop application
-            (Electron) and the TradeLink ERP mobile app (Android) do not use browser cookies; session
-            tokens are stored in encrypted local storage on the device (Android Keystore for the mobile app).
-          </Para>
-          <Para>
-            You may disable cookies in your browser settings, but this may affect the functionality
-            of the web Platform.
-          </Para>
-        </Section>
+        <div style={s.card}>
+          <h2 style={s.h2}>9. Changes to This Policy</h2>
+          <p style={s.p}>
+            We may update this Privacy Policy from time to time. Changes will be posted on this page
+            with an updated date. Continued use of the App after changes are posted constitutes
+            acceptance of the updated policy.
+          </p>
+        </div>
 
-        <Section title="6. Data Security">
-          <Para>
-            We adopt reasonable and appropriate technical and organisational security measures to
-            protect your personal data from unauthorised access, disclosure, alteration, or
-            destruction. These include:
-          </Para>
-          <Box component="ul" sx={{ pl: 0, listStyle: "disc" }}>
-            <ListItem>HTTPS/TLS encryption for all data in transit</ListItem>
-            <ListItem>Passwords stored using industry-standard hashing (bcrypt)</ListItem>
-            <ListItem>JWT-based authentication with token expiry</ListItem>
-            <ListItem>Role-based access control — users can only access data permitted by their role</ListItem>
-            <ListItem>Regular backups of all tenant databases</ListItem>
-            <ListItem>Server-side audit logs for sensitive operations</ListItem>
-          </Box>
-          <Para>
-            However, the transmission of information over the internet cannot be guaranteed as
-            completely secure. By using the Platform, you acknowledge and accept the inherent security
-            implications of data transmission over the internet. You are responsible for maintaining
-            the confidentiality of your login credentials and for any activity that occurs under your
-            account.
-          </Para>
-          <Para>
-            If you suspect unauthorised access to your account, please contact us immediately and
-            change your password. We will never ask you for your password via email or phone.
-          </Para>
-        </Section>
+        <div style={s.card}>
+          <h2 style={s.h2}>10. Contact Us</h2>
+          <p style={s.p}>If you have any questions about this Privacy Policy, please contact us:</p>
+          <div style={s.contactBox}>
+            <p style={s.p}><strong>Maple ERP</strong></p>
+            <p style={s.p}>Email: <a href="mailto:support@tradelink247.com">support@tradelink247.com</a></p>
+            <p style={{ ...s.p, marginBottom: 0 }}>Website: <a href="https://www.tradelink247.com">www.tradelink247.com</a></p>
+          </div>
+        </div>
+      </div>
 
-        <Section title="7. Data Retention">
-          <Para>
-            We retain your personal data for as long as your account is active or as needed to provide
-            the Services, comply with our legal obligations, resolve disputes, and enforce our
-            agreements.
-          </Para>
+      <div style={s.footer}>
+        © 2026 Maple ERP. All rights reserved.
+      </div>
 
-          <Table size="small" sx={{ mb: 2, border: "1px solid #e0e0e0" }}>
-            <TableHead>
-              <TableRow sx={{ background: "#f5f7fa" }}>
-                <TableCell sx={{ fontWeight: 700, width: "35%" }}>Data type</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Retention period</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {[
-                ["Account & profile data",   "Duration of subscription + 3 months after cancellation"],
-                ["Business data (sales, inventory, etc.)", "Duration of subscription + 3 months after cancellation, then permanently deleted"],
-                ["Billing records",          "7 years (as required by Indian tax and accounting laws)"],
-                ["Server & security logs",   "90 days rolling"],
-                ["Support communications",   "2 years from last interaction"],
-              ].map(([k, v]) => (
-                <TableRow key={k}>
-                  <TableCell sx={{ fontWeight: 600, color: "#555", verticalAlign: "top" }}>{k}</TableCell>
-                  <TableCell sx={{ color: "#333" }}>{v}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          <Para>
-            We may retain anonymised, aggregated data (with no personally identifiable information)
-            for longer periods for analytical and research purposes.
-          </Para>
-        </Section>
-
-        <Section title="8. Your Rights">
-          <Para>
-            As a user of our Platform, you have the following rights with respect to your personal data:
-          </Para>
-          <Box component="ul" sx={{ pl: 0, listStyle: "disc" }}>
-            <ListItem>
-              <strong>Access:</strong> You may request a copy of the personal data we hold about you.
-            </ListItem>
-            <ListItem>
-              <strong>Correction:</strong> You may update or correct inaccurate personal data directly
-              through your account profile, or by contacting us.
-            </ListItem>
-            <ListItem>
-              <strong>Data portability:</strong> You may export your business data (sales, inventory,
-              reports) in CSV/Excel format at any time from within the Platform.
-            </ListItem>
-            <ListItem>
-              <strong>Deletion:</strong> You may request deletion of your account and personal data
-              by contacting us. Please note that we may retain certain data as required by law
-              (e.g. billing records for tax compliance).
-            </ListItem>
-            <ListItem>
-              <strong>Withdrawal of consent:</strong> Where processing is based on consent, you may
-              withdraw your consent at any time. Withdrawal will not affect the lawfulness of
-              processing before withdrawal.
-            </ListItem>
-            <ListItem>
-              <strong>Opt-out of marketing:</strong> You may opt out of marketing communications at
-              any time by clicking "Unsubscribe" in any email or by contacting us.
-            </ListItem>
-          </Box>
-          <Para>
-            To exercise any of the above rights, please write to our Grievance Officer using the
-            contact details below. We will respond within <strong>30 days</strong> of receiving
-            your request.
-          </Para>
-        </Section>
-
-        <Section title="9. Third-Party Links">
-          <Para>
-            The Platform may contain links to third-party websites or services (e.g. PhonePe payment
-            portal, document help pages). We are not responsible for the privacy practices or content
-            of those third-party sites. We encourage you to read the privacy policies of any
-            third-party sites you visit.
-          </Para>
-        </Section>
-
-        <Section title="10. Children's Privacy">
-          <Para>
-            The Platform is intended for use by businesses and their authorised personnel. We do not
-            knowingly collect personal data from individuals under the age of 18. If you believe a
-            minor has provided us with personal data, please contact us and we will delete it promptly.
-          </Para>
-        </Section>
-
-        <Section title="11. Changes to This Privacy Policy">
-          <Para>
-            We may update this Privacy Policy from time to time to reflect changes in our practices,
-            technology, legal requirements, or other factors. We will notify you of significant
-            changes by:
-          </Para>
-          <Box component="ul" sx={{ pl: 0, listStyle: "disc" }}>
-            <ListItem>Sending an email to the address associated with your account</ListItem>
-            <ListItem>Displaying a prominent notice within the Platform</ListItem>
-          </Box>
-          <Para>
-            Please check this page periodically. Continued use of the Platform after the effective
-            date of any changes constitutes your acceptance of the updated Privacy Policy.
-          </Para>
-        </Section>
-
-        <Section title="12. Grievance Officer">
-          <Para>
-            In accordance with the Information Technology Act, 2000 and the rules made thereunder,
-            the name and contact details of the Grievance Officer are provided below. Any grievances
-            or concerns regarding the processing of your personal data must be addressed to:
-          </Para>
-          <Box sx={{ background: "#f5f7fa", border: "1px solid #e0e0e0", borderRadius: 1, p: 2.5, mt: 1 }}>
-            <Typography variant="body2" sx={{ lineHeight: 2 }}>
-              <strong>Grievance Officer:</strong> Regy George<br />
-              <strong>Designation:</strong> Proprietor<br />
-              <strong>Company:</strong> Maple ERP<br />
-              <strong>Address:</strong> Kottarakkara, Kerala, India<br />
-              <strong>Email:</strong> support@tradelink247.com<br />
-              <strong>Website:</strong> https://www.tradelink247.com<br />
-              <strong>Support hours:</strong> Monday – Friday, 9:00 – 18:00 IST
-            </Typography>
-          </Box>
-          <Para sx={{ mt: 2 }}>
-            We will acknowledge your grievance within <strong>48 hours</strong> and resolve it
-            within <strong>30 days</strong> of receipt.
-          </Para>
-        </Section>
-
-        <Divider sx={{ mt: 4, mb: 2 }} />
-        <Typography variant="caption" sx={{ color: "#aaa" }}>
-          Last updated: June 2026. This Privacy Policy supersedes all previous versions.
-        </Typography>
-
-      </Paper>
-    </Box>
+    </div>
   );
 };
 
