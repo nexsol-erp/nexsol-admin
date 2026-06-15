@@ -84,46 +84,79 @@ export function buildTransferHtml({
     </body></html>`;
   }
 
-  // Thermal (narrow)
+  // Thermal (narrow) — same font/size/class structure as Day End printout
   const rows = items.map((r) => `
     <tr>
       <td>${e(r.item_name)}</td>
-      <td style="text-align:right">${Number(r.qty || 0).toFixed(2)}</td>
-      <td style="text-align:right">${Number((r.standard_price ?? r.rate) || 0).toFixed(2)}</td>
-      <td style="text-align:right">${Number(r.amount || 0).toFixed(2)}</td>
+      <td class="num">${Number(r.qty || 0).toFixed(2)}</td>
+      <td class="num">${Number((r.standard_price ?? r.rate) || 0).toFixed(2)}</td>
+      <td class="num">${Number(r.amount || 0).toFixed(2)}</td>
     </tr>`).join("");
 
-  return `<html><head><style>
-    @page { size: 80mm auto; margin: 4mm; }
-    body { font-family: monospace; font-size: 11px; width: 72mm; }
-    h3 { text-align: center; margin: 0 0 4px; }
-    hr { border: none; border-top: 1px dashed #000; margin: 4px 0; }
-    table { width: 100%; font-size: 10px; }
-    th { text-align: left; }
-    .row { display: flex; justify-content: space-between; }
-  </style></head><body>
-    <h3>STOCK TRANSFER</h3>
-    ${voucherNumber ? `<div>Voucher: ${e(voucherNumber)}</div>` : ""}
-    ${voucherDate ? `<div>Date: ${e(voucherDate.slice(0, 10))}</div>` : ""}
-    <hr/>
-    <div><b>From:</b> ${e(fromBranch)}${fromBranchName ? " " + e(fromBranchName) : ""}</div>
-    ${fromBranchGst ? `<div>GST: ${e(fromBranchGst)}</div>` : ""}
-    <hr/>
-    <div><b>To:</b> ${e(toBranchCode)}${toBranchName ? " " + e(toBranchName) : ""}</div>
-    ${toBranchGst ? `<div>GST: ${e(toBranchGst)}</div>` : ""}
-    ${toAddr ? `<div>${e(toAddr)}</div>` : ""}
-    <hr/>
-    <table>
-      <thead><tr>
-        <th>Item</th>
-        <th style="text-align:right">Qty</th>
-        <th style="text-align:right">Rate</th>
-        <th style="text-align:right">Amt</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <hr/>
-    <div class="row"><span>Total Qty</span><span>${Number(totalQty || 0).toFixed(2)}</span></div>
-    <div class="row"><span>Total Amount</span><span>${Number(totalAmount || 0).toFixed(2)}</span></div>
-  </body></html>`;
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  @page { margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11px;
+    width: 258px;
+    color: #000;
+    background: #fff;
+    padding: 6px 4px 6px 1px;
+  }
+  .title      { text-align: center; font-size: 13px; font-weight: bold; letter-spacing: 1px; margin: 3px 0; }
+  .meta       { font-size: 9px; display: flex; justify-content: space-between; margin: 2px 0; }
+  .section-title { font-size: 10px; font-weight: bold; margin: 3px 0 1px 0; }
+  .addr       { font-size: 9px; line-height: 1.4; }
+  hr.dash     { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+  hr.solid    { border: none; border-top: 2px solid #000; margin: 4px 0; }
+  table.t     { width: 100%; border-collapse: collapse; font-size: 10px; }
+  table.t th  { font-size: 10px; font-weight: bold; padding: 1px 2px; border-bottom: 1px dashed #000; }
+  table.t th.num { text-align: right; padding-right: 3px; }
+  table.t td  { padding: 1px 2px; }
+  table.t td.num { text-align: right; padding-right: 3px; }
+  .total-line { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin: 3px 0; }
+  .footer     { text-align: center; font-size: 9px; margin-top: 6px; }
+</style>
+</head>
+<body>
+  <hr class="solid"/>
+  <div class="title">STOCK TRANSFER</div>
+  <hr class="dash"/>
+  <div class="meta">
+    <span>Voucher: ${e(voucherNumber || "")}</span>
+    <span>${e(voucherDate ? voucherDate.slice(0, 10) : "")}</span>
+  </div>
+  <hr class="dash"/>
+  <div class="section-title">From: ${e(fromBranch)}${fromBranchName ? " " + e(fromBranchName) : ""}</div>
+  ${fromBranchGst ? `<div class="addr">GST: ${e(fromBranchGst)}</div>` : ""}
+  ${fromBranchState ? `<div class="addr">${e(fromBranchState)}</div>` : ""}
+  ${fromBranchAddress ? `<div class="addr">${e(fromBranchAddress)}</div>` : ""}
+  <hr class="dash"/>
+  <div class="section-title">To: ${e(toBranchCode)}${toBranchName ? " " + e(toBranchName) : ""}</div>
+  ${toBranchGst ? `<div class="addr">GST: ${e(toBranchGst)}</div>` : ""}
+  ${toBranchState ? `<div class="addr">${e(toBranchState)}</div>` : ""}
+  ${toAddr ? `<div class="addr">${e(toAddr)}</div>` : ""}
+  <hr class="dash"/>
+  <table class="t">
+    <thead><tr>
+      <th>Item</th>
+      <th class="num">Qty</th>
+      <th class="num">Rate</th>
+      <th class="num">Amt</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <hr class="dash"/>
+  <div class="total-line"><span>Total Qty</span><span>${Number(totalQty || 0).toFixed(2)}</span></div>
+  <div class="total-line"><span>Total Amount</span><span>${Number(totalAmount || 0).toFixed(2)}</span></div>
+  <hr class="solid"/>
+  <div class="footer">*** End of Stock Transfer ***</div>
+  <br/><br/>
+</body>
+</html>`;
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Menu, Popconfirm, Select, Typography, message } from "antd";
+import { Button, Menu, Popconfirm, Select, Tooltip, Typography, message } from "antd";
 import POSPage from "./pos/POSPage";
 import LoginPage from "./auth/LoginPage";
 import DayEndPage from "./dayend/DayEndPage";
@@ -23,6 +23,14 @@ const { Text } = Typography;
 
 function getRoles() {
   try { return JSON.parse(localStorage.getItem("roles") || "[]"); } catch { return []; }
+}
+
+function checkDayEndDone(branchCode) {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const records = JSON.parse(localStorage.getItem("day_end_records") || "[]");
+    return records.some((r) => r.dateKey === today && r.branchCode === branchCode);
+  } catch { return false; }
 }
 
 function extractBranchCodes() {
@@ -50,6 +58,13 @@ export default function App() {
   const [cacheLoading, setCacheLoading] = useState(false);
   const [cacheClearing, setCacheClearing] = useState(false);
   const [kotPrefillItems, setKotPrefillItems] = useState(null);
+  const [isDayEndDone, setIsDayEndDone] = useState(() => checkDayEndDone(localStorage.getItem("selectedBranchCode") || ""));
+
+  // Recheck day-end status whenever page or branch changes so the Salesman menu
+  // item unlocks immediately after Day End is saved.
+  useEffect(() => {
+    setIsDayEndDone(checkDayEndDone(selectedBranchCode));
+  }, [activePage, selectedBranchCode]);
 
   const prevBranchRef = useRef(null);
   const hasWB = roles.includes("WB");
@@ -169,7 +184,11 @@ export default function App() {
                   key: "reports",
                   label: "Reports",
                   children: [
-                    { key: "salesman-report",          label: "Salesman" },
+                    {
+                      key: "salesman-report",
+                      label: isDayEndDone ? "Salesman" : <Tooltip title="Complete Day End first">Salesman</Tooltip>,
+                      disabled: !isDayEndDone,
+                    },
                     { key: "item-sales-report",        label: "Item Sales" },
                     { key: "item-movement-report",     label: "Item Movement" },
                     { key: "st-in-report",             label: "Stock Transfer In" },
@@ -239,7 +258,7 @@ export default function App() {
           {activePage === "accept-stock" && <AcceptStockPage onClose={() => setActivePage("pos")} />}
           {activePage === "weigh-bridge" && hasWB && <WeighBridgePage />}
           {activePage === "physical-stock" && hasPhysicalStock && <PhysicalStockPage roles={roles} onClose={() => setActivePage("pos")} />}
-          {activePage === "salesman-report" && <SalesmanReportPage selectedBranchCode={selectedBranchCode} />}
+          {activePage === "salesman-report" && isDayEndDone && <SalesmanReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "item-sales-report" && <ItemSalesReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "item-movement-report" && <ItemMovementReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "st-in-report" && <StockTransferInReportPage selectedBranchCode={selectedBranchCode} />}
