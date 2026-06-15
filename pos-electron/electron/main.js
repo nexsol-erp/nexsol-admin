@@ -182,11 +182,17 @@ function createWindow() {
     },
   });
 
+  const appTitle = `TradeLink POS v${app.getVersion()}`;
+
   win.webContents.once("did-finish-load", () => {
     win.maximize();
     win.show();
+    win.setTitle(appTitle);
     setTimeout(() => { if (!splash.isDestroyed()) splash.close(); }, 300);
   });
+
+  // Prevent the page <title> tag from overriding the window title.
+  win.on("page-title-updated", (e) => e.preventDefault());
 
   win.webContents.on("did-finish-load", () => console.log("page did-finish-load"));
   win.webContents.on("did-fail-load", (e, code, desc, url) => {
