@@ -2,6 +2,10 @@ import { db } from "../cache/itemCacheDb";
 import { apiUrl } from "../utils/apiUrl";
 import { log, warn, error as logError } from "../utils/logger";
 
+// After this many failed sync attempts, stop auto-retrying and surface the
+// item as "failed" instead of perpetually claiming it's "pending — will sync".
+export const MAX_RETRIES = 5;
+
 export async function queueStockTransfer({ tenantId, branchCode, token, payload, voucherNumber }) {
   await db.pending_stock_transfers.add({
     tenantId,
@@ -18,6 +22,19 @@ export async function queueStockTransfer({ tenantId, branchCode, token, payload,
 
 export async function getPendingStockCount() {
   return db.pending_stock_transfers.where("status").equals("pending").count();
+}
+
+export async function getFailedStockCount() {
+  return db.pending_stock_transfers.where("status").equals("failed").count();
+}
+
+// Explicit user-initiated retry: moves "failed" items back to "pending" so
+// the next sync pass attempts them again. Auto-sync never does this on its own.
+export async function retryFailedStockTransfers() {
+  await db.pending_stock_transfers
+    .where("status")
+    .equals("failed")
+    .modify({ status: "pending", retryCount: 0 });
 }
 
 export async function syncPendingStockTransfers() {
@@ -68,8 +85,18 @@ export async function syncPendingStockTransfers() {
       log("offlineStockQueue: synced transfer:", item.voucherNumber);
       synced++;
     } else {
-      logError("offlineStockQueue: failed transfer:", item.voucherNumber, lastErr);
-      await db.pending_stock_transfers.update(item.id, { retryCount: item.retryCount + 1 });
+      const retryCount = item.retryCount + 1;
+      if (retryCount >= MAX_RETRIES) {
+        await db.pending_stock_transfers.update(item.id, {
+          retryCount,
+          status: "failed",
+          lastError: lastErr,
+        });
+        logError("offlineStockQueue: giving up after", retryCount, "attempts:", item.voucherNumber, lastErr);
+      } else {
+        await db.pending_stock_transfers.update(item.id, { retryCount });
+        logError("offlineStockQueue: failed transfer:", item.voucherNumber, lastErr);
+      }
       failed++;
     }
   }
