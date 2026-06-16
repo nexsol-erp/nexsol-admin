@@ -5,7 +5,13 @@ import ItemLookupModal from "../components/ItemLookupModal";
 import { apiUrl, aiUrl } from "../utils/apiUrl";
 import { db } from "../cache/itemCacheDb";
 import { decodeJwtPayload } from "../auth/auth";
-import { queueStockTransfer, getPendingStockCount, syncPendingStockTransfers } from "./offlineStockQueue";
+import {
+  queueStockTransfer,
+  getPendingStockCount,
+  getFailedStockCount,
+  retryFailedStockTransfers,
+  syncPendingStockTransfers,
+} from "./offlineStockQueue";
 import { applySaleToCache } from "../cache/itemCache";
 import { buildTransferHtml } from "./transferPrint";
 import { generateTransferVoucherNumber } from "../utils/posDevice";
@@ -62,7 +68,9 @@ export default function StockTransferPage({ onClose }) {
   const [holdRows, setHoldRows] = useState([]);
   const [selectedHoldId, setSelectedHoldId] = useState("");
   const [pendingCount, setPendingCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const lastActivityRef = useRef(Date.now());
 
   // AI recommendations
@@ -264,7 +272,11 @@ export default function StockTransferPage({ onClose }) {
         if (synced > 0) message.success(`Synced ${synced} offline stock transfer(s)`);
       }
       const count = await getPendingStockCount().catch(() => 0);
-      if (!cancelled) setPendingCount(count);
+      const failed = await getFailedStockCount().catch(() => 0);
+      if (!cancelled) {
+        setPendingCount(count);
+        setFailedCount(failed);
+      }
     };
     tick();
     const id = setInterval(tick, 10_000);
@@ -439,7 +451,7 @@ export default function StockTransferPage({ onClose }) {
       to_branch_name: toBranchName,
       to_branch_state: toBranchState,
       to_branch_gst: toBranchGst,
-      dtl: items.map((r) => ({
+      lines: items.map((r) => ({
         id: crypto.randomUUID(),
         item_id: r.item_id,
         item_name: r.item_name,
@@ -527,11 +539,10 @@ export default function StockTransferPage({ onClose }) {
           await queueStockTransfer({ tenantId, branchCode: fromBranch, token, payload: body, voucherNumber });
           setPendingCount((c) => c + 1);
           await applySaleToCache(cacheLines);
-          message.warning("Server error — Stock Transfer saved locally and will sync when resolved.");
-          if (window.POS?.printHtml) {
-            const html = buildTransferHtml(printArgs);
-            await window.POS.printHtml({ html, silent: printMode === "thermal", deviceName: "" });
-          }
+          // Not printed here: the transfer hasn't actually reached the server yet, so there is
+          // nothing on record to back a printed delivery challan. Reprint from Stock Transfer
+          // History once it has synced (Sync / Retry Failed) and is confirmed on the server.
+          message.warning("Server error — Stock Transfer saved locally, NOT printed. It will sync when resolved; reprint from History afterwards.");
           resetForm();
           return;
         }
@@ -654,13 +665,37 @@ export default function StockTransferPage({ onClose }) {
                   setSyncing(true);
                   const { synced, failed } = await syncPendingStockTransfers().catch(() => ({ synced: 0, failed: 0 }));
                   const count = await getPendingStockCount().catch(() => 0);
+                  const failedNow = await getFailedStockCount().catch(() => 0);
                   setPendingCount(count);
+                  setFailedCount(failedNow);
                   setSyncing(false);
                   if (synced > 0) message.success(`Synced ${synced} offline transfer(s)`);
                   if (failed > 0) message.warning(`${failed} transfer(s) still pending`);
                 }}
               >
                 Sync
+              </Button>
+            </Badge>
+          )}
+          {failedCount > 0 && (
+            <Badge count={failedCount} size="small">
+              <Button
+                danger
+                loading={retrying}
+                onClick={async () => {
+                  setRetrying(true);
+                  await retryFailedStockTransfers().catch(() => {});
+                  const { synced, failed } = await syncPendingStockTransfers().catch(() => ({ synced: 0, failed: 0 }));
+                  const count = await getPendingStockCount().catch(() => 0);
+                  const failedNow = await getFailedStockCount().catch(() => 0);
+                  setPendingCount(count);
+                  setFailedCount(failedNow);
+                  setRetrying(false);
+                  if (synced > 0) message.success(`Synced ${synced} previously failed transfer(s)`);
+                  if (failed > 0) message.warning(`${failed} transfer(s) still failing — check server/network`);
+                }}
+              >
+                Retry Failed
               </Button>
             </Badge>
           )}
