@@ -306,6 +306,7 @@ export default function PhysicalStockPage({ onClose, roles = [] }) {
         initialQuery={itemQuery}
         onClose={() => setLookupOpen(false)}
         onPick={onPickItem}
+        hideOutOfStock={false}
       />
     </div>
   );
