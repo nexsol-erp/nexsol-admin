@@ -4,7 +4,7 @@ import { localSearchItems, loadAllItemsToCache, hasCache } from "../cache/itemCa
 
 const { Text } = Typography;
 
-export default function ItemLookupModal({ open, initialQuery, onClose, onPick, onAfterClose }) {
+export default function ItemLookupModal({ open, initialQuery, onClose, onPick, onAfterClose, hideOutOfStock = true }) {
   const inputRef = useRef(null);
 
   const [q, setQ] = useState(initialQuery || "");
@@ -60,9 +60,15 @@ export default function ItemLookupModal({ open, initialQuery, onClose, onPick, o
       try {
         // request one more than limit to detect if more results exist
         const list = await localSearchItems(q, limit + 1);
+        // Hide out-of-stock items (availableQty == null means stock isn't tracked for this item).
+        // DYNAMIC category items (e.g. made-to-order) are always shown regardless of stock.
+        // Physical stock entry needs to see 0-stock items too, so it passes hideOutOfStock={false}.
+        const filtered = hideOutOfStock
+          ? list.filter((it) => it.availableQty == null || Number(it.availableQty) > 0 || it.category === "DYNAMIC")
+          : list;
         if (!cancelled) {
-          setMoreAvailable(list.length > limit);
-          setRows(list.slice(0, limit));
+          setMoreAvailable(filtered.length > limit);
+          setRows(filtered.slice(0, limit));
           setSelectedIndex(0);
         }
       } catch (e) {
@@ -79,7 +85,7 @@ export default function ItemLookupModal({ open, initialQuery, onClose, onPick, o
       cancelled = true;
       clearTimeout(t);
     };
-  }, [open, q, cacheReady]);
+  }, [open, q, cacheReady, hideOutOfStock]);
 
   const selectedRow = useMemo(() => rows[selectedIndex], [rows, selectedIndex]);
 
