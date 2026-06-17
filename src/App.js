@@ -106,6 +106,7 @@ import AIDashboardPage from "./components/AIDashboardPage";
 import MenuMasterPage from "./components/MenuMasterPage";
 import RoleMenuPage from "./components/RoleMenuPage";
 import RoleManagementPage from "./components/RoleManagementPage";
+import SalesmanReport from "./components/SalesmanReport";
 
 // ========================
 // ORDERED MENU ROUTE MAP  (mirrors Sidebar menuItems order)
@@ -181,6 +182,7 @@ const ROUTE_ORDER = [
   { key: "Stock Transfer Out Report",        path: "/stocktransfer-out-report" },
   { key: "Stock Transfer In Report",         path: "/stocktransfer-in-report" },
   { key: "Item Transfer Report",             path: "/item-transfer-report" },
+  { key: "Salesman Report",                  path: "/salesman-report" },
   { key: "Download",                         path: "/download" },
   { key: "Upload",                           path: "/uploadpage" },
   { key: "Invoice Designer",                 path: "/invoicedesigner" },
@@ -361,6 +363,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/branch-inventory" element={<BranchInventoryReport />} />
 <Route path="/branch-inventory-ledger" element={<BranchInventoryLedger />} />
 <Route path="/item-transfer-report" element={<ItemTransferReport />} />
+<Route path="/salesman-report" element={<SalesmanReport />} />
 <Route path="/ai-dashboard" element={<AIDashboardPage />} />
 <Route path="/menu-master" element={<MenuMasterPage />} />
 <Route path="/role-menu" element={<RoleMenuPage />} />
