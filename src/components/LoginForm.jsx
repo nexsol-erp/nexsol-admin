@@ -69,6 +69,11 @@ const LoginForm = ({ onLogin }) => {
         body: JSON.stringify({ username, password }),
       });
 
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Server error ${response.status}: ${text.slice(0, 120)}`);
+      }
+
       const data = await response.json();
 
       if (data.success) {
@@ -96,7 +101,7 @@ const LoginForm = ({ onLogin }) => {
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("An error occurred. Please try again later.");
+      alert(error.message || "An error occurred. Please try again later.");
     }
   };
 
