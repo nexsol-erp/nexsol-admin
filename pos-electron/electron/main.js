@@ -283,10 +283,17 @@ ipcMain.handle("printers:list", async () => {
 
 ipcMain.handle("print:html", (_evt, { html, silent, deviceName }) => {
   return new Promise((resolve, reject) => {
-    // opacity:0 keeps the window on-screen so Chromium's compositor fully
-    // renders it, while making it invisible to the user.
-    // show:false / offscreen both skip the paint cycle, causing silent prints
-    // to fire before the page is rendered and come out blank.
+    // Write HTML to a temp file instead of using a data: URI.
+    // Chromium's data: URI parser degrades after several bills — the CSS style
+    // blocks start rendering as raw text. Using loadFile() avoids this entirely.
+    const tmpDir  = app.getPath("temp");
+    const tmpFile = path.join(tmpDir, `pos-print-${Date.now()}.html`);
+    try {
+      fs.writeFileSync(tmpFile, html, "utf-8");
+    } catch (err) {
+      return reject(new Error("Failed to write print temp file: " + err.message));
+    }
+
     const printWin = new BrowserWindow({
       width: 400,
       height: 1200,
@@ -299,6 +306,11 @@ ipcMain.handle("print:html", (_evt, { html, silent, deviceName }) => {
       alwaysOnTop: false,
       webPreferences: { contextIsolation: true },
     });
+
+    const cleanup = () => {
+      printWin.destroy();
+      try { fs.unlinkSync(tmpFile); } catch (_) {}
+    };
 
     printWin.webContents.once("did-finish-load", () => {
       const cfg = getPosConfig();
@@ -314,14 +326,14 @@ ipcMain.handle("print:html", (_evt, { html, silent, deviceName }) => {
           scaleFactor: 100,
         },
         (success, errorType) => {
-          printWin.destroy();
+          cleanup();
           if (!success) reject(new Error(errorType));
           else resolve(true);
         }
       );
     });
 
-    printWin.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
+    printWin.loadFile(tmpFile);
   });
 });
 

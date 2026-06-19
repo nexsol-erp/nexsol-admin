@@ -419,6 +419,10 @@ export default function StockTransferPage({ onClose }) {
       message.error("Missing login session. Please login again.");
       return;
     }
+    if (!navigator.onLine) {
+      message.error("No network connection. Stock Transfer requires an active internet connection. Please check your network and try again.");
+      return;
+    }
     if (!fromBranch || !toBranchCode) {
       message.warning("Select source and destination branch.");
       return;
@@ -479,7 +483,6 @@ export default function StockTransferPage({ onClose }) {
 
       let result = null;
       let lastErr = "";
-      let saveLocally = false;
       for (const url of urls) {
         try {
           const r = await fetch(url, {
@@ -496,9 +499,8 @@ export default function StockTransferPage({ onClose }) {
           }
           const t = await r.text().catch(() => "");
           lastErr = `${r.status} ${t || r.statusText}`;
-          if (r.status >= 500) { saveLocally = true; break; }
+          if (r.status >= 500) break;
         } catch (fetchErr) {
-          saveLocally = true;
           lastErr = fetchErr.message;
           break;
         }
@@ -535,18 +537,7 @@ export default function StockTransferPage({ onClose }) {
       const cacheLines = items.map((r) => ({ itemId: r.item_id, batchCode: r.batch || "", qty: Number(r.qty) || 0 }));
 
       if (!result) {
-        if (saveLocally || !navigator.onLine) {
-          await queueStockTransfer({ tenantId, branchCode: fromBranch, token, payload: body, voucherNumber });
-          setPendingCount((c) => c + 1);
-          await applySaleToCache(cacheLines);
-          // Not printed here: the transfer hasn't actually reached the server yet, so there is
-          // nothing on record to back a printed delivery challan. Reprint from Stock Transfer
-          // History once it has synced (Sync / Retry Failed) and is confirmed on the server.
-          message.warning("Server error — Stock Transfer saved locally, NOT printed. It will sync when resolved; reprint from History afterwards.");
-          resetForm();
-          return;
-        }
-        throw new Error(lastErr || "Save failed");
+        throw new Error(lastErr || "Server did not confirm the stock transfer. Please check your network and try again.");
       }
 
       await applySaleToCache(cacheLines);
