@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -37,14 +37,27 @@ const SalesmanReport = () => {
   const [error, setError]     = useState(null);
   const [rows, setRows]       = useState([]);
 
+  const allowedBranches = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("allowedBranches");
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
   useEffect(() => {
     fetch(`/api/${tenantId}/branches`, { headers })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!data) return;
         const list = Array.isArray(data) ? data : (data?.branches ?? data?.data ?? []);
-        setBranches(list);
-        if (list.length === 1) setSelectedBranch(list[0].branchCode);
+        const filtered = allowedBranches.length
+          ? list.filter((b) => allowedBranches.includes(b.branchCode))
+          : [];
+        setBranches(filtered);
+        if (filtered.length === 1) setSelectedBranch(filtered[0].branchCode);
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -78,6 +91,12 @@ const SalesmanReport = () => {
       <Typography variant="h5" gutterBottom>
         Salesman Report
       </Typography>
+
+      {allowedBranches.length === 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          No allowed branches found. Please log in again or check branch assignments.
+        </Alert>
+      )}
 
       <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "flex-end" }}>
