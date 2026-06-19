@@ -7,11 +7,13 @@
  *   "Item wise total qty"         — specific item has qty >= eligibility qty
  *   "Item wise total amount"      — specific item has amount >= eligibility amount
  *   "Total Invoice Amount"        — cart total >= eligibility amount
+ *   "ITEMWISE_DISCOUNT"           — per-item discount % from discountItems[]; reduces invoice net payable
  *
  * Supported offer types:
  *   "Free Qty"               — add offerItem at qty=offerQty, price=0
  *   "Item Discount Percent"  — apply discount % to offerItem in the cart
  *   "Cash Back"              — return cashBackAmount (informational row)
+ *   "Itemwise Discount"      — totalDiscountAmount applied against gross; posted as DISCOUNT receipt
  *
  * Appending "-MULTI" to the scheme name activates proportional multiplier.
  */
@@ -20,7 +22,7 @@
  * @param {Array}  cartItems    — items in the cart (each has item_id, item_name, qty, amount, category)
  * @param {Array}  schemes      — schemes fetched from /api/{tenantId}/scheme
  * @param {Object} categoryMap  — { [itemId]: string[] } from /api/{tenantId}/item-category-map/all
- * @returns {Array}             — list of { schemeName, offerType, offerItemName, offerQty, offerDiscountPercent, cashBackAmount }
+ * @returns {Array}             — list of offers; ITEMWISE_DISCOUNT offers have offerType "Itemwise Discount"
  */
 export function evaluateSchemes(cartItems, schemes, categoryMap = {}) {
   if (!schemes?.length) return [];
@@ -55,11 +57,48 @@ export function evaluateSchemes(cartItems, schemes, categoryMap = {}) {
     0
   );
 
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
   const offers = [];
 
   for (const scheme of schemes) {
-    const multi = (name) =>
-      String(name).includes("-MULTI");
+    // ── ITEMWISE_DISCOUNT — date-guarded, self-contained offer type ──
+    if (scheme.schemeType === "ITEMWISE_DISCOUNT") {
+      if (scheme.startDate && today < scheme.startDate) continue;
+      if (scheme.endDate   && today > scheme.endDate)   continue;
+
+      const discountDefs = Array.isArray(scheme.discountItems) ? scheme.discountItems : [];
+      if (!discountDefs.length) continue;
+
+      let totalDiscountAmount = 0;
+      const appliedItems = [];
+
+      for (const item of realItems) {
+        const def = discountDefs.find((d) => d.itemName === item.item_name);
+        if (!def || !(Number(def.discountPercent) > 0)) continue;
+        const discAmt = round2n((Number(item.amount) || 0) * Number(def.discountPercent) / 100);
+        if (discAmt <= 0) continue;
+        totalDiscountAmount = round2n(totalDiscountAmount + discAmt);
+        appliedItems.push({
+          itemName: item.item_name,
+          discountPercent: Number(def.discountPercent),
+          discountAmount: discAmt,
+        });
+      }
+
+      if (totalDiscountAmount > 0) {
+        offers.push({
+          schemeName: scheme.schemeName,
+          offerType: "Itemwise Discount",
+          totalDiscountAmount,
+          appliedItems,
+        });
+      }
+      continue; // ITEMWISE_DISCOUNT is fully handled above
+    }
+
+    // ── Existing scheme types ──
+    const multi = (name) => String(name).includes("-MULTI");
 
     let offerQty = 0;
     let matched = false;
@@ -187,3 +226,5 @@ export async function buildOfferRows(offers, findItem) {
   }
   return rows;
 }
+
+function round2n(v) { return Math.round((Number(v) || 0) * 100) / 100; }
