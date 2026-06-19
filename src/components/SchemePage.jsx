@@ -18,6 +18,7 @@ import {
   IconButton,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+import AddIcon from "@mui/icons-material/Add";
 import { useWebSocket } from "./WebSocketContext"; // Adjust the import path as needed
 
 const SchemePage = () => {
@@ -42,6 +43,8 @@ const SchemePage = () => {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [error, setError] = useState("");
+  // State for ITEMWISE_DISCOUNT scheme — list of { itemName, discountPercent }
+  const [discountItems, setDiscountItems] = useState([{ itemName: "", discountPercent: "" }]);
 
   const fetchSchemes = async () => {
     const tenancyId = localStorage.getItem("tenancyId");
@@ -108,12 +111,23 @@ const SchemePage = () => {
 
   const handleCreateScheme = async () => {
     setError("");
+
+    if (schemeType === "ITEMWISE_DISCOUNT") {
+      const validItems = discountItems.filter(
+        (d) => d.itemName && Number(d.discountPercent) > 0
+      );
+      if (!validItems.length) {
+        setError("Please add at least one item with a discount percentage.");
+        return;
+      }
+    }
+
     const newScheme = {
       schemeName,
       startDate,
       endDate,
       schemeType,
-      offerType,
+      offerType: schemeType === "ITEMWISE_DISCOUNT" ? "" : offerType,
       itemName,
       categoryName,
       requiredCategoryQty: requiredCategoryQty || 0,
@@ -125,6 +139,12 @@ const SchemePage = () => {
       offerItem,
       offerDiscountPercent: offerDiscountPercent || 0,
       cashBackAmount: cashBackAmount || 0,
+      discountItems:
+        schemeType === "ITEMWISE_DISCOUNT"
+          ? discountItems
+              .filter((d) => d.itemName && Number(d.discountPercent) > 0)
+              .map((d) => ({ itemName: d.itemName, discountPercent: Number(d.discountPercent) }))
+          : [],
     };
     const tenancyId = localStorage.getItem("tenancyId");
     const token = localStorage.getItem("jwtToken");
@@ -161,6 +181,7 @@ const SchemePage = () => {
       setOfferItem("");
       setOfferDiscountPercent("");
       setCashBackAmount("");
+      setDiscountItems([{ itemName: "", discountPercent: "" }]);
     } catch (error) {
       setError("An error occurred while creating the scheme.");
       console.error("Create Scheme Error:", error);
@@ -249,6 +270,9 @@ const SchemePage = () => {
               </MenuItem>
               <MenuItem value="Total Invoice Amount">
                 Total Invoice Amount
+              </MenuItem>
+              <MenuItem value="ITEMWISE_DISCOUNT">
+                Itemwise Discount
               </MenuItem>
             </Select>
           </FormControl>
@@ -362,6 +386,93 @@ const SchemePage = () => {
               onChange={(e) => setEligibilityAmount(e.target.value)}
             />
           )}
+          {/* ITEMWISE_DISCOUNT — dynamic per-item discount table */}
+          {schemeType === "ITEMWISE_DISCOUNT" && (
+            <Box sx={{ mt: 2, mb: 1 }}>
+              <Typography variant="subtitle1" gutterBottom>
+                Item Discount Percentages
+              </Typography>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Item</TableCell>
+                    <TableCell>Discount %</TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {discountItems.map((row, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>
+                        <FormControl fullWidth size="small">
+                          <Select
+                            value={row.itemName}
+                            displayEmpty
+                            onChange={(e) =>
+                              setDiscountItems((prev) =>
+                                prev.map((r, i) =>
+                                  i === idx ? { ...r, itemName: e.target.value } : r
+                                )
+                              )
+                            }
+                          >
+                            <MenuItem value=""><em>Select item</em></MenuItem>
+                            {items.map((item) => (
+                              <MenuItem key={item.itemId} value={item.itemName}>
+                                {item.itemName}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          type="number"
+                          value={row.discountPercent}
+                          inputProps={{ min: 0, max: 100 }}
+                          onChange={(e) =>
+                            setDiscountItems((prev) =>
+                              prev.map((r, i) =>
+                                i === idx ? { ...r, discountPercent: e.target.value } : r
+                              )
+                            )
+                          }
+                          placeholder="%"
+                          sx={{ width: 90 }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <IconButton
+                          color="error"
+                          size="small"
+                          onClick={() =>
+                            setDiscountItems((prev) => prev.filter((_, i) => i !== idx))
+                          }
+                          disabled={discountItems.length === 1}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <Button
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={() =>
+                  setDiscountItems((prev) => [...prev, { itemName: "", discountPercent: "" }])
+                }
+                sx={{ mt: 1 }}
+              >
+                Add Item
+              </Button>
+            </Box>
+          )}
+
+          {/* Offer Type — not shown for ITEMWISE_DISCOUNT */}
+          {schemeType !== "ITEMWISE_DISCOUNT" && (
           <FormControl fullWidth margin="normal">
             <InputLabel>Offer Type</InputLabel>
             <Select
@@ -375,7 +486,8 @@ const SchemePage = () => {
               <MenuItem value="Cash Back">Cash Back</MenuItem>
             </Select>
           </FormControl>
-          {offerType === "Free Qty" && (
+          )}
+          {schemeType !== "ITEMWISE_DISCOUNT" && offerType === "Free Qty" && (
             <>
               <FormControl fullWidth margin="normal">
                 <InputLabel>Offer Item Name</InputLabel>
@@ -400,7 +512,7 @@ const SchemePage = () => {
               />
             </>
           )}
-          {offerType === "Item Discount Percent" && (
+          {schemeType !== "ITEMWISE_DISCOUNT" && offerType === "Item Discount Percent" && (
             <>
               <FormControl fullWidth margin="normal">
                 <InputLabel>Offer Item</InputLabel>
@@ -425,7 +537,7 @@ const SchemePage = () => {
               />
             </>
           )}
-          {offerType === "Cash Back" && (
+          {schemeType !== "ITEMWISE_DISCOUNT" && offerType === "Cash Back" && (
             <TextField
               label="Cash Back Amount"
               type="number"
@@ -472,6 +584,7 @@ const SchemePage = () => {
               <TableCell>Offer Qty</TableCell>
               <TableCell>Offer Discount Percent</TableCell>
               <TableCell>Cash Back Amount</TableCell>
+              <TableCell>Discount Items</TableCell>
               <TableCell>Action</TableCell>
             </TableRow>
           </TableHead>
@@ -493,6 +606,15 @@ const SchemePage = () => {
                 <TableCell>{row.offerQty}</TableCell>
                 <TableCell>{row.offerDiscountPercent}</TableCell>
                 <TableCell>{row.cashBackAmount}</TableCell>
+                <TableCell>
+                  {Array.isArray(row.discountItems) && row.discountItems.length > 0
+                    ? row.discountItems.map((d, i) => (
+                        <div key={i} style={{ fontSize: 12 }}>
+                          {d.itemName}: {d.discountPercent}%
+                        </div>
+                      ))
+                    : "—"}
+                </TableCell>
                 <TableCell>
                   <IconButton
                     color="error"

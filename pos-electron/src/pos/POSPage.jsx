@@ -188,16 +188,23 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     };
   }, [selectedBranchCode]);
 
+  // Reload schemes whenever the active branch changes — only receives schemes published to that branch
+  useEffect(() => {
+    const tenantId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
+    if (!tenantId || !token || !selectedBranchCode) return;
+    const hdr = { Authorization: `Bearer ${token}` };
+    fetch(`/api/${tenantId}/scheme?branchCode=${encodeURIComponent(selectedBranchCode)}`, { headers: hdr })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setSchemes(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [selectedBranchCode]);
+
   useEffect(() => {
     const tenantId = localStorage.getItem("tenancyId");
     const token = localStorage.getItem("jwtToken");
     if (!tenantId || !token) return;
     const hdr = { Authorization: `Bearer ${token}` };
-
-    fetch(`/api/${tenantId}/scheme`, { headers: hdr })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setSchemes(Array.isArray(data) ? data : []))
-      .catch(() => {});
 
     fetch(`/api/${tenantId}/item-category-map/all`, { headers: hdr })
       .then((r) => (r.ok ? r.json() : []))
@@ -264,15 +271,28 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     { key: "CASH", receipt_mode: "CASH", amount: 0 },
   ]);
 
-  const totalAmount   = useMemo(() => items.reduce((s, r) => s + (Number(r.amount) || 0), 0), [items]);
-  const activeOffers  = useMemo(() => evaluateSchemes(items, schemes, categoryMap), [items, schemes, categoryMap]);
-  const totalQty      = useMemo(() => items.reduce((s, r) => s + (Number(r.qty) || 0), 0), [items]);
-  const totalReceived = useMemo(() => receipts.reduce((s, r) => s + (Number(r.amount) || 0), 0), [receipts]);
+  const totalAmount      = useMemo(() => items.reduce((s, r) => s + (Number(r.amount) || 0), 0), [items]);
+  const activeOffers     = useMemo(() => evaluateSchemes(items, schemes, categoryMap), [items, schemes, categoryMap]);
+  const totalQty         = useMemo(() => items.reduce((s, r) => s + (Number(r.qty) || 0), 0), [items]);
+  const totalReceived    = useMemo(() => receipts.reduce((s, r) => s + (Number(r.amount) || 0), 0), [receipts]);
+
+  // Sum all itemwise discount amounts from active ITEMWISE_DISCOUNT scheme offers
+  const itemwiseDiscount = useMemo(
+    () => activeOffers
+      .filter((o) => o.offerType === "Itemwise Discount")
+      .reduce((s, o) => s + (Number(o.totalDiscountAmount) || 0), 0),
+    [activeOffers]
+  );
+  // Net amount the customer actually pays after itemwise discount
+  const netPayable = useMemo(
+    () => Math.max(round2n(totalAmount - itemwiseDiscount), 0),
+    [totalAmount, itemwiseDiscount]
+  );
 
   const [tendered, setTendered] = useState(0);
   const balance = useMemo(
-    () => Math.max((Number(tendered) || 0) - (Number(totalAmount) || 0), 0),
-    [tendered, totalAmount]
+    () => Math.max((Number(tendered) || 0) - (Number(netPayable) || 0), 0),
+    [tendered, netPayable]
   );
 
   const [dayEndDone, setDayEndDone] = useState(false);
@@ -280,28 +300,30 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   const canSave = useMemo(() => {
     if (dayEndDone) return false;
-    const bill = Number(totalAmount) || 0;
-    const rec  = Number(totalReceived) || 0;
-    const ten  = Number(tendered) || 0;
-    if (bill <= 0) return false;
-    if (Math.abs(rec - bill) > 0.001) return false;
-    if (ten > 0 && ten < bill) return false;
+    const gross = Number(totalAmount) || 0;
+    const net   = Number(netPayable) || 0;
+    const rec   = Number(totalReceived) || 0;
+    const ten   = Number(tendered) || 0;
+    if (gross <= 0) return false;
+    // Receipts must cover the net payable amount (gross minus any itemwise discount)
+    if (Math.abs(rec - net) > 0.001) return false;
+    if (ten > 0 && ten < net) return false;
     return true;
-  }, [dayEndDone, totalAmount, totalReceived, tendered]);
+  }, [dayEndDone, totalAmount, netPayable, totalReceived, tendered]);
 
-  // Auto-set CASH receipt
+  // Auto-set CASH receipt — uses netPayable so discount is pre-applied
   useEffect(() => {
-    const bill = Number(totalAmount) || 0;
+    const net  = Number(netPayable) || 0;
     const ten  = Number(tendered) || 0;
-    const cash = ten > 0 ? Math.min(ten, bill) : bill;
+    const cash = ten > 0 ? Math.min(ten, net) : net;
     setReceipts((prev) =>
       prev.map((r) => r.receipt_mode.toUpperCase() === "CASH" ? { ...r, amount: round2n(cash) } : r)
     );
-  }, [tendered, totalAmount]);
+  }, [tendered, netPayable]);
 
   const setSingleReceiptToTotal = (mode) => {
-    const bill = round2n(totalAmount);
-    setReceipts((prev) => prev.map((r) => ({ ...r, amount: r.receipt_mode === mode ? bill : 0 })));
+    const net = round2n(netPayable);
+    setReceipts((prev) => prev.map((r) => ({ ...r, amount: r.receipt_mode === mode ? net : 0 })));
   };
 
   const getAvailableQty = (row) => {
@@ -513,6 +535,13 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
         message.info(`Cash Back: ₹${o.cashBackAmount} from scheme "${o.schemeName}"`, 5)
       );
 
+    // Compute itemwise discount from re-evaluated offers at save time
+    const itemwiseDiscountAmount = round2n(
+      offers
+        .filter((o) => o.offerType === "Itemwise Discount")
+        .reduce((s, o) => s + (Number(o.totalDiscountAmount) || 0), 0)
+    );
+
     const headerId = crypto.randomUUID();
     const { voucherNumber, numericSeq } = generateVoucherNumber(branchCode);
     const numericVoucherNumber = numericSeq;
@@ -554,6 +583,11 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       .filter((r) => (Number(r.amount) || 0) > 0)
       .map((r) => ({ receipt_mode: r.receipt_mode, amount: Number(r.amount) }));
 
+    // Inject DISCOUNT receipt line as negative amount — stored in sales_receipts_dtl
+    if (itemwiseDiscountAmount > 0) {
+      receiptLines.push({ receipt_mode: "DISCOUNT", amount: -itemwiseDiscountAmount });
+    }
+
     const payload = { sales: [{ header, details, receipts: receiptLines }] };
 
     try {
@@ -594,7 +628,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       })));
       message.success("Sales saved successfully");
       persistSalesmanCode(salesmanCode);
-      doPrint({ snapshot: [...finalItems], voucherNumber });
+      doPrint({ snapshot: [...finalItems], voucherNumber, itemwiseDiscount: itemwiseDiscountAmount });
       clearForm();
     } catch (e) {
       if (e.httpStatus === 401) {
@@ -613,7 +647,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             ? "No network — sale saved offline, will sync automatically when connected"
             : `Server error (${e.httpStatus}) — sale saved offline, will retry when server recovers`);
           persistSalesmanCode(salesmanCode);
-          doPrint({ snapshot: [...finalItems], voucherNumber });
+          doPrint({ snapshot: [...finalItems], voucherNumber, itemwiseDiscount: itemwiseDiscountAmount });
           clearForm();
           setPendingCount((c) => c + 1);
         } catch (qErr) {
@@ -686,10 +720,11 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   useEffect(() => { refreshPrinters(); }, []);
 
-  const doPrint = async ({ snapshot, voucherNumber }) => {
+  const doPrint = async ({ snapshot, voucherNumber, itemwiseDiscount: discount = 0 }) => {
     if (!window.POS?.printHtml) { log("doPrint: window.POS.printHtml not available"); return; }
     const printData = {
       items: snapshot, totalAmount, tendered, balance, receipts,
+      itemwiseDiscount: discount,
       branchInfo, salesmanName, customerMobile, voucherNumber,
     };
     const html = buildReceiptHtml(printData);
@@ -731,6 +766,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     }
     const html = buildReceiptHtml({
       items, totalAmount, tendered, balance, receipts,
+      itemwiseDiscount,
       branchInfo, salesmanName, customerMobile, voucherNumber: "TEST",
     });
     try {
@@ -910,6 +946,30 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             })}
           />
 
+          {/* Itemwise Discount summary — shown only when an ITEMWISE_DISCOUNT scheme is active */}
+          {itemwiseDiscount > 0 && (
+            <div style={{
+              background: "#f0fff0", border: "1px solid #b7eb8f",
+              padding: "4px 6px", marginTop: 4,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 11, color: "#555" }}>Gross Amount</span>
+                <span style={{ fontSize: 12, fontWeight: "bold" }}>₹{round2(totalAmount)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 11, color: "#389e0d", fontWeight: "bold" }}>Itemwise Discount</span>
+                <span style={{ fontSize: 12, fontWeight: "bold", color: "#389e0d" }}>-₹{round2(itemwiseDiscount)}</span>
+              </div>
+              <div style={{
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                borderTop: "1px dashed #b7eb8f", marginTop: 3, paddingTop: 3,
+              }}>
+                <span style={{ fontSize: 12, fontWeight: "bold" }}>Net Payable</span>
+                <span style={{ fontSize: 14, fontWeight: "bold", color: "#0b3a75" }}>₹{round2(netPayable)}</span>
+              </div>
+            </div>
+          )}
+
           {/* Payment totals */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
             <span style={{ fontSize: 12, fontWeight: "bold" }}>Total Received</span>
@@ -945,6 +1005,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
                   {o.offerType === "Free Qty" && `🎁 ${o.offerItemName} ×${o.offerQty} FREE`}
                   {o.offerType === "Item Discount Percent" && `🏷 ${o.offerDiscountPercent}% off on ${o.offerItemName}`}
                   {o.offerType === "Cash Back" && `💵 Cash Back ₹${o.cashBackAmount}`}
+                  {o.offerType === "Itemwise Discount" && `🏷 Discount ₹${round2(o.totalDiscountAmount)} on ${o.appliedItems?.length || 0} item(s)`}
                   <span style={{ color: "#999", marginLeft: 4 }}>({o.schemeName})</span>
                 </div>
               ))}
@@ -1240,7 +1301,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 function round2(v)  { return (Number(v) || 0).toFixed(2); }
 function round2n(v) { return Math.round((Number(v) || 0) * 100) / 100; }
 
-function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, branchInfo, salesmanName, customerMobile, voucherNumber }) {
+function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, itemwiseDiscount = 0, branchInfo, salesmanName, customerMobile, voucherNumber }) {
   const b = branchInfo || {};
   const addrParts = [
     b.branchBuildingAddress,
@@ -1394,7 +1455,13 @@ function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, bra
   </table>
   <hr class="dash"/>` : ""}
 
+  ${Number(itemwiseDiscount) > 0 ? `
+  <div class="total-line"><span>GROSS</span><span>${Number(totalAmount||0).toFixed(2)}</span></div>
+  <div class="total-line" style="color:#389e0d"><span>DISCOUNT</span><span>-${Number(itemwiseDiscount).toFixed(2)}</span></div>
+  <div class="total-line"><span>NET PAYABLE</span><span>${(Number(totalAmount||0) - Number(itemwiseDiscount)).toFixed(2)}</span></div>
+  ` : `
   <div class="total-line"><span>TOTAL</span><span>${Number(totalAmount||0).toFixed(2)}</span></div>
+  `}
   <hr class="solid"/>
 
   <table class="pay">
