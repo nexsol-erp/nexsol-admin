@@ -303,6 +303,20 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
       roles: ["admin"],
     },
     {
+      menuKey: "Branch Day End Settings",
+      label: t("Branch Day End Settings"),
+      icon: <Tune />,
+      link: "/branch-day-end-settings",
+      roles: ["admin"],
+    },
+    {
+      menuKey: "Clear Day End",
+      label: t("Clear Day End"),
+      icon: <Tune />,
+      link: "/day-end-clear",
+      roles: ["admin"],
+    },
+    {
       menuKey: "Version Management",
       label: t("Version Management"),
       icon: <AdminPanelSettings />,

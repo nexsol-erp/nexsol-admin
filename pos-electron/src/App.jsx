@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Menu, Popconfirm, Select, Tooltip, Typography, message } from "antd";
+import { Alert, Button, Menu, Popconfirm, Select, Tooltip, Typography, message } from "antd";
 import POSPage from "./pos/POSPage";
 import LoginPage from "./auth/LoginPage";
 import DayEndPage from "./dayend/DayEndPage";
@@ -18,6 +18,7 @@ import { isLoggedIn, logout, isAdminRole, getBranchLock, clearBranchLock } from 
 import { clearItemCache, hasCache, loadAllItemsToCache } from "./cache/itemCache";
 import { registerMachine } from "./utils/posDevice";
 import { log } from "./utils/logger";
+import { todayIST } from "./utils/timeUtils";
 
 const { Text } = Typography;
 
@@ -31,6 +32,40 @@ function checkDayEndDone(branchCode) {
     const records = JSON.parse(localStorage.getItem("day_end_records") || "[]");
     return records.some((r) => r.dateKey === today && r.branchCode === branchCode);
   } catch { return false; }
+}
+
+function isDayEndRequired(branchCode) {
+  try {
+    const settings = JSON.parse(localStorage.getItem("pos_settings") || "{}");
+    const list = settings.dayEndRequiredBranches;
+    return Array.isArray(list) && list.includes(branchCode);
+  } catch { return false; }
+}
+
+// Returns null if ok to proceed, or "YYYY-MM-DD" (the date needing day end) if blocked.
+// Locally tracks the last date the POS properly closed (per branch).
+// Only active when day end is configured as required for the branch (via POS Settings).
+function checkDateAdvanceBlock(branchCode) {
+  if (!branchCode) return null;
+  if (!isDayEndRequired(branchCode)) return null;
+  try {
+    const key = `pos_business_date_${branchCode}`;
+    const today = todayIST();
+    const saved = localStorage.getItem(key);
+    if (!saved) {
+      localStorage.setItem(key, today);
+      return null;
+    }
+    if (today <= saved) return null; // same day, no advance
+    // Date advanced — check if day end was done for the saved date
+    const records = JSON.parse(localStorage.getItem("day_end_records") || "[]");
+    const done = records.some((r) => r.dateKey === saved && r.branchCode === branchCode);
+    if (done) {
+      localStorage.setItem(key, today);
+      return null;
+    }
+    return saved; // blocked: must complete day end for this date
+  } catch { return null; }
 }
 
 function extractBranchCodes() {
@@ -59,12 +94,19 @@ export default function App() {
   const [cacheClearing, setCacheClearing] = useState(false);
   const [kotPrefillItems, setKotPrefillItems] = useState(null);
   const [isDayEndDone, setIsDayEndDone] = useState(() => checkDayEndDone(localStorage.getItem("selectedBranchCode") || ""));
+  const [dayEndBlock, setDayEndBlock] = useState(null); // "YYYY-MM-DD" of pending date, or null
 
-  // Recheck day-end status whenever page or branch changes so the Salesman menu
-  // item unlocks immediately after Day End is saved.
+  // Recheck day-end status and date-advance block whenever page, branch, or login changes.
   useEffect(() => {
-    setIsDayEndDone(checkDayEndDone(selectedBranchCode));
-  }, [activePage, selectedBranchCode]);
+    if (!loggedIn) return;
+    const done = checkDayEndDone(selectedBranchCode);
+    setIsDayEndDone(done);
+    const block = checkDateAdvanceBlock(selectedBranchCode);
+    setDayEndBlock(block);
+    if (block && activePage !== "day-end") { setActivePage("day-end"); return; }
+    // If today's day end is done AND this branch requires it, push user away from billing pages
+    if (done && isDayEndRequired(selectedBranchCode) && (activePage === "pos" || activePage === "kot")) setActivePage("day-end");
+  }, [activePage, selectedBranchCode, loggedIn]);
 
   const prevBranchRef = useRef(null);
   const hasWB = roles.includes("WB");
@@ -82,6 +124,47 @@ export default function App() {
     globalThis.POS_BRANCH_CODE = initial;
     localStorage.setItem("selectedBranchCode", initial);
     setSelectedBranchCode(initial);
+  }, [loggedIn]);
+
+  // Sync branch day-end requirements and today's day-end status from the backend on login.
+  useEffect(() => {
+    if (!loggedIn) return;
+    const tenantId = localStorage.getItem("tenancyId") || "";
+    const token    = localStorage.getItem("jwtToken")  || "";
+    if (!tenantId || !token) return;
+    const authHeaders = { Authorization: `Bearer ${token}` };
+
+    // 1. Sync which branches require day end
+    fetch(`/api/${tenantId}/branches`, { headers: authHeaders })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return;
+        const list = Array.isArray(data) ? data : (data?.branches ?? data?.data ?? []);
+        const required = list.filter((b) => b.dayEndRequired).map((b) => b.branchCode);
+        const settings = JSON.parse(localStorage.getItem("pos_settings") || "{}");
+        settings.dayEndRequiredBranches = required;
+        localStorage.setItem("pos_settings", JSON.stringify(settings));
+      })
+      .catch(() => {});
+
+    // 2. Reconcile today's day-end records against the backend.
+    //    If admin cleared a day end, remove the stale localStorage record so billing unblocks.
+    const branch = localStorage.getItem("selectedBranchCode") || "";
+    if (!branch) return;
+    const today = todayIST();
+    fetch(`/api/${tenantId}/day-end/details/${branch}/${today}`, { headers: authHeaders })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!Array.isArray(data)) return;
+        const existsInBackend = data.length > 0;
+        const records = JSON.parse(localStorage.getItem("day_end_records") || "[]");
+        const existsLocally = records.some((r) => r.dateKey === today && r.branchCode === branch);
+        if (existsLocally && !existsInBackend) {
+          const cleaned = records.filter((r) => !(r.dateKey === today && r.branchCode === branch));
+          localStorage.setItem("day_end_records", JSON.stringify(cleaned));
+        }
+      })
+      .catch(() => {});
   }, [loggedIn]);
 
   // Initial cache load on login
@@ -170,7 +253,18 @@ export default function App() {
             <Menu
               mode="horizontal"
               selectedKeys={[activePage]}
-              onClick={(e) => { log("Menu clicked:", e.key); setActivePage(e.key); }}
+              onClick={(e) => {
+                log("Menu clicked:", e.key);
+                if (dayEndBlock && e.key !== "day-end") {
+                  message.warning(`Complete Day End for ${dayEndBlock} before continuing`);
+                  return;
+                }
+                if (isDayEndDone && isDayEndRequired(selectedBranchCode) && (e.key === "pos" || e.key === "kot")) {
+                  message.warning("Day End is completed. Billing is closed for today.");
+                  return;
+                }
+                setActivePage(e.key);
+              }}
               items={[
                 { key: "pos", label: "POS" },
                 { key: "kot", label: "KOT" },
@@ -250,6 +344,23 @@ export default function App() {
               </Button>
             </div>
           </div>
+
+          {dayEndBlock && (
+            <Alert
+              type="error"
+              showIcon
+              banner
+              message={`Day End not completed for ${dayEndBlock}. Complete Day End to unlock the POS.`}
+            />
+          )}
+          {!dayEndBlock && isDayEndDone && isDayEndRequired(selectedBranchCode) && (
+            <Alert
+              type="warning"
+              showIcon
+              banner
+              message="Day End completed for today — Billing is closed. Use Reports to view the day's summary."
+            />
+          )}
 
           {activePage === "pos" && <POSPage selectedBranchCode={selectedBranchCode} onLogout={() => setLoggedIn(false)} prefillItems={kotPrefillItems} onPrefillUsed={() => setKotPrefillItems(null)} />}
           {activePage === "stock-transfer" && <StockTransferPage onClose={() => setActivePage("pos")} />}

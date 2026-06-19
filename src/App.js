@@ -26,6 +26,8 @@ import WeighBridge from "./components/WeighBridge";
 import HSNSalesDetail from "./components/HSNWiseSalesDetail";
 import BranchCreationPage from "./components/BranchCreationPage";
 import BranchUpdatePage from "./components/BranchUpdatePage";
+import BranchDayEndSettingsPage from "./components/BranchDayEndSettingsPage";
+import DayEndClearPage from "./components/DayEndClearPage";
 import UserCreationPage from "./components/UserCreationPage";
 import SchemePage from "./components/SchemePage";
 import PublishSchemePage from "./components/PublishSchemePage";
@@ -130,6 +132,7 @@ const ROUTE_ORDER = [
   { key: "Weight-Count",                     path: "/bridge-count" },
   { key: "WeighBridge Usage",                path: "/weighbridgeusage" },
   { key: "Branch Details",                   path: "/branch-update" },
+  { key: "Branch Day End Settings",          path: "/branch-day-end-settings" },
   { key: "Version Management",               path: "/version-management" },
   { key: "Scheme Creation",                  path: "/schemepage" },
   { key: "Manage Scheme",                    path: "/publishschemepage" },
@@ -170,6 +173,7 @@ const ROUTE_ORDER = [
   { key: "All Branch Categorywise Sales Report", path: "/sales-category-wise-report-all-branch" },
   { key: "Item Stock Report",                path: "/item-stock-report" },
   { key: "Day End Report",                   path: "/day-end-report" },
+  { key: "Clear Day End",                    path: "/day-end-clear" },
   { key: "Bill Series Report",               path: "/billseriesreport" },
   { key: "Season Sales Report",              path: "/seasonalreport" },
   { key: "Stock Turnover Report",            path: "/stock-turnover" },
@@ -285,6 +289,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/weighbridge" element={<WeighBridge />} />
             <Route path="/branchcreationpage" element={<BranchCreationPage />} />
             <Route path="/branch-update" element={<BranchUpdatePage />} />
+            <Route path="/branch-day-end-settings" element={<BranchDayEndSettingsPage />} />
             <Route path="/usercreationpage" element={<UserCreationPage />} />
             <Route path="/schemepage" element={<SchemePage />} />
             <Route path="/publishschemepage" element={<PublishSchemePage />} />
@@ -341,6 +346,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
               <Route path="/physicalstockreport" element={<PhysicalStockEntryReport />} />
  <Route path="/financialyearpage" element={<FinancialYearPage />} />
             <Route path="/day-end-report" element={<DayEndReport />} />
+            <Route path="/day-end-clear" element={<DayEndClearPage />} />
             <Route path="/branch-price" element={<BranchPricePage />} />
             <Route path="/version-management" element={<VersionManagementPage />} />
 
