@@ -84,6 +84,10 @@ export default function DayEndPage() {
 
   const onSaveDayEnd = async () => {
     if (saving) return;
+    if (!(grandTotal > 0)) {
+      message.warning("Grand total must be greater than 0 to save Day End");
+      return;
+    }
     const dateKey = dayEndDate.format("YYYY-MM-DD");
     const records = loadDayEndRecords();
     const exists = records.some((r) => r.dateKey === dateKey && r.branchCode === branchCode);
@@ -258,7 +262,7 @@ export default function DayEndPage() {
           <Text strong style={{ color: "#1f2937" }}>{branchCode || "-"}</Text>
           <DatePicker value={dayEndDate} onChange={(d) => setDayEndDate(d || dayjs())} />
           <Button onClick={printReport} disabled={!isSaved}>Print</Button>
-          <Button type="primary" onClick={onSaveDayEnd} loading={saving}>
+          <Button type="primary" onClick={onSaveDayEnd} loading={saving} disabled={!(grandTotal > 0) || isSaved}>
             Save Day End
           </Button>
         </Space>
