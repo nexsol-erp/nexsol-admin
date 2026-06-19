@@ -1,6 +1,6 @@
 {
   "name": "tradelink247-pos",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "TradeLink247 POS desktop app",
   "main": "electron/main.js",
   "scripts": {
