@@ -1339,7 +1339,7 @@ function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, bra
 </style>
 </head>
 <body>
-  <div class="shop-name">${esc(b.branchName || "POS INVOICE")}</div>
+  <div class="shop-name">${esc(b.branchName || b.branchCode || "POS INVOICE")}</div>
   ${addrHtml}
   ${phoneHtml}
   ${gstHtml}
