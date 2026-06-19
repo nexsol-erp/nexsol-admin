@@ -332,31 +332,50 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const addItemToBill = (itm, { closeModal = false } = {}) => {
     const batch     = itm.batchCode || "";
     const available = Number.isFinite(Number(itm.availableQty)) ? Number(itm.availableQty) : null;
-    const existing  = items.find((r) => r.item_id === itm.itemId && (r.batch || "") === batch);
 
-    if (existing) {
-      const nextQty = (Number(existing.qty) || 0) + 1;
-      const allowed = getAvailableQty(existing) ?? available;
-      if (!isItemDynamic(itm.itemId) && allowed !== null && nextQty > allowed) { message.warning(`Only ${allowed} in stock for ${existing.item_name}`); return; }
-      updateItem(existing.key, { qty: nextQty, available_qty: allowed });
-      setItemQuery(""); pendingQtyFocusKey.current = existing.key;
-      if (closeModal) closeLookup({ focusSearch: false });
-      else focusQtyInput(existing.key, 50);
-    } else {
-      if (!isItemDynamic(itm.itemId) && available !== null && available <= 0) { message.warning(`No stock for ${itm.itemName}`); return; }
-      const row = {
-        key: crypto.randomUUID(), item_id: itm.itemId, item_name: itm.itemName,
-        barcode: itm.barcode, qty: 1, available_qty: available,
-        tax_rate: itm.taxRate, standard_price: itm.standardPrice,
-        amount: round2n(Number(itm.standardPrice) || 0),
-        batch, unit: itm.unitName || "", expiry: itm.expiry || "",
-        category: itm.category || "",
-      };
-      setItems((p) => [row, ...p]);
-      setItemQuery(""); pendingQtyFocusKey.current = row.key;
-      if (closeModal) closeLookup({ focusSearch: false });
-      else focusQtyInput(row.key, 80);
-    }
+    let resolvedKey = null;
+    let wasExisting = false;
+
+    setItems((prev) => {
+      const existing = prev.find((r) => r.item_id === itm.itemId && (r.batch || "") === batch);
+      if (existing) {
+        const nextQty = (Number(existing.qty) || 0) + 1;
+        const allowed = getAvailableQty(existing) ?? available;
+        if (!isItemDynamic(itm.itemId) && allowed !== null && nextQty > allowed) {
+          message.warning(`Only ${allowed} in stock for ${existing.item_name}`);
+          return prev; // no change
+        }
+        resolvedKey = existing.key;
+        wasExisting = true;
+        return prev.map((r) => {
+          if (r.key !== existing.key) return r;
+          const next = { ...r, qty: nextQty, available_qty: allowed };
+          next.amount = round2n(nextQty * (Number(next.standard_price) || 0));
+          return next;
+        });
+      } else {
+        if (!isItemDynamic(itm.itemId) && available !== null && available <= 0) {
+          message.warning(`No stock for ${itm.itemName}`);
+          return prev; // no change
+        }
+        const row = {
+          key: crypto.randomUUID(), item_id: itm.itemId, item_name: itm.itemName,
+          barcode: itm.barcode, qty: 1, available_qty: available,
+          tax_rate: itm.taxRate, standard_price: itm.standardPrice,
+          amount: round2n(Number(itm.standardPrice) || 0),
+          batch, unit: itm.unitName || "", expiry: itm.expiry || "",
+          category: itm.category || "",
+        };
+        resolvedKey = row.key;
+        wasExisting = false;
+        return [row, ...prev];
+      }
+    });
+
+    setItemQuery("");
+    if (resolvedKey) pendingQtyFocusKey.current = resolvedKey;
+    if (closeModal) closeLookup({ focusSearch: false });
+    else if (resolvedKey) focusQtyInput(resolvedKey, wasExisting ? 50 : 80);
   };
   addItemToBillRef.current = addItemToBill;
 
