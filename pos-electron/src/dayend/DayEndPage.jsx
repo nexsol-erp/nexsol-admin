@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Button, DatePicker, InputNumber, Space, Table, Typography, message } from "antd";
+import { Button, DatePicker, InputNumber, Modal, Space, Table, Typography, message } from "antd";
 import dayjs from "dayjs";
 import { apiUrl } from "../utils/apiUrl";
 
@@ -26,10 +26,11 @@ function saveDayEndRecords(rows) {
   localStorage.setItem("day_end_records", JSON.stringify(rows));
 }
 
-export default function DayEndPage() {
-  const [dayEndDate, setDayEndDate] = useState(dayjs());
+export default function DayEndPage({ pendingDate }) {
+  const [dayEndDate, setDayEndDate] = useState(() => pendingDate ? dayjs(pendingDate) : dayjs());
   const [saving, setSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [qtyByDenom, setQtyByDenom] = useState(() =>
     Object.fromEntries(DENOMINATIONS.map((d) => [String(d), 0]))
   );
@@ -82,12 +83,18 @@ export default function DayEndPage() {
     setQtyByDenom((prev) => ({ ...prev, [String(currency)]: nextQty }));
   };
 
-  const onSaveDayEnd = async () => {
+  const handleSaveClick = () => {
     if (saving) return;
     if (!(grandTotal > 0)) {
       message.warning("Grand total must be greater than 0 to save Day End");
       return;
     }
+    setConfirmOpen(true);
+  };
+
+  const onSaveDayEnd = async () => {
+    setConfirmOpen(false);
+    if (saving) return;
     const dateKey = dayEndDate.format("YYYY-MM-DD");
     const records = loadDayEndRecords();
     const exists = records.some((r) => r.dateKey === dateKey && r.branchCode === branchCode);
@@ -262,7 +269,7 @@ export default function DayEndPage() {
           <Text strong style={{ color: "#1f2937" }}>{branchCode || "-"}</Text>
           <DatePicker value={dayEndDate} onChange={(d) => setDayEndDate(d || dayjs())} />
           <Button onClick={printReport} disabled={!isSaved}>Print</Button>
-          <Button type="primary" onClick={onSaveDayEnd} loading={saving} disabled={!(grandTotal > 0) || isSaved}>
+          <Button type="primary" onClick={handleSaveClick} loading={saving} disabled={!(grandTotal > 0) || isSaved}>
             Save Day End
           </Button>
         </Space>
@@ -279,6 +286,29 @@ export default function DayEndPage() {
         <Text strong style={{ color: "#374151" }}>Grand Total:</Text>
         <Text strong style={{ color: "#1f2937" }}>{Number(grandTotal || 0).toFixed(2)}</Text>
       </div>
+
+      <Modal
+        open={confirmOpen}
+        title="Confirm Day End"
+        onOk={onSaveDayEnd}
+        onCancel={() => setConfirmOpen(false)}
+        okText="Yes, Save Day End"
+        cancelText="Cancel"
+        okButtonProps={{ type: "primary" }}
+      >
+        <p style={{ fontSize: 15, margin: "16px 0" }}>
+          You are about to complete Day End for:
+        </p>
+        <p style={{ fontSize: 22, fontWeight: "bold", textAlign: "center", color: "#0b3a75", margin: "12px 0" }}>
+          {dayEndDate.format("DD MMM YYYY")}
+        </p>
+        <p style={{ fontSize: 15, margin: "16px 0" }}>
+          Branch: <strong>{branchCode}</strong> &nbsp;|&nbsp; Total: <strong>₹{Number(grandTotal || 0).toFixed(2)}</strong>
+        </p>
+        <p style={{ color: "#d97706", fontSize: 13 }}>
+          Once saved, billing will be closed for this date. Proceed?
+        </p>
+      </Modal>
     </div>
   );
 }
