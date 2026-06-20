@@ -58,17 +58,18 @@ export default function ItemLookupModal({ open, initialQuery, onClose, onPick, o
 
     const run = async () => {
       try {
+        // Pass the stock filter into localSearchItems so the limit is applied AFTER
+        // filtering. Without this, zero-qty items can fill the limit and push DYNAMIC
+        // items (like made-to-order) out of the result set entirely.
+        // Physical stock entry passes hideOutOfStock={false}, so no filter is applied.
+        const stockFilter = hideOutOfStock
+          ? (it) => it.availableQty == null || Number(it.availableQty) > 0 || it.category === "DYNAMIC"
+          : null;
         // request one more than limit to detect if more results exist
-        const list = await localSearchItems(q, limit + 1);
-        // Hide out-of-stock items (availableQty == null means stock isn't tracked for this item).
-        // DYNAMIC category items (e.g. made-to-order) are always shown regardless of stock.
-        // Physical stock entry needs to see 0-stock items too, so it passes hideOutOfStock={false}.
-        const filtered = hideOutOfStock
-          ? list.filter((it) => it.availableQty == null || Number(it.availableQty) > 0 || it.category === "DYNAMIC")
-          : list;
+        const list = await localSearchItems(q, limit + 1, stockFilter);
         if (!cancelled) {
-          setMoreAvailable(filtered.length > limit);
-          setRows(filtered.slice(0, limit));
+          setMoreAvailable(list.length > limit);
+          setRows(list.slice(0, limit));
           setSelectedIndex(0);
         }
       } catch (e) {

@@ -227,15 +227,18 @@ export async function loadAllItemsToCache({ pageSize = 500, onProgress } = {}) {
   return { loaded, total };
 }
 
-// Very fast local search (barcode exact OR name contains)
-export async function localSearchItems(q, limit = 50) {
+// Very fast local search (barcode exact OR name contains).
+// stockFilter, if provided, is applied before the limit so DYNAMIC/in-stock items
+// are never crowded out by zero-qty items that happen to sort earlier.
+export async function localSearchItems(q, limit = 50, stockFilter = null) {
   const query = (q || "").trim().toLowerCase();
   console.log("localSearchItems called with query:", query);
-  
+
   if (!query) {
     console.log("Query is empty, returning all items");
-    // Return all items when query is empty
-    const all = await db.items.limit(limit).toArray();
+    const all = stockFilter
+      ? await db.items.filter(stockFilter).limit(limit).toArray()
+      : await db.items.limit(limit).toArray();
     console.log("Found items for empty query:", all.length);
     return all;
   }
@@ -247,10 +250,11 @@ export async function localSearchItems(q, limit = 50) {
 
   // name contains (simple)
   // (For huge item lists, upgrade to MiniSearch/Fuse later)
-  const all = await db.items
-    .filter((it) => (it.itemName || "").toLowerCase().includes(query) || (it.barcode || "").includes(query))
-    .limit(limit)
-    .toArray();
+  const nameMatch = (it) =>
+    (it.itemName || "").toLowerCase().includes(query) || (it.barcode || "").includes(query);
+  const combined = stockFilter ? (it) => nameMatch(it) && stockFilter(it) : nameMatch;
+
+  const all = await db.items.filter(combined).limit(limit).toArray();
 
   console.log("localSearchItems found", all.length, "items matching:", query);
   return all;
