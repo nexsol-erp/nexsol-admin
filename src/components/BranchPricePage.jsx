@@ -10,6 +10,7 @@ import SaveIcon from "@mui/icons-material/Save";
 import SearchIcon from "@mui/icons-material/Search";
 
 const PAGE_SIZE = 10;
+const SEARCH_SIZE = 200; // fetch a wider net when the user is actively searching
 
 const BranchPricePage = () => {
   const tenantId = localStorage.getItem("tenancyId") || "";
@@ -77,7 +78,7 @@ const BranchPricePage = () => {
     setLoading(true);
     try {
       const trimmed = q.trim();
-      const params = new URLSearchParams({ q: trimmed, page: 0, size: PAGE_SIZE });
+      const params = new URLSearchParams({ q: trimmed, page: 0, size: trimmed ? SEARCH_SIZE : PAGE_SIZE });
       const res = await fetch(`/api/${tenantId}/items/search?${params}`, { headers });
       const data = res.ok ? await res.json() : null;
       const content = data?.content ?? [];
