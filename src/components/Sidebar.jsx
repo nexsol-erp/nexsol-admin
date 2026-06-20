@@ -388,7 +388,6 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         { menuKey: "Stock Turnover Report", label: t("Stock Turnover Report"), link: "/stock-turnover", roles: ["user", "admin"] },
         { menuKey: "Item Sales Report", label: t("Item Sales Report"), link: "/item-sales", roles: ["user", "admin"] },
         { menuKey: "Documents List", label: t("Documents List"), link: "/documents-list", roles: ["user", "admin", "WB"] },
-        { menuKey: "Branch Stock Diff Report", label: t("Branch Stock Diff Report"), link: "/branch-stock-diff-report", roles: ["admin", "franchiseeuser"] },
         { menuKey: "Branch Stock Report", label: t("Branch Stock Report"), link: "/branch-stock-view", roles: ["admin", "manager", "user", "franchiseeuser"] },
         { menuKey: "Branch Inventory Report", label: t("Branch Inventory Report"), link: "/branch-inventory", roles: ["admin", "manager", "user", "franchiseeuser"] },
         { menuKey: "Branch Inventory Ledger", label: t("Branch Inventory Ledger"), link: "/branch-inventory-ledger", roles: ["admin", "manager", "user", "franchiseeuser"] },
