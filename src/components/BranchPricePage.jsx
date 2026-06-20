@@ -69,14 +69,29 @@ const BranchPricePage = () => {
     }
   }, [tenantId, token]);
 
-  // Load items from paginated search endpoint
+  // Load items from paginated search endpoint.
+  // Results are re-sorted client-side so exact/starts-with matches surface before
+  // "contains" matches (e.g. searching "COFFEE" shows the item named "COFFEE" before
+  // "AMUL COFFEE CUP" even though both contain the keyword).
   const loadItems = useCallback(async (q) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ q: q.trim(), page: 0, size: PAGE_SIZE });
+      const trimmed = q.trim();
+      const params = new URLSearchParams({ q: trimmed, page: 0, size: PAGE_SIZE });
       const res = await fetch(`/api/${tenantId}/items/search?${params}`, { headers });
       const data = res.ok ? await res.json() : null;
-      setItems(data?.content ?? []);
+      const content = data?.content ?? [];
+      if (trimmed) {
+        const lower = trimmed.toLowerCase();
+        const rank = (name) => {
+          const n = (name || "").toLowerCase();
+          if (n === lower) return 0;
+          if (n.startsWith(lower)) return 1;
+          return 2;
+        };
+        content.sort((a, b) => rank(a.itemName) - rank(b.itemName));
+      }
+      setItems(content);
       setTotalItems(data?.totalElements ?? 0);
     } catch {
       setItems([]);
