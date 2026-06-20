@@ -139,14 +139,6 @@ useEffect(() => {
         </Button>
         <Button
           variant="contained"
-          color="error"
-          onClick={clearStock}
-          disabled={stockData.length === 0}
-        >
-          Clear Stock
-        </Button>
-        <Button
-          variant="contained"
           color="secondary"
           onClick={handleExportToExcel}
           disabled={stockData.length === 0}
