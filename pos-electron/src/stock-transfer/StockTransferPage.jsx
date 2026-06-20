@@ -594,6 +594,13 @@ export default function StockTransferPage({ onClose }) {
           min={0}
           value={row.qty}
           onChange={(v) => updateRow(row.key, { qty: Number(v || 0) })}
+          onFocus={(e) => e.target.select()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              itemSearchRef.current?.focus();
+            }
+          }}
           style={{ width: "100%" }}
         />
       ),

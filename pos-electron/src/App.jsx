@@ -365,7 +365,7 @@ export default function App() {
           {activePage === "pos" && <POSPage selectedBranchCode={selectedBranchCode} onLogout={() => setLoggedIn(false)} prefillItems={kotPrefillItems} onPrefillUsed={() => setKotPrefillItems(null)} />}
           {activePage === "stock-transfer" && <StockTransferPage onClose={() => setActivePage("pos")} />}
           {activePage === "st-history" && <StockTransferHistoryPage onClose={() => setActivePage("pos")} />}
-          {activePage === "day-end" && <DayEndPage />}
+          {activePage === "day-end" && <DayEndPage pendingDate={dayEndBlock} />}
           {activePage === "accept-stock" && <AcceptStockPage onClose={() => setActivePage("pos")} />}
           {activePage === "weigh-bridge" && hasWB && <WeighBridgePage />}
           {activePage === "physical-stock" && hasPhysicalStock && <PhysicalStockPage roles={roles} onClose={() => setActivePage("pos")} />}
