@@ -243,6 +243,13 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
       roles: ["admin", "franchiseeuser", "user"],
     },
     {
+      menuKey: "HSN Sales Summary",
+      label: t("HSN Sales Summary"),
+      icon: <Pages />,
+      link: "/hsn-sales-summary",
+      roles: ["admin", "franchiseeuser", "user"],
+    },
+    {
       menuKey: "HSN wise Purchase",
       label: t("HSN wise Purchase"),
       icon: <Pages />,

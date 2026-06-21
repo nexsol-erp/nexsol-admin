@@ -50,6 +50,7 @@ import StockTurnoverReport from "./components/StockTurnoverReport";
 import ItemSalesReport from "./components/ItemSalesReport";
 import DocumentList from "./components/DocumentList";
 import HSNWisePurchaseReport from "./components/HSNWisePurchaseReport";
+import HsnSalesSummaryReport from "./components/HsnSalesSummaryReport";
 import StockReport from "./components/StockReport";
 import POSEntry from "./components/POSEntry";
 import ItemSearchPage from "./components/ItemSearchPage";
@@ -122,6 +123,7 @@ const ROUTE_ORDER = [
   { key: "KOT",                             path: "/kot" },
   { key: "Sales Entry",                      path: "/salesentryform" },
   { key: "HSN wise Sales",                   path: "/hsnsales" },
+  { key: "HSN Sales Summary",                path: "/hsn-sales-summary" },
   { key: "HSN wise Purchase",                path: "/hsnwise-purchase-report" },
   { key: "Purchase Entry",                   path: "/purchaseentry" },
   { key: "Goods Receipt",                    path: "/goodsreceipt" },
@@ -285,6 +287,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/sales" element={<SalesDetail />} />
             <Route path="/hsnsales" element={<HSNSalesDetail />} />
+            <Route path="/hsn-sales-summary" element={<HsnSalesSummaryReport />} />
             <Route path="/purchasereport" element={<PurchaseDetail />} />
             <Route path="/weighbridge" element={<WeighBridge />} />
             <Route path="/branchcreationpage" element={<BranchCreationPage />} />
