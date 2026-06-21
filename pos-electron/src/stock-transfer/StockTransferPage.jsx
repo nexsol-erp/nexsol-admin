@@ -61,6 +61,7 @@ export default function StockTransferPage({ onClose }) {
   const [deliveryAddress2, setDeliveryAddress2] = useState("");
 
   const [printMode, setPrintMode] = useState("pdf");
+  const [reasonCode, setReasonCode] = useState("NORMAL DC");
   const [items, setItems] = useState([]);
   const [saving, setSaving] = useState(false);
   const [savingHold, setSavingHold] = useState(false);
@@ -376,6 +377,7 @@ export default function StockTransferPage({ onClose }) {
           deliveryAddress1,
           deliveryAddress2,
           printMode,
+          reasonCode,
           items,
         },
       };
@@ -405,6 +407,7 @@ export default function StockTransferPage({ onClose }) {
     setDeliveryAddress1(String(p.deliveryAddress1 || ""));
     setDeliveryAddress2(String(p.deliveryAddress2 || ""));
     setPrintMode(p.printMode === "thermal" ? "thermal" : "a4");
+    setReasonCode(String(p.reasonCode || "NORMAL DC"));
     setItems(Array.isArray(p.items) ? p.items : []);
     const next = holdRows.filter((x) => x.id !== selectedHoldId);
     setHoldRows(next);
@@ -449,6 +452,7 @@ export default function StockTransferPage({ onClose }) {
       numeric_voucher_number: numericVoucher,
       voucher_date: voucherDate,
       description: "Stock Transfer",
+      reason_code: reasonCode,
       delivery_to_location: deliveryLocation,
       delivery_to_address1: deliveryAddress1,
       delivery_to_address2: deliveryAddress2,
@@ -529,6 +533,7 @@ export default function StockTransferPage({ onClose }) {
         deliveryAddress2,
         voucherNumber,
         voucherDate,
+        reasonCode,
         items,
         totalAmount,
         totalQty,
@@ -742,6 +747,22 @@ export default function StockTransferPage({ onClose }) {
             ]}
             value={printMode}
             onChange={(e) => setPrintMode(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
+        <div style={{ flex: 1.5 }}>
+          <Text strong style={{ display: "block", color: "#374151", marginBottom: 2 }}>Reason Code</Text>
+          <Select
+            value={reasonCode}
+            onChange={setReasonCode}
+            style={{ width: "100%" }}
+            options={[
+              { value: "NORMAL DC",             label: "1. NORMAL DC" },
+              { value: "EXPIRY AND DEFECT RETURN", label: "2. EXPIRY AND DEFECT RETURN" },
+              { value: "DC MISTAKE",            label: "3. DC MISTAKE" },
+            ]}
           />
         </div>
       </div>

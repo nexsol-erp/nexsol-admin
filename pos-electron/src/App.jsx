@@ -13,6 +13,7 @@ import SalesmanReportPage from "./pos/SalesmanReportPage";
 import ItemSalesReportPage from "./pos/ItemSalesReportPage";
 import ItemMovementReportPage from "./pos/ItemMovementReportPage";
 import StockTransferInReportPage from "./pos/StockTransferInReportPage";
+import SalesReturnPage from "./pos/SalesReturnPage";
 import UpdateChecker from "./components/UpdateChecker";
 import { isLoggedIn, logout, isAdminRole, getBranchLock, clearBranchLock } from "./auth/auth";
 import { clearItemCache, hasCache, loadAllItemsToCache } from "./cache/itemCache";
@@ -272,6 +273,7 @@ export default function App() {
                 { key: "st-history", label: "ST History" },
                 { key: "day-end", label: "Day End" },
                 { key: "accept-stock", label: "Accept Stock" },
+                { key: "sales-return", label: "Sales Return" },
                 ...(hasWB ? [{ key: "weigh-bridge", label: "Weigh Bridge" }] : []),
                 ...(hasPhysicalStock ? [{ key: "physical-stock", label: "Physical Stock" }] : []),
                 {
@@ -367,6 +369,7 @@ export default function App() {
           {activePage === "st-history" && <StockTransferHistoryPage onClose={() => setActivePage("pos")} />}
           {activePage === "day-end" && <DayEndPage pendingDate={dayEndBlock} />}
           {activePage === "accept-stock" && <AcceptStockPage onClose={() => setActivePage("pos")} />}
+          {activePage === "sales-return" && <SalesReturnPage selectedBranchCode={selectedBranchCode} onClose={() => setActivePage("pos")} />}
           {activePage === "weigh-bridge" && hasWB && <WeighBridgePage />}
           {activePage === "physical-stock" && hasPhysicalStock && <PhysicalStockPage roles={roles} onClose={() => setActivePage("pos")} />}
           {activePage === "salesman-report" && isDayEndDone && <SalesmanReportPage selectedBranchCode={selectedBranchCode} />}
