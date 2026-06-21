@@ -30,6 +30,7 @@ import { useNavigate } from "react-router-dom";
 const StockTransferOutReport = () => {
   const [fromBranch, setFromBranch] = useState("ALL");
   const [toBranch, setToBranch] = useState("ALL");
+  const [reasonCode, setReasonCode] = useState("ALL");
   const [branches, setBranches] = useState([]);
     const [branch, setBranch] = useState("");
 
@@ -122,6 +123,7 @@ if (from === "ALL" && to === "ALL") {
         toBranch: to,
         fromDate,
         toDate,
+        reasonCode,
       });
 
       const response = await fetch(
@@ -248,6 +250,24 @@ const handleRowClick = (row) => {
         </FormControl>
       </Box>
 
+      {/* Reason Code filter */}
+      <Box sx={{ mb: 2 }}>
+        <FormControl sx={{ minWidth: 280 }}>
+          <InputLabel id="reason-code-label">Reason Code</InputLabel>
+          <Select
+            labelId="reason-code-label"
+            value={reasonCode}
+            label="Reason Code"
+            onChange={(e) => setReasonCode(e.target.value)}
+          >
+            <MenuItem value="ALL">ALL</MenuItem>
+            <MenuItem value="NORMAL DC">1. NORMAL DC</MenuItem>
+            <MenuItem value="EXPIRY AND DEFECT RETURN">2. EXPIRY AND DEFECT RETURN</MenuItem>
+            <MenuItem value="DC MISTAKE">3. DC MISTAKE</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
       {/* Dates */}
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
         <TextField
@@ -324,6 +344,7 @@ const handleRowClick = (row) => {
               <TableCell>Voucher Date</TableCell>
               <TableCell>From Branch</TableCell>
               <TableCell>To Branch</TableCell>
+              <TableCell>Reason Code</TableCell>
               <TableCell>Item Name</TableCell>
               <TableCell align="right">Qty</TableCell>
               <TableCell align="right">Rate</TableCell>
@@ -342,6 +363,7 @@ const handleRowClick = (row) => {
                 <TableCell>{row.voucherDate}</TableCell>
                 <TableCell>{row.branchCode}</TableCell>
                 <TableCell>{row.toBranchCode}</TableCell>
+                <TableCell>{row.reasonCode || "NORMAL DC"}</TableCell>
                 <TableCell>{row.itemName}</TableCell>
                 <TableCell align="right">{row.qty}</TableCell>
                 <TableCell align="right">{row.rate}</TableCell>
@@ -351,7 +373,7 @@ const handleRowClick = (row) => {
 
             {/* Totals row */}
             <TableRow>
-              <TableCell colSpan={5} sx={{ fontWeight: "bold" }}>
+              <TableCell colSpan={6} sx={{ fontWeight: "bold" }}>
                 Total
               </TableCell>
               <TableCell align="right" sx={{ fontWeight: "bold" }}>

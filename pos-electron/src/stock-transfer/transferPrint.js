@@ -12,7 +12,7 @@ export function buildTransferHtml({
   fromBranch, fromBranchName, fromBranchGst, fromBranchState, fromBranchAddress,
   toBranchCode, toBranchName, toBranchGst, toBranchState,
   deliveryLocation, deliveryAddress1, deliveryAddress2,
-  voucherNumber, voucherDate,
+  voucherNumber, voucherDate, reasonCode,
   items, totalAmount, totalQty,
 }) {
   const e = escapeHtml;
@@ -50,6 +50,7 @@ export function buildTransferHtml({
       <div class="meta">
         <span><b>Voucher No:</b> ${e(voucherNumber || "")}</span>
         <span><b>Date:</b> ${e(voucherDate ? voucherDate.slice(0, 10) : "")}</span>
+        ${reasonCode && reasonCode !== "NORMAL DC" ? `<span><b>Reason:</b> ${e(reasonCode)}</span>` : ""}
       </div>
       <div class="grid">
         <div class="box">
@@ -131,6 +132,7 @@ export function buildTransferHtml({
     <span>Voucher: ${e(voucherNumber || "")}</span>
     <span>${e(voucherDate ? voucherDate.slice(0, 10) : "")}</span>
   </div>
+  ${reasonCode && reasonCode !== "NORMAL DC" ? `<div class="meta"><span>Reason: ${e(reasonCode)}</span></div>` : ""}
   <hr class="dash"/>
   <div class="section-title">From: ${e(fromBranch)}${fromBranchName ? " " + e(fromBranchName) : ""}</div>
   ${fromBranchGst ? `<div class="addr">GST: ${e(fromBranchGst)}</div>` : ""}
