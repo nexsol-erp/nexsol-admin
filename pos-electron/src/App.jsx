@@ -29,7 +29,7 @@ function getRoles() {
 
 function checkDayEndDone(branchCode) {
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayIST();
     const records = JSON.parse(localStorage.getItem("day_end_records") || "[]");
     return records.some((r) => r.dateKey === today && r.branchCode === branchCode);
   } catch { return false; }
