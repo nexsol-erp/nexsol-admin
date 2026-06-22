@@ -18,6 +18,95 @@ export function buildTransferHtml({
   const e = escapeHtml;
   const toAddr = [deliveryLocation, deliveryAddress1, deliveryAddress2].filter(Boolean).join(", ");
 
+  // Build tax-rate-wise summary (amounts are GST-inclusive; back-calculate taxable/tax)
+  const taxMap = {};
+  items.forEach((r) => {
+    const rate = Number(r.tax_rate || 0);
+    const amt  = Number(r.amount  || 0);
+    if (!taxMap[rate]) taxMap[rate] = 0;
+    taxMap[rate] += amt;
+  });
+  const taxSummary = Object.entries(taxMap)
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .map(([rate, totalAmt]) => {
+      const rt      = Number(rate);
+      const taxable = totalAmt * 100 / (100 + rt);
+      const tax     = totalAmt * rt  / (100 + rt);
+      return { rate: rt, taxable, cgst: tax / 2, sgst: tax / 2, totalTax: tax, amount: totalAmt };
+    });
+  const taxTotal = taxSummary.reduce(
+    (acc, r) => ({
+      taxable:  acc.taxable  + r.taxable,
+      cgst:     acc.cgst     + r.cgst,
+      sgst:     acc.sgst     + r.sgst,
+      totalTax: acc.totalTax + r.totalTax,
+      amount:   acc.amount   + r.amount,
+    }),
+    { taxable: 0, cgst: 0, sgst: 0, totalTax: 0, amount: 0 }
+  );
+
+  // Helper: <td> with border, optional alignment and bold
+  const td = (val, align = "right", bold = false) =>
+    `<td style="padding:4px 6px;border:1px solid #ccc;text-align:${align};${bold ? "font-weight:bold;" : ""}">${Number(val).toFixed(2)}</td>`;
+
+  const taxSummaryA4 = `
+    <div style="margin-top:16px;">
+      <div style="font-weight:bold;font-size:12px;margin-bottom:4px;border-bottom:2px solid #999;padding-bottom:3px;">GST / Tax Summary</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;">
+        <thead>
+          <tr style="background:#f0f0f0;">
+            <th style="padding:4px 6px;border:1px solid #ccc;text-align:left;">GST Rate%</th>
+            <th style="padding:4px 6px;border:1px solid #ccc;text-align:right;">Taxable Value</th>
+            <th style="padding:4px 6px;border:1px solid #ccc;text-align:right;">CGST</th>
+            <th style="padding:4px 6px;border:1px solid #ccc;text-align:right;">SGST</th>
+            <th style="padding:4px 6px;border:1px solid #ccc;text-align:right;">Total Tax</th>
+            <th style="padding:4px 6px;border:1px solid #ccc;text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${taxSummary.map((r) => `
+            <tr>
+              <td style="padding:4px 6px;border:1px solid #ccc;">${r.rate.toFixed(2)}%</td>
+              ${td(r.taxable)}${td(r.cgst)}${td(r.sgst)}${td(r.totalTax)}${td(r.amount)}
+            </tr>`).join("")}
+          <tr style="background:#f0f0f0;">
+            <td style="padding:4px 6px;border:1px solid #ccc;font-weight:bold;">TOTAL</td>
+            ${td(taxTotal.taxable, "right", true)}${td(taxTotal.cgst, "right", true)}${td(taxTotal.sgst, "right", true)}${td(taxTotal.totalTax, "right", true)}${td(taxTotal.amount, "right", true)}
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+
+  const taxSummaryThermal = `
+    <hr class="dash"/>
+    <div class="section-title">GST Summary</div>
+    <table class="t" style="font-size:9px;margin-top:2px;">
+      <thead><tr>
+        <th>Rate%</th>
+        <th class="num">Taxable</th>
+        <th class="num">CGST</th>
+        <th class="num">SGST</th>
+        <th class="num">Tax</th>
+      </tr></thead>
+      <tbody>
+        ${taxSummary.map((r) => `
+          <tr>
+            <td>${r.rate.toFixed(2)}%</td>
+            <td class="num">${r.taxable.toFixed(2)}</td>
+            <td class="num">${r.cgst.toFixed(2)}</td>
+            <td class="num">${r.sgst.toFixed(2)}</td>
+            <td class="num">${r.totalTax.toFixed(2)}</td>
+          </tr>`).join("")}
+        <tr style="font-weight:bold;border-top:1px dashed #000;">
+          <td>TOTAL</td>
+          <td class="num">${taxTotal.taxable.toFixed(2)}</td>
+          <td class="num">${taxTotal.cgst.toFixed(2)}</td>
+          <td class="num">${taxTotal.sgst.toFixed(2)}</td>
+          <td class="num">${taxTotal.totalTax.toFixed(2)}</td>
+        </tr>
+      </tbody>
+    </table>`;
+
   if (printMode === "a4") {
     const rows = items.map((r, i) => `
       <tr>
@@ -82,6 +171,7 @@ export function buildTransferHtml({
         <span>Total Qty: ${Number(totalQty || 0).toFixed(2)}</span>
         <span>Total Amount: ${Number(totalAmount || 0).toFixed(2)}</span>
       </div>
+      ${taxSummaryA4}
     </body></html>`;
   }
 
@@ -156,6 +246,7 @@ export function buildTransferHtml({
   <hr class="dash"/>
   <div class="total-line"><span>Total Qty</span><span>${Number(totalQty || 0).toFixed(2)}</span></div>
   <div class="total-line"><span>Total Amount</span><span>${Number(totalAmount || 0).toFixed(2)}</span></div>
+  ${taxSummaryThermal}
   <hr class="solid"/>
   <div class="footer">*** End of Stock Transfer ***</div>
   <br/><br/>
