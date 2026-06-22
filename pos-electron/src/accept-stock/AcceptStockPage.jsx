@@ -1,9 +1,7 @@
 import React, { useMemo, useState } from "react";
-import { Button, Input, Space, Table, Typography, message } from "antd";
+import { Table, message } from "antd";
 import { apiUrl } from "../utils/apiUrl";
 import { applyStockReceiptToCache } from "../cache/itemCache";
-
-const { Title, Text } = Typography;
 
 function toNum(v) {
   const n = Number(v);
@@ -69,14 +67,8 @@ export default function AcceptStockPage({ onClose }) {
   );
 
   const fetchStockTransfer = async () => {
-    if (!tenantId || !token) {
-      message.error("Missing login session. Please login again.");
-      return;
-    }
-    if (!branchCode) {
-      message.warning("Please select branch in POS first.");
-      return;
-    }
+    if (!tenantId || !token) { message.error("Missing login session. Please login again."); return; }
+    if (!branchCode) { message.warning("Please select branch in POS first."); return; }
 
     try {
       setLoading(true);
@@ -90,15 +82,9 @@ export default function AcceptStockPage({ onClose }) {
       for (const url of urls) {
         const res = await fetch(url, {
           method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         });
-        if (res.ok) {
-          result = await res.json();
-          break;
-        }
+        if (res.ok) { result = await res.json(); break; }
         const t = await res.text().catch(() => "");
         lastErr = `${res.status} ${t || res.statusText}`;
         if (res.status !== 404) break;
@@ -129,10 +115,7 @@ export default function AcceptStockPage({ onClose }) {
       return;
     }
 
-    if (!tenantId || !token) {
-      message.error("Missing login session. Please login again.");
-      return;
-    }
+    if (!tenantId || !token) { message.error("Missing login session. Please login again."); return; }
 
     try {
       setDetailLoading(true);
@@ -147,15 +130,9 @@ export default function AcceptStockPage({ onClose }) {
       for (const url of urls) {
         const res = await fetch(url, {
           method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         });
-        if (res.ok) {
-          result = await res.json();
-          break;
-        }
+        if (res.ok) { result = await res.json(); break; }
         const t = await res.text().catch(() => "");
         lastErr = `${res.status} ${t || res.statusText}`;
         if (res.status !== 404) break;
@@ -165,13 +142,10 @@ export default function AcceptStockPage({ onClose }) {
 
       const rawDetails = Array.isArray(result)
         ? result
-        : Array.isArray(result?.data)
-          ? result.data
-          : Array.isArray(result?.details)
-            ? result.details
-            : Array.isArray(result?.content)
-              ? result.content
-              : [];
+        : Array.isArray(result?.data)   ? result.data
+        : Array.isArray(result?.details) ? result.details
+        : Array.isArray(result?.content) ? result.content
+        : [];
 
       setDetailRows(rawDetails.map((x) => normalizeDetail(x, record.id)));
     } catch (e) {
@@ -183,31 +157,19 @@ export default function AcceptStockPage({ onClose }) {
   };
 
   const saveAcceptStock = async () => {
-    if (!selectedHeaderId) {
-      message.warning("Select a stock transfer row first.");
-      return;
-    }
-    if (!tenantId || !token) {
-      message.error("Missing login session. Please login again.");
-      return;
-    }
+    if (!selectedHeaderId) { message.warning("Select a stock transfer row first."); return; }
+    if (!tenantId || !token) { message.error("Missing login session. Please login again."); return; }
 
     const header = headers.find((h) => h.id === selectedHeaderId);
-    if (!header) {
-      message.warning("Selected transfer not found.");
-      return;
-    }
+    if (!header) { message.warning("Selected transfer not found."); return; }
 
-    const body = {
-      outHdrId: header.id,
-      remarks: "Accept Stock",
-    };
+    const body = { outHdrId: header.id, remarks: "Accept Stock" };
 
     try {
       setSaving(true);
       const urls = [
         { method: "POST", url: apiUrl(`/api/${tenantId}/stock-transfer/accept`) },
-        { method: "PUT", url: apiUrl(`/api/${tenantId}/stock-transfer/${encodeURIComponent(header.id)}/accept`) },
+        { method: "PUT",  url: apiUrl(`/api/${tenantId}/stock-transfer/${encodeURIComponent(header.id)}/accept`) },
       ];
 
       let ok = false;
@@ -215,16 +177,10 @@ export default function AcceptStockPage({ onClose }) {
       for (const x of urls) {
         const res = await fetch(x.url, {
           method: x.method,
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
-        if (res.ok) {
-          ok = true;
-          break;
-        }
+        if (res.ok) { ok = true; break; }
         const t = await res.text().catch(() => "");
         lastErr = `${res.status} ${t || res.statusText}`;
         if (res.status !== 404) break;
@@ -247,71 +203,155 @@ export default function AcceptStockPage({ onClose }) {
   };
 
   const hdrColumns = [
-    { title: "From Branch", dataIndex: "from_branch_code", width: 120 },
-    { title: "Voucher Number", dataIndex: "voucher_number", width: 140 },
-    { title: "Source Voucher", dataIndex: "source_voucher_number", width: 140 },
-    { title: "Source Date", dataIndex: "source_voucher_date", width: 150 },
-    { title: "Voucher Date", dataIndex: "voucher_date", width: 150 },
-    { title: "ID", dataIndex: "id", width: 220 },
+    { title: "From Branch",    dataIndex: "from_branch_code",      width: 120 },
+    { title: "Voucher No",     dataIndex: "voucher_number",         width: 140 },
+    { title: "Source Voucher", dataIndex: "source_voucher_number",  width: 140 },
+    { title: "Source Date",    dataIndex: "source_voucher_date",    width: 120,
+      render: (v) => v ? v.slice(0, 10) : "" },
+    { title: "Voucher Date",   dataIndex: "voucher_date",           width: 150,
+      render: (v) => v ? v.slice(0, 16).replace("T", " ") : "" },
   ];
 
   const dtlColumns = [
-    { title: "Item", dataIndex: "item_name", width: 220 },
-    { title: "Qty", dataIndex: "qty", width: 90, render: (v) => toNum(v).toFixed(2) },
-    { title: "Barcode", dataIndex: "barcode", width: 140 },
-    { title: "MRP", dataIndex: "standard_price", width: 100, render: (v) => toNum(v).toFixed(2) },
-    { title: "Batch", dataIndex: "batch", width: 120 },
-    { title: "Amount", dataIndex: "amount", width: 110, render: (v) => toNum(v).toFixed(2) },
-    { title: "Tax%", dataIndex: "tax_rate", width: 80 },
-    { title: "Unit", dataIndex: "unit", width: 80 },
-    { title: "Expiry", dataIndex: "expiry", width: 140 },
+    { title: "Item",   dataIndex: "item_name",      width: 220,
+      render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
+    { title: "Qty",    dataIndex: "qty",             width: 80,
+      render: (v) => toNum(v).toFixed(2) },
+    { title: "MRP",    dataIndex: "standard_price",  width: 90,
+      render: (v) => toNum(v).toFixed(2) },
+    { title: "Tax%",   dataIndex: "tax_rate",        width: 70 },
+    { title: "Amount", dataIndex: "amount",          width: 100,
+      render: (v) => toNum(v).toFixed(2) },
+    { title: "Barcode", dataIndex: "barcode",        width: 140 },
+    { title: "Batch",  dataIndex: "batch",           width: 120 },
+    { title: "Unit",   dataIndex: "unit",            width: 80 },
+    { title: "Expiry", dataIndex: "expiry",          width: 140 },
   ];
 
+  const selectedHeader = headers.find((h) => h.id === selectedHeaderId);
+
+  const btnBase = {
+    height: 28, fontSize: 12, fontWeight: "bold",
+    border: "2px outset #9c4dcc", cursor: "pointer", color: "#000",
+    padding: "0 12px",
+  };
+
   return (
-    <div style={{ padding: 8 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <Title level={3} style={{ margin: 0, color: "#0b3a75" }}>
-          Accept Stock
-        </Title>
-        <Space>
-          <Text style={{ color: "#374151" }}>Branch:</Text>
-          <Text strong style={{ color: "#1f2937" }}>{branchCode || "-"}</Text>
-          <Button onClick={fetchStockTransfer} loading={loading}>Fetch Stock Transfer</Button>
-          <Button onClick={onClose}>Close</Button>
-          <Button type="primary" onClick={saveAcceptStock} loading={saving}>Save</Button>
-          <Text strong style={{ color: "#374151" }}>Total Amount</Text>
-          <Input value={totalAmount.toFixed(2)} readOnly style={{ width: 120 }} />
-          <Text strong style={{ color: "#374151" }}>Total Qty</Text>
-          <Input value={totalQty.toFixed(2)} readOnly style={{ width: 100 }} />
-        </Space>
+    <div className="pos-container">
+
+      {/* ── Title bar ── */}
+      <div style={{
+        background: "#4a148c", color: "#fff", padding: "3px 10px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        fontSize: 13, fontWeight: "bold", flexShrink: 0,
+      }}>
+        <span>Accept Stock{branchCode ? ` — ${branchCode}` : ""}</span>
+        <button
+          onClick={onClose}
+          style={{ ...btnBase, background: "#c4b8d0", border: "2px outset #9c4dcc" }}
+        >
+          Close
+        </button>
       </div>
 
-      <div style={{ display: "flex", gap: 10 }}>
-        <div style={{ flex: 1 }}>
-          <Table
-            size="small"
-            dataSource={headers}
-            columns={hdrColumns}
-            pagination={false}
-            rowKey="id"
-            scroll={{ x: 920, y: 420 }}
-            rowClassName={(r) => (r.id === selectedHeaderId ? "ant-table-row-selected" : "")}
-            onRow={(record) => ({
-              onClick: () => selectHeader(record),
-            })}
-          />
+      {/* ── Action bar ── */}
+      <div style={{
+        background: "#7b1fa2", padding: "5px 10px",
+        display: "flex", alignItems: "center", gap: 10, flexShrink: 0, flexWrap: "wrap",
+      }}>
+        <button
+          onClick={fetchStockTransfer}
+          disabled={loading}
+          style={{ ...btnBase, background: loading ? "#c4b8d0" : "#ffc8ff", cursor: loading ? "not-allowed" : "pointer" }}
+        >
+          {loading ? "Loading…" : "Fetch"}
+        </button>
+        <button
+          onClick={saveAcceptStock}
+          disabled={saving || !selectedHeaderId}
+          style={{
+            ...btnBase,
+            background: saving || !selectedHeaderId ? "#c4b8d0" : "#d4edda",
+            cursor: saving || !selectedHeaderId ? "not-allowed" : "pointer",
+          }}
+        >
+          {saving ? "Saving…" : "Accept"}
+        </button>
+      </div>
+
+      {/* ── Main body ── */}
+      <div style={{
+        flex: 1, display: "flex", gap: 8, padding: "8px",
+        background: "#d8cce8", overflow: "hidden", minHeight: 0,
+      }}>
+
+        {/* Pending transfers panel */}
+        <div style={{
+          flex: 1, display: "flex", flexDirection: "column",
+          border: "1px solid #9c4dcc", background: "#c8b8d8",
+        }}>
+          <div style={{
+            background: "#4a148c", color: "#fff", fontSize: 11, fontWeight: "bold",
+            padding: "3px 8px", borderBottom: "1px solid #9c4dcc",
+          }}>
+            Pending Transfers ({headers.length})
+          </div>
+          <div style={{ flex: 1, overflow: "hidden" }}>
+            <Table
+              className="qt-as-table"
+              size="small"
+              dataSource={headers}
+              columns={hdrColumns}
+              pagination={false}
+              rowKey="id"
+              scroll={{ x: 680, y: "calc(100vh - 200px)" }}
+              rowClassName={(r) => r.id === selectedHeaderId ? "as-row-selected" : ""}
+              onRow={(record) => ({
+                onClick: () => selectHeader(record),
+                style: { cursor: "pointer" },
+              })}
+            />
+          </div>
         </div>
-        <div style={{ flex: 1.5 }}>
-          <Table
-            size="small"
-            dataSource={detailRows}
-            columns={dtlColumns}
-            loading={detailLoading}
-            pagination={false}
-            rowKey="key"
-            scroll={{ x: 1200, y: 420 }}
-          />
+
+        {/* Lines panel */}
+        <div style={{
+          flex: 1.5, display: "flex", flexDirection: "column",
+          border: "1px solid #9c4dcc", background: "#c8b8d8",
+        }}>
+          <div style={{
+            background: "#4a148c", color: "#fff", fontSize: 11, fontWeight: "bold",
+            padding: "3px 8px", borderBottom: "1px solid #9c4dcc",
+          }}>
+            {selectedHeader
+              ? `Lines — ${selectedHeader.voucher_number}  (from ${selectedHeader.from_branch_code})`
+              : "Lines — select a transfer"}
+          </div>
+          <div style={{ flex: 1, overflow: "hidden" }}>
+            <Table
+              className="qt-as-table"
+              size="small"
+              dataSource={detailRows}
+              columns={dtlColumns}
+              loading={detailLoading}
+              pagination={false}
+              rowKey="key"
+              scroll={{ x: 970, y: "calc(100vh - 200px)" }}
+            />
+          </div>
+          {selectedHeader && (
+            <div style={{
+              background: "#6a1b9a", color: "#fff",
+              display: "flex", justifyContent: "flex-end", gap: 30,
+              padding: "4px 12px", fontSize: 12, fontWeight: "bold",
+              borderTop: "1px solid #9c4dcc",
+            }}>
+              <span>Total Qty: {totalQty.toFixed(2)}</span>
+              <span>Total Amount: {totalAmount.toFixed(2)}</span>
+            </div>
+          )}
         </div>
+
       </div>
     </div>
   );
