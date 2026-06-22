@@ -48,6 +48,7 @@ import {
   ModeNightRounded,
   Refresh,
   Pages,
+  AccountBalance,
 } from "@mui/icons-material";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -402,6 +403,34 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         { menuKey: "Stock Transfer In Report", label: t("Stock Transfer In Report"), link: "/stocktransfer-in-report", roles: ["admin", "franchiseeuser", "user"] },
         { menuKey: "Item Transfer Report", label: t("Item Transfer Report"), link: "/item-transfer-report", roles: ["admin", "manager", "user", "franchiseeuser"] },
         { menuKey: "Salesman Report", label: t("Salesman Report"), link: "/salesman-report", roles: ["admin", "manager", "user"] },
+      ],
+    },
+    {
+      menuKey: "Accounting",
+      label: t("Accounting"),
+      icon: <AccountBalance />,
+      link: "",
+      roles: ["admin", "manager"],
+      hasSubmenu: true,
+      submenu: [
+        { menuKey: "Receipt Entry",          label: t("Receipt Entry"),          link: "/accounting/receipt-entry",        roles: ["admin", "manager"] },
+        { menuKey: "Payment Entry",          label: t("Payment Entry"),          link: "/accounting/payment-entry",        roles: ["admin", "manager"] },
+        { menuKey: "Trial Balance",          label: t("Trial Balance"),          link: "/accounting/trial-balance",        roles: ["admin", "manager"] },
+        { menuKey: "Ledger Statement",       label: t("Ledger Statement"),       link: "/accounting/ledger-statement",     roles: ["admin", "manager"] },
+        { menuKey: "Customer Statement",     label: t("Customer Statement"),     link: "/accounting/customer-statement",   roles: ["admin", "manager"] },
+        { menuKey: "Supplier Statement",     label: t("Supplier Statement"),     link: "/accounting/supplier-statement",   roles: ["admin", "manager"] },
+        { menuKey: "Profit & Loss",          label: t("Profit & Loss"),          link: "/accounting/profit-loss",          roles: ["admin", "manager"] },
+        { menuKey: "Balance Sheet",          label: t("Balance Sheet"),          link: "/accounting/balance-sheet",        roles: ["admin", "manager"] },
+        { menuKey: "Cash Flow",              label: t("Cash Flow"),              link: "/accounting/cash-flow",            roles: ["admin", "manager"] },
+        { menuKey: "Bank Reconciliation",    label: t("Bank Reconciliation"),    link: "/accounting/bank-reconciliation",  roles: ["admin", "manager"] },
+        { menuKey: "Inventory Ledger",       label: t("Inventory Ledger"),       link: "/accounting/inventory-ledger",     roles: ["admin", "manager"] },
+        { menuKey: "Stock Valuation",        label: t("Stock Valuation"),        link: "/accounting/stock-valuation",      roles: ["admin", "manager"] },
+        { menuKey: "Customer Aging",         label: t("Customer Aging"),         link: "/accounting/customer-aging",       roles: ["admin", "manager"] },
+        { menuKey: "Supplier Aging",         label: t("Supplier Aging"),         link: "/accounting/supplier-aging",       roles: ["admin", "manager"] },
+        { menuKey: "Inter-Branch Transfer",  label: t("Inter-Branch Transfer"),  link: "/accounting/inter-branch-transfer",roles: ["admin", "manager"] },
+        { menuKey: "Period Closing",         label: t("Period Closing"),         link: "/accounting/period-closing",       roles: ["admin"] },
+        { menuKey: "Budget Manager",         label: t("Budget Manager"),         link: "/accounting/budget-manager",       roles: ["admin", "manager"] },
+        { menuKey: "Budget vs Actual",       label: t("Budget vs Actual"),       link: "/accounting/budget-vs-actual",     roles: ["admin", "manager"] },
       ],
     },
     {

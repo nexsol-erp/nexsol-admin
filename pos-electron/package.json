@@ -50,8 +50,18 @@
     ],
     "win": {
       "target": [
-        { "target": "nsis",     "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "artifactName": "TradeLink247-POS-Setup-${version}.${ext}"
     },

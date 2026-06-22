@@ -111,6 +111,26 @@ import RoleMenuPage from "./components/RoleMenuPage";
 import RoleManagementPage from "./components/RoleManagementPage";
 import SalesmanReport from "./components/SalesmanReport";
 
+// Accounting
+import ReceiptEntry from "./components/accounting/ReceiptEntry";
+import PaymentEntry from "./components/accounting/PaymentEntry";
+import TrialBalance from "./components/accounting/TrialBalance";
+import LedgerStatement from "./components/accounting/LedgerStatement";
+import CustomerStatement from "./components/accounting/CustomerStatement";
+import SupplierStatement from "./components/accounting/SupplierStatement";
+import ProfitLoss from "./components/accounting/ProfitLoss";
+import BalanceSheet from "./components/accounting/BalanceSheet";
+import CashFlow from "./components/accounting/CashFlow";
+import BankReconciliation from "./components/accounting/BankReconciliation";
+import InventoryLedger from "./components/accounting/InventoryLedger";
+import StockValuation from "./components/accounting/StockValuation";
+import CustomerAging from "./components/accounting/CustomerAging";
+import SupplierAging from "./components/accounting/SupplierAging";
+import InterBranchTransfer from "./components/accounting/InterBranchTransfer";
+import PeriodClosing from "./components/accounting/PeriodClosing";
+import BudgetManager from "./components/accounting/BudgetManager";
+import BudgetVsActual from "./components/accounting/BudgetVsActual";
+
 // ========================
 // ORDERED MENU ROUTE MAP  (mirrors Sidebar menuItems order)
 // ========================
@@ -189,6 +209,25 @@ const ROUTE_ORDER = [
   { key: "Stock Transfer In Report",         path: "/stocktransfer-in-report" },
   { key: "Item Transfer Report",             path: "/item-transfer-report" },
   { key: "Salesman Report",                  path: "/salesman-report" },
+  // Accounting
+  { key: "Receipt Entry",                   path: "/accounting/receipt-entry" },
+  { key: "Payment Entry",                   path: "/accounting/payment-entry" },
+  { key: "Trial Balance",                   path: "/accounting/trial-balance" },
+  { key: "Ledger Statement",                path: "/accounting/ledger-statement" },
+  { key: "Customer Statement",              path: "/accounting/customer-statement" },
+  { key: "Supplier Statement",              path: "/accounting/supplier-statement" },
+  { key: "Profit & Loss",                   path: "/accounting/profit-loss" },
+  { key: "Balance Sheet",                   path: "/accounting/balance-sheet" },
+  { key: "Cash Flow",                       path: "/accounting/cash-flow" },
+  { key: "Bank Reconciliation",             path: "/accounting/bank-reconciliation" },
+  { key: "Inventory Ledger",                path: "/accounting/inventory-ledger" },
+  { key: "Stock Valuation",                 path: "/accounting/stock-valuation" },
+  { key: "Customer Aging",                  path: "/accounting/customer-aging" },
+  { key: "Supplier Aging",                  path: "/accounting/supplier-aging" },
+  { key: "Inter-Branch Transfer",           path: "/accounting/inter-branch-transfer" },
+  { key: "Period Closing",                  path: "/accounting/period-closing" },
+  { key: "Budget Manager",                  path: "/accounting/budget-manager" },
+  { key: "Budget vs Actual",                path: "/accounting/budget-vs-actual" },
   { key: "Download",                         path: "/download" },
   { key: "Upload",                           path: "/uploadpage" },
   { key: "Invoice Designer",                 path: "/invoicedesigner" },
@@ -381,7 +420,25 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/refund-policy" element={<RefundPolicyPage />} />
 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
 
-
+            {/* Accounting */}
+            <Route path="/accounting/receipt-entry" element={<ReceiptEntry />} />
+            <Route path="/accounting/payment-entry" element={<PaymentEntry />} />
+            <Route path="/accounting/trial-balance" element={<TrialBalance />} />
+            <Route path="/accounting/ledger-statement" element={<LedgerStatement />} />
+            <Route path="/accounting/customer-statement" element={<CustomerStatement />} />
+            <Route path="/accounting/supplier-statement" element={<SupplierStatement />} />
+            <Route path="/accounting/profit-loss" element={<ProfitLoss />} />
+            <Route path="/accounting/balance-sheet" element={<BalanceSheet />} />
+            <Route path="/accounting/cash-flow" element={<CashFlow />} />
+            <Route path="/accounting/bank-reconciliation" element={<BankReconciliation />} />
+            <Route path="/accounting/inventory-ledger" element={<InventoryLedger />} />
+            <Route path="/accounting/stock-valuation" element={<StockValuation />} />
+            <Route path="/accounting/customer-aging" element={<CustomerAging />} />
+            <Route path="/accounting/supplier-aging" element={<SupplierAging />} />
+            <Route path="/accounting/inter-branch-transfer" element={<InterBranchTransfer />} />
+            <Route path="/accounting/period-closing" element={<PeriodClosing />} />
+            <Route path="/accounting/budget-manager" element={<BudgetManager />} />
+            <Route path="/accounting/budget-vs-actual" element={<BudgetVsActual />} />
 
           </Routes>
         </WebSocketProvider>
