@@ -1,15 +1,10 @@
 import React, { useState, useCallback } from "react";
-import {
-  Button, Input, InputNumber, Table, Typography,
-  Space, Tag, message, Tabs, DatePicker,
-} from "antd";
+import { DatePicker, InputNumber, Table, message } from "antd";
 import dayjs from "dayjs";
 import ItemLookupModal from "../components/ItemLookupModal";
 import { apiUrl } from "../utils/apiUrl";
 import { log, error as logError } from "../utils/logger";
 import { applyPhysicalStockToCache } from "../cache/itemCache";
-
-const { Title, Text } = Typography;
 
 function r2(v) { return Math.round((Number(v) || 0) * 100) / 100; }
 
@@ -17,22 +12,21 @@ export default function PhysicalStockPage({ onClose, roles = [] }) {
   const tenantId   = localStorage.getItem("tenancyId") || "";
   const branchCode = localStorage.getItem("selectedBranchCode") || "";
   const token      = localStorage.getItem("jwtToken") || "";
-  const headers    = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const hdrs       = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
   const canReduce = roles.includes("PHYSICAL_STOCK_REDUCE");
 
-  // ── Entry state ──────────────────────────────────────────────────────────
-  const [items, setItems]           = useState([]);
-  const [lookupOpen, setLookupOpen] = useState(false);
-  const [itemQuery, setItemQuery]   = useState("");
-  const [saving, setSaving]         = useState(false);
-  const [lastVoucher, setLastVoucher] = useState("");
+  const [activeTab, setActiveTab]       = useState("entry");
+  const [items, setItems]               = useState([]);
+  const [lookupOpen, setLookupOpen]     = useState(false);
+  const [itemQuery, setItemQuery]       = useState("");
+  const [saving, setSaving]             = useState(false);
+  const [lastVoucher, setLastVoucher]   = useState("");
 
-  // ── History state ────────────────────────────────────────────────────────
-  const [fromDate, setFromDate]     = useState(dayjs().startOf("month"));
-  const [toDate, setToDate]         = useState(dayjs());
-  const [historyRows, setHistoryRows] = useState([]);
-  const [histLoading, setHistLoading] = useState(false);
+  const [fromDate, setFromDate]         = useState(dayjs().startOf("month"));
+  const [toDate, setToDate]             = useState(dayjs());
+  const [historyRows, setHistoryRows]   = useState([]);
+  const [histLoading, setHistLoading]   = useState(false);
 
   const updateRow = (key, patch) => {
     setItems((prev) => prev.map((r) => {
@@ -108,7 +102,7 @@ export default function PhysicalStockPage({ onClose, roles = [] }) {
       };
       log("physical-stock save:", JSON.stringify(body));
       const res = await fetch(apiUrl(`/api/${tenantId}/physical-stock`), {
-        method: "POST", headers, body: JSON.stringify(body),
+        method: "POST", headers: hdrs, body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
@@ -149,10 +143,11 @@ export default function PhysicalStockPage({ onClose, roles = [] }) {
   const totalAmount = items.reduce((s, r) => s + (r.amount || 0), 0);
 
   const entryColumns = [
-    { title: "Item", dataIndex: "item_name", width: 220 },
-    { title: "Barcode", dataIndex: "barcode", width: 120 },
+    { title: "Item",        dataIndex: "item_name",     width: 220,
+      render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
+    { title: "Barcode",     dataIndex: "barcode",       width: 120 },
     {
-      title: "Physical Qty *", dataIndex: "qty", width: 110,
+      title: "Physical Qty", dataIndex: "qty",          width: 120,
       render: (_, row) => (
         <InputNumber
           min={0} value={row.qty} style={{ width: "100%" }}
@@ -160,8 +155,10 @@ export default function PhysicalStockPage({ onClose, roles = [] }) {
         />
       ),
     },
+    { title: "Curr Stock",  dataIndex: "current_stock", width: 90,
+      render: (v) => <span style={{ color: "#444" }}>{Number(v || 0).toFixed(2)}</span> },
     {
-      title: "Rate", dataIndex: "rate", width: 100,
+      title: "Rate",        dataIndex: "rate",          width: 100,
       render: (_, row) => (
         <InputNumber
           min={0} value={row.rate} style={{ width: "100%" }}
@@ -169,137 +166,243 @@ export default function PhysicalStockPage({ onClose, roles = [] }) {
         />
       ),
     },
-    { title: "Tax%", dataIndex: "tax_rate", width: 60 },
-    { title: "Amount", dataIndex: "amount", width: 100, render: (v) => r2(v).toFixed(2) },
-    { title: "Unit", dataIndex: "unit", width: 70 },
-    { title: "Batch", dataIndex: "batch", width: 90 },
+    { title: "Tax%",        dataIndex: "tax_rate",      width: 60 },
+    { title: "Amount",      dataIndex: "amount",        width: 100,
+      render: (v) => r2(v).toFixed(2) },
+    { title: "Unit",        dataIndex: "unit",          width: 70 },
+    { title: "Batch",       dataIndex: "batch",         width: 90 },
     {
-      title: "", key: "del", width: 50,
+      title: "", key: "del", width: 40,
       render: (_, row) => (
-        <Button danger size="small" onClick={() => setItems((p) => p.filter((x) => x.key !== row.key))}>✕</Button>
+        <button
+          onClick={() => setItems((p) => p.filter((x) => x.key !== row.key))}
+          style={{
+            background: "#ffcccc", border: "2px outset #cc6666",
+            color: "#800000", fontWeight: "bold", fontSize: 12,
+            cursor: "pointer", width: 28, height: 22, padding: 0,
+          }}
+        >✕</button>
       ),
     },
   ];
 
   const histColumns = [
-    { title: "Item", dataIndex: "itemName", width: 200 },
-    { title: "Barcode", dataIndex: "barcode", width: 120 },
-    { title: "Qty In", dataIndex: "qtyIn", width: 80, render: (v) => Number(v || 0).toFixed(2) },
-    { title: "Rate", dataIndex: "rate", width: 90, render: (v) => Number(v || 0).toFixed(2) },
+    { title: "Item",    dataIndex: "itemName",      width: 200,
+      render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
+    { title: "Barcode", dataIndex: "barcode",       width: 120 },
+    { title: "Qty In",  dataIndex: "qtyIn",         width: 80,
+      render: (v) => Number(v || 0).toFixed(2) },
+    { title: "Rate",    dataIndex: "rate",          width: 90,
+      render: (v) => Number(v || 0).toFixed(2) },
     { title: "Voucher", dataIndex: "voucherNumber", width: 140 },
-    { title: "Date", dataIndex: "voucherDate", width: 150,
+    { title: "Date",    dataIndex: "voucherDate",   width: 150,
       render: (v) => v ? new Date(v).toLocaleString("en-IN") : "—" },
-    { title: "Unit", dataIndex: "unitName", width: 70 },
-    { title: "Store", dataIndex: "store", width: 70 },
+    { title: "Unit",    dataIndex: "unitName",      width: 70 },
+    { title: "Store",   dataIndex: "store",         width: 70 },
   ];
 
+  const btnBase = {
+    height: 28, fontSize: 12, fontWeight: "bold",
+    border: "2px outset #5080b0", cursor: "pointer", color: "#000",
+    padding: "0 12px",
+  };
+
+  const tabStyle = (tab) => ({
+    ...btnBase,
+    background: activeTab === tab ? "#dceaf8" : "#5b8ec0",
+    color: activeTab === tab ? "#0d47a1" : "#fff",
+    fontWeight: "bold",
+    border: activeTab === tab ? "2px inset #5080b0" : "2px outset #5080b0",
+  });
+
+  const canSave = !saving && items.length > 0;
+
   return (
-    <div style={{ padding: "12px 16px", maxWidth: 1000, margin: "0 auto" }}>
-      <style>{`.ps-error-row td { background: #fff1f0 !important; border-left: 3px solid #ff4d4f !important; }`}</style>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-        <Title level={4} style={{ margin: 0, color: "#0b3a75" }}>Physical Stock Entry</Title>
-        <Space>
-          {branchCode && <Tag color="blue" style={{ fontSize: 13, padding: "2px 10px" }}>{branchCode}</Tag>}
-          {lastVoucher && <Tag color="green">Last: {lastVoucher}</Tag>}
-          {onClose && <Button onClick={onClose}>Close</Button>}
-        </Space>
+    <div className="pos-container">
+
+      {/* ── Title bar ── */}
+      <div style={{
+        background: "#0d47a1", color: "#fff", padding: "3px 10px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        fontSize: 13, fontWeight: "bold", flexShrink: 0,
+      }}>
+        <span>
+          Physical Stock Entry{branchCode ? ` — ${branchCode}` : ""}
+          {lastVoucher && (
+            <span style={{ fontSize: 11, fontWeight: "normal", marginLeft: 14, opacity: 0.85 }}>
+              Last saved: {lastVoucher}
+            </span>
+          )}
+        </span>
+        {onClose && (
+          <button
+            onClick={onClose}
+            style={{ ...btnBase, background: "#a8c0d8", border: "2px outset #5080b0" }}
+          >
+            Close
+          </button>
+        )}
       </div>
 
-      <Tabs
-        items={[
-          {
-            key: "entry",
-            label: "Entry",
-            children: (
-              <>
-                {/* Item search bar */}
-                <div style={{ marginBottom: 10 }}>
-                  <Text strong style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
-                    Scan Barcode / Search Item
-                  </Text>
-                  <Input
-                    value={itemQuery}
-                    onChange={(e) => setItemQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === "F2") {
-                        e.preventDefault();
-                        setLookupOpen(true);
-                      }
-                    }}
-                    placeholder="Type item name or scan barcode (Enter to browse)"
-                    style={{ maxWidth: 400 }}
-                    suffix={
-                      <Button size="small" type="link" onClick={() => setLookupOpen(true)}>Browse</Button>
-                    }
-                  />
-                </div>
+      {/* ── Tab / action bar ── */}
+      <div style={{
+        background: "#1565c0", padding: "5px 10px",
+        display: "flex", alignItems: "center", gap: 8, flexShrink: 0, flexWrap: "wrap",
+      }}>
+        <button onClick={() => setActiveTab("entry")}   style={tabStyle("entry")}>Entry</button>
+        <button onClick={() => setActiveTab("history")} style={tabStyle("history")}>History</button>
 
-                <Table
-                  size="small"
-                  dataSource={items}
-                  columns={entryColumns}
-                  pagination={false}
-                  rowKey="key"
-                  rowClassName={(r) => r.error ? "ps-error-row" : ""}
-                  scroll={{ x: 900, y: 340 }}
-                  locale={{ emptyText: "No items added — scan a barcode or use Browse" }}
-                />
+        <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.3)", margin: "0 4px" }} />
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-                  <Space>
-                    <Text style={{ fontSize: 12, color: "#6b7280" }}>
-                      Total Qty: <strong>{r2(totalQty).toFixed(2)}</strong>
-                      &nbsp;&nbsp;Total Amount: <strong>₹{r2(totalAmount).toFixed(2)}</strong>
-                    </Text>
-                  </Space>
-                  <Space>
-                    <Button onClick={() => setItems([])}>Clear All</Button>
-                    <Button
-                      type="primary"
-                      loading={saving}
-                      disabled={!items.length}
-                      onClick={handleSave}
-                      style={{ background: "#1b5e20", borderColor: "#1b5e20" }}
-                    >
-                      Save Physical Stock
-                    </Button>
-                  </Space>
-                </div>
-              </>
-            ),
-          },
-          {
-            key: "history",
-            label: "History",
-            children: (
-              <>
-                <Space style={{ marginBottom: 12 }}>
-                  <DatePicker
-                    value={fromDate} onChange={setFromDate}
-                    format="DD-MM-YYYY" placeholder="From date"
-                  />
-                  <DatePicker
-                    value={toDate} onChange={setToDate}
-                    format="DD-MM-YYYY" placeholder="To date"
-                  />
-                  <Button type="primary" onClick={loadHistory} loading={histLoading}>Load</Button>
-                </Space>
-                <Table
-                  size="small"
-                  dataSource={historyRows}
-                  columns={histColumns}
-                  rowKey={(r, i) => r.id || i}
-                  pagination={{ pageSize: 20 }}
-                  scroll={{ x: 900 }}
-                  loading={histLoading}
-                  locale={{ emptyText: "Select date range and click Load" }}
-                />
-              </>
-            ),
-          },
-        ]}
-      />
+        {activeTab === "entry" && (
+          <>
+            <input
+              className="ant-input item-search-input"
+              value={itemQuery}
+              onChange={(e) => setItemQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === "F2") { e.preventDefault(); setLookupOpen(true); }
+              }}
+              placeholder="Scan barcode or type item name (Enter to browse)"
+              style={{
+                width: 290, height: 26, fontSize: 12,
+                border: "1px solid #5080b0", padding: "0 6px",
+                borderRadius: 0,
+              }}
+            />
+            <button
+              onClick={() => setLookupOpen(true)}
+              style={{ ...btnBase, background: "#dceaf8" }}
+            >
+              Browse
+            </button>
+
+            <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.3)", margin: "0 4px" }} />
+
+            <button
+              onClick={() => setItems([])}
+              disabled={!items.length}
+              style={{
+                ...btnBase,
+                background: items.length ? "#ffc8ff" : "#a8c0d8",
+                cursor: items.length ? "pointer" : "not-allowed",
+              }}
+            >
+              Clear All
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!canSave}
+              style={{
+                ...btnBase,
+                background: canSave ? "#d4edda" : "#a8c0d8",
+                cursor: canSave ? "pointer" : "not-allowed",
+              }}
+            >
+              {saving ? "Saving…" : "Save Physical Stock"}
+            </button>
+          </>
+        )}
+
+        {activeTab === "history" && (
+          <>
+            <span style={{ fontSize: 11, fontWeight: "bold", color: "#dceaf8" }}>From</span>
+            <DatePicker
+              value={fromDate} onChange={setFromDate}
+              allowClear={false} format="DD-MM-YYYY" size="small"
+              style={{ borderRadius: 0, width: 120 }}
+            />
+            <span style={{ fontSize: 11, fontWeight: "bold", color: "#dceaf8" }}>To</span>
+            <DatePicker
+              value={toDate} onChange={setToDate}
+              allowClear={false} format="DD-MM-YYYY" size="small"
+              style={{ borderRadius: 0, width: 120 }}
+            />
+            <button
+              onClick={loadHistory}
+              disabled={histLoading}
+              style={{
+                ...btnBase,
+                background: histLoading ? "#a8c0d8" : "#ffc8ff",
+                cursor: histLoading ? "not-allowed" : "pointer",
+              }}
+            >
+              {histLoading ? "Loading…" : "Load"}
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* ── Body ── */}
+      <div style={{
+        flex: 1, display: "flex", flexDirection: "column", padding: "8px",
+        background: "#d8e8f8", overflow: "hidden", minHeight: 0,
+      }}>
+
+        {activeTab === "entry" && (
+          <div style={{
+            flex: 1, display: "flex", flexDirection: "column",
+            border: "1px solid #5080b0", background: "#b8cce0",
+          }}>
+            <div style={{
+              background: "#0d47a1", color: "#fff", fontSize: 11, fontWeight: "bold",
+              padding: "3px 8px", borderBottom: "1px solid #5080b0",
+            }}>
+              Items ({items.length})
+            </div>
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              <Table
+                className="qt-ps-table"
+                size="small"
+                dataSource={items}
+                columns={entryColumns}
+                pagination={false}
+                rowKey="key"
+                rowClassName={(r) => r.error ? "ps-error-row" : ""}
+                scroll={{ x: 920, y: "calc(100vh - 200px)" }}
+                locale={{ emptyText: "No items added — scan a barcode or use Browse" }}
+              />
+            </div>
+            <div style={{
+              background: "#0d47a1", color: "#fff",
+              display: "flex", justifyContent: "flex-end", gap: 30,
+              padding: "4px 12px", fontSize: 12, fontWeight: "bold",
+              borderTop: "1px solid #5080b0",
+            }}>
+              <span>Total Qty: {r2(totalQty).toFixed(2)}</span>
+              <span>Total Amount: {r2(totalAmount).toFixed(2)}</span>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "history" && (
+          <div style={{
+            flex: 1, display: "flex", flexDirection: "column",
+            border: "1px solid #5080b0", background: "#b8cce0",
+          }}>
+            <div style={{
+              background: "#0d47a1", color: "#fff", fontSize: 11, fontWeight: "bold",
+              padding: "3px 8px", borderBottom: "1px solid #5080b0",
+            }}>
+              History ({historyRows.length})
+            </div>
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              <Table
+                className="qt-ps-table"
+                size="small"
+                dataSource={historyRows}
+                columns={histColumns}
+                rowKey={(r, i) => r.id || i}
+                pagination={false}
+                scroll={{ x: 900, y: "calc(100vh - 200px)" }}
+                loading={histLoading}
+                locale={{ emptyText: "Select date range and click Load" }}
+              />
+            </div>
+          </div>
+        )}
+
+      </div>
 
       <ItemLookupModal
         open={lookupOpen}

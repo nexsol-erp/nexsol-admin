@@ -121,6 +121,183 @@ body {
   background: #c8c89a !important;
 }
 
+/* ---- Qt-style: Stock Transfer table — teal background ---- */
+.qt-st-table .ant-table-container {
+  border: 1px solid #4d8e87;
+  border-radius: 0;
+}
+.qt-st-table .ant-table {
+  background: #9dc4bf;
+}
+.qt-st-table .ant-table-thead > tr > th {
+  background: #3d7a74 !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  border-radius: 0 !important;
+  border-color: #2e6060 !important;
+  padding: 4px 6px !important;
+}
+.qt-st-table .ant-table-tbody > tr > td {
+  background: #9dc4bf !important;
+  color: #000000 !important;
+  border-color: #6ba39d !important;
+  padding: 3px 6px !important;
+}
+.qt-st-table .ant-table-tbody > tr:hover > td {
+  background: #b5d3cf !important;
+}
+.qt-st-table .ant-table-tbody > tr:focus-within > td {
+  background: #e0fff8 !important;
+}
+.qt-st-table .ant-table-cell-row-hover {
+  background: #b5d3cf !important;
+}
+.qt-st-table .st-row-selected td {
+  background: #3d7a74 !important;
+  color: #ffffff !important;
+}
+.qt-st-table .st-row-selected:hover td {
+  background: #2e6060 !important;
+  color: #ffffff !important;
+}
+
+/* ---- Qt-style: Accept Stock table — purple background ---- */
+.qt-as-table .ant-table-container {
+  border: 1px solid #9c4dcc;
+  border-radius: 0;
+}
+.qt-as-table .ant-table {
+  background: #b8a0cc;
+}
+.qt-as-table .ant-table-thead > tr > th {
+  background: #6a1b9a !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  border-radius: 0 !important;
+  border-color: #4a148c !important;
+  padding: 4px 6px !important;
+}
+.qt-as-table .ant-table-tbody > tr > td {
+  background: #b8a0cc !important;
+  color: #000000 !important;
+  border-color: #9c78bb !important;
+  padding: 3px 6px !important;
+}
+.qt-as-table .ant-table-tbody > tr:hover > td {
+  background: #cbb8de !important;
+}
+.qt-as-table .ant-table-tbody > tr:focus-within > td {
+  background: #f0e8ff !important;
+}
+.qt-as-table .ant-table-cell-row-hover {
+  background: #cbb8de !important;
+}
+.qt-as-table .as-row-selected td {
+  background: #6a1b9a !important;
+  color: #ffffff !important;
+}
+.qt-as-table .as-row-selected:hover td {
+  background: #4a148c !important;
+  color: #ffffff !important;
+}
+
+/* ---- Qt-style: Day End table — amber/orange background ---- */
+.qt-de-table .ant-table-container {
+  border: 1px solid #d4986a;
+  border-radius: 0;
+}
+.qt-de-table .ant-table {
+  background: #e8c4a8;
+}
+.qt-de-table .ant-table-thead > tr > th {
+  background: #bf360c !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  border-radius: 0 !important;
+  border-color: #8d2800 !important;
+  padding: 4px 6px !important;
+}
+.qt-de-table .ant-table-tbody > tr > td {
+  background: #e8c4a8 !important;
+  color: #000000 !important;
+  border-color: #d4a882 !important;
+  padding: 3px 6px !important;
+}
+.qt-de-table .ant-table-tbody > tr:hover > td {
+  background: #f0d4be !important;
+}
+.qt-de-table .ant-table-cell-row-hover {
+  background: #f0d4be !important;
+}
+.qt-de-table .ant-input-number {
+  border-radius: 0 !important;
+  background: #fff8f4 !important;
+}
+.qt-de-table .ant-input-number-input {
+  background: #fff8f4 !important;
+  color: #000 !important;
+}
+.qt-de-table .ant-input-number-focused,
+.qt-de-table .ant-input-number:focus-within {
+  background: #fff9c4 !important;
+}
+.qt-de-table .ant-input-number-focused .ant-input-number-input,
+.qt-de-table .ant-input-number:focus-within .ant-input-number-input {
+  background: #fff9c4 !important;
+}
+
+/* ---- Qt-style: Physical Stock table — steel blue background ---- */
+.qt-ps-table .ant-table-container {
+  border: 1px solid #5080b0;
+  border-radius: 0;
+}
+.qt-ps-table .ant-table {
+  background: #a0bcd8;
+}
+.qt-ps-table .ant-table-thead > tr > th {
+  background: #0d47a1 !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  border-radius: 0 !important;
+  border-color: #07306a !important;
+  padding: 4px 6px !important;
+}
+.qt-ps-table .ant-table-tbody > tr > td {
+  background: #a0bcd8 !important;
+  color: #000000 !important;
+  border-color: #7090b8 !important;
+  padding: 3px 6px !important;
+}
+.qt-ps-table .ant-table-tbody > tr:hover > td {
+  background: #b8cce8 !important;
+}
+.qt-ps-table .ant-table-tbody > tr:focus-within > td {
+  background: #e8f4ff !important;
+}
+.qt-ps-table .ant-table-cell-row-hover {
+  background: #b8cce8 !important;
+}
+.qt-ps-table .ant-input-number {
+  border-radius: 0 !important;
+  background: #dceaf8 !important;
+}
+.qt-ps-table .ant-input-number-input {
+  background: #dceaf8 !important;
+  color: #000 !important;
+}
+.qt-ps-table .ant-input-number-focused,
+.qt-ps-table .ant-input-number:focus-within {
+  background: #fff9c4 !important;
+}
+.qt-ps-table .ant-input-number-focused .ant-input-number-input,
+.qt-ps-table .ant-input-number:focus-within .ant-input-number-input {
+  background: #fff9c4 !important;
+}
+.qt-ps-table .ps-error-row td {
+  background: #fff1f0 !important;
+  border-left: 3px solid #ff4d4f !important;
+}
+
 /* ---- Qt-style: receipt/payment table — magenta background ---- */
 .qt-receipt-table .ant-table-container {
   border: 1px solid #808080;
