@@ -183,16 +183,16 @@ const HsnSalesSummaryReport = () => {
 
       <TableContainer component={Paper}>
         <Table size="small">
-          <TableHead sx={{ backgroundColor: "#f0f4f8" }}>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 700 }}>HSN Code</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 700 }}>GST Rate (%)</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 700 }}>Total Qty</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 700 }}>Taxable Value</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 700 }}>CGST</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 700 }}>SGST</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 700 }}>Total Tax</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 700 }}>Total Amount</TableCell>
+          <TableHead>
+            <TableRow sx={{ backgroundColor: "#1565c0" }}>
+              <TableCell sx={{ fontWeight: 700, color: "#fff" }}>HSN Code</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 700, color: "#fff" }}>GST Rate (%)</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 700, color: "#fff" }}>Total Qty</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 700, color: "#fff" }}>Taxable Value</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 700, color: "#fff" }}>CGST</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 700, color: "#fff" }}>SGST</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 700, color: "#fff" }}>Total Tax</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 700, color: "#fff" }}>Total Amount</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -216,15 +216,15 @@ const HsnSalesSummaryReport = () => {
                     <TableCell align="right">{fmt(r.totalAmount)}</TableCell>
                   </TableRow>
                 ))}
-                <TableRow sx={{ backgroundColor: "#f8fafc" }}>
-                  <TableCell colSpan={3} sx={{ fontWeight: 700 }}>
-                    Total
+                <TableRow sx={{ backgroundColor: "#e3f2fd" }}>
+                  <TableCell colSpan={3} sx={{ fontWeight: 700, color: "#0d47a1" }}>
+                    TOTAL
                   </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>{totals.taxableValue.toFixed(2)}</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>{totals.cgstAmount.toFixed(2)}</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>{totals.sgstAmount.toFixed(2)}</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>{totals.totalTaxAmount.toFixed(2)}</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>{totals.totalAmount.toFixed(2)}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: "#0d47a1" }}>{totals.taxableValue.toFixed(2)}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: "#0d47a1" }}>{totals.cgstAmount.toFixed(2)}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: "#0d47a1" }}>{totals.sgstAmount.toFixed(2)}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: "#0d47a1" }}>{totals.totalTaxAmount.toFixed(2)}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: "#0d47a1" }}>{totals.totalAmount.toFixed(2)}</TableCell>
                 </TableRow>
               </>
             )}
