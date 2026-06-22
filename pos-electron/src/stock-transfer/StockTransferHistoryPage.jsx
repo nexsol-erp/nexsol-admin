@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from "react";
-import { Button, DatePicker, Radio, Space, Table, Typography, message } from "antd";
+import { DatePicker, Radio, Table, message } from "antd";
 import { PrinterOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { apiUrl } from "../utils/apiUrl";
 import { decodeJwtPayload } from "../auth/auth";
 import { buildTransferHtml } from "./transferPrint";
 
-const { Title, Text } = Typography;
-
 function toNum(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
+
+const lbl = (text) => (
+  <div style={{ fontSize: 11, fontWeight: "bold", color: "#000", marginBottom: 1 }}>{text}</div>
+);
 
 export default function StockTransferHistoryPage({ onClose }) {
   const [fromDate, setFromDate] = useState(dayjs().startOf("month"));
@@ -23,11 +25,11 @@ export default function StockTransferHistoryPage({ onClose }) {
   const [printMode, setPrintMode] = useState("a4");
   const [allBranches, setAllBranches] = useState([]);
 
-  const tenantId = localStorage.getItem("tenancyId") || "";
-  const token = localStorage.getItem("jwtToken") || "";
+  const tenantId   = localStorage.getItem("tenancyId") || "";
+  const token      = localStorage.getItem("jwtToken") || "";
   const branchCode = String(globalThis.POS_BRANCH_CODE || localStorage.getItem("selectedBranchCode") || "").trim();
-  const payload = decodeJwtPayload(token) || {};
-  const username = String(payload.sub || payload.username || "");
+  const payload    = decodeJwtPayload(token) || {};
+  const username   = String(payload.sub || payload.username || "");
 
   const [transferBranchCodes, setTransferBranchCodes] = useState(null);
 
@@ -65,7 +67,7 @@ export default function StockTransferHistoryPage({ onClose }) {
 
     const from = fromDate.format("YYYY-MM-DD");
     const to   = toDate.format("YYYY-MM-DD");
-    const url = apiUrl(
+    const url  = apiUrl(
       `/api/${tenantId}/stock-transfers/out?fromBranch=${encodeURIComponent(branchCode || "ALL")}&toBranch=ALL&fromDate=${from}&toDate=${to}`
     );
 
@@ -77,7 +79,6 @@ export default function StockTransferHistoryPage({ onClose }) {
       const json = await res.json();
       const rows = Array.isArray(json) ? json : (json?.data ?? []);
 
-      // Group flat rows by voucherNumber
       const map = new Map();
       for (const r of rows) {
         const key = String(r.voucherNumber ?? "");
@@ -88,6 +89,7 @@ export default function StockTransferHistoryPage({ onClose }) {
             voucherDate: String(r.voucherDate ?? ""),
             fromBranch: String(r.branchCode ?? ""),
             toBranchCode: String(r.toBranchCode ?? ""),
+            reasonCode: String(r.reasonCode ?? ""),
             lines: [],
           });
         }
@@ -97,16 +99,14 @@ export default function StockTransferHistoryPage({ onClose }) {
           standard_price: toNum(r.rate),
           rate: toNum(r.rate),
           amount: toNum(r.amount),
-          barcode: "",
-          unit: "",
-          tax_rate: 0,
-          batch: "",
+          tax_rate: toNum(r.taxRate ?? 0),
+          barcode: "", unit: "", batch: "",
         });
       }
 
       const grouped = Array.from(map.values()).map((v) => ({
         ...v,
-        totalQty: v.lines.reduce((s, l) => s + l.qty, 0),
+        totalQty:    v.lines.reduce((s, l) => s + l.qty,    0),
         totalAmount: v.lines.reduce((s, l) => s + l.amount, 0),
       }));
 
@@ -138,27 +138,28 @@ export default function StockTransferHistoryPage({ onClose }) {
 
     const html = buildTransferHtml({
       printMode,
-      fromBranch: selectedVoucher.fromBranch,
-      fromBranchName: String(fromBranchObj.branchName ?? ""),
-      fromBranchGst: String(fromBranchObj.branchGst ?? ""),
-      fromBranchState: String(fromBranchObj.branchState ?? ""),
+      fromBranch:        selectedVoucher.fromBranch,
+      fromBranchName:    String(fromBranchObj.branchName ?? ""),
+      fromBranchGst:     String(fromBranchObj.branchGst ?? ""),
+      fromBranchState:   String(fromBranchObj.branchState ?? ""),
       fromBranchAddress: [
         fromBranchObj.branchBuildingAddress,
         fromBranchObj.branchAddress1,
         fromBranchObj.branchAddress2,
       ].filter(Boolean).join(", "),
-      toBranchCode: selectedVoucher.toBranchCode,
-      toBranchName: String(toBranchObj.branchName ?? ""),
-      toBranchGst: String(toBranchObj.branchGst ?? ""),
-      toBranchState: String(toBranchObj.branchState ?? ""),
+      toBranchCode:    selectedVoucher.toBranchCode,
+      toBranchName:    String(toBranchObj.branchName ?? ""),
+      toBranchGst:     String(toBranchObj.branchGst ?? ""),
+      toBranchState:   String(toBranchObj.branchState ?? ""),
       deliveryLocation: String(toBranchObj.branchBuildingAddress ?? ""),
       deliveryAddress1: String(toBranchObj.branchAddress1 ?? ""),
       deliveryAddress2: String(toBranchObj.branchAddress2 ?? ""),
       voucherNumber: selectedVoucher.voucherNumber,
-      voucherDate: selectedVoucher.voucherDate,
-      items: selectedVoucher.lines,
-      totalQty: selectedVoucher.totalQty,
-      totalAmount: selectedVoucher.totalAmount,
+      voucherDate:   selectedVoucher.voucherDate,
+      reasonCode:    selectedVoucher.reasonCode || "NORMAL DC",
+      items:         selectedVoucher.lines,
+      totalQty:      selectedVoucher.totalQty,
+      totalAmount:   selectedVoucher.totalAmount,
     });
 
     try {
@@ -170,76 +171,187 @@ export default function StockTransferHistoryPage({ onClose }) {
   };
 
   const voucherColumns = [
-    { title: "Voucher No", dataIndex: "voucherNumber", width: 160 },
-    { title: "Date", dataIndex: "voucherDate", width: 160, render: (v) => v ? v.slice(0, 16).replace("T", " ") : "" },
-    { title: "From", dataIndex: "fromBranch", width: 100 },
-    { title: "To", dataIndex: "toBranchCode", width: 100 },
-    { title: "Total Qty", dataIndex: "totalQty", width: 100, render: (v) => toNum(v).toFixed(2) },
-    { title: "Total Amt", dataIndex: "totalAmount", width: 110, render: (v) => toNum(v).toFixed(2) },
+    { title: "Voucher No",  dataIndex: "voucherNumber", width: 160 },
+    { title: "Date",        dataIndex: "voucherDate",   width: 150,
+      render: (v) => v ? v.slice(0, 16).replace("T", " ") : "" },
+    { title: "From",        dataIndex: "fromBranch",    width: 90 },
+    { title: "To",          dataIndex: "toBranchCode",  width: 90 },
+    { title: "Reason",      dataIndex: "reasonCode",    width: 120,
+      render: (v) => v || "NORMAL DC" },
+    { title: "Qty",         dataIndex: "totalQty",      width: 80,
+      render: (v) => toNum(v).toFixed(2) },
+    { title: "Amount",      dataIndex: "totalAmount",   width: 100,
+      render: (v) => toNum(v).toFixed(2) },
   ];
 
   const lineColumns = [
-    { title: "Item", dataIndex: "item_name", width: 240 },
-    { title: "Qty", dataIndex: "qty", width: 90, render: (v) => toNum(v).toFixed(2) },
-    { title: "Rate", dataIndex: "rate", width: 100, render: (v) => toNum(v).toFixed(2) },
-    { title: "Amount", dataIndex: "amount", width: 110, render: (v) => toNum(v).toFixed(2) },
+    { title: "Item",   dataIndex: "item_name", width: 220,
+      render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
+    { title: "Qty",    dataIndex: "qty",        width: 80,
+      render: (v) => toNum(v).toFixed(2) },
+    { title: "Rate",   dataIndex: "rate",       width: 90,
+      render: (v) => toNum(v).toFixed(2) },
+    { title: "Tax%",   dataIndex: "tax_rate",   width: 70,
+      render: (v) => toNum(v).toFixed(2) },
+    { title: "Amount", dataIndex: "amount",     width: 100,
+      render: (v) => toNum(v).toFixed(2) },
   ];
 
+  const btnBase = {
+    height: 28, fontSize: 12, fontWeight: "bold",
+    border: "2px outset #4d8e87", cursor: "pointer", color: "#000",
+    padding: "0 12px",
+  };
+
   return (
-    <div style={{ padding: 8 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <Title level={3} style={{ margin: 0, color: "#0b3a75" }}>Stock Transfer History</Title>
-        <Space>
-          <DatePicker value={fromDate} onChange={setFromDate} allowClear={false} format="DD-MM-YYYY" placeholder="From date" />
-          <DatePicker value={toDate}   onChange={setToDate}   allowClear={false} format="DD-MM-YYYY" placeholder="To date" />
-          <Button type="primary" onClick={fetchHistory} loading={loading}>Fetch</Button>
-          <Radio.Group
-            options={[{ label: "A4", value: "a4" }, { label: "Thermal", value: "thermal" }]}
-            value={printMode}
-            onChange={(e) => setPrintMode(e.target.value)}
-            optionType="button"
-            buttonStyle="solid"
-            size="small"
-          />
-          <Button
-            icon={<PrinterOutlined />}
-            onClick={handlePrint}
-            loading={printing}
-            disabled={!selectedVoucher}
-          >
-            Reprint
-          </Button>
-          <Button onClick={onClose}>Close</Button>
-        </Space>
+    <div className="pos-container">
+
+      {/* ── Title bar ── */}
+      <div style={{
+        background: "#00695c", color: "#fff", padding: "3px 10px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        fontSize: 13, fontWeight: "bold", flexShrink: 0,
+      }}>
+        <span>Stock Transfer History{branchCode ? ` — ${branchCode}` : ""}</span>
+        <button
+          onClick={onClose}
+          style={{ ...btnBase, background: "#b0c8c4", border: "2px outset #4d8e87" }}
+        >
+          Close
+        </button>
       </div>
 
-      <div style={{ display: "flex", gap: 10 }}>
-        <div style={{ flex: 1 }}>
-          <Text strong style={{ display: "block", marginBottom: 4, color: "#374151" }}>Vouchers</Text>
-          <Table
+      {/* ── Filter bar ── */}
+      <div style={{
+        background: "#1a7a6e", padding: "5px 10px",
+        display: "flex", alignItems: "center", gap: 10, flexShrink: 0, flexWrap: "wrap",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ fontSize: 11, fontWeight: "bold", color: "#e0f2f1" }}>From</span>
+          <DatePicker
+            value={fromDate}
+            onChange={setFromDate}
+            allowClear={false}
+            format="DD-MM-YYYY"
             size="small"
-            dataSource={vouchers}
-            columns={voucherColumns}
-            pagination={false}
-            rowKey="key"
-            scroll={{ x: 730, y: 440 }}
-            rowClassName={(r) => r.key === selectedKey ? "ant-table-row-selected" : ""}
-            onRow={(record) => ({ onClick: () => setSelectedKey(record.key) })}
+            style={{ borderRadius: 0, width: 120 }}
           />
         </div>
-        <div style={{ flex: 1 }}>
-          <Text strong style={{ display: "block", marginBottom: 4, color: "#374151" }}>
-            {selectedVoucher ? `Lines — ${selectedVoucher.voucherNumber}` : "Lines"}
-          </Text>
-          <Table
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ fontSize: 11, fontWeight: "bold", color: "#e0f2f1" }}>To</span>
+          <DatePicker
+            value={toDate}
+            onChange={setToDate}
+            allowClear={false}
+            format="DD-MM-YYYY"
             size="small"
-            dataSource={selectedVoucher?.lines ?? []}
-            columns={lineColumns}
-            pagination={false}
-            rowKey={(r, i) => i}
-            scroll={{ x: 540, y: 440 }}
+            style={{ borderRadius: 0, width: 120 }}
           />
         </div>
+        <button
+          onClick={fetchHistory}
+          disabled={loading}
+          style={{ ...btnBase, background: loading ? "#b0c8c4" : "#ffc8ff", cursor: loading ? "not-allowed" : "pointer" }}
+        >
+          {loading ? "Loading…" : "Fetch"}
+        </button>
+
+        <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.3)", margin: "0 4px" }} />
+
+        <Radio.Group
+          options={[{ label: "A4", value: "a4" }, { label: "Thermal", value: "thermal" }]}
+          value={printMode}
+          onChange={(e) => setPrintMode(e.target.value)}
+          optionType="button"
+          buttonStyle="solid"
+          size="small"
+        />
+
+        <button
+          onClick={handlePrint}
+          disabled={!selectedVoucher || printing}
+          style={{
+            ...btnBase,
+            background: selectedVoucher && !printing ? "#fff3cd" : "#b0c8c4",
+            cursor: selectedVoucher && !printing ? "pointer" : "not-allowed",
+          }}
+        >
+          <PrinterOutlined /> {printing ? "Printing…" : "Reprint"}
+        </button>
+      </div>
+
+      {/* ── Main body ── */}
+      <div style={{
+        flex: 1, display: "flex", gap: 8, padding: "8px",
+        background: "#c8dcd8", overflow: "hidden", minHeight: 0,
+      }}>
+
+        {/* Vouchers panel */}
+        <div style={{
+          flex: 1, display: "flex", flexDirection: "column",
+          border: "1px solid #4d8e87", background: "#b8cec9",
+        }}>
+          <div style={{
+            background: "#00695c", color: "#fff", fontSize: 11, fontWeight: "bold",
+            padding: "3px 8px", borderBottom: "1px solid #4d8e87",
+          }}>
+            Vouchers ({vouchers.length})
+          </div>
+          <div style={{ flex: 1, overflow: "hidden" }}>
+            <Table
+              className="qt-st-table"
+              size="small"
+              dataSource={vouchers}
+              columns={voucherColumns}
+              pagination={false}
+              rowKey="key"
+              scroll={{ x: 730, y: "calc(100vh - 200px)" }}
+              rowClassName={(r) => r.key === selectedKey ? "st-row-selected" : ""}
+              onRow={(record) => ({
+                onClick: () => setSelectedKey(record.key),
+                style: { cursor: "pointer" },
+              })}
+            />
+          </div>
+        </div>
+
+        {/* Lines panel */}
+        <div style={{
+          flex: 1, display: "flex", flexDirection: "column",
+          border: "1px solid #4d8e87", background: "#b8cec9",
+        }}>
+          <div style={{
+            background: "#00695c", color: "#fff", fontSize: 11, fontWeight: "bold",
+            padding: "3px 8px", borderBottom: "1px solid #4d8e87",
+          }}>
+            {selectedVoucher
+              ? `Lines — ${selectedVoucher.voucherNumber}  (${selectedVoucher.toBranchCode})`
+              : "Lines — select a voucher"}
+          </div>
+          <div style={{ flex: 1, overflow: "hidden" }}>
+            <Table
+              className="qt-st-table"
+              size="small"
+              dataSource={selectedVoucher?.lines ?? []}
+              columns={lineColumns}
+              pagination={false}
+              rowKey={(_, i) => i}
+              scroll={{ x: 560, y: "calc(100vh - 200px)" }}
+            />
+          </div>
+          {selectedVoucher && (
+            <div style={{
+              background: "#3d7a74", color: "#fff",
+              display: "flex", justifyContent: "flex-end", gap: 30,
+              padding: "4px 12px", fontSize: 12, fontWeight: "bold",
+              borderTop: "1px solid #4d8e87",
+            }}>
+              <span>Total Qty: {toNum(selectedVoucher.totalQty).toFixed(2)}</span>
+              <span>Total Amount: {toNum(selectedVoucher.totalAmount).toFixed(2)}</span>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );

@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Button, DatePicker, InputNumber, Modal, Space, Table, Typography, message } from "antd";
+import { DatePicker, InputNumber, Modal, Table, message } from "antd";
 import dayjs from "dayjs";
 import { apiUrl } from "../utils/apiUrl";
-
-const { Title, Text } = Typography;
 
 const DENOMINATIONS = [500, 200, 100, 50, 20, 10, 5, 2, 1];
 
@@ -26,7 +24,7 @@ function saveDayEndRecords(rows) {
   localStorage.setItem("day_end_records", JSON.stringify(rows));
 }
 
-export default function DayEndPage({ pendingDate }) {
+export default function DayEndPage({ pendingDate, onClose }) {
   const [dayEndDate, setDayEndDate] = useState(() => pendingDate ? dayjs(pendingDate) : dayjs());
   const [saving, setSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -53,7 +51,6 @@ export default function DayEndPage({ pendingDate }) {
       .catch(() => {});
   }, [branchCode]);
 
-  // Recheck saved state whenever date or branch changes
   useEffect(() => {
     const dateKey = dayEndDate.format("YYYY-MM-DD");
     const records = loadDayEndRecords();
@@ -64,12 +61,7 @@ export default function DayEndPage({ pendingDate }) {
     return DENOMINATIONS.map((currency) => {
       const quantity = Number(qtyByDenom[String(currency)] || 0);
       const amount = round2n(currency * quantity);
-      return {
-        key: String(currency),
-        currency,
-        quantity,
-        amount,
-      };
+      return { key: String(currency), currency, quantity, amount };
     });
   }, [qtyByDenom]);
 
@@ -103,25 +95,22 @@ export default function DayEndPage({ pendingDate }) {
       return;
     }
 
-    const token = localStorage.getItem("jwtToken") || "";
+    const token    = localStorage.getItem("jwtToken")  || "";
     const tenantId = localStorage.getItem("tenancyId") || "";
-    if (!tenantId || !token) {
-      message.error("Missing login session. Please login again.");
-      return;
-    }
+    if (!tenantId || !token) { message.error("Missing login session. Please login again."); return; }
 
     const lineItems = rows
       .filter((r) => Number(r.quantity || 0) > 0)
       .map((r) => ({
         currency: Number(r.currency || 0),
         quantity: Number(r.quantity || 0),
-        amount: Number(r.amount || 0),
+        amount:   Number(r.amount   || 0),
       }));
 
     const payload = {
       branchCode,
       dayEndDate: dateKey,
-      details: lineItems,
+      details:     lineItems,
       totalAmount: round2n(grandTotal),
     };
 
@@ -130,11 +119,7 @@ export default function DayEndPage({ pendingDate }) {
       branchCode,
       dateKey,
       createdAt: new Date().toISOString(),
-      lines: rows.map((r) => ({
-        currency: r.currency,
-        quantity: r.quantity,
-        amount: r.amount,
-      })),
+      lines: rows.map((r) => ({ currency: r.currency, quantity: r.quantity, amount: r.amount })),
       grandTotal: round2n(grandTotal),
     };
 
@@ -142,10 +127,7 @@ export default function DayEndPage({ pendingDate }) {
       setSaving(true);
       const res = await fetch(apiUrl(`/api/${tenantId}/day-end/details`), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
 
@@ -159,7 +141,6 @@ export default function DayEndPage({ pendingDate }) {
       setIsSaved(true);
       message.success("Day End completed successfully");
 
-      // Fetch sales summary then auto-print
       let salesSummary = {};
       try {
         const sumRes = await fetch(
@@ -185,27 +166,22 @@ export default function DayEndPage({ pendingDate }) {
   };
 
   const printReport = async () => {
-    if (!window.POS?.printHtml) {
-      message.error("Print API not available");
-      return;
-    }
+    if (!window.POS?.printHtml) { message.error("Print API not available"); return; }
     const dateKey  = dayEndDate.format("YYYY-MM-DD");
     const tenantId = localStorage.getItem("tenancyId") || "";
-    const token    = localStorage.getItem("jwtToken") || "";
-    const headers  = { Authorization: `Bearer ${token}` };
+    const token    = localStorage.getItem("jwtToken")  || "";
+    const hdrs     = { Authorization: `Bearer ${token}` };
 
-    // Fetch saved day-end denomination rows from backend
-    let fetchedRows = [];
+    let fetchedRows  = [];
     let fetchedTotal = 0;
     try {
       const detRes = await fetch(
-        apiUrl(`/api/${tenantId}/day-end/details/${branchCode}/${dateKey}`),
-        { headers }
+        apiUrl(`/api/${tenantId}/day-end/details/${branchCode}/${dateKey}`), { headers: hdrs }
       );
       if (detRes.ok) {
         const data = await detRes.json();
         if (Array.isArray(data) && data.length > 0) {
-          fetchedRows = data.map((e) => ({
+          fetchedRows  = data.map((e) => ({
             currency: Number(e.currency || 0),
             quantity: Number(e.quantity || 0),
             amount:   Number(e.amount   || 0),
@@ -215,14 +191,10 @@ export default function DayEndPage({ pendingDate }) {
       }
     } catch (_) {}
 
-    const printRows  = fetchedRows;
-    const printTotal = fetchedTotal;
-
     let salesSummary = {};
     try {
       const sumRes = await fetch(
-        apiUrl(`/api/${tenantId}/day-end/summary/${branchCode}/${dateKey}`),
-        { headers }
+        apiUrl(`/api/${tenantId}/day-end/summary/${branchCode}/${dateKey}`), { headers: hdrs }
       );
       if (sumRes.ok) salesSummary = await sumRes.json();
     } catch (_) {}
@@ -230,7 +202,7 @@ export default function DayEndPage({ pendingDate }) {
     const html = buildDayEndReportHtml({
       branchInfo, branchCode, dateKey,
       printedAt: new Date().toISOString(),
-      rows: printRows, grandTotal: printTotal, salesSummary,
+      rows: fetchedRows, grandTotal: fetchedTotal, salesSummary,
     });
     try {
       await window.POS.printHtml({ html, silent: false, deviceName: "" });
@@ -240,53 +212,141 @@ export default function DayEndPage({ pendingDate }) {
   };
 
   const columns = [
-    { title: "Currency", dataIndex: "currency", width: 160, render: (v) => <Text strong>{v}</Text> },
     {
-      title: "Quantity",
-      dataIndex: "quantity",
-      width: 200,
+      title: "Currency", dataIndex: "currency", width: 140,
+      render: (v) => <span style={{ fontWeight: "bold", fontSize: 13 }}>{v}</span>,
+    },
+    {
+      title: "Quantity", dataIndex: "quantity", width: 200,
       render: (_, row) => (
         <InputNumber
           min={0}
           precision={0}
           value={row.quantity}
           onChange={(val) => updateQty(row.currency, val)}
-          style={{ width: "100%" }}
+          style={{ width: "100%", borderRadius: 0 }}
         />
       ),
     },
-    { title: "Amount", dataIndex: "amount", width: 180, render: (v) => Number(v || 0).toFixed(2) },
+    {
+      title: "Amount", dataIndex: "amount", width: 160, align: "right",
+      render: (v) => <span style={{ fontWeight: 600 }}>{Number(v || 0).toFixed(2)}</span>,
+    },
   ];
 
+  const btnBase = {
+    height: 28, fontSize: 12, fontWeight: "bold",
+    border: "2px outset #d4986a", cursor: "pointer", color: "#000",
+    padding: "0 12px",
+  };
+
+  const canSave = !saving && grandTotal > 0 && !isSaved;
+
   return (
-    <div style={{ padding: 8 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <Title level={3} style={{ margin: 0, color: "#0b3a75" }}>
-          Day End
-        </Title>
-        <Space>
-          <Text style={{ color: "#374151" }}>Branch:</Text>
-          <Text strong style={{ color: "#1f2937" }}>{branchCode || "-"}</Text>
-          <DatePicker value={dayEndDate} onChange={(d) => setDayEndDate(d || dayjs())} />
-          <Button onClick={printReport} disabled={!isSaved}>Print</Button>
-          <Button type="primary" onClick={handleSaveClick} loading={saving} disabled={!(grandTotal > 0) || isSaved}>
-            Save Day End
-          </Button>
-        </Space>
+    <div className="pos-container">
+
+      {/* ── Title bar ── */}
+      <div style={{
+        background: "#bf360c", color: "#fff", padding: "3px 10px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        fontSize: 13, fontWeight: "bold", flexShrink: 0,
+      }}>
+        <span>Day End{branchCode ? ` — ${branchCode}` : ""}</span>
+        {onClose && (
+          <button
+            onClick={onClose}
+            style={{ ...btnBase, background: "#e8c4a8", border: "2px outset #d4986a" }}
+          >
+            Close
+          </button>
+        )}
       </div>
 
-      <Table
-        size="small"
-        dataSource={rows}
-        columns={columns}
-        pagination={false}
-        rowKey="key"
-      />
-      <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end", gap: 8 }}>
-        <Text strong style={{ color: "#374151" }}>Grand Total:</Text>
-        <Text strong style={{ color: "#1f2937" }}>{Number(grandTotal || 0).toFixed(2)}</Text>
+      {/* ── Action bar ── */}
+      <div style={{
+        background: "#e65100", padding: "5px 10px",
+        display: "flex", alignItems: "center", gap: 10, flexShrink: 0, flexWrap: "wrap",
+      }}>
+        <span style={{ fontSize: 11, fontWeight: "bold", color: "#fff3e8" }}>Date</span>
+        <DatePicker
+          value={dayEndDate}
+          onChange={(d) => setDayEndDate(d || dayjs())}
+          allowClear={false}
+          format="DD-MM-YYYY"
+          size="small"
+          style={{ borderRadius: 0, width: 130 }}
+        />
+
+        <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.3)", margin: "0 4px" }} />
+
+        <button
+          onClick={printReport}
+          disabled={!isSaved}
+          style={{
+            ...btnBase,
+            background: isSaved ? "#fff3cd" : "#e8c4a8",
+            cursor: isSaved ? "pointer" : "not-allowed",
+          }}
+        >
+          Print
+        </button>
+        <button
+          onClick={handleSaveClick}
+          disabled={!canSave}
+          style={{
+            ...btnBase,
+            background: canSave ? "#d4edda" : "#e8c4a8",
+            cursor: canSave ? "pointer" : "not-allowed",
+          }}
+        >
+          {saving ? "Saving…" : "Save Day End"}
+        </button>
+
+        {isSaved && (
+          <span style={{ fontSize: 12, fontWeight: "bold", color: "#fff9c4", marginLeft: 4 }}>
+            ✓ Day End Completed
+          </span>
+        )}
       </div>
 
+      {/* ── Body ── */}
+      <div style={{
+        flex: 1, display: "flex", padding: "8px",
+        background: "#fdebd8", overflow: "hidden", minHeight: 0,
+      }}>
+        <div style={{
+          width: 510, display: "flex", flexDirection: "column",
+          border: "1px solid #d4986a", background: "#e8c4a8",
+        }}>
+          <div style={{
+            background: "#bf360c", color: "#fff", fontSize: 11, fontWeight: "bold",
+            padding: "3px 8px", borderBottom: "1px solid #d4986a",
+          }}>
+            Cash Denomination
+          </div>
+          <div style={{ flex: 1, overflow: "hidden" }}>
+            <Table
+              className="qt-de-table"
+              size="small"
+              dataSource={rows}
+              columns={columns}
+              pagination={false}
+              rowKey="key"
+            />
+          </div>
+          <div style={{
+            background: "#bf360c", color: "#fff",
+            display: "flex", justifyContent: "space-between",
+            padding: "5px 12px", fontSize: 14, fontWeight: "bold",
+            borderTop: "1px solid #d4986a",
+          }}>
+            <span>Grand Total</span>
+            <span>{Number(grandTotal || 0).toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Confirm Modal ── */}
       <Modal
         open={confirmOpen}
         title="Confirm Day End"
@@ -299,7 +359,7 @@ export default function DayEndPage({ pendingDate }) {
         <p style={{ fontSize: 15, margin: "16px 0" }}>
           You are about to complete Day End for:
         </p>
-        <p style={{ fontSize: 22, fontWeight: "bold", textAlign: "center", color: "#0b3a75", margin: "12px 0" }}>
+        <p style={{ fontSize: 22, fontWeight: "bold", textAlign: "center", color: "#bf360c", margin: "12px 0" }}>
           {dayEndDate.format("DD MMM YYYY")}
         </p>
         <p style={{ fontSize: 15, margin: "16px 0" }}>
@@ -309,6 +369,7 @@ export default function DayEndPage({ pendingDate }) {
           Once saved, billing will be closed for this date. Proceed?
         </p>
       </Modal>
+
     </div>
   );
 }
@@ -329,7 +390,7 @@ function buildDayEndReportHtml({ branchInfo, branchCode, dateKey, printedAt, row
   const phone      = b.branchStreetAddress || "";
   const gst        = b.branchGst || "";
 
-  const addrHtml = addrParts.map((l) => `<div class="addr">${escapeHtml(l)}</div>`).join("");
+  const addrHtml  = addrParts.map((l) => `<div class="addr">${escapeHtml(l)}</div>`).join("");
   const phoneHtml = phone ? `<div class="addr">Ph: ${escapeHtml(phone)}</div>` : "";
   const gstHtml   = gst   ? `<div class="addr">GST: ${escapeHtml(gst)}</div>`  : "";
 
@@ -338,7 +399,6 @@ function buildDayEndReportHtml({ branchInfo, branchCode, dateKey, printedAt, row
     hour: "2-digit", minute: "2-digit",
   });
 
-  // Denomination rows (only non-zero)
   const denomRows = rows
     .filter((r) => Number(r.quantity || 0) > 0)
     .map((r) => `
@@ -349,7 +409,6 @@ function buildDayEndReportHtml({ branchInfo, branchCode, dateKey, printedAt, row
       </tr>`)
     .join("");
 
-  // Sales summary from backend
   const salesByMode   = Array.isArray(salesSummary.salesByMode)   ? salesSummary.salesByMode   : [];
   const returnsByMode = Array.isArray(salesSummary.returnsByMode)  ? salesSummary.returnsByMode : [];
   const totalSales    = Number(salesSummary.totalSales   || 0);
@@ -358,7 +417,7 @@ function buildDayEndReportHtml({ branchInfo, branchCode, dateKey, printedAt, row
   const returnCount   = Number(salesSummary.returnCount  || 0);
   const netAmount     = Number(salesSummary.netAmount    ?? (totalSales - totalReturns));
 
-  const salesModeRows = salesByMode.map((m) => `
+  const salesModeRows  = salesByMode.map((m) => `
       <tr>
         <td>${escapeHtml(String(m.receiptMode || ""))}</td>
         <td class="num">${Number(m.amount || 0).toFixed(2)}</td>
