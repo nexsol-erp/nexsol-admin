@@ -350,18 +350,44 @@ function buildDayEndReportHtml({ branchInfo, branchCode, dateKey, printedAt, row
     .join("");
 
   // Sales summary from backend
-  const byMode       = Array.isArray(salesSummary.byMode) ? salesSummary.byMode : [];
-  const totalSales   = Number(salesSummary.totalSales   || 0);
-  const billCount    = Number(salesSummary.billCount    || 0);
-  const totalReceipts = Number(salesSummary.totalReceipts || 0);
+  const salesByMode   = Array.isArray(salesSummary.salesByMode)   ? salesSummary.salesByMode   : [];
+  const returnsByMode = Array.isArray(salesSummary.returnsByMode)  ? salesSummary.returnsByMode : [];
+  const totalSales    = Number(salesSummary.totalSales   || 0);
+  const billCount     = Number(salesSummary.billCount    || 0);
+  const totalReturns  = Number(salesSummary.totalReturns || 0);
+  const returnCount   = Number(salesSummary.returnCount  || 0);
+  const netAmount     = Number(salesSummary.netAmount    ?? (totalSales - totalReturns));
 
-  const receiptRows = byMode.map((m) => `
+  const salesModeRows = salesByMode.map((m) => `
       <tr>
         <td>${escapeHtml(String(m.receiptMode || ""))}</td>
         <td class="num">${Number(m.amount || 0).toFixed(2)}</td>
       </tr>`).join("");
 
-  const salesSection = byMode.length > 0 || totalSales > 0 ? `
+  const returnModeRows = returnsByMode.map((m) => `
+      <tr>
+        <td>${escapeHtml(String(m.receiptMode || ""))}</td>
+        <td class="num">${Number(m.amount || 0).toFixed(2)}</td>
+      </tr>`).join("");
+
+  const returnsSection = returnCount > 0 ? `
+    <hr class="dash"/>
+    <div class="section-title">Sales Return</div>
+    <table class="t">
+      <tbody>
+        <tr><td>Return Bills</td><td class="num">${returnCount}</td></tr>
+        <tr class="bold-row"><td>Total Returns</td><td class="num">${totalReturns.toFixed(2)}</td></tr>
+      </tbody>
+    </table>
+    ${returnModeRows ? `
+    <hr class="dash"/>
+    <div class="section-title">Return Mode Breakdown</div>
+    <table class="t">
+      <thead><tr><th>Mode</th><th class="num">Amount</th></tr></thead>
+      <tbody>${returnModeRows}</tbody>
+    </table>` : ""}` : "";
+
+  const salesSection = salesByMode.length > 0 || totalSales > 0 ? `
     <hr class="dash"/>
     <div class="section-title">Sales Summary</div>
     <table class="t">
@@ -371,15 +397,14 @@ function buildDayEndReportHtml({ branchInfo, branchCode, dateKey, printedAt, row
       </tbody>
     </table>
     <hr class="dash"/>
-    <div class="section-title">Receipt Mode Breakdown</div>
+    <div class="section-title">Sales Mode Breakdown</div>
     <table class="t">
       <thead><tr><th>Mode</th><th class="num">Amount</th></tr></thead>
-      <tbody>
-        ${receiptRows}
-      </tbody>
+      <tbody>${salesModeRows}</tbody>
     </table>
+    ${returnsSection}
     <hr class="dash"/>
-    <div class="total-line"><span>Total Receipts</span><span>${totalReceipts.toFixed(2)}</span></div>` : "";
+    <div class="total-line"><span>Net Amount</span><span>${netAmount.toFixed(2)}</span></div>` : "";
 
   return `<!DOCTYPE html>
 <html>
