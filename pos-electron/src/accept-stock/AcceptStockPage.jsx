@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Table, message } from "antd";
+import { Modal, Table, message } from "antd";
 import { apiUrl } from "../utils/apiUrl";
 import { applyStockReceiptToCache } from "../cache/itemCache";
 
@@ -10,7 +10,7 @@ function toNum(v) {
 
 function normalizeHeader(x, branchCode) {
   return {
-    id: String(x.id ?? ""),
+    id: String(x.id ?? "").replace(/^\{|\}$/g, ""),
     branch_code: String(x.branch_code ?? x.branchCode ?? branchCode ?? ""),
     from_branch_code: String(x.from_branch_code ?? x.fromBranchCode ?? x.branch_code ?? ""),
     voucher_number: String(x.voucher_number ?? x.voucherNumber ?? ""),
@@ -52,6 +52,12 @@ export default function AcceptStockPage({ onClose }) {
   const [loading, setLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [acceptingAll, setAcceptingAll] = useState(false);
+
+  const PAGE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
 
   const branchCode = String(globalThis.POS_BRANCH_CODE || localStorage.getItem("selectedBranchCode") || "").trim();
   const tenantId = localStorage.getItem("tenancyId") || "";
@@ -66,44 +72,40 @@ export default function AcceptStockPage({ onClose }) {
     [detailRows]
   );
 
-  const fetchStockTransfer = async () => {
+  const fetchPage = async (page) => {
     if (!tenantId || !token) { message.error("Missing login session. Please login again."); return; }
     if (!branchCode) { message.warning("Please select branch in POS first."); return; }
 
     try {
       setLoading(true);
-      const urls = [
-        apiUrl(`/api/${tenantId}/stock-transfer/${encodeURIComponent(branchCode)}`),
-        apiUrl(`/api/${tenantId}/stock-transfer?toBranch=${encodeURIComponent(branchCode)}`),
-      ];
+      const url = apiUrl(
+        `/api/${tenantId}/stock-transfer/${encodeURIComponent(branchCode)}?page=${page}&size=${PAGE_SIZE}`
+      );
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
 
-      let result = null;
-      let lastErr = "";
-      for (const url of urls) {
-        const res = await fetch(url, {
-          method: "GET",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        });
-        if (res.ok) { result = await res.json(); break; }
-        const t = await res.text().catch(() => "");
-        lastErr = `${res.status} ${t || res.statusText}`;
-        if (res.status !== 404) break;
-      }
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const result = await res.json();
 
-      if (!result) throw new Error(lastErr || "Unable to fetch stock transfer");
-
-      const rows = Array.isArray(result) ? result : Array.isArray(result?.data) ? result.data : [];
+      const rows = Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : [];
       const mapped = rows.map((x) => normalizeHeader(x, branchCode)).filter((x) => x.accepted !== "YES");
       setHeaders(mapped);
+      setCurrentPage(page);
+      setTotalPages(result?.totalPages ?? 1);
+      setTotalElements(result?.totalElements ?? mapped.length);
       setSelectedHeaderId("");
       setDetailRows([]);
-      message.success(`Fetched ${mapped.length} pending stock transfer(s)`);
+      message.success(`Page ${page + 1}: ${mapped.length} transfer(s) (${result?.totalElements ?? mapped.length} total)`);
     } catch (e) {
       message.error("Fetch failed: " + (e.message || "Unknown error"));
     } finally {
       setLoading(false);
     }
   };
+
+  const fetchStockTransfer = () => fetchPage(0);
 
   const selectHeader = async (record) => {
     setSelectedHeaderId(record.id);
@@ -119,32 +121,19 @@ export default function AcceptStockPage({ onClose }) {
 
     try {
       setDetailLoading(true);
-      const urls = [
-        apiUrl(`/api/${tenantId}/stock-transfer/${encodeURIComponent(record.id)}/details`),
-        apiUrl(`/api/${tenantId}/stock-transfer/details/${encodeURIComponent(record.id)}`),
-        apiUrl(`/api/${tenantId}/stock-transfer/${encodeURIComponent(record.id)}`),
-      ];
+      const url = apiUrl(`/api/${tenantId}/stock-transfer/${encodeURIComponent(record.id)}/details`);
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
 
-      let result = null;
-      let lastErr = "";
-      for (const url of urls) {
-        const res = await fetch(url, {
-          method: "GET",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        });
-        if (res.ok) { result = await res.json(); break; }
-        const t = await res.text().catch(() => "");
-        lastErr = `${res.status} ${t || res.statusText}`;
-        if (res.status !== 404) break;
-      }
-
-      if (!result) throw new Error(lastErr || "Unable to fetch details");
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const result = await res.json();
 
       const rawDetails = Array.isArray(result)
         ? result
-        : Array.isArray(result?.data)   ? result.data
+        : Array.isArray(result?.data)    ? result.data
         : Array.isArray(result?.details) ? result.details
-        : Array.isArray(result?.content) ? result.content
         : [];
 
       setDetailRows(rawDetails.map((x) => normalizeDetail(x, record.id)));
@@ -156,50 +145,153 @@ export default function AcceptStockPage({ onClose }) {
     }
   };
 
-  const saveAcceptStock = async () => {
+  // ── core accept for a single header ─────────────────────────────────────────
+  const performAccept = async (header) => {
+    const body = { outHdrId: header.id, remarks: "Accept Stock" };
+    const urls = [
+      { method: "POST", url: apiUrl(`/api/${tenantId}/stock-transfer/accept`) },
+      { method: "PUT",  url: apiUrl(`/api/${tenantId}/stock-transfer/${encodeURIComponent(header.id)}/accept`) },
+    ];
+
+    let ok = false;
+    let lastErr = "";
+    for (const x of urls) {
+      const res = await fetch(x.url, {
+        method: x.method,
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) { ok = true; break; }
+      const t = await res.text().catch(() => "");
+      lastErr = `${res.status} ${t || res.statusText}`;
+      if (res.status !== 404) break;
+    }
+
+    if (!ok) throw new Error(lastErr || "Unable to accept stock transfer");
+    return ok;
+  };
+
+  // ── Accept single (with confirmation) ───────────────────────────────────────
+  const saveAcceptStock = () => {
     if (!selectedHeaderId) { message.warning("Select a stock transfer row first."); return; }
     if (!tenantId || !token) { message.error("Missing login session. Please login again."); return; }
 
     const header = headers.find((h) => h.id === selectedHeaderId);
     if (!header) { message.warning("Selected transfer not found."); return; }
 
-    const body = { outHdrId: header.id, remarks: "Accept Stock" };
+    Modal.confirm({
+      title: "Accept Stock Transfer",
+      content: (
+        <div style={{ lineHeight: 1.7 }}>
+          <p>
+            You are about to accept stock transfer{" "}
+            <strong>{header.voucher_number || header.id}</strong> sent from branch{" "}
+            <strong>{header.from_branch_code}</strong>.
+          </p>
+          {detailRows.length > 0 && (
+            <p>
+              This will add <strong>{detailRows.length} item line(s)</strong> with a total
+              qty of <strong>{totalQty.toFixed(2)}</strong> and total amount of{" "}
+              <strong>{totalAmount.toFixed(2)}</strong> to branch{" "}
+              <strong>{branchCode}</strong>'s inventory.
+            </p>
+          )}
+          <p style={{ color: "#b71c1c", marginBottom: 0 }}>
+            This action cannot be undone.
+          </p>
+        </div>
+      ),
+      okText: "Yes, Accept",
+      cancelText: "Cancel",
+      onOk: async () => {
+        try {
+          setSaving(true);
+          await performAccept(header);
+          applyStockReceiptToCache(
+            detailRows.map((r) => ({ itemId: r.item_id, qty: r.qty }))
+          ).catch(() => {});
+          setHeaders((prev) => prev.filter((h) => h.id !== selectedHeaderId));
+          setSelectedHeaderId("");
+          setDetailRows([]);
+          message.success("Stock accepted successfully");
+        } catch (e) {
+          message.error("Save failed: " + (e.message || "Unknown error"));
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
+  };
 
-    try {
-      setSaving(true);
-      const urls = [
-        { method: "POST", url: apiUrl(`/api/${tenantId}/stock-transfer/accept`) },
-        { method: "PUT",  url: apiUrl(`/api/${tenantId}/stock-transfer/${encodeURIComponent(header.id)}/accept`) },
-      ];
+  // ── Accept All (with confirmation) ──────────────────────────────────────────
+  const acceptAll = () => {
+    if (!headers.length) { message.warning("No pending transfers to accept."); return; }
+    if (!tenantId || !token) { message.error("Missing login session. Please login again."); return; }
 
-      let ok = false;
-      let lastErr = "";
-      for (const x of urls) {
-        const res = await fetch(x.url, {
-          method: x.method,
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        if (res.ok) { ok = true; break; }
-        const t = await res.text().catch(() => "");
-        lastErr = `${res.status} ${t || res.statusText}`;
-        if (res.status !== 404) break;
-      }
+    Modal.confirm({
+      title: "Accept ALL Pending Stock Transfers",
+      content: (
+        <div style={{ lineHeight: 1.7 }}>
+          <p>
+            You are about to accept <strong>all {headers.length} pending stock transfer(s)</strong>{" "}
+            for branch <strong>{branchCode}</strong>.
+          </p>
+          <p>
+            Every transfer in the list below will be processed one by one and the items
+            in each transfer will be added to <strong>{branchCode}</strong>'s inventory.
+          </p>
+          <ul style={{ margin: "6px 0 6px 18px", padding: 0 }}>
+            {headers.slice(0, 5).map((h) => (
+              <li key={h.id} style={{ fontSize: 12 }}>
+                {h.voucher_number || h.id} — from {h.from_branch_code}
+              </li>
+            ))}
+            {headers.length > 5 && (
+              <li style={{ fontSize: 12, color: "#555" }}>
+                … and {headers.length - 5} more
+              </li>
+            )}
+          </ul>
+          <p style={{ color: "#b71c1c", marginBottom: 0 }}>
+            ⚠ This action cannot be undone. All {headers.length} transfer(s) will be
+            permanently accepted.
+          </p>
+        </div>
+      ),
+      okText: `Accept All ${headers.length} Transfer(s)`,
+      okType: "danger",
+      cancelText: "Cancel",
+      width: 480,
+      onOk: async () => {
+        setAcceptingAll(true);
+        let succeeded = 0;
+        let failed = 0;
+        const toProcess = [...headers];
 
-      if (!ok) throw new Error(lastErr || "Unable to save accept stock");
+        for (const header of toProcess) {
+          try {
+            await performAccept(header);
+            applyStockReceiptToCache(
+              (header.details || []).map((r) => ({ itemId: r.item_id ?? r.itemId, qty: toNum(r.qty) }))
+            ).catch(() => {});
+            setHeaders((prev) => prev.filter((h) => h.id !== header.id));
+            succeeded++;
+          } catch {
+            failed++;
+          }
+        }
 
-      applyStockReceiptToCache(
-        detailRows.map((r) => ({ itemId: r.item_id, qty: r.qty }))
-      ).catch(() => {});
-      setHeaders((prev) => prev.filter((h) => h.id !== selectedHeaderId));
-      setSelectedHeaderId("");
-      setDetailRows([]);
-      message.success("Stock accepted successfully");
-    } catch (e) {
-      message.error("Save failed: " + (e.message || "Unknown error"));
-    } finally {
-      setSaving(false);
-    }
+        setSelectedHeaderId("");
+        setDetailRows([]);
+        setAcceptingAll(false);
+
+        if (failed === 0) {
+          message.success(`All ${succeeded} stock transfer(s) accepted successfully.`);
+        } else {
+          message.warning(`${succeeded} accepted, ${failed} failed. Check the remaining list.`);
+        }
+      },
+    });
   };
 
   const hdrColumns = [
@@ -261,21 +353,32 @@ export default function AcceptStockPage({ onClose }) {
       }}>
         <button
           onClick={fetchStockTransfer}
-          disabled={loading}
+          disabled={loading || acceptingAll}
           style={{ ...btnBase, background: loading ? "#c4b8d0" : "#ffc8ff", cursor: loading ? "not-allowed" : "pointer" }}
         >
           {loading ? "Loading…" : "Fetch"}
         </button>
         <button
           onClick={saveAcceptStock}
-          disabled={saving || !selectedHeaderId}
+          disabled={saving || acceptingAll || !selectedHeaderId}
           style={{
             ...btnBase,
-            background: saving || !selectedHeaderId ? "#c4b8d0" : "#d4edda",
-            cursor: saving || !selectedHeaderId ? "not-allowed" : "pointer",
+            background: saving || acceptingAll || !selectedHeaderId ? "#c4b8d0" : "#d4edda",
+            cursor: saving || acceptingAll || !selectedHeaderId ? "not-allowed" : "pointer",
           }}
         >
           {saving ? "Saving…" : "Accept"}
+        </button>
+        <button
+          onClick={acceptAll}
+          disabled={saving || acceptingAll || !headers.length}
+          style={{
+            ...btnBase,
+            background: saving || acceptingAll || !headers.length ? "#c4b8d0" : "#fff3cd",
+            cursor: saving || acceptingAll || !headers.length ? "not-allowed" : "pointer",
+          }}
+        >
+          {acceptingAll ? "Accepting All…" : `Accept All (${headers.length})`}
         </button>
       </div>
 
@@ -293,8 +396,40 @@ export default function AcceptStockPage({ onClose }) {
           <div style={{
             background: "#4a148c", color: "#fff", fontSize: 11, fontWeight: "bold",
             padding: "3px 8px", borderBottom: "1px solid #9c4dcc",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
           }}>
-            Pending Transfers ({headers.length})
+            <span>Pending Transfers ({totalElements > 0 ? `${totalElements} total` : headers.length})</span>
+            {totalPages > 1 && (
+              <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button
+                  onClick={() => fetchPage(currentPage - 1)}
+                  disabled={loading || currentPage === 0}
+                  style={{
+                    fontSize: 11, padding: "1px 6px", cursor: currentPage === 0 ? "not-allowed" : "pointer",
+                    background: currentPage === 0 ? "#7b1fa2" : "#e1bee7", color: currentPage === 0 ? "#9c4dcc" : "#4a148c",
+                    border: "1px solid #9c4dcc", borderRadius: 2,
+                  }}
+                >
+                  ‹ Prev
+                </button>
+                <span style={{ fontSize: 10 }}>
+                  {currentPage + 1} / {totalPages}
+                </span>
+                <button
+                  onClick={() => fetchPage(currentPage + 1)}
+                  disabled={loading || currentPage >= totalPages - 1}
+                  style={{
+                    fontSize: 11, padding: "1px 6px",
+                    cursor: currentPage >= totalPages - 1 ? "not-allowed" : "pointer",
+                    background: currentPage >= totalPages - 1 ? "#7b1fa2" : "#e1bee7",
+                    color: currentPage >= totalPages - 1 ? "#9c4dcc" : "#4a148c",
+                    border: "1px solid #9c4dcc", borderRadius: 2,
+                  }}
+                >
+                  Next ›
+                </button>
+              </span>
+            )}
           </div>
           <div style={{ flex: 1, overflow: "hidden" }}>
             <Table
@@ -304,7 +439,7 @@ export default function AcceptStockPage({ onClose }) {
               columns={hdrColumns}
               pagination={false}
               rowKey="id"
-              scroll={{ x: 680, y: "calc(100vh - 200px)" }}
+              scroll={{ x: 680 }}
               rowClassName={(r) => r.id === selectedHeaderId ? "as-row-selected" : ""}
               onRow={(record) => ({
                 onClick: () => selectHeader(record),
