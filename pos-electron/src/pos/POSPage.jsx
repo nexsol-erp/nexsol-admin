@@ -813,9 +813,17 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       title: "Amount", dataIndex: "amount", width: 120,
       render: (_, row) => (
         <InputNumber
-          value={row.amount} min={0} style={{ width: "100%", borderRadius: 0 }}
+          value={row.amount} min={0} controls={false} style={{ width: "100%", borderRadius: 0 }}
           onChange={(val) => setReceipts((prev) => prev.map((r) => r.key === row.key ? { ...r, amount: Number(val || 0) } : r))}
-          onKeyDown={(e) => { if (e.key === "Enter") setSingleReceiptToTotal(row.receipt_mode); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { setSingleReceiptToTotal(row.receipt_mode); return; }
+            if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+              e.preventDefault();
+              const inputs = [...document.querySelectorAll(".qt-receipt-table input")];
+              const idx = inputs.indexOf(e.target);
+              inputs[e.key === "ArrowUp" ? idx - 1 : idx + 1]?.focus();
+            }
+          }}
         />
       ),
     },
