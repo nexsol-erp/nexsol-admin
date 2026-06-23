@@ -403,6 +403,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         { menuKey: "Stock Transfer In Report", label: t("Stock Transfer In Report"), link: "/stocktransfer-in-report", roles: ["admin", "franchiseeuser", "user"] },
         { menuKey: "Item Transfer Report", label: t("Item Transfer Report"), link: "/item-transfer-report", roles: ["admin", "manager", "user", "franchiseeuser"] },
         { menuKey: "Salesman Report", label: t("Salesman Report"), link: "/salesman-report", roles: ["admin", "manager", "user"] },
+        { menuKey: "Category Item Report", label: t("Category Item Report"), link: "/category-item-report", roles: ["admin", "manager", "user"] },
       ],
     },
     {

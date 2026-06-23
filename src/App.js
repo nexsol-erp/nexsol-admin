@@ -110,6 +110,7 @@ import MenuMasterPage from "./components/MenuMasterPage";
 import RoleMenuPage from "./components/RoleMenuPage";
 import RoleManagementPage from "./components/RoleManagementPage";
 import SalesmanReport from "./components/SalesmanReport";
+import CategoryItemReport from "./components/CategoryItemReport";
 
 // Accounting
 import ReceiptEntry from "./components/accounting/ReceiptEntry";
@@ -209,6 +210,7 @@ const ROUTE_ORDER = [
   { key: "Stock Transfer In Report",         path: "/stocktransfer-in-report" },
   { key: "Item Transfer Report",             path: "/item-transfer-report" },
   { key: "Salesman Report",                  path: "/salesman-report" },
+  { key: "Category Item Report",             path: "/category-item-report" },
   // Accounting
   { key: "Receipt Entry",                   path: "/accounting/receipt-entry" },
   { key: "Payment Entry",                   path: "/accounting/payment-entry" },
@@ -412,6 +414,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/branch-inventory-ledger" element={<BranchInventoryLedger />} />
 <Route path="/item-transfer-report" element={<ItemTransferReport />} />
 <Route path="/salesman-report" element={<SalesmanReport />} />
+<Route path="/category-item-report" element={<CategoryItemReport />} />
 <Route path="/ai-dashboard" element={<AIDashboardPage />} />
 <Route path="/menu-master" element={<MenuMasterPage />} />
 <Route path="/role-menu" element={<RoleMenuPage />} />
