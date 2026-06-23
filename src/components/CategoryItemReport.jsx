@@ -105,7 +105,7 @@ const CategoryItemReport = () => {
   const handleExcel = () => {
     const rows = items.map((item, idx) => ({
       "#": idx + 1,
-      "Item Code": item.itemCode ?? item.item_code ?? "",
+      "Item ID": item.itemId ?? item.item_id ?? "",
       "Item Name": item.itemName ?? item.item_name ?? "",
       "HSN Code": item.hsnCode ?? item.hsn_code ?? "",
       Unit: item.unitName ?? item.unit_name ?? "",
@@ -248,7 +248,7 @@ const CategoryItemReport = () => {
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ backgroundColor: "#2c3e50" }}>
-                    {["#", "Item Code", "Item Name", "HSN Code", "Unit", "Tax %", "Std. Price"].map(
+                    {["#", "Item ID", "Item Name", "HSN Code", "Unit", "Tax %", "Std. Price"].map(
                       (h) => (
                         <TableCell
                           key={h}
@@ -271,29 +271,29 @@ const CategoryItemReport = () => {
                     <TableRow
                       key={row.itemId ?? row.id ?? idx}
                       sx={{
-                        "&:nth-of-type(even)": { backgroundColor: "#f5f5f5" },
-                        "&:hover": { backgroundColor: "#e3f2fd" },
+                        backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f0f4f8",
+                        "&:hover": { backgroundColor: "#dbeafe" },
                       }}
                     >
-                      <TableCell sx={{ color: "text.secondary", fontSize: "0.8rem" }}>
+                      <TableCell sx={{ color: "#555", fontSize: "0.8rem" }}>
                         {idx + 1}
                       </TableCell>
-                      <TableCell sx={{ fontSize: "0.82rem", fontFamily: "monospace" }}>
-                        {row.itemCode ?? row.item_code ?? "—"}
+                      <TableCell sx={{ color: "#212121", fontSize: "0.82rem", fontFamily: "monospace" }}>
+                        {row.itemId ?? row.item_id ?? "—"}
                       </TableCell>
-                      <TableCell sx={{ fontSize: "0.85rem", fontWeight: 500 }}>
+                      <TableCell sx={{ color: "#212121", fontSize: "0.85rem", fontWeight: 600 }}>
                         {row.itemName ?? row.item_name ?? "—"}
                       </TableCell>
-                      <TableCell sx={{ fontSize: "0.82rem" }}>
+                      <TableCell sx={{ color: "#212121", fontSize: "0.82rem" }}>
                         {row.hsnCode ?? row.hsn_code ?? "—"}
                       </TableCell>
-                      <TableCell sx={{ fontSize: "0.82rem" }}>
+                      <TableCell sx={{ color: "#212121", fontSize: "0.82rem" }}>
                         {row.unitName ?? row.unit_name ?? "—"}
                       </TableCell>
-                      <TableCell align="right" sx={{ fontSize: "0.82rem" }}>
+                      <TableCell align="right" sx={{ color: "#212121", fontSize: "0.82rem" }}>
                         {row.taxRate ?? row.tax_rate ?? "—"}
                       </TableCell>
-                      <TableCell align="right" sx={{ fontSize: "0.82rem" }}>
+                      <TableCell align="right" sx={{ color: "#212121", fontSize: "0.82rem" }}>
                         {row.standardPrice != null || row.standard_price != null
                           ? Number(row.standardPrice ?? row.standard_price).toLocaleString("en-IN", {
                               minimumFractionDigits: 2,
@@ -303,10 +303,10 @@ const CategoryItemReport = () => {
                       </TableCell>
                     </TableRow>
                   ))}
-                  <TableRow sx={{ backgroundColor: "#ecf0f1" }}>
+                  <TableRow sx={{ backgroundColor: "#dde3ea" }}>
                     <TableCell
                       colSpan={7}
-                      sx={{ fontWeight: 700, fontSize: "0.85rem", py: 1 }}
+                      sx={{ color: "#212121", fontWeight: 700, fontSize: "0.85rem", py: 1 }}
                     >
                       Total Items: {items.length}
                     </TableCell>
