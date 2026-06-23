@@ -172,6 +172,8 @@ export default function PurchaseEntryForm() {
   const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
   const notify = (msg, severity = "success") => setSnack({ open: true, msg, severity });
 
+  const [fieldErrors, setFieldErrors] = useState({ supplier: false, supplierInvNo: false });
+
   const selectedBranch = localStorage.getItem("branchCode") || "";
 
   // Edit mode
@@ -423,6 +425,25 @@ export default function PurchaseEntryForm() {
     const tenancyId = localStorage.getItem("tenancyId");
     const token = localStorage.getItem("jwtToken");
 
+    // Mandatory field validation
+    const errs = {
+      supplier: !supplierName.trim(),
+      supplierInvNo: !supplierInvNo.trim(),
+    };
+    if (!selectedBranch) {
+      notify("No branch is set for this session — please log in with a branch", "error");
+      return;
+    }
+    if (errs.supplier || errs.supplierInvNo) {
+      setFieldErrors(errs);
+      notify(
+        errs.supplier ? "Supplier is required" : "Supplier Invoice No is required",
+        "error"
+      );
+      return;
+    }
+    setFieldErrors({ supplier: false, supplierInvNo: false });
+
     // Update existing purchase
     if (editingId) {
       try {
@@ -440,6 +461,7 @@ export default function PurchaseEntryForm() {
           setSupplierName("");
           setSupplierInvNo("");
           setBillTotal("");
+          setFieldErrors({ supplier: false, supplierInvNo: false });
         } else if (res.status === 409) {
           notify(data?.error || "GRN already done — cannot edit", "error");
         } else {
@@ -479,6 +501,7 @@ export default function PurchaseEntryForm() {
         setSupplierName("");
         setSupplierInvNo("");
         setBillTotal("");
+        setFieldErrors({ supplier: false, supplierInvNo: false });
       } else {
         notify("Save failed", "error");
       }
@@ -556,9 +579,20 @@ export default function PurchaseEntryForm() {
               }
               freeSolo
               value={supplierName}
-              onInputChange={(_, v) => setSupplierName(v)}
+              onInputChange={(_, v) => {
+                setSupplierName(v);
+                if (fieldErrors.supplier) setFieldErrors((f) => ({ ...f, supplier: false }));
+              }}
               renderInput={(params) => (
-                <TextField {...params} label="Supplier" size="small" fullWidth />
+                <TextField
+                  {...params}
+                  label="Supplier"
+                  size="small"
+                  fullWidth
+                  required
+                  error={fieldErrors.supplier}
+                  helperText={fieldErrors.supplier ? "Supplier is required" : ""}
+                />
               )}
             />
           </Grid>
@@ -567,8 +601,15 @@ export default function PurchaseEntryForm() {
               label="Supplier Invoice No"
               size="small"
               fullWidth
+              required
+              error={fieldErrors.supplierInvNo}
+              helperText={fieldErrors.supplierInvNo ? "Required" : ""}
               value={supplierInvNo}
-              onChange={(e) => setSupplierInvNo(e.target.value)}
+              onChange={(e) => {
+                setSupplierInvNo(e.target.value);
+                if (fieldErrors.supplierInvNo)
+                  setFieldErrors((f) => ({ ...f, supplierInvNo: false }));
+              }}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
