@@ -129,8 +129,21 @@ function calcRow(row) {
   };
 }
 
+function calcRowFromTotal(row) {
+  const total = toFloat(row.totalAmount);
+  const tax = toFloat(row.taxRate);
+  const qty = toFloat(row.quantity, 1);
+  const rateIncl = qty > 0 ? total / qty : 0;
+  return {
+    ...row,
+    rateIncludingTax: rateIncl,
+    rateBeforeTax: tax > 0 ? (rateIncl * 100) / (100 + tax) : rateIncl,
+  };
+}
+
 export default function PurchaseEntryForm() {
   const barcodeRef = useRef(null);
+  const qtyRef = useRef(null);
 
   const [supplierName, setSupplierName] = useState("");
   const [suppliers, setSuppliers] = useState([]);
@@ -144,7 +157,11 @@ export default function PurchaseEntryForm() {
 
   const [barcodeInput, setBarcodeInput] = useState("");
   const [pendingQty, setPendingQty] = useState("1");
+  const [pendingItem, setPendingItem] = useState(null);
+  const [pendingRate, setPendingRate] = useState(0);
   const [nameValue, setNameValue] = useState(null);
+
+  const [billTotal, setBillTotal] = useState("");
 
   const [drafts, setDrafts] = useState(readDrafts);
   const [activeDraftId, setActiveDraftId] = useState(null);
@@ -187,10 +204,37 @@ export default function PurchaseEntryForm() {
     setTimeout(() => barcodeRef.current?.focus(), 150);
   }, []);
 
-  const addItem = useCallback((item, qtyOverride) => {
+  const fetchLastRate = useCallback(async (itemId) => {
+    const tenancyId = localStorage.getItem("tenancyId");
+    const token = localStorage.getItem("jwtToken");
+    try {
+      const res = await fetch(
+        `/api/${tenancyId}/purchase-last-rate?itemId=${encodeURIComponent(itemId)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.ok) {
+        const rate = await res.json();
+        setPendingRate(typeof rate === "number" ? rate : 0);
+        return;
+      }
+    } catch {}
+    setPendingRate(0);
+  }, []);
+
+  const focusQty = useCallback(() => {
+    setPendingQty("1");
+    setTimeout(() => {
+      const input = qtyRef.current;
+      if (!input) return;
+      input.focus();
+      input.select();
+    }, 60);
+  }, []);
+
+  const addItem = useCallback((item, qtyOverride, rateOverride) => {
     if (!item) return;
     const qty = toFloat(qtyOverride ?? pendingQty, 1);
-    const rate = toFloat(item.purchaseRate || item.standardPrice);
+    const rate = rateOverride !== undefined ? toFloat(rateOverride) : toFloat(item.purchaseRate || item.standardPrice);
     const tax = toFloat(item.taxRate);
     const id = String(item.item_id ?? item.itemId ?? item.itemName);
 
@@ -226,29 +270,49 @@ export default function PurchaseEntryForm() {
     );
     if (!found) {
       notify(`Barcode not found: ${code}`, "warning");
-    } else {
-      addItem(found);
-      notify(`Added: ${found.itemName}`);
+      setBarcodeInput("");
+      return;
     }
+    setPendingItem(found);
+    setPendingRate(0);
     setBarcodeInput("");
-    setPendingQty("1");
-    barcodeRef.current?.focus();
+    focusQty();
+    fetchLastRate(String(found.item_id ?? found.itemId));
   };
 
   const handleNameSelect = (_, item) => {
     if (!item) return;
-    addItem(item);
-    notify(`Added: ${item.itemName}`);
+    setPendingItem(item);
+    setPendingRate(0);
     setNameValue(null);
-    setPendingQty("1");
-    barcodeRef.current?.focus();
+    focusQty();
+    fetchLastRate(String(item.item_id ?? item.itemId));
+  };
+
+  const changeRowItem = (key, selected) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r._key !== key) return r;
+        if (!selected) return r;
+        if (typeof selected === "string") return { ...r, itemName: selected };
+        return calcRow({
+          ...r,
+          _id: String(selected.item_id ?? selected.itemId ?? selected.itemName),
+          itemName: selected.itemName || "",
+          barcode: selected.barcode || "",
+          taxRate: toFloat(selected.taxRate),
+        });
+      })
+    );
   };
 
   const updateRow = (key, field, value) => {
     setRows((prev) =>
-      prev.map((r) =>
-        r._key !== key ? r : calcRow({ ...r, [field]: toFloat(value) })
-      )
+      prev.map((r) => {
+        if (r._key !== key) return r;
+        const updated = { ...r, [field]: toFloat(value) };
+        return field === "totalAmount" ? calcRowFromTotal(updated) : calcRow(updated);
+      })
     );
   };
 
@@ -256,10 +320,12 @@ export default function PurchaseEntryForm() {
     setRows((prev) => prev.filter((r) => r._key !== key));
 
   const grandTotal = rows.reduce((s, r) => s + r.totalAmount, 0);
+  const roundOff = billTotal !== "" ? toFloat(billTotal) - grandTotal : 0;
 
   const buildPayload = (variant) => ({
     supplierName,
     branchCode: localStorage.getItem("branchCode") || "",
+    roundOff,
     ...(variant === "final"
       ? {
           supplierVoucherNumber: supplierInvNo,
@@ -373,6 +439,7 @@ export default function PurchaseEntryForm() {
           setRows([]);
           setSupplierName("");
           setSupplierInvNo("");
+          setBillTotal("");
         } else if (res.status === 409) {
           notify(data?.error || "GRN already done — cannot edit", "error");
         } else {
@@ -411,6 +478,7 @@ export default function PurchaseEntryForm() {
         setRows([]);
         setSupplierName("");
         setSupplierInvNo("");
+        setBillTotal("");
       } else {
         notify("Save failed", "error");
       }
@@ -420,7 +488,13 @@ export default function PurchaseEntryForm() {
   };
 
   return (
-    <Box sx={{ flexGrow: 1, p: 2, ml: "240px", mt: 1 }}>
+    <Box sx={{
+      flexGrow: 1, p: 2, ml: "240px", mt: 1,
+      "& input[type=number]": { MozAppearance: "textfield" },
+      "& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button": {
+        WebkitAppearance: "none", margin: 0,
+      },
+    }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
         <Stack direction="row" spacing={2} alignItems="center">
           <Typography variant="h5" fontWeight="bold" color="primary">
@@ -552,17 +626,45 @@ export default function PurchaseEntryForm() {
             )}
           />
           <TextField
+            inputRef={qtyRef}
             label="Qty"
             size="small"
             type="number"
-            sx={{ width: 80 }}
+            sx={{ width: 90 }}
             value={pendingQty}
             onChange={(e) => setPendingQty(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              if (!pendingItem) {
+                barcodeRef.current?.focus();
+                return;
+              }
+              addItem(pendingItem, pendingQty, pendingRate);
+              notify(`Added: ${pendingItem.itemName}`);
+              setPendingItem(null);
+              setPendingRate(0);
+              setPendingQty("1");
+              barcodeRef.current?.focus();
+            }}
+            onFocus={(e) => e.target.select()}
             inputProps={{ min: 0.01, step: 1, style: { textAlign: "right" } }}
           />
+          {pendingItem ? (
+            <Chip
+              label={`→ ${pendingItem.itemName}`}
+              color="primary"
+              size="small"
+              onDelete={() => { setPendingItem(null); barcodeRef.current?.focus(); }}
+            />
+          ) : (
+            <Typography variant="caption" color="text.disabled" sx={{ fontStyle: "italic" }}>
+              scan or select an item
+            </Typography>
+          )}
         </Stack>
         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
-          Scan barcode → added instantly · scanning the same barcode again increments quantity
+          Scan / select item → enter qty → press Enter to add
         </Typography>
       </Paper>
 
@@ -594,8 +696,44 @@ export default function PurchaseEntryForm() {
               {rows.map((row, idx) => (
                 <TableRow key={row._key} hover>
                   <TableCell>{idx + 1}</TableCell>
-                  <TableCell sx={{ fontWeight: 500, minWidth: 180 }}>
-                    {row.itemName}
+                  <TableCell sx={{ minWidth: 220 }}>
+                    <Autocomplete
+                      options={itemList}
+                      getOptionLabel={(o) =>
+                        typeof o === "string" ? o : (o.itemName ?? "")
+                      }
+                      value={
+                        itemList.find(
+                          (it) => String(it.item_id ?? it.itemId) === row._id
+                        ) || row.itemName
+                      }
+                      onChange={(_, val) => changeRowItem(row._key, val)}
+                      freeSolo
+                      size="small"
+                      filterOptions={(opts, { inputValue }) => {
+                        if (!inputValue) return opts.slice(0, 25);
+                        const q = inputValue.toLowerCase();
+                        return opts
+                          .filter(
+                            (o) =>
+                              o.itemName?.toLowerCase().includes(q) ||
+                              o.barcode?.toLowerCase().includes(q)
+                          )
+                          .slice(0, 40);
+                      }}
+                      isOptionEqualToValue={(o, v) =>
+                        typeof v === "string"
+                          ? o.itemName === v
+                          : String(o.item_id ?? o.itemId) === String(v?.item_id ?? v?.itemId)
+                      }
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          size="small"
+                          sx={{ "& .MuiInputBase-root": { fontSize: "0.85rem" } }}
+                        />
+                      )}
+                    />
                   </TableCell>
                   <TableCell sx={{ fontSize: 12, color: "text.secondary" }}>
                     {row.barcode}
@@ -639,8 +777,16 @@ export default function PurchaseEntryForm() {
                       sx={{ width: 70 }}
                     />
                   </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600, minWidth: 90 }}>
-                    {row.totalAmount.toFixed(2)}
+                  <TableCell align="right">
+                    <TextField
+                      size="small"
+                      type="number"
+                      value={row.totalAmount}
+                      onChange={(e) => updateRow(row._key, "totalAmount", e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      inputProps={{ style: { textAlign: "right", padding: "2px 6px", fontWeight: 600 }, min: 0 }}
+                      sx={{ width: 100 }}
+                    />
                   </TableCell>
                   <TableCell>
                     <IconButton
@@ -674,6 +820,51 @@ export default function PurchaseEntryForm() {
           </Table>
         </TableContainer>
       </Paper>
+
+      {/* ── Bill Total / Round Off ── */}
+      {rows.length > 0 && (
+        <Paper variant="outlined" sx={{ mb: 2, p: 2 }}>
+          <Stack alignItems="flex-end" spacing={1}>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 110, textAlign: "right" }}>
+                Items Total
+              </Typography>
+              <Typography fontWeight={600} sx={{ minWidth: 120, textAlign: "right", fontFamily: "monospace" }}>
+                {grandTotal.toFixed(2)}
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 110, textAlign: "right" }}>
+                Bill Total
+              </Typography>
+              <TextField
+                size="small"
+                type="number"
+                placeholder={grandTotal.toFixed(2)}
+                value={billTotal}
+                onChange={(e) => setBillTotal(e.target.value)}
+                onFocus={(e) => e.target.select()}
+                inputProps={{ style: { textAlign: "right", fontFamily: "monospace" }, min: 0 }}
+                sx={{ width: 120 }}
+              />
+            </Stack>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 110, textAlign: "right" }}>
+                Round Off
+              </Typography>
+              <Typography
+                fontWeight={600}
+                sx={{
+                  minWidth: 120, textAlign: "right", fontFamily: "monospace",
+                  color: roundOff > 0 ? "success.main" : roundOff < 0 ? "error.main" : "text.secondary",
+                }}
+              >
+                {roundOff.toFixed(2)}
+              </Typography>
+            </Stack>
+          </Stack>
+        </Paper>
+      )}
 
       {/* ── Save buttons ── */}
       <Stack direction="row" spacing={2} alignItems="center">
