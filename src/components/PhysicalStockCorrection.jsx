@@ -32,7 +32,7 @@ const PhysicalStockCorrection = () => {
   const [branch, setBranch] = useState("");
   const [branches, setBranches] = useState([]);
   const [rows, setRows] = useState([
-    { id: Date.now(), selectedItem: null, batches: [], selectedBatch: "", systemQty: 0, actualQty: "", difference: 0 }
+    { id: Date.now(), selectedItem: null, batches: [], selectedBatch: "", systemQty: 0, actualQty: "", difference: 0, loadingBatch: false }
   ]);
   const [loading, setLoading] = useState(false);
   const [cacheStatus, setCacheStatus] = useState({ loaded: false, loading: false, loadedCount: 0, total: 0 });
@@ -99,24 +99,31 @@ const PhysicalStockCorrection = () => {
     }
   };
 
-  const handleItemChange = async (id, newItem) => {
-    const itemId = newItem?.itemId || newItem?.item_id;
-    setRows(prev => prev.map(row => 
-      row.id === id ? { ...row, selectedItem: newItem, selectedBatch: "", systemQty: 0, actualQty: "", difference: 0, batches: [] } : row
+  const handleItemChange = (id, newItem) => {
+    setRows(prev => prev.map(row =>
+      row.id === id
+        ? { ...row, selectedItem: newItem, selectedBatch: "", systemQty: 0, actualQty: "", difference: 0, batches: [], loadingBatch: false }
+        : row
     ));
+  };
 
-    if (branch && itemId) {
-      try {
-        const res = await axios.get(`/api/${tenancyId}/inventory/item-batches`, {
-          headers: { Authorization: `Bearer ${token}` },
-          params: { branchCode: branch, itemId },
-        });
-        setRows(prev => prev.map(row => 
-          row.id === id ? { ...row, batches: res.data || [] } : row
-        ));
-      } catch (err) {
-        console.error("Error fetching batches:", err);
-      }
+  const handleLoadBatches = async (id) => {
+    const row = rows.find(r => r.id === id);
+    const itemId = row?.selectedItem?.itemId || row?.selectedItem?.item_id;
+    if (!branch || !itemId) return;
+
+    setRows(prev => prev.map(r => r.id === id ? { ...r, loadingBatch: true, batches: [], selectedBatch: "" } : r));
+    try {
+      const res = await axios.get(`/api/${tenancyId}/inventory/item-batches`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { branchCode: branch, itemId },
+      });
+      setRows(prev => prev.map(r =>
+        r.id === id ? { ...r, batches: res.data || [], loadingBatch: false } : r
+      ));
+    } catch (err) {
+      console.error("Error fetching batches:", err);
+      setRows(prev => prev.map(r => r.id === id ? { ...r, loadingBatch: false } : r));
     }
   };
 
@@ -143,7 +150,7 @@ const PhysicalStockCorrection = () => {
   };
 
   const handleAddRow = () => {
-    setRows([...rows, { id: Date.now(), selectedItem: null, batches: [], selectedBatch: "", systemQty: 0, actualQty: "", difference: 0 }]);
+    setRows([...rows, { id: Date.now(), selectedItem: null, batches: [], selectedBatch: "", systemQty: 0, actualQty: "", difference: 0, loadingBatch: false }]);
   };
 
   const handleRemoveRow = (id) => {
@@ -199,8 +206,9 @@ const PhysicalStockCorrection = () => {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell width="35%">{t("Item Name")}</TableCell>
-                <TableCell width="20%">{t("Batch")}</TableCell>
+                <TableCell width="30%">{t("Item Name")}</TableCell>
+                <TableCell width="8%" align="center">{t("Load")}</TableCell>
+                <TableCell width="18%">{t("Batch")}</TableCell>
                 <TableCell align="right">{t("System Qty")}</TableCell>
                 <TableCell align="right">{t("Actual Qty")}</TableCell>
                 <TableCell align="right">{t("Difference")}</TableCell>
@@ -219,8 +227,20 @@ const PhysicalStockCorrection = () => {
                       renderInput={(params) => <TextField {...params} size="small" placeholder={t("Select Item")} />}
                     />
                   </TableCell>
+                  <TableCell align="center">
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => handleLoadBatches(row.id)}
+                      disabled={!row.selectedItem || !branch || row.loadingBatch}
+                      sx={{ minWidth: 60, fontSize: "0.72rem", px: 1 }}
+                    >
+                      {row.loadingBatch ? <CircularProgress size={14} color="inherit" /> : t("Load")}
+                    </Button>
+                  </TableCell>
                   <TableCell>
                     <Select fullWidth size="small" value={row.selectedBatch} onChange={(e) => handleBatchChange(row.id, e.target.value)} disabled={!row.batches.length}>
+                      <MenuItem value="" disabled><em>{row.batches.length ? t("Select Batch") : t("Click Load first")}</em></MenuItem>
                       {row.batches.map((b) => <MenuItem key={b.batchNo} value={b.batchNo}>{b.batchNo} ({b.currentStock})</MenuItem>)}
                     </Select>
                   </TableCell>
