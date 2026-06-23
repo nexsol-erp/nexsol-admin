@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useState } from "react";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Chip,
@@ -239,6 +240,17 @@ export default function InvoiceReaderDialog({ open, onClose, onApply, itemList =
 
   const deleteRow = (key) => setRows((prev) => prev.filter((r) => r._key !== key));
 
+  const changeRowItem = (key, selected) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r._key !== key) return r;
+        if (!selected) return { ...r, matchedItem: null };
+        if (typeof selected === "string") return { ...r, matchedItem: null, itemName: selected };
+        return { ...r, matchedItem: selected };
+      })
+    );
+  };
+
   const handleApply = () => {
     const items = rows.map((r) => {
       const rate = parseFloat(r.rateIncludingTax) || 0;
@@ -467,29 +479,41 @@ export default function InvoiceReaderDialog({ open, onClose, onApply, itemList =
                     <TableBody>
                       {rows.map((row) => (
                         <TableRow key={row._key} hover>
-                          <TableCell>
-                            <Stack spacing={0.3}>
-                              <Typography variant="caption" color="text.secondary">
-                                {row.itemName}
-                              </Typography>
-                              {row.matchedItem ? (
-                                <Chip
-                                  label={row.matchedItem.itemName}
+                          <TableCell sx={{ minWidth: 220 }}>
+                            <Autocomplete
+                              options={itemList}
+                              getOptionLabel={(o) =>
+                                typeof o === "string" ? o : (o.itemName ?? "")
+                              }
+                              value={row.matchedItem || null}
+                              onChange={(_, val) => changeRowItem(row._key, val)}
+                              freeSolo
+                              size="small"
+                              filterOptions={(opts, { inputValue }) => {
+                                if (!inputValue) return opts.slice(0, 25);
+                                const q = inputValue.toLowerCase();
+                                return opts
+                                  .filter((o) => o.itemName?.toLowerCase().includes(q))
+                                  .slice(0, 40);
+                              }}
+                              isOptionEqualToValue={(o, v) =>
+                                (o?.item_id ?? o?.itemId) === (v?.item_id ?? v?.itemId)
+                              }
+                              renderInput={(params) => (
+                                <TextField
+                                  {...params}
                                   size="small"
-                                  color="primary"
-                                  variant="outlined"
-                                  sx={{ height: 18, fontSize: 11, maxWidth: 220 }}
-                                />
-                              ) : (
-                                <Chip
-                                  label="No match — will add as-is"
-                                  size="small"
-                                  color="warning"
-                                  variant="outlined"
-                                  sx={{ height: 18, fontSize: 11 }}
+                                  placeholder={row.itemName}
+                                  helperText={
+                                    <Typography component="span" sx={{ fontSize: "0.68rem", color: "text.disabled" }}>
+                                      AI: {row.itemName}
+                                    </Typography>
+                                  }
+                                  FormHelperTextProps={{ sx: { m: 0 } }}
+                                  sx={{ "& .MuiInputBase-root": { fontSize: "0.82rem" } }}
                                 />
                               )}
-                            </Stack>
+                            />
                           </TableCell>
                           <TableCell align="right">
                             <TextField

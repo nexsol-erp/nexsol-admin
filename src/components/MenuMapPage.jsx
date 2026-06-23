@@ -15,8 +15,7 @@ const SECTIONS = [
     key: "dashboard",
     title: "Dashboard & Intelligence",
     icon: <Dashboard />,
-    color: "#1565c0",
-    bg: "#e3f2fd",
+    color: "#1565C0",
     items: [
       { label: "Dashboard", path: "/dashboard" },
       { label: "AI Stock Intelligence", path: "/ai-dashboard" },
@@ -27,8 +26,7 @@ const SECTIONS = [
     key: "setup",
     title: "Setup & Administration",
     icon: <PlaylistAddCheck />,
-    color: "#6a1b9a",
-    bg: "#f3e5f5",
+    color: "#4A148C",
     items: [
       { label: "Create Menus", path: "/menu-master" },
       { label: "Create Roles", path: "/role-management" },
@@ -49,8 +47,7 @@ const SECTIONS = [
     key: "sales",
     title: "Sales",
     icon: <Receipt />,
-    color: "#b71c1c",
-    bg: "#ffebee",
+    color: "#C62828",
     items: [
       { label: "POS", path: "/pos" },
       { label: "KOT", path: "/kot" },
@@ -61,8 +58,7 @@ const SECTIONS = [
     key: "purchase",
     title: "Purchase",
     icon: <ShoppingCart />,
-    color: "#e65100",
-    bg: "#fff3e0",
+    color: "#BF360C",
     items: [
       { label: "Purchase Entry", path: "/purchaseentry" },
       { label: "Goods Receipt", path: "/goodsreceipt" },
@@ -72,8 +68,7 @@ const SECTIONS = [
     key: "production",
     title: "Production",
     icon: <Category />,
-    color: "#2e7d32",
-    bg: "#e8f5e9",
+    color: "#1B5E20",
     items: [
       { label: "Production Definition", path: "/production-def" },
       { label: "Production Planning", path: "/production-planning" },
@@ -84,8 +79,7 @@ const SECTIONS = [
     key: "stock",
     title: "Stock Operations",
     icon: <AddBusiness />,
-    color: "#1565c0",
-    bg: "#e8eaf6",
+    color: "#006064",
     items: [
       { label: "Physical Stock Correction", path: "/physical-stock-correction" },
     ],
@@ -94,8 +88,7 @@ const SECTIONS = [
     key: "weighbridge",
     title: "Weighbridge",
     icon: <Scale />,
-    color: "#37474f",
-    bg: "#eceff1",
+    color: "#37474F",
     items: [
       { label: "Weighbridge Entry", path: "/weighbridge" },
       { label: "Weight-Count", path: "/bridge-count" },
@@ -106,8 +99,7 @@ const SECTIONS = [
     key: "scheme",
     title: "Schemes & Promotions",
     icon: <Loyalty />,
-    color: "#7b1fa2",
-    bg: "#fce4ec",
+    color: "#880E4F",
     items: [
       { label: "Scheme Creation", path: "/schemepage" },
       { label: "Manage Scheme", path: "/publishschemepage" },
@@ -117,8 +109,7 @@ const SECTIONS = [
     key: "masters",
     title: "Masters",
     icon: <Tune />,
-    color: "#004d40",
-    bg: "#e0f2f1",
+    color: "#004D40",
     items: [
       { label: "Financial Year Setup", path: "/financialyearpage" },
       { label: "Receipt Modes", path: "/receipt-modes" },
@@ -141,8 +132,7 @@ const SECTIONS = [
     key: "sales_reports",
     title: "Sales Reports",
     icon: <Assessment />,
-    color: "#880e4f",
-    bg: "#fce4ec",
+    color: "#AD1457",
     items: [
       { label: "Sales Report", path: "/sales" },
       { label: "Sales Re Print", path: "/salessummaryreport" },
@@ -159,8 +149,7 @@ const SECTIONS = [
     key: "purchase_reports",
     title: "Purchase Reports",
     icon: <Assessment />,
-    color: "#bf360c",
-    bg: "#fbe9e7",
+    color: "#E65100",
     items: [
       { label: "Purchase Report", path: "/purchasereport" },
       { label: "HSN wise Purchase", path: "/hsnwise-purchase-report" },
@@ -170,8 +159,7 @@ const SECTIONS = [
     key: "stock_reports",
     title: "Stock & Inventory Reports",
     icon: <Assessment />,
-    color: "#0277bd",
-    bg: "#e1f5fe",
+    color: "#0277BD",
     items: [
       { label: "Item Stock Report", path: "/item-stock-report" },
       { label: "All Branch Stock Report", path: "/stock-report-all-branch" },
@@ -188,8 +176,7 @@ const SECTIONS = [
     key: "item_reports",
     title: "Item Analysis Reports",
     icon: <Analytics />,
-    color: "#00695c",
-    bg: "#e0f2f1",
+    color: "#2E7D32",
     items: [
       { label: "Item Sales Report", path: "/item-sales" },
       { label: "Item Movement Report", path: "/item-movement-report" },
@@ -204,8 +191,7 @@ const SECTIONS = [
     key: "ops_reports",
     title: "Operations Reports",
     icon: <Assessment />,
-    color: "#4527a0",
-    bg: "#ede7f6",
+    color: "#4527A0",
     items: [
       { label: "Day End Report", path: "/day-end-report" },
       { label: "Bill Series Report", path: "/billseriesreport" },
@@ -216,8 +202,7 @@ const SECTIONS = [
     key: "accounting",
     title: "Accounting",
     icon: <AccountBalance />,
-    color: "#1a237e",
-    bg: "#e8eaf6",
+    color: "#0D47A1",
     items: [
       { label: "Receipt Entry", path: "/accounting/receipt-entry" },
       { label: "Payment Entry", path: "/accounting/payment-entry" },
@@ -243,8 +228,7 @@ const SECTIONS = [
     key: "tools",
     title: "Tools & Design",
     icon: <Build />,
-    color: "#4e342e",
-    bg: "#efebe9",
+    color: "#EF6C00",
     items: [
       { label: "Invoice Designer", path: "/invoicedesigner" },
       { label: "Workflow Designer", path: "/bpmn-editorr" },
@@ -256,8 +240,7 @@ const SECTIONS = [
     key: "support",
     title: "Support & Legal",
     icon: <HelpOutline />,
-    color: "#558b2f",
-    bg: "#f1f8e9",
+    color: "#33691E",
     items: [
       { label: "Help", path: "/help" },
       { label: "About", path: "/about" },
@@ -285,30 +268,37 @@ const MenuMapPage = () => {
   }, [q]);
 
   const totalItems = SECTIONS.reduce((s, sec) => s + sec.items.length, 0);
-  const matchCount = q
-    ? filtered.reduce((s, sec) => s + sec.items.length, 0)
-    : null;
+  const matchCount = q ? filtered.reduce((s, sec) => s + sec.items.length, 0) : null;
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 1400, mx: "auto" }}>
       {/* Header */}
       <Box sx={{ mb: 3, textAlign: "center" }}>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1, mb: 0.5 }}>
-          <Map sx={{ color: "#1565c0", fontSize: 30 }} />
-          <Typography variant="h4" fontWeight={700} color="text.primary">
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1.5, mb: 0.5 }}>
+          <Box
+            sx={{
+              width: 40, height: 40, borderRadius: 2,
+              background: "linear-gradient(135deg, #1565C0 0%, #4A148C 100%)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 4px 12px rgba(21,101,192,0.4)",
+            }}
+          >
+            <Map sx={{ color: "#fff", fontSize: 22 }} />
+          </Box>
+          <Typography variant="h4" fontWeight={800} sx={{ color: "#1a1a2e", letterSpacing: "-0.5px" }}>
             Application Menu Map
           </Typography>
         </Box>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: "#666", mt: 0.5 }}>
           {totalItems} features across {SECTIONS.length} sections — click any item to navigate
         </Typography>
       </Box>
 
       {/* Search */}
-      <Box sx={{ maxWidth: 520, mx: "auto", mb: 3 }}>
+      <Box sx={{ maxWidth: 540, mx: "auto", mb: 3.5 }}>
         <TextField
           fullWidth
-          size="small"
+          size="medium"
           placeholder="Search any feature…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -316,20 +306,24 @@ const MenuMapPage = () => {
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon sx={{ color: "text.secondary" }} />
+                <SearchIcon sx={{ color: "#1565C0" }} />
               </InputAdornment>
             ),
           }}
           sx={{
             "& .MuiOutlinedInput-root": {
               borderRadius: 3,
-              fontSize: "0.95rem",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+              fontSize: "1rem",
+              bgcolor: "#fff",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.10)",
+              "& fieldset": { borderColor: "#e0e0e0" },
+              "&:hover fieldset": { borderColor: "#1565C0" },
+              "&.Mui-focused fieldset": { borderColor: "#1565C0", borderWidth: 2 },
             },
           }}
         />
         {matchCount !== null && (
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block", textAlign: "center" }}>
+          <Typography variant="caption" sx={{ mt: 0.75, display: "block", textAlign: "center", color: "#888" }}>
             {matchCount === 0
               ? "No matches found"
               : `${matchCount} match${matchCount !== 1 ? "es" : ""} found`}
@@ -339,65 +333,65 @@ const MenuMapPage = () => {
 
       {/* Sections Grid */}
       {filtered.length === 0 ? (
-        <Box sx={{ textAlign: "center", py: 6, color: "text.secondary" }}>
-          <SearchIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
-          <Typography>No features match "{query}"</Typography>
+        <Box sx={{ textAlign: "center", py: 8, color: "#bbb" }}>
+          <SearchIcon sx={{ fontSize: 52, mb: 1.5 }} />
+          <Typography variant="h6" sx={{ color: "#aaa" }}>No features match &ldquo;{query}&rdquo;</Typography>
         </Box>
       ) : (
-        <Grid container spacing={2}>
+        <Grid container spacing={2.5}>
           {filtered.map((sec) => (
             <Grid item xs={12} sm={6} md={4} key={sec.key}>
               <Paper
                 elevation={0}
-                variant="outlined"
                 sx={{
                   height: "100%",
-                  borderRadius: 2,
+                  borderRadius: 3,
                   overflow: "hidden",
-                  borderColor: `${sec.color}30`,
-                  transition: "box-shadow 0.2s",
-                  "&:hover": { boxShadow: `0 4px 16px ${sec.color}22` },
+                  border: "1px solid #f0f0f0",
+                  transition: "all 0.2s ease",
+                  "&:hover": {
+                    boxShadow: `0 8px 28px ${sec.color}30`,
+                    transform: "translateY(-2px)",
+                  },
                 }}
               >
-                {/* Card Header */}
+                {/* Solid coloured header */}
                 <Box
                   sx={{
-                    px: 2,
-                    py: 1.2,
-                    background: `linear-gradient(135deg, ${sec.color}18 0%, ${sec.color}08 100%)`,
-                    borderBottom: `2px solid ${sec.color}30`,
+                    px: 2.5,
+                    py: 1.5,
+                    background: `linear-gradient(135deg, ${sec.color} 0%, ${sec.color}CC 100%)`,
                     display: "flex",
                     alignItems: "center",
-                    gap: 1,
+                    gap: 1.25,
                   }}
                 >
-                  <Box sx={{ color: sec.color, display: "flex", alignItems: "center" }}>
+                  <Box sx={{ color: "rgba(255,255,255,0.95)", display: "flex", alignItems: "center", flexShrink: 0 }}>
                     {React.cloneElement(sec.icon, { fontSize: "small" })}
                   </Box>
                   <Typography
                     variant="subtitle2"
                     fontWeight={700}
-                    sx={{ color: sec.color, fontSize: "0.82rem", letterSpacing: "0.3px" }}
+                    sx={{ color: "#fff", fontSize: "0.83rem", letterSpacing: "0.2px", flexGrow: 1 }}
                   >
                     {sec.title}
                   </Typography>
-                  <Chip
-                    label={sec.items.length}
-                    size="small"
+                  <Box
                     sx={{
-                      ml: "auto",
-                      height: 18,
-                      fontSize: "0.68rem",
-                      bgcolor: `${sec.color}18`,
-                      color: sec.color,
-                      fontWeight: 700,
-                      "& .MuiChip-label": { px: 0.8 },
+                      minWidth: 22, height: 22, borderRadius: "50%",
+                      bgcolor: "rgba(255,255,255,0.25)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      flexShrink: 0,
                     }}
-                  />
+                  >
+                    <Typography sx={{ fontSize: "0.68rem", fontWeight: 800, color: "#fff", lineHeight: 1 }}>
+                      {sec.items.length}
+                    </Typography>
+                  </Box>
                 </Box>
 
                 {/* Items */}
-                <Box sx={{ p: 1.5, display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                <Box sx={{ p: 1.75, display: "flex", flexWrap: "wrap", gap: 0.8, bgcolor: "#fff" }}>
                   {sec.items.map((item) => {
                     const isMatch = q && item.label.toLowerCase().includes(q);
                     return (
@@ -407,22 +401,22 @@ const MenuMapPage = () => {
                         size="small"
                         onClick={() => navigate(item.path)}
                         sx={{
-                          fontSize: "0.75rem",
-                          height: 26,
+                          fontSize: "0.74rem",
+                          height: 27,
                           cursor: "pointer",
-                          bgcolor: isMatch ? sec.color : "transparent",
-                          color: isMatch ? "#fff" : "text.primary",
-                          border: `1px solid ${isMatch ? sec.color : "#e0e0e0"}`,
-                          fontWeight: isMatch ? 700 : 400,
-                          transition: "all 0.15s",
+                          bgcolor: isMatch ? sec.color : "#FAFAFA",
+                          color: isMatch ? "#fff" : "#333",
+                          border: `1.5px solid ${isMatch ? sec.color : "#E8E8E8"}`,
+                          fontWeight: isMatch ? 700 : 500,
+                          transition: "all 0.15s ease",
                           "&:hover": {
                             bgcolor: sec.color,
                             color: "#fff",
                             borderColor: sec.color,
                             transform: "translateY(-1px)",
-                            boxShadow: `0 3px 8px ${sec.color}44`,
+                            boxShadow: `0 4px 10px ${sec.color}50`,
                           },
-                          "& .MuiChip-label": { px: 1 },
+                          "& .MuiChip-label": { px: 1.25 },
                         }}
                       />
                     );
