@@ -311,6 +311,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         { menuKey: "Stock Movement Report",                label: t("Stock Movement Report"),                link: "/stockmovementreport",                   roles: ["admin", "user", "manager", "franchiseeuser"] },
         { menuKey: "Physical Stock Report",                label: t("Physical Stock Report"),                link: "/physicalstockreport",                   roles: ["admin", "user", "manager", "franchiseeuser"] },
         { menuKey: "Stock Turnover Report",                label: t("Stock Turnover Report"),                link: "/stock-turnover",                        roles: ["user", "admin"] },
+        { menuKey: "Stock Anomaly Report",                 label: t("Stock Anomaly Report"),                 link: "/stock-anomaly-report",                  roles: ["admin", "manager"] },
         // Item Analysis
         { menuKey: "Item Sales Report",                    label: t("Item Sales Report"),                    link: "/item-sales",                            roles: ["user", "admin"] },
         { menuKey: "Item Movement Report",                 label: t("Item Movement Report"),                 link: "/item-movement-report",                  roles: ["admin", "user", "manager", "franchiseeuser"] },
