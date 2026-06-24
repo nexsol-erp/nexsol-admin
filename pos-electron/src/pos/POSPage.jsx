@@ -785,9 +785,17 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       render: (_, row) => (
         <InputNumber
           ref={(el) => { if (el) qtyInputRefs.current[row.key] = el; else delete qtyInputRefs.current[row.key]; }}
-          value={row.qty} min={0}
+          value={row.qty} min={0} controls={false} keyboard={false}
           onChange={(val) => updateItem(row.key, { qty: val })}
           onFocus={(e) => e.target.select()}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+              e.preventDefault();
+              const idx = items.findIndex((r) => r.key === row.key);
+              const next = items[e.key === "ArrowUp" ? idx - 1 : idx + 1];
+              if (next) qtyInputRefs.current[next.key]?.focus?.();
+            }
+          }}
           onPressEnter={() => itemSearchRef.current?.focus?.()}
           style={{ width: "100%", borderRadius: 0 }}
         />
@@ -813,7 +821,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       title: "Amount", dataIndex: "amount", width: 120,
       render: (_, row) => (
         <InputNumber
-          value={row.amount} min={0} controls={false} style={{ width: "100%", borderRadius: 0 }}
+          value={row.amount} min={0} controls={false} keyboard={false} style={{ width: "100%", borderRadius: 0 }}
           onChange={(val) => setReceipts((prev) => prev.map((r) => r.key === row.key ? { ...r, amount: Number(val || 0) } : r))}
           onKeyDown={(e) => {
             if (e.key === "Enter") { setSingleReceiptToTotal(row.receipt_mode); return; }
