@@ -376,7 +376,7 @@ const GoodsReceiptForm = () => {
                   >
                     {branches.map((b) => (
                       <MenuItem key={b.branchCode} value={b.branchCode}>
-                        {b.branchName || b.branchCode}
+                        {b.branchCode}{b.branchName ? ` - ${b.branchName}` : ""}
                       </MenuItem>
                     ))}
                   </Select>
