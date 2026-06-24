@@ -285,11 +285,11 @@ const MenuMapPage = () => {
           >
             <Map sx={{ color: "#fff", fontSize: 22 }} />
           </Box>
-          <Typography variant="h4" fontWeight={800} sx={{ color: "#1a1a2e", letterSpacing: "-0.5px" }}>
+          <Typography variant="h4" fontWeight={800} sx={{ color: "text.primary", letterSpacing: "-0.5px" }}>
             Application Menu Map
           </Typography>
         </Box>
-        <Typography variant="body2" sx={{ color: "#666", mt: 0.5 }}>
+        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
           {totalItems} features across {SECTIONS.length} sections — click any item to navigate
         </Typography>
       </Box>
@@ -314,16 +314,18 @@ const MenuMapPage = () => {
             "& .MuiOutlinedInput-root": {
               borderRadius: 3,
               fontSize: "1rem",
-              bgcolor: "#fff",
+              bgcolor: "background.paper",
+              color: "text.primary",
               boxShadow: "0 2px 12px rgba(0,0,0,0.10)",
-              "& fieldset": { borderColor: "#e0e0e0" },
+              "& fieldset": { borderColor: "divider" },
               "&:hover fieldset": { borderColor: "#1565C0" },
               "&.Mui-focused fieldset": { borderColor: "#1565C0", borderWidth: 2 },
             },
+            "& .MuiInputBase-input": { color: "inherit" },
           }}
         />
         {matchCount !== null && (
-          <Typography variant="caption" sx={{ mt: 0.75, display: "block", textAlign: "center", color: "#888" }}>
+          <Typography variant="caption" sx={{ mt: 0.75, display: "block", textAlign: "center", color: "text.secondary" }}>
             {matchCount === 0
               ? "No matches found"
               : `${matchCount} match${matchCount !== 1 ? "es" : ""} found`}
@@ -347,7 +349,8 @@ const MenuMapPage = () => {
                   height: "100%",
                   borderRadius: 3,
                   overflow: "hidden",
-                  border: "1px solid #f0f0f0",
+                  border: "1px solid",
+                  borderColor: "divider",
                   transition: "all 0.2s ease",
                   "&:hover": {
                     boxShadow: `0 8px 28px ${sec.color}30`,
@@ -391,7 +394,7 @@ const MenuMapPage = () => {
                 </Box>
 
                 {/* Items */}
-                <Box sx={{ p: 1.75, display: "flex", flexWrap: "wrap", gap: 0.8, bgcolor: "#fff" }}>
+                <Box sx={{ p: 1.75, display: "flex", flexWrap: "wrap", gap: 0.8, bgcolor: "background.paper" }}>
                   {sec.items.map((item) => {
                     const isMatch = q && item.label.toLowerCase().includes(q);
                     return (
@@ -404,9 +407,10 @@ const MenuMapPage = () => {
                           fontSize: "0.74rem",
                           height: 27,
                           cursor: "pointer",
-                          bgcolor: isMatch ? sec.color : "#FAFAFA",
-                          color: isMatch ? "#fff" : "#333",
-                          border: `1.5px solid ${isMatch ? sec.color : "#E8E8E8"}`,
+                          bgcolor: isMatch ? sec.color : "action.hover",
+                          color: isMatch ? "#fff" : "text.primary",
+                          border: `1.5px solid ${isMatch ? sec.color : "transparent"}`,
+                          borderColor: isMatch ? sec.color : "divider",
                           fontWeight: isMatch ? 700 : 500,
                           transition: "all 0.15s ease",
                           "&:hover": {
