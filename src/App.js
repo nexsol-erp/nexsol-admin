@@ -57,6 +57,7 @@ import ItemSearchPage from "./components/ItemSearchPage";
 import MainLayout from "./components/MainLayout";
 
 import StockReportAllBranch from "./components/StockReportAllBranch"
+import StockAnomalyReport from "./components/StockAnomalyReport"
 
 import SalesReportAllBranch from "./components/SalesReportAllBranch"
 import WeighBridgeEngageReport from "./components/WeighBridgeEngageReport";
@@ -202,6 +203,7 @@ const ROUTE_ORDER = [
   { key: "Bill Series Report",               path: "/billseriesreport" },
   { key: "Season Sales Report",              path: "/seasonalreport" },
   { key: "Stock Turnover Report",            path: "/stock-turnover" },
+  { key: "Stock Anomaly Report",             path: "/stock-anomaly-report" },
   { key: "Item Sales Report",                path: "/item-sales" },
   { key: "Documents List",                   path: "/documents-list" },
   { key: "Branch Stock Diff Report",         path: "/branch-stock-diff-report" },
@@ -368,6 +370,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/main" element={<MainLayout mode={mode} setMode={setMode} roles={roles} />} />
 
             <Route path="/stock-report-all-branch" element={<StockReportAllBranch />} />
+            <Route path="/stock-anomaly-report" element={<StockAnomalyReport />} />
             <Route path="/sales-report-all-branch" element={<SalesReportAllBranch />} />
             <Route path="/bridge-count" element={<WeighBridgeEngageReport />} />
             <Route path="/weighbridgeusage" element={<WeighbridgeUsageReport />} />
