@@ -54,6 +54,7 @@ import {
 } from "@mui/icons-material";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useBranch } from "./BranchContext";
 
 const DRAWER_WIDTH = 240;
 
@@ -77,28 +78,12 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
   const { t } = useTranslation();
   const location = useLocation();
 
+  const { branch: selectedBranch, setBranch: setSelectedBranch, branches } = useBranch();
+
   const [openMenus, setOpenMenus] = useState({});
-  const [branches, setBranches] = useState([]);
-  const [branch, setBranch] = useState("");
-  const [selectedBranch, setSelectedBranch] = useState("");
   // null = not yet loaded; empty Set = loaded but no assignments (show all)
   const [allowedMenuNames, setAllowedMenuNames] = useState(null);
   const [menuFetchTrigger, setMenuFetchTrigger] = useState(0);
-
-  const allowedBranches = useMemo(() => {
-    try {
-      const raw = localStorage.getItem("allowedBranches");
-      const list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
-    } catch {
-      return [];
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchBranches();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     if (!roles || roles.length === 0) return;
@@ -122,32 +107,8 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
     return allowedMenuNames.has(key);
   };
 
-  const fetchBranches = async () => {
-    try {
-      const tenancyId = localStorage.getItem("tenancyId");
-      const token = localStorage.getItem("jwtToken");
-      const response = await fetch(`/api/${tenancyId}/branches`, {
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      });
-      if (!response.ok) throw new Error("Failed to fetch branches");
-      const data = await response.json();
-      const list = Array.isArray(data) ? data : data.branches || data.data || [];
-      const filtered = allowedBranches.length
-        ? list.filter((b) => allowedBranches.includes(b.branchCode))
-        : [];
-      setBranches(filtered);
-      if (!branch && filtered.length === 1) setBranch(filtered[0].branchCode);
-      if (branch && !filtered.some((b) => b.branchCode === branch)) setBranch("");
-    } catch (e) {
-      console.error("Error fetching branches:", e);
-      setBranches([]);
-      setBranch("");
-    }
-  };
-
   const handleBranchChange = (e) => {
     setSelectedBranch(e.target.value);
-    localStorage.setItem("branchCode", e.target.value);
   };
 
   const handleLogout = () => {

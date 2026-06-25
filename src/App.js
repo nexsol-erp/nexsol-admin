@@ -133,6 +133,8 @@ import InterBranchTransfer from "./components/accounting/InterBranchTransfer";
 import PeriodClosing from "./components/accounting/PeriodClosing";
 import BudgetManager from "./components/accounting/BudgetManager";
 import BudgetVsActual from "./components/accounting/BudgetVsActual";
+import { UnitProvider } from "./components/UnitContext";
+import { BranchProvider } from "./components/BranchContext";
 
 // ========================
 // ORDERED MENU ROUTE MAP  (mirrors Sidebar menuItems order)
@@ -324,6 +326,8 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
         </Toolbar>
       </AppBar>
 
+      <BranchProvider>
+      <UnitProvider>
       <Sidebar mode={mode} setMode={setMode} roles={roles} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       <Box sx={{ display: "flex", flexGrow: 1, ml: { xs: 0, sm: "240px" }, mt: { xs: "48px", sm: 8 } }}>
         <WebSocketProvider>
@@ -452,6 +456,8 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
           </Routes>
         </WebSocketProvider>
       </Box>
+      </UnitProvider>
+      </BranchProvider>
     </>
   );
 };
