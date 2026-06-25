@@ -22,6 +22,7 @@ import {
   Autocomplete,
 } from "@mui/material";
 import Grid from "@mui/material/Unstable_Grid2";
+import { alpha } from "@mui/material/styles";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
@@ -55,12 +56,12 @@ const fmtCurrency = (n) =>
     minimumFractionDigits: 0,
   });
 
-function supplyChipStyle(months) {
-  if (months === null || months === undefined)
-    return { bg: "#fce4ec", color: "#b71c1c", label: "No Sales" };
-  if (months > 12) return { bg: "#ffebee", color: "#c62828", label: `${months}m` };
-  if (months > 6) return { bg: "#fff8e1", color: "#e65100", label: `${months}m` };
-  return { bg: "#e8f5e9", color: "#2e7d32", label: `${months}m` };
+// Returns MUI Chip color prop — adapts to light and dark mode automatically
+function supplyChipColor(months) {
+  if (months === null || months === undefined) return { color: "error",   label: "No Sales" };
+  if (months > 12)                             return { color: "error",   label: `${months}m` };
+  if (months > 6)                              return { color: "warning", label: `${months}m` };
+  return                                              { color: "success", label: `${months}m` };
 }
 
 // ── sub-components ────────────────────────────────────────────────────────────
@@ -548,14 +549,14 @@ const StockAnomalyReport = () => {
                 rows={report.highStock}
                 emptyLabel="No high-stock anomalies found with current threshold"
                 renderRow={(row, i) => {
-                  const chip = supplyChipStyle(row.monthsOfSupply);
+                  const chip = supplyChipColor(row.monthsOfSupply);
                   const isCritical =
                     row.monthsOfSupply === null || row.monthsOfSupply > 12;
                   return (
                     <TableRow
                       key={i}
                       hover
-                      sx={{ bgcolor: isCritical ? "#fff5f5" : "inherit" }}
+                      sx={{ bgcolor: isCritical ? (theme) => alpha(theme.palette.error.main, 0.08) : "inherit" }}
                     >
                       <TableCell sx={{ color: "text.disabled", fontSize: 11 }}>
                         {i + 1}
@@ -587,17 +588,14 @@ const StockAnomalyReport = () => {
                         <Chip
                           size="small"
                           label={chip.label}
-                          sx={{
-                            bgcolor: chip.bg,
-                            color: chip.color,
-                            fontWeight: 700,
-                            fontSize: 12,
-                          }}
+                          color={chip.color}
+                          variant="outlined"
+                          sx={{ fontWeight: 700, fontSize: 12 }}
                         />
                       </TableCell>
                       <TableCell
                         align="right"
-                        sx={{ fontWeight: 600, color: isCritical ? "#c62828" : "inherit" }}
+                        sx={{ fontWeight: 600, color: isCritical ? "error.main" : "inherit" }}
                       >
                         {fmtCurrency(row.stockValue)}
                       </TableCell>
@@ -609,9 +607,9 @@ const StockAnomalyReport = () => {
               {/* Legend */}
               <Box sx={{ display: "flex", gap: 2, mt: 1.5, flexWrap: "wrap" }}>
                 {[
-                  { bg: "#ffebee", color: "#c62828", label: "> 12 months / No sales" },
-                  { bg: "#fff8e1", color: "#e65100", label: "6–12 months" },
-                  { bg: "#e8f5e9", color: "#2e7d32", label: "≤ 6 months" },
+                  { paletteColor: "error",   label: "> 12 months / No sales" },
+                  { paletteColor: "warning", label: "6–12 months" },
+                  { paletteColor: "success", label: "≤ 6 months" },
                 ].map((l) => (
                   <Box key={l.label} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                     <Box
@@ -619,8 +617,8 @@ const StockAnomalyReport = () => {
                         width: 12,
                         height: 12,
                         borderRadius: "50%",
-                        bgcolor: l.bg,
-                        border: `1.5px solid ${l.color}`,
+                        bgcolor: (theme) => alpha(theme.palette[l.paletteColor].main, 0.2),
+                        border: (theme) => `1.5px solid ${theme.palette[l.paletteColor].main}`,
                       }}
                     />
                     <Typography variant="caption" color="text.secondary">
@@ -641,7 +639,7 @@ const StockAnomalyReport = () => {
                   <TableRow
                     key={i}
                     hover
-                    sx={{ bgcolor: i % 2 === 0 ? "#fafafa" : "inherit" }}
+                    sx={{ bgcolor: i % 2 === 0 ? "action.hover" : "inherit" }}
                   >
                     <TableCell sx={{ color: "text.disabled", fontSize: 11 }}>
                       {i + 1}
