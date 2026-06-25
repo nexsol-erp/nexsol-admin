@@ -17,11 +17,11 @@ import {
   Chip,
   Tabs,
   Tab,
-  Grid,
   Card,
   CardContent,
   Autocomplete,
 } from "@mui/material";
+import Grid from "@mui/material/Unstable_Grid2";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
@@ -413,7 +413,7 @@ const StockAnomalyReport = () => {
       {/* ── Summary cards ── */}
       {s && (
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <SummaryCard
               icon={<TrendingUpIcon />}
               label="High Stock Items"
@@ -422,7 +422,7 @@ const StockAnomalyReport = () => {
               subtitle={`> ${s.highStockMonthsThreshold} months supply`}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <SummaryCard
               icon={<BlockIcon />}
               label="Dead Stock Items"
@@ -431,7 +431,7 @@ const StockAnomalyReport = () => {
               subtitle="Zero qty · no tx in 6 months"
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <SummaryCard
               icon={<AttachMoneyIcon />}
               label="Tied-up Capital"
@@ -440,7 +440,7 @@ const StockAnomalyReport = () => {
               subtitle="Est. value of high-stock items"
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <SummaryCard
               icon={<WarningAmberIcon />}
               label="Total Anomalies"
