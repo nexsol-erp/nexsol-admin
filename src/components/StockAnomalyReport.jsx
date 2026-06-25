@@ -199,6 +199,14 @@ const StockAnomalyReport = () => {
   const tenancyId = localStorage.getItem("tenancyId");
   const token     = localStorage.getItem("jwtToken");
 
+  const allowedBranches = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("allowedBranches");
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch { return []; }
+  }, []);
+
   const [branches, setBranches]     = useState([]);
   const [branchCode, setBranchCode] = useState(null);
   const [threshold, setThreshold]   = useState(6);
@@ -208,13 +216,23 @@ const StockAnomalyReport = () => {
   const [tab, setTab]               = useState(0);
 
   useEffect(() => {
-    fetch(`/api/${tenancyId}/branches`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((d) => setBranches(Array.isArray(d) ? d : []))
-      .catch(() => {});
-  }, [tenancyId, token]);
+    const fetchBranches = async () => {
+      try {
+        const res = await fetch(`/api/${tenancyId}/branches`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : data.branches || data.data || [];
+        const filtered = allowedBranches.length
+          ? list.filter((b) => allowedBranches.includes(b.branchCode))
+          : list;
+        setBranches(filtered);
+      } catch {}
+    };
+    fetchBranches();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchReport = async () => {
     setLoading(true);
@@ -227,7 +245,11 @@ const StockAnomalyReport = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!resp.ok) throw new Error(`Server returned ${resp.status}`);
-      setReport(await resp.json());
+      const json = await resp.json();
+      if (!json?.summary || !Array.isArray(json?.highStock) || !Array.isArray(json?.deadStock)) {
+        throw new Error("Unexpected response from server. Check that the backend is deployed with the latest changes.");
+      }
+      setReport(json);
       setTab(0);
     } catch (e) {
       setError(e.message);
@@ -368,7 +390,7 @@ const StockAnomalyReport = () => {
           sx={{ minWidth: 240 }}
           options={branches}
           getOptionLabel={(b) =>
-            typeof b === "string" ? b : `${b.branchCode} — ${b.branchName}`
+            typeof b === "string" ? b : `${b.branchCode}${b.branchName ? " — " + b.branchName : ""}`
           }
           value={branches.find((b) => b.branchCode === branchCode) ?? null}
           onChange={(_, v) => setBranchCode(v?.branchCode ?? null)}
