@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import UnitSelect from "./UnitSelect";
 import {
   Box,
   Button,
@@ -404,7 +405,7 @@ const ProductionExecutionPage = () => {
                     <TextField size="small" value={row.batch} onChange={e => handleRowChange(row.key, "batch", e.target.value)} sx={{ width: 80 }} />
                   </TableCell>
                   <TableCell sx={{ p: 0.5 }}>
-                    <TextField size="small" value={row.unit} onChange={e => handleRowChange(row.key, "unit", e.target.value)} sx={{ width: 70 }} />
+                    <UnitSelect value={row.unit} onChange={v => handleRowChange(row.key, "unit", v)} sx={{ width: 100 }} />
                   </TableCell>
                   <TableCell sx={{ p: 0.5 }}>
                     <TextField size="small" type="date" value={row.expiry} onChange={e => handleRowChange(row.key, "expiry", e.target.value)} sx={{ width: 130 }} InputLabelProps={{ shrink: true }} />
