@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import UnitSelect from "./UnitSelect";
 import {
   TextField,
   Button,
@@ -300,23 +301,13 @@ const CreateItemMaster = () => {
           </Grid>
 
           <Grid item xs={12}>
-            <FormControl fullWidth>
-              <InputLabel id="unit-name-label">{t("unitName")}</InputLabel>
-              <Select
-                labelId="unit-name-label"
-                name="unitName"
-                value={formData.unitName}
-                onChange={handleChange}
-                required
-              >
-                <MenuItem value="NOS">NOS</MenuItem>
-                <MenuItem value="LTRS">LTRS</MenuItem>
-                <MenuItem value="KGS">KGS</MenuItem>
-                <MenuItem value="PKT">PKT</MenuItem>
-                <MenuItem value="BTL">BTL</MenuItem>
-                <MenuItem value="GM">GM</MenuItem>
-              </Select>
-            </FormControl>
+            <UnitSelect
+              label={t("unitName")}
+              value={formData.unitName}
+              onChange={(v) => setFormData((f) => ({ ...f, unitName: v }))}
+              size="medium"
+              sx={{ width: "100%" }}
+            />
           </Grid>
 
           <Grid item xs={12}>

@@ -155,10 +155,11 @@ const GoodsReceiptForm = () => {
           itemName: it.itemName,
           barcode: it.barcode || "",
           unit: it.unit || "",
+          inventoryUnit: it.inventoryUnit || it.unit || "",
           batch: it.batch || "",
           taxRate: it.taxRate || 0,
           orderedQty: it.orderedQty,
-          receivedQty: it.receivedQty,
+          receivedQty: it.receivedQty,   // inventory qty — enters stock
           purchaseRate: it.purchaseRate || 0,
           standardPrice: it.standardPrice || 0,
           amount: it.amount || 0,
@@ -319,42 +320,58 @@ const GoodsReceiptForm = () => {
                       <TableCell>#</TableCell>
                       <TableCell>Item</TableCell>
                       <TableCell>Barcode</TableCell>
-                      <TableCell>Unit</TableCell>
-                      <TableCell align="right">Ordered Qty</TableCell>
-                      <TableCell align="right" sx={{ minWidth: 120 }}>
-                        Received Qty
+                      <TableCell align="right">Purch. Qty</TableCell>
+                      <TableCell>Purch. Unit</TableCell>
+                      <TableCell align="center">Conv.</TableCell>
+                      <TableCell align="right" sx={{ minWidth: 130, color: "primary.main", fontWeight: 700 }}>
+                        Recv. Inv. Qty
                       </TableCell>
+                      <TableCell>Inv. Unit</TableCell>
                       <TableCell align="right">Rate</TableCell>
                       <TableCell align="right">Amount</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {items.map((it, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell>{idx + 1}</TableCell>
-                        <TableCell>{it.itemName}</TableCell>
-                        <TableCell>{it.barcode}</TableCell>
-                        <TableCell>{it.unit}</TableCell>
-                        <TableCell align="right">{it.orderedQty}</TableCell>
-                        <TableCell>
-                          <TextField
-                            type="number"
-                            size="small"
-                            value={it.receivedQty}
-                            onChange={(e) => handleQtyChange(idx, e.target.value)}
-                            inputProps={{ min: 0, style: { textAlign: "right", width: 80 } }}
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          {(it.standardPrice || 0).toFixed(2)}
-                        </TableCell>
-                        <TableCell align="right">
-                          {(it.amount || 0).toFixed(2)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {items.map((it, idx) => {
+                      const multiUnit =
+                        it.conversionFactor > 1 ||
+                        (it.unit && it.inventoryUnit && it.unit !== it.inventoryUnit);
+                      return (
+                        <TableRow key={idx}>
+                          <TableCell>{idx + 1}</TableCell>
+                          <TableCell>{it.itemName}</TableCell>
+                          <TableCell>{it.barcode}</TableCell>
+                          <TableCell align="right">{it.orderedQty}</TableCell>
+                          <TableCell sx={{ color: multiUnit ? "text.secondary" : "inherit" }}>
+                            {it.unit || "—"}
+                          </TableCell>
+                          <TableCell align="center" sx={{ color: "text.secondary", fontSize: "0.8rem" }}>
+                            {multiUnit ? `×${it.conversionFactor}` : "—"}
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              type="number"
+                              size="small"
+                              value={it.receivedQty}
+                              onChange={(e) => handleQtyChange(idx, e.target.value)}
+                              inputProps={{ min: 0, style: { textAlign: "right", width: 90 } }}
+                              sx={{ "& input": { color: "primary.main", fontWeight: 600 } }}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ color: multiUnit ? "primary.main" : "inherit", fontWeight: multiUnit ? 600 : 400 }}>
+                            {it.inventoryUnit || it.unit || "—"}
+                          </TableCell>
+                          <TableCell align="right">
+                            {(it.standardPrice || 0).toFixed(2)}
+                          </TableCell>
+                          <TableCell align="right">
+                            {(it.amount || 0).toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     <TableRow>
-                      <TableCell colSpan={7} align="right">
+                      <TableCell colSpan={9} align="right">
                         <Typography fontWeight={700}>Grand Total</Typography>
                       </TableCell>
                       <TableCell align="right">
