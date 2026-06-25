@@ -220,13 +220,15 @@ export default function StockTransferPage({ onClose }) {
         filtered.map(async (rec) => {
           const cached = await db.items.get(String(rec.item_id)).catch(() => null);
           const price = Number(cached?.standardPrice || 0);
-          const qty = Number(rec.qty) || 1;
+          const availableQty = cached?.availableQty != null ? Number(cached.availableQty) : null;
+          const qty = Math.min(Number(rec.qty) || 1, availableQty != null ? availableQty : Infinity) || 1;
           return {
             key: crypto.randomUUID(),
             item_id: String(rec.item_id),
             item_name: cached?.itemName || rec.item_name || "",
             barcode: cached?.barcode || "",
             qty,
+            available_qty: availableQty,
             tax_rate: Number(cached?.taxRate || 0),
             standard_price: price,
             amount: round2n(qty * price),
@@ -316,9 +318,19 @@ export default function StockTransferPage({ onClose }) {
 
   const onPickItem = (itm) => {
     const batch = itm.batchCode || "";
+    const available = Number(itm.availableQty ?? Infinity);
     const existing = items.find((r) => r.item_id === itm.itemId && (r.batch || "") === batch);
     if (existing) {
-      updateRow(existing.key, { qty: (Number(existing.qty) || 0) + 1 });
+      const newQty = (Number(existing.qty) || 0) + 1;
+      const max = existing.available_qty ?? Infinity;
+      if (newQty > max) {
+        message.warning(`Only ${max} in stock for ${existing.item_name}`);
+        pendingQtyFocusKey.current = existing.key;
+        setItemQuery("");
+        setLookupOpen(false);
+        return;
+      }
+      updateRow(existing.key, { qty: newQty });
       pendingQtyFocusKey.current = existing.key;
       setItemQuery("");
       setLookupOpen(false);
@@ -331,6 +343,7 @@ export default function StockTransferPage({ onClose }) {
       item_name: itm.itemName,
       barcode: itm.barcode,
       qty: 1,
+      available_qty: isFinite(available) ? available : null,
       tax_rate: Number(itm.taxRate || 0),
       standard_price: Number(itm.standardPrice || 0),
       amount: round2n(Number(itm.standardPrice || 0)),
@@ -414,6 +427,16 @@ export default function StockTransferPage({ onClose }) {
     if (!fromBranch || !toBranchCode) { message.warning("Select source and destination branch."); return; }
     if (!items.length) { message.warning("Add items first."); return; }
     if (fromBranch === toBranchCode) { message.warning("Destination branch cannot be same as source."); return; }
+
+    const overStock = items.filter(
+      (r) => r.available_qty != null && Number(r.qty) > Number(r.available_qty)
+    );
+    if (overStock.length) {
+      message.error(
+        `Qty exceeds available stock: ${overStock.map((r) => `${r.item_name} (have ${r.available_qty}, transferring ${r.qty})`).join("; ")}`
+      );
+      return;
+    }
 
     const headerId = crypto.randomUUID();
     const { voucherNumber, numericSeq: numericVoucher } = generateTransferVoucherNumber(fromBranch);
@@ -558,8 +581,18 @@ export default function StockTransferPage({ onClose }) {
             else qtyRefs.current.delete(row.key);
           }}
           min={0}
+          max={row.available_qty != null ? row.available_qty : undefined}
           value={row.qty}
-          onChange={(v) => updateRow(row.key, { qty: Number(v || 0) })}
+          onChange={(v) => {
+            const newQty = Number(v || 0);
+            const max = row.available_qty;
+            if (max != null && newQty > max) {
+              message.warning(`Only ${max} in stock for ${row.item_name}`);
+              updateRow(row.key, { qty: max });
+            } else {
+              updateRow(row.key, { qty: newQty });
+            }
+          }}
           onFocus={(e) => e.target.select()}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -583,6 +616,12 @@ export default function StockTransferPage({ onClose }) {
           style={{ width: "100%", borderRadius: 0 }}
         />
       ),
+    },
+    {
+      title: "In Stock",
+      dataIndex: "available_qty",
+      width: 70,
+      render: (v) => (v == null ? "-" : Number(v).toFixed(2)),
     },
     { title: "Tax%", dataIndex: "tax_rate", width: 60 },
     { title: "Amount", dataIndex: "amount", width: 100, render: (v) => round2(v) },
