@@ -206,6 +206,14 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     if (!tenantId || !token) return;
     const hdr = { Authorization: `Bearer ${token}` };
 
+    // Restore cached map immediately so DYNAMIC checks work even before the
+    // network response arrives (or when starting fully offline).
+    const CACHE_KEY = `cat_map_${tenantId}`;
+    try {
+      const saved = localStorage.getItem(CACHE_KEY);
+      if (saved) setCategoryMap(JSON.parse(saved));
+    } catch (_) {}
+
     fetch(`/api/${tenantId}/item-category-map/all`, { headers: hdr })
       .then((r) => (r.ok ? r.json() : []))
       .then((rows) => {
@@ -219,6 +227,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
           if (!map[id].includes(cat)) map[id].push(cat);
         }
         setCategoryMap(map);
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(map)); } catch (_) {}
       })
       .catch(() => {});
 
@@ -485,7 +494,34 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   };
 
   const recallBill = async (hold) => {
-    setItems(hold.items);
+    // Re-check current stock for each held item so negative qty can't happen
+    const adjustedItems = await Promise.all(
+      (hold.items || []).map(async (r) => {
+        if (isItemDynamic(r.item_id)) return r; // DYNAMIC items have no stock limit
+        const cached = await db.items.get(String(r.item_id)).catch(() => null);
+        const currentQty = cached?.availableQty != null ? Number(cached.availableQty) : null;
+        if (currentQty === null) return r; // no stock info — leave as-is
+        const cappedQty = Math.min(Number(r.qty) || 0, currentQty);
+        return { ...r, qty: cappedQty, available_qty: currentQty,
+                 amount: round2n(cappedQty * (Number(r.standard_price) || 0)) };
+      })
+    );
+
+    const zeroed = adjustedItems.filter((r) => r.qty === 0 && !isItemDynamic(r.item_id));
+    const capped = adjustedItems.filter(
+      (r, i) => !isItemDynamic(r.item_id) && Number(r.qty) < Number((hold.items || [])[i]?.qty || 0) && r.qty > 0
+    );
+
+    if (zeroed.length || capped.length) {
+      const msgs = [];
+      if (capped.length) msgs.push(`Qty reduced (stock changed): ${capped.map((r) => r.item_name).join(", ")}`);
+      if (zeroed.length) msgs.push(`Removed (no stock): ${zeroed.map((r) => r.item_name).join(", ")}`);
+      message.warning(msgs.join(" | "), 6);
+    }
+
+    const finalItems = adjustedItems.filter((r) => r.qty > 0 || isItemDynamic(r.item_id));
+
+    setItems(finalItems);
     setCustomerMobile(hold.customerMobile || "");
     setSalesmanCode(hold.salesmanCode || "");
     setSalesmanName(hold.salesmanName || "");
