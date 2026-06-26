@@ -236,6 +236,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         { menuKey: "Category Type",            label: t("Category Type"),            link: "/categorytypemaster",   roles: ["admin", "user"] },
         { menuKey: "Category Name",            label: t("Category Name"),            link: "/categorynamemaster",   roles: ["admin", "user"] },
         { menuKey: "Category Link",            label: t("Category Link"),            link: "/item-category-linker", roles: ["admin", "user"] },
+        { menuKey: "Report Exclusions",        label: t("Report Exclusions"),        link: "/report-exclusions",    roles: ["admin"] },
         { menuKey: "Tax Update Manager",       label: t("Tax Update Manager"),       link: "/tax-update-manager",   roles: ["admin", "user"] },
         { menuKey: "Tax Update Preview",       label: t("Tax Update Preview"),       link: "/tax-update-preview",   roles: ["admin", "user"] },
         { menuKey: "Supplier Creation",        label: t("Supplier Creation"),        link: "/suppliercreation",     roles: ["admin", "user", "cgn"] },
