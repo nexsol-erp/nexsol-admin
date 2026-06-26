@@ -24,6 +24,7 @@ import {
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import StockReportExclusionSettings from "./StockReportExclusionSettings";
 
 function r2(v) { return Math.round((Number(v) || 0) * 100) / 100; }
 
@@ -182,9 +183,12 @@ const ItemVelocityReport = () => {
 
   return (
     <Box sx={{ p: { xs: 1, sm: 3 } }}>
-      <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
-        Item Velocity Report — Fast &amp; Slow Movers
-      </Typography>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        <Typography variant="h6" fontWeight={700}>
+          Item Velocity Report — Fast &amp; Slow Movers
+        </Typography>
+        <StockReportExclusionSettings />
+      </Box>
 
       {/* Filters */}
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2, alignItems: "flex-end" }}>

@@ -121,6 +121,7 @@ const SECTIONS = [
       { label: "Category Type", path: "/categorytypemaster" },
       { label: "Category Name", path: "/categorynamemaster" },
       { label: "Category Link", path: "/item-category-linker" },
+      { label: "Report Exclusions", path: "/report-exclusions" },
       { label: "Tax Update Manager", path: "/tax-update-manager" },
       { label: "Tax Update Preview", path: "/tax-update-preview" },
       { label: "Supplier Creation", path: "/suppliercreation" },
@@ -170,6 +171,7 @@ const SECTIONS = [
       { label: "Stock Movement Report", path: "/stockmovementreport" },
       { label: "Physical Stock Report", path: "/physicalstockreport" },
       { label: "Stock Turnover Report", path: "/stock-turnover" },
+      { label: "Stock Anomaly Report", path: "/stock-anomaly-report" },
     ],
   },
   {
