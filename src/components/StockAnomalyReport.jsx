@@ -30,6 +30,7 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import BlockIcon from "@mui/icons-material/Block";
+import StockReportExclusionSettings from "./StockReportExclusionSettings";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -371,14 +372,17 @@ const StockAnomalyReport = () => {
   return (
     <Box sx={{ flexGrow: 1, p: 3, ml: "240px", mt: 2 }}>
       {/* ── Page header ── */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h5" fontWeight={700} gutterBottom>
-          Stock Anomaly Report
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Detect overstocked items (excess months of supply) and dead inventory
-          (zero stock with no transactions in the past 6 months).
-        </Typography>
+      <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <Box>
+          <Typography variant="h5" fontWeight={700} gutterBottom>
+            Stock Anomaly Report
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Detect overstocked items (excess months of supply) and dead inventory
+            (zero stock with no transactions in the past 6 months).
+          </Typography>
+        </Box>
+        <StockReportExclusionSettings />
       </Box>
 
       {/* ── Filter bar ── */}
