@@ -197,7 +197,8 @@ const StockMovementReport = () => {
                     <Table size="small" sx={{ width: "100%" }}>
                       <TableHead>
                         <TableRow>
-                          <TableCell>Date</TableCell>
+                          <TableCell>Voucher Date</TableCell>
+                          <TableCell>Updated Time</TableCell>
                           <TableCell>Description</TableCell>
                           <TableCell align="right">Inward Qty</TableCell>
                           <TableCell align="right">Outward Qty</TableCell>
@@ -208,20 +209,17 @@ const StockMovementReport = () => {
                         {row.transactions.map((transaction, tIndex) => (
                           <TableRow key={tIndex}>
                             <TableCell>
-                              {dayjs(transaction.transactionDate).format(
-                                "DD-MM-YYYY"
-                              )}
+                              {dayjs(transaction.transactionDate).format("DD-MM-YYYY")}
+                            </TableCell>
+                            <TableCell>
+                              {transaction.updatedTime
+                                ? dayjs(transaction.updatedTime).format("DD-MM-YYYY HH:mm")
+                                : "—"}
                             </TableCell>
                             <TableCell>{transaction.description}</TableCell>
-                            <TableCell align="right">
-                              {transaction.inwardQty}
-                            </TableCell>
-                            <TableCell align="right">
-                              {transaction.outwardQty}
-                            </TableCell>
-                            <TableCell align="right">
-                              {transaction.closingQty?.toFixed(3)}
-                            </TableCell>
+                            <TableCell align="right">{transaction.inwardQty}</TableCell>
+                            <TableCell align="right">{transaction.outwardQty}</TableCell>
+                            <TableCell align="right">{transaction.closingQty?.toFixed(3)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

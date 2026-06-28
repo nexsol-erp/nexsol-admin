@@ -82,6 +82,10 @@ const LoginForm = ({ onLogin }) => {
         localStorage.setItem("tenancyId", data.tenancyId);
         localStorage.setItem("roles", JSON.stringify(data.roles || []));
 
+        // Store setup status so the app can redirect to wizard if needed
+        const setupCompleted = data.setupCompleted !== false; // default true for legacy
+        localStorage.setItem("setupCompleted", setupCompleted ? "true" : "false");
+
         // ✅ Extract allowed branches from JWT claims and store
         const payload = decodeJwtPayload(data.token);
         const allowedBranches =
@@ -211,105 +215,107 @@ const LoginForm = ({ onLogin }) => {
             left: "50%",
             transform: "translate(-50%, -50%)",
             backgroundColor: "white",
-            padding: "20px",
+            color: "#000",
+            // No padding when signup — the form provides its own header flush to edges
+            padding: isSignUp ? 0 : "20px",
             borderRadius: "8px",
-            width: { xs: "92vw", sm: 480 },
+            overflow: "hidden",
+            width: { xs: "92vw", sm: isSignUp ? 460 : 480 },
             maxWidth: "92vw",
+            maxHeight: "95vh",
+            overflowY: "auto",
           }}
         >
-          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-            <Typography variant="h4">
-              {isSignUp ? t("signup") : t("login")}
-            </Typography>
-            <IconButton onClick={() => setModalOpen(false)}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
-
-          {isSignUp ? (
-            <SignUpForm onSignUp={() => setModalOpen(false)} />
-          ) : (
-            <form onSubmit={handleSubmit}>
-              <TextField
-                label={t("username")}
-                fullWidth
-                margin="normal"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                variant="outlined"
-                sx={{
-                  input: { fontFamily: "Arial, sans-serif !important", color: "#000" },
-                  "& .MuiOutlinedInput-root": {
-                    "& fieldset": { borderColor: "#ccc" },
-                    "&:hover fieldset": { borderColor: "#999" },
-                    "&.Mui-focused fieldset": { borderColor: "#1976d2" },
-                  },
-                }}
-              />
-
-              <TextField
-                label={t("password")}
-                type="password"
-                fullWidth
-                margin="normal"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                variant="outlined"
-                InputProps={{
-                  sx: {
-                    input: {
-                      fontFamily: "Arial, sans-serif !important",
-                      WebkitTextSecurity: "disc !important",
-                      MozTextSecurity: "disc",
-                      textSecurity: "disc",
-                      color: "#000",
-                    },
-                  },
-                }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    "& fieldset": { borderColor: "#ccc" },
-                    "&:hover fieldset": { borderColor: "#999" },
-                    "&.Mui-focused fieldset": { borderColor: "#1976d2" },
-                  },
-                }}
-              />
-
-              <Button type="submit" variant="contained" color="primary" fullWidth>
+          {/* Login header row — hidden during signup (SignUpForm has its own header) */}
+          {!isSignUp && (
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+              <Typography variant="h4" sx={{ color: "#000" }}>
                 {t("login")}
-              </Button>
-            </form>
+              </Typography>
+              <IconButton onClick={() => setModalOpen(false)} sx={{ color: "#000" }}>
+                <CloseIcon />
+              </IconButton>
+            </Box>
           )}
 
-          <Select
-            value={selectedLanguage}
-            onChange={handleLanguageChange}
-            fullWidth
-            displayEmpty
-            sx={{
-              marginTop: 2,
-              color: "#000",
-              ".MuiSelect-icon": { color: "#000" },
-              ".MuiOutlinedInput-notchedOutline": { borderColor: "#ccc" },
-              "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#999" },
-              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                borderColor: "#1976d2",
-              },
-              backgroundColor: "#fff",
-            }}
-          >
-            <MenuItem disabled value="">
-              <em>{t("selectLanguage") || "Select Language"}</em>
-            </MenuItem>
-            <MenuItem value="en">English</MenuItem>
-            <MenuItem value="ar">العربية</MenuItem>
-            <MenuItem value="fr">Français</MenuItem>
-            <MenuItem value="ml">മലയാളം</MenuItem>
-            <MenuItem value="hi">हिन्दी</MenuItem>
-            <MenuItem value="ta">தமிழ்</MenuItem>
-            <MenuItem value="kn">ಕನ್ನಡ</MenuItem>
-            <MenuItem value="te">తెలుగు</MenuItem>
-          </Select>
+          {isSignUp ? (
+            <SignUpForm
+              onSignUp={() => setModalOpen(false)}
+              onClose={() => setModalOpen(false)}
+              onLogin={(roles) => { onLogin?.(roles); setModalOpen(false); }}
+            />
+          ) : (
+            <>
+              <form onSubmit={handleSubmit}>
+                <TextField
+                  label={t("username")}
+                  fullWidth margin="normal"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  variant="outlined"
+                  InputLabelProps={{ style: { color: "#555" } }}
+                  sx={{
+                    input: { color: "#000" },
+                    "& .MuiOutlinedInput-root": {
+                      backgroundColor: "#fff",
+                      "& fieldset": { borderColor: "#ccc" },
+                      "&:hover fieldset": { borderColor: "#999" },
+                      "&.Mui-focused fieldset": { borderColor: "#1976d2" },
+                    },
+                  }}
+                />
+                <TextField
+                  label={t("password")}
+                  type="password"
+                  fullWidth margin="normal"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  variant="outlined"
+                  InputLabelProps={{ style: { color: "#555" } }}
+                  sx={{
+                    input: { color: "#000" },
+                    "& .MuiOutlinedInput-root": {
+                      backgroundColor: "#fff",
+                      "& fieldset": { borderColor: "#ccc" },
+                      "&:hover fieldset": { borderColor: "#999" },
+                      "&.Mui-focused fieldset": { borderColor: "#1976d2" },
+                    },
+                  }}
+                />
+                <Button type="submit" variant="contained" color="primary" fullWidth>
+                  {t("login")}
+                </Button>
+              </form>
+
+              <Select
+                value={selectedLanguage}
+                onChange={handleLanguageChange}
+                fullWidth displayEmpty
+                MenuProps={{
+                  PaperProps: {
+                    sx: { bgcolor: "#fff", color: "#000", "& .MuiMenuItem-root": { color: "#000" } },
+                  },
+                }}
+                sx={{
+                  mt: 2, color: "#000", backgroundColor: "#fff",
+                  ".MuiSelect-icon": { color: "#000" },
+                  ".MuiOutlinedInput-notchedOutline": { borderColor: "#ccc" },
+                  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#999" },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#1976d2" },
+                }}
+              >
+                <MenuItem disabled value=""><em>{t("selectLanguage") || "Select Language"}</em></MenuItem>
+                <MenuItem value="en">English</MenuItem>
+                <MenuItem value="ar">العربية</MenuItem>
+                <MenuItem value="fr">Français</MenuItem>
+                <MenuItem value="ml">മലയാളം</MenuItem>
+                <MenuItem value="hi">हिन्दी</MenuItem>
+                <MenuItem value="ta">தமிழ்</MenuItem>
+                <MenuItem value="kn">ಕನ್ನಡ</MenuItem>
+                <MenuItem value="te">తెలుగు</MenuItem>
+              </Select>
+            </>
+          )}
         </Box>
       </Modal>
     </Box>

@@ -93,7 +93,6 @@ export default function App() {
   });
   const [cacheLoading, setCacheLoading] = useState(false);
   const [cacheClearing, setCacheClearing] = useState(false);
-  const [kotPrefillItems, setKotPrefillItems] = useState(null);
   const [isDayEndDone, setIsDayEndDone] = useState(() => checkDayEndDone(localStorage.getItem("selectedBranchCode") || ""));
   const [dayEndBlock, setDayEndBlock] = useState(null); // "YYYY-MM-DD" of pending date, or null
 
@@ -217,11 +216,6 @@ export default function App() {
     } finally {
       setCacheClearing(false);
     }
-  };
-
-  const handleKotConvertToPOS = (lines) => {
-    setKotPrefillItems(lines);
-    setActivePage("pos");
   };
 
   const handleBranchChange = (code) => {
@@ -364,7 +358,7 @@ export default function App() {
             />
           )}
 
-          {activePage === "pos" && <POSPage selectedBranchCode={selectedBranchCode} onLogout={() => setLoggedIn(false)} prefillItems={kotPrefillItems} onPrefillUsed={() => setKotPrefillItems(null)} />}
+          {activePage === "pos" && <POSPage selectedBranchCode={selectedBranchCode} onLogout={() => setLoggedIn(false)} />}
           {activePage === "stock-transfer" && <StockTransferPage onClose={() => setActivePage("pos")} />}
           {activePage === "st-history" && <StockTransferHistoryPage onClose={() => setActivePage("pos")} />}
           {activePage === "day-end" && <DayEndPage pendingDate={dayEndBlock} />}
@@ -376,7 +370,7 @@ export default function App() {
           {activePage === "item-sales-report" && <ItemSalesReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "item-movement-report" && <ItemMovementReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "st-in-report" && <StockTransferInReportPage selectedBranchCode={selectedBranchCode} />}
-          {activePage === "kot" && <KOTPage selectedBranchCode={selectedBranchCode} onConvertToPOS={handleKotConvertToPOS} />}
+          {activePage === "kot" && <KOTPage selectedBranchCode={selectedBranchCode} />}
         </div>
       )}
     </div>
