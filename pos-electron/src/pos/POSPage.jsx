@@ -297,11 +297,17 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     () => Math.max(round2n(totalAmount - itemwiseDiscount), 0),
     [totalAmount, itemwiseDiscount]
   );
+  // Round-off to nearest rupee (Indian retail standard)
+  const roundOff = useMemo(() => {
+    if (netPayable <= 0) return 0;
+    return round2n(Math.round(netPayable) - netPayable);
+  }, [netPayable]);
+  const roundedPayable = useMemo(() => round2n(netPayable + roundOff), [netPayable, roundOff]);
 
   const [tendered, setTendered] = useState(0);
   const balance = useMemo(
-    () => Math.max((Number(tendered) || 0) - (Number(netPayable) || 0), 0),
-    [tendered, netPayable]
+    () => Math.max((Number(tendered) || 0) - (Number(roundedPayable) || 0), 0),
+    [tendered, roundedPayable]
   );
 
   const [dayEndDone, setDayEndDone] = useState(false);
@@ -310,28 +316,28 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const canSave = useMemo(() => {
     if (dayEndDone) return false;
     const gross = Number(totalAmount) || 0;
-    const net   = Number(netPayable) || 0;
+    const net   = Number(roundedPayable) || 0;
     const rec   = Number(totalReceived) || 0;
     const ten   = Number(tendered) || 0;
     if (gross <= 0) return false;
-    // Receipts must cover the net payable amount (gross minus any itemwise discount)
+    // Receipts must cover the rounded payable amount
     if (Math.abs(rec - net) > 0.001) return false;
     if (ten > 0 && ten < net) return false;
     return true;
-  }, [dayEndDone, totalAmount, netPayable, totalReceived, tendered]);
+  }, [dayEndDone, totalAmount, roundedPayable, totalReceived, tendered]);
 
-  // Auto-set CASH receipt — uses netPayable so discount is pre-applied
+  // Auto-set CASH receipt — uses roundedPayable so round-off and discount are pre-applied
   useEffect(() => {
-    const net  = Number(netPayable) || 0;
+    const net  = Number(roundedPayable) || 0;
     const ten  = Number(tendered) || 0;
     const cash = ten > 0 ? Math.min(ten, net) : net;
     setReceipts((prev) =>
       prev.map((r) => r.receipt_mode.toUpperCase() === "CASH" ? { ...r, amount: round2n(cash) } : r)
     );
-  }, [tendered, netPayable]);
+  }, [tendered, roundedPayable]);
 
   const setSingleReceiptToTotal = (mode) => {
-    const net = round2n(netPayable);
+    const net = round2n(roundedPayable);
     setReceipts((prev) => prev.map((r) => ({ ...r, amount: r.receipt_mode === mode ? net : 0 })));
   };
 
@@ -623,6 +629,10 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     if (itemwiseDiscountAmount > 0) {
       receiptLines.push({ receipt_mode: "DISCOUNT", amount: -itemwiseDiscountAmount });
     }
+    // Round-off adjustment (negative = store absorbs fraction, positive = customer pays extra paise)
+    if (roundOff !== 0) {
+      receiptLines.push({ receipt_mode: "ROUND_OFF", amount: roundOff });
+    }
 
     const payload = { sales: [{ header, details, receipts: receiptLines }] };
 
@@ -664,7 +674,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       })));
       message.success("Sales saved successfully");
       persistSalesmanCode(salesmanCode);
-      doPrint({ snapshot: [...finalItems], voucherNumber, itemwiseDiscount: itemwiseDiscountAmount });
+      doPrint({ snapshot: [...finalItems], voucherNumber, itemwiseDiscount: itemwiseDiscountAmount, roundOff });
       clearForm();
     } catch (e) {
       if (e.httpStatus === 401) {
@@ -683,7 +693,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
             ? "No network — sale saved offline, will sync automatically when connected"
             : `Server error (${e.httpStatus}) — sale saved offline, will retry when server recovers`);
           persistSalesmanCode(salesmanCode);
-          doPrint({ snapshot: [...finalItems], voucherNumber, itemwiseDiscount: itemwiseDiscountAmount });
+          doPrint({ snapshot: [...finalItems], voucherNumber, itemwiseDiscount: itemwiseDiscountAmount, roundOff });
           clearForm();
           setPendingCount((c) => c + 1);
         } catch (qErr) {
@@ -756,11 +766,12 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   useEffect(() => { refreshPrinters(); }, []);
 
-  const doPrint = async ({ snapshot, voucherNumber, itemwiseDiscount: discount = 0 }) => {
+  const doPrint = async ({ snapshot, voucherNumber, itemwiseDiscount: discount = 0, roundOff: ro = 0 }) => {
     if (!window.POS?.printHtml) { log("doPrint: window.POS.printHtml not available"); return; }
     const printData = {
       items: snapshot, totalAmount, tendered, balance, receipts,
       itemwiseDiscount: discount,
+      roundOff: ro,
       branchInfo, salesmanName, customerMobile, voucherNumber,
     };
     const html = buildReceiptHtml(printData);
@@ -803,6 +814,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     const html = buildReceiptHtml({
       items, totalAmount, tendered, balance, receipts,
       itemwiseDiscount,
+      roundOff,
       branchInfo, salesmanName, customerMobile, voucherNumber: "TEST",
     });
     try {
@@ -989,7 +1001,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
               onClick: () => {
                 if (record.receipt_mode.toUpperCase() === "UPI") {
                   if (totalAmount <= 0) { message.warning("Add items before UPI payment"); return; }
-                  initiateUpiPayment(round2n(totalAmount));
+                  initiateUpiPayment(round2n(roundedPayable));
                 } else {
                   setSingleReceiptToTotal(record.receipt_mode);
                 }
@@ -1019,6 +1031,16 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
                 <span style={{ fontSize: 12, fontWeight: "bold" }}>Net Payable</span>
                 <span style={{ fontSize: 14, fontWeight: "bold", color: "#0b3a75" }}>₹{round2(netPayable)}</span>
               </div>
+            </div>
+          )}
+
+          {/* Round-off row */}
+          {roundOff !== 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
+              <span style={{ fontSize: 11, color: "#888" }}>Round Off</span>
+              <span style={{ fontSize: 12, color: roundOff < 0 ? "#cf1322" : "#389e0d" }}>
+                {roundOff > 0 ? "+" : ""}{round2(roundOff)}
+              </span>
             </div>
           )}
 
@@ -1353,7 +1375,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 function round2(v)  { return (Number(v) || 0).toFixed(2); }
 function round2n(v) { return Math.round((Number(v) || 0) * 100) / 100; }
 
-function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, itemwiseDiscount = 0, branchInfo, salesmanName, customerMobile, voucherNumber }) {
+function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, itemwiseDiscount = 0, roundOff = 0, branchInfo, salesmanName, customerMobile, voucherNumber }) {
   const b = branchInfo || {};
   const addrParts = [
     b.branchBuildingAddress,
@@ -1375,23 +1397,27 @@ function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, ite
   const itemRows = items.map((r) => {
     serial++;
     const taxLabel = Number(r.tax_rate) > 0 ? `(${Number(r.tax_rate).toFixed(0)}%)` : "";
+    const qty = Number(r.qty) || 0;
+    const amt = Number(r.amount) || 0;
+    // Show effective per-unit rate derived from amount so Rate × Qty always equals Amount
+    const effectiveRate = qty > 0 ? (Math.round((amt / qty) * 100) / 100) : (Number(r.standard_price) || 0);
     return `
       <tr>
         <td class="sno">${serial}</td>
         <td class="iname">${esc(r.item_name)}${taxLabel ? `<span class="tax-badge">${taxLabel}</span>` : ""}</td>
-        <td class="num">${Number(r.qty||0).toFixed(2)}</td>
-        <td class="num">${Number(r.standard_price||0).toFixed(2)}</td>
-        <td class="num">${Number(r.amount||0).toFixed(2)}</td>
+        <td class="num">${qty.toFixed(2)}</td>
+        <td class="num">${effectiveRate.toFixed(2)}</td>
+        <td class="num">${amt.toFixed(2)}</td>
       </tr>`;
   }).join("");
 
-  // Tax breakdown — CGST / SGST split per Qt style
+  // Tax breakdown — back-calculate tax from GST-inclusive amount (Indian retail: MRP includes GST)
   const taxMap = {};
   items.forEach((r) => {
     const rate = Number(r.tax_rate) || 0;
     if (rate <= 0) return;
     if (!taxMap[rate]) taxMap[rate] = 0;
-    taxMap[rate] += (Number(r.amount) || 0) * rate / 100;
+    taxMap[rate] += (Number(r.amount) || 0) * rate / (100 + rate);
   });
   let totalTax = 0;
   const taxRows = Object.entries(taxMap).map(([rate, taxAmt]) => {
@@ -1510,9 +1536,13 @@ function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, ite
   ${Number(itemwiseDiscount) > 0 ? `
   <div class="total-line"><span>GROSS</span><span>${Number(totalAmount||0).toFixed(2)}</span></div>
   <div class="total-line" style="color:#389e0d"><span>DISCOUNT</span><span>-${Number(itemwiseDiscount).toFixed(2)}</span></div>
-  <div class="total-line"><span>NET PAYABLE</span><span>${(Number(totalAmount||0) - Number(itemwiseDiscount)).toFixed(2)}</span></div>
+  <div class="total-line"><span>SUB TOTAL</span><span>${(Number(totalAmount||0) - Number(itemwiseDiscount)).toFixed(2)}</span></div>
+  ${Number(roundOff) !== 0 ? `<div class="total-line" style="font-size:11px;color:#888"><span>ROUND OFF</span><span>${Number(roundOff) > 0 ? "+" : ""}${Number(roundOff).toFixed(2)}</span></div>` : ""}
+  <div class="total-line"><span>NET PAYABLE</span><span>${(Number(totalAmount||0) - Number(itemwiseDiscount) + Number(roundOff)).toFixed(2)}</span></div>
   ` : `
   <div class="total-line"><span>TOTAL</span><span>${Number(totalAmount||0).toFixed(2)}</span></div>
+  ${Number(roundOff) !== 0 ? `<div class="total-line" style="font-size:11px;color:#888"><span>ROUND OFF</span><span>${Number(roundOff) > 0 ? "+" : ""}${Number(roundOff).toFixed(2)}</span></div>
+  <div class="total-line"><span>NET PAYABLE</span><span>${(Number(totalAmount||0) + Number(roundOff)).toFixed(2)}</span></div>` : ""}
   `}
   <hr class="solid"/>
 

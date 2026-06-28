@@ -15,14 +15,15 @@ export function buildTransferHtml({
   voucherNumber, voucherDate, reasonCode,
   items, totalAmount, totalQty,
 }) {
-  const e = escapeHtml;
+  const e    = escapeHtml;
   const toAddr = [deliveryLocation, deliveryAddress1, deliveryAddress2].filter(Boolean).join(", ");
 
   // Build tax-rate-wise summary (amounts are GST-inclusive; back-calculate taxable/tax)
+  // Amount is always Qty × Rate (the discounted transfer rate).
   const taxMap = {};
   items.forEach((r) => {
     const rate = Number(r.tax_rate || 0);
-    const amt  = Number(r.amount  || 0);
+    const amt  = Number(r.amount   || 0);
     if (!taxMap[rate]) taxMap[rate] = 0;
     taxMap[rate] += amt;
   });
@@ -45,7 +46,6 @@ export function buildTransferHtml({
     { taxable: 0, cgst: 0, sgst: 0, totalTax: 0, amount: 0 }
   );
 
-  // Helper: <td> with border, optional alignment and bold
   const td = (val, align = "right", bold = false) =>
     `<td style="padding:4px 6px;border:1px solid #ccc;text-align:${align};${bold ? "font-weight:bold;" : ""}">${Number(val).toFixed(2)}</td>`;
 
@@ -71,7 +71,7 @@ export function buildTransferHtml({
             </tr>`).join("")}
           <tr style="background:#f0f0f0;">
             <td style="padding:4px 6px;border:1px solid #ccc;font-weight:bold;">TOTAL</td>
-            ${td(taxTotal.taxable, "right", true)}${td(taxTotal.cgst, "right", true)}${td(taxTotal.sgst, "right", true)}${td(taxTotal.totalTax, "right", true)}${td(taxTotal.amount, "right", true)}
+            ${td(taxTotal.taxable,"right",true)}${td(taxTotal.cgst,"right",true)}${td(taxTotal.sgst,"right",true)}${td(taxTotal.totalTax,"right",true)}${td(taxTotal.amount,"right",true)}
           </tr>
         </tbody>
       </table>
@@ -108,17 +108,27 @@ export function buildTransferHtml({
     </table>`;
 
   if (printMode === "a4") {
-    const rows = items.map((r, i) => `
+    const rows = items.map((r, i) => {
+      const mrp         = Number(r.mrp          ?? r.standard_price ?? 0);
+      const discPct     = Number(r.discount_percent ?? 0);
+      const discAmt     = Number(r.discount_amount  ?? 0);
+      const rate        = Number(r.rate ?? mrp);
+      const amount      = Number(r.amount ?? 0);
+      return `
       <tr>
         <td style="padding:4px 6px;border:1px solid #ccc;">${i + 1}</td>
         <td style="padding:4px 6px;border:1px solid #ccc;">${e(r.item_name)}</td>
         <td style="padding:4px 6px;border:1px solid #ccc;">${e(r.barcode || "")}</td>
         <td style="padding:4px 6px;border:1px solid #ccc;text-align:center;">${e(r.unit || "")}</td>
         <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${Number(r.qty || 0).toFixed(2)}</td>
-        <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${Number((r.standard_price ?? r.rate) || 0).toFixed(2)}</td>
+        <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${mrp.toFixed(2)}</td>
+        <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${discPct.toFixed(2)}%</td>
+        <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${discAmt.toFixed(2)}</td>
+        <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${rate.toFixed(2)}</td>
         <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${Number(r.tax_rate || 0).toFixed(2)}%</td>
-        <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${Number(r.amount || 0).toFixed(2)}</td>
-      </tr>`).join("");
+        <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${amount.toFixed(2)}</td>
+      </tr>`;
+    }).join("");
 
     return `<html><head><style>
       @page { size: A4; margin: 15mm; }
@@ -145,22 +155,25 @@ export function buildTransferHtml({
         <div class="box">
           <div class="box-title">From Branch</div>
           <p><b>${e(fromBranch)}</b>${fromBranchName ? " — " + e(fromBranchName) : ""}</p>
-          ${fromBranchGst ? `<p>GST: ${e(fromBranchGst)}</p>` : ""}
-          ${fromBranchState ? `<p>State: ${e(fromBranchState)}</p>` : ""}
-          ${fromBranchAddress ? `<p>${e(fromBranchAddress)}</p>` : ""}
+          ${fromBranchGst   ? `<p>GST: ${e(fromBranchGst)}</p>`     : ""}
+          ${fromBranchState ? `<p>State: ${e(fromBranchState)}</p>`  : ""}
+          ${fromBranchAddress ? `<p>${e(fromBranchAddress)}</p>`     : ""}
         </div>
         <div class="box">
           <div class="box-title">To Branch</div>
           <p><b>${e(toBranchCode)}</b>${toBranchName ? " — " + e(toBranchName) : ""}</p>
-          ${toBranchGst ? `<p>GST: ${e(toBranchGst)}</p>` : ""}
-          ${toBranchState ? `<p>State: ${e(toBranchState)}</p>` : ""}
-          ${toAddr ? `<p>${e(toAddr)}</p>` : ""}
+          ${toBranchGst   ? `<p>GST: ${e(toBranchGst)}</p>`   : ""}
+          ${toBranchState ? `<p>State: ${e(toBranchState)}</p>`: ""}
+          ${toAddr        ? `<p>${e(toAddr)}</p>`              : ""}
         </div>
       </div>
       <table>
         <thead><tr>
           <th>#</th><th>Item</th><th>Barcode</th><th>Unit</th>
           <th style="text-align:right">Qty</th>
+          <th style="text-align:right">MRP</th>
+          <th style="text-align:right">Disc%</th>
+          <th style="text-align:right">Disc Amt</th>
           <th style="text-align:right">Rate</th>
           <th style="text-align:right">Tax%</th>
           <th style="text-align:right">Amount</th>
@@ -175,14 +188,22 @@ export function buildTransferHtml({
     </body></html>`;
   }
 
-  // Thermal (narrow) — same font/size/class structure as Day End printout
-  const rows = items.map((r) => `
+  // ── Thermal (narrow) ──────────────────────────────────────────────────────
+  const rows = items.map((r) => {
+    const mrp    = Number(r.mrp ?? r.standard_price ?? 0);
+    const discPct = Number(r.discount_percent ?? 0);
+    const rate   = Number(r.rate ?? mrp);
+    const amount = Number(r.amount ?? 0);
+    return `
     <tr>
       <td>${e(r.item_name)}</td>
       <td class="num">${Number(r.qty || 0).toFixed(2)}</td>
-      <td class="num">${Number((r.standard_price ?? r.rate) || 0).toFixed(2)}</td>
-      <td class="num">${Number(r.amount || 0).toFixed(2)}</td>
-    </tr>`).join("");
+      <td class="num">${mrp.toFixed(2)}</td>
+      <td class="num">${discPct.toFixed(2)}%</td>
+      <td class="num">${rate.toFixed(2)}</td>
+      <td class="num">${amount.toFixed(2)}</td>
+    </tr>`;
+  }).join("");
 
   return `<!DOCTYPE html>
 <html>
@@ -205,8 +226,8 @@ export function buildTransferHtml({
   .addr       { font-size: 9px; line-height: 1.4; }
   hr.dash     { border: none; border-top: 1px dashed #000; margin: 4px 0; }
   hr.solid    { border: none; border-top: 2px solid #000; margin: 4px 0; }
-  table.t     { width: 100%; border-collapse: collapse; font-size: 10px; }
-  table.t th  { font-size: 10px; font-weight: bold; padding: 1px 2px; border-bottom: 1px dashed #000; }
+  table.t     { width: 100%; border-collapse: collapse; font-size: 9px; }
+  table.t th  { font-size: 9px; font-weight: bold; padding: 1px 2px; border-bottom: 1px dashed #000; }
   table.t th.num { text-align: right; padding-right: 3px; }
   table.t td  { padding: 1px 2px; }
   table.t td.num { text-align: right; padding-right: 3px; }
@@ -225,19 +246,21 @@ export function buildTransferHtml({
   ${reasonCode && reasonCode !== "NORMAL DC" ? `<div class="meta"><span>Reason: ${e(reasonCode)}</span></div>` : ""}
   <hr class="dash"/>
   <div class="section-title">From: ${e(fromBranch)}${fromBranchName ? " " + e(fromBranchName) : ""}</div>
-  ${fromBranchGst ? `<div class="addr">GST: ${e(fromBranchGst)}</div>` : ""}
-  ${fromBranchState ? `<div class="addr">${e(fromBranchState)}</div>` : ""}
-  ${fromBranchAddress ? `<div class="addr">${e(fromBranchAddress)}</div>` : ""}
+  ${fromBranchGst   ? `<div class="addr">GST: ${e(fromBranchGst)}</div>`   : ""}
+  ${fromBranchState ? `<div class="addr">${e(fromBranchState)}</div>`       : ""}
+  ${fromBranchAddress ? `<div class="addr">${e(fromBranchAddress)}</div>`   : ""}
   <hr class="dash"/>
   <div class="section-title">To: ${e(toBranchCode)}${toBranchName ? " " + e(toBranchName) : ""}</div>
-  ${toBranchGst ? `<div class="addr">GST: ${e(toBranchGst)}</div>` : ""}
-  ${toBranchState ? `<div class="addr">${e(toBranchState)}</div>` : ""}
-  ${toAddr ? `<div class="addr">${e(toAddr)}</div>` : ""}
+  ${toBranchGst   ? `<div class="addr">GST: ${e(toBranchGst)}</div>` : ""}
+  ${toBranchState ? `<div class="addr">${e(toBranchState)}</div>`     : ""}
+  ${toAddr        ? `<div class="addr">${e(toAddr)}</div>`            : ""}
   <hr class="dash"/>
   <table class="t">
     <thead><tr>
       <th>Item</th>
       <th class="num">Qty</th>
+      <th class="num">MRP</th>
+      <th class="num">Disc%</th>
       <th class="num">Rate</th>
       <th class="num">Amt</th>
     </tr></thead>

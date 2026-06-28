@@ -42,7 +42,21 @@ function writeHoldList(rows) {
   localStorage.setItem(HOLD_KEY, JSON.stringify(rows));
 }
 
-// POS-style field label
+// Normalise a held/AI row so discount fields always exist
+function normaliseRow(r) {
+  const mrp  = Number(r.mrp ?? r.standard_price ?? 0);
+  const rate = Number(r.rate ?? mrp);
+  return {
+    ...r,
+    mrp,
+    standard_price:   mrp,
+    discount_percent: Number(r.discount_percent ?? 0),
+    discount_amount:  Number(r.discount_amount  ?? 0),
+    rate,
+    amount: round2n((Number(r.qty) || 0) * rate),
+  };
+}
+
 const lbl = (text) => (
   <div style={{ fontSize: 11, fontWeight: "bold", color: "#000", marginBottom: 1 }}>{text}</div>
 );
@@ -92,10 +106,10 @@ export default function StockTransferPage({ onClose }) {
     localStorage.setItem("ai_transfer_max_items", String(n));
   };
 
-  const tenantId = localStorage.getItem("tenancyId") || "";
-  const token = localStorage.getItem("jwtToken") || "";
-  const payload = decodeJwtPayload(token) || {};
-  const username = String(payload.sub || payload.username || "");
+  const tenantId  = localStorage.getItem("tenancyId") || "";
+  const token     = localStorage.getItem("jwtToken")  || "";
+  const payload   = decodeJwtPayload(token) || {};
+  const username  = String(payload.sub || payload.username || "");
   const fromBranch = String(globalThis.POS_BRANCH_CODE || localStorage.getItem("selectedBranchCode") || "").trim();
 
   const [allBranches, setAllBranches] = useState([]);
@@ -176,6 +190,33 @@ export default function StockTransferPage({ onClose }) {
 
   const URGENCY_RANK = { critical: 0, high: 1, medium: 2 };
 
+  // ── Discount fetch ────────────────────────────────────────────────────────
+  const fetchDiscount = useCallback(async (itemId, mrp) => {
+    if (!tenantId || !token || !mrp) return { discountPercent: 0, discountAmount: 0, rate: mrp };
+    try {
+      const branchParam = fromBranch ? `?branchId=${encodeURIComponent(fromBranch)}` : "";
+      const url = apiUrl(`/api/${tenantId}/stock-transfer-discounts/item/${itemId}${branchParam}`);
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return { discountPercent: 0, discountAmount: 0, rate: mrp };
+      const data = await res.json();
+      if (data.discount_percent != null) {
+        const discAmt = round2n(mrp * data.discount_percent / 100);
+        const rate    = round2n(mrp - discAmt);
+        return { discountPercent: data.discount_percent, discountAmount: discAmt, rate };
+      }
+      if (data.rate != null) {
+        const rate    = round2n(data.rate);
+        const discAmt = round2n(Math.max(0, mrp - rate));
+        const discPct = mrp > 0 ? round2n(discAmt * 100 / mrp) : 0;
+        return { discountPercent: discPct, discountAmount: discAmt, rate };
+      }
+    } catch {
+      // Network error – fall back to no discount
+    }
+    return { discountPercent: 0, discountAmount: 0, rate: mrp };
+  }, [tenantId, token, fromBranch]);
+
+  // ── AI recommendations ────────────────────────────────────────────────────
   const fetchAiRecommendations = useCallback(async (targetBranch, limit) => {
     if (!tenantId || !fromBranch || !targetBranch) return;
     setAiState("loading");
@@ -201,7 +242,7 @@ export default function StockTransferPage({ onClose }) {
         .filter(
           (r) =>
             String(r.from_branch || "").toUpperCase() === fromBranch.toUpperCase() &&
-            String(r.to_branch || "").toUpperCase() === targetBranch.toUpperCase()
+            String(r.to_branch   || "").toUpperCase() === targetBranch.toUpperCase()
         )
         .sort((a, b) => {
           const ua = URGENCY_RANK[a.urgency] ?? 9;
@@ -218,25 +259,29 @@ export default function StockTransferPage({ onClose }) {
 
       const rows = await Promise.all(
         filtered.map(async (rec) => {
-          const cached = await db.items.get(String(rec.item_id)).catch(() => null);
-          const price = Number(cached?.standardPrice || 0);
+          const cached      = await db.items.get(String(rec.item_id)).catch(() => null);
+          const mrp         = Number(cached?.standardPrice || 0);
           const availableQty = cached?.availableQty != null ? Number(cached.availableQty) : null;
-          const qty = Math.min(Number(rec.qty) || 1, availableQty != null ? availableQty : Infinity) || 1;
+          const qty         = Math.min(Number(rec.qty) || 1, availableQty != null ? availableQty : Infinity) || 1;
           return {
-            key: crypto.randomUUID(),
-            item_id: String(rec.item_id),
-            item_name: cached?.itemName || rec.item_name || "",
-            barcode: cached?.barcode || "",
+            key:              crypto.randomUUID(),
+            item_id:          String(rec.item_id),
+            item_name:        cached?.itemName || rec.item_name || "",
+            barcode:          cached?.barcode  || "",
             qty,
-            available_qty: availableQty,
-            tax_rate: Number(cached?.taxRate || 0),
-            standard_price: price,
-            amount: round2n(qty * price),
-            batch: cached?.batchCode || "",
-            unit: cached?.unitName || "",
-            expiry: cached?.expiry || "",
-            ai_suggested: true,
-            ai_urgency: rec.urgency || "",
+            available_qty:    availableQty,
+            tax_rate:         Number(cached?.taxRate || 0),
+            standard_price:   mrp,
+            mrp,
+            discount_percent: 0,
+            discount_amount:  0,
+            rate:             mrp,
+            amount:           round2n(qty * mrp),
+            batch:            cached?.batchCode || "",
+            unit:             cached?.unitName  || "",
+            expiry:           cached?.expiry    || "",
+            ai_suggested:     true,
+            ai_urgency:       rec.urgency || "",
           };
         })
       );
@@ -273,7 +318,7 @@ export default function StockTransferPage({ onClose }) {
         const { synced } = await syncPendingStockTransfers().catch(() => ({ synced: 0 }));
         if (synced > 0) message.success(`Synced ${synced} offline stock transfer(s)`);
       }
-      const count = await getPendingStockCount().catch(() => 0);
+      const count  = await getPendingStockCount().catch(() => 0);
       const failed = await getFailedStockCount().catch(() => 0);
       if (!cancelled) {
         setPendingCount(count);
@@ -305,24 +350,37 @@ export default function StockTransferPage({ onClose }) {
     setLookupOpen(true);
   };
 
+  // ── Row update – Amount always uses Rate, not MRP ─────────────────────────
   const updateRow = (key, patch) => {
     setItems((prev) =>
       prev.map((r) => {
         if (r.key !== key) return r;
         const next = { ...r, ...patch };
-        next.amount = round2n((Number(next.qty) || 0) * (Number(next.standard_price) || 0));
+        const mrp  = Number(next.mrp ?? next.standard_price) || 0;
+
+        // If rate was manually changed: recalculate discount fields from new rate
+        if ("rate" in patch) {
+          const rate = Number(next.rate) || 0;
+          next.discount_amount  = round2n(Math.max(0, mrp - rate));
+          next.discount_percent = mrp > 0 ? round2n(next.discount_amount * 100 / mrp) : 0;
+        }
+
+        next.amount = round2n((Number(next.qty) || 0) * (Number(next.rate) || 0));
         return next;
       })
     );
   };
 
-  const onPickItem = (itm) => {
-    const batch = itm.batchCode || "";
+  // ── Pick item – add row then async-fetch discount ─────────────────────────
+  const onPickItem = async (itm) => {
+    const batch    = itm.batchCode || "";
     const available = Number(itm.availableQty ?? Infinity);
+    const mrp      = Number(itm.standardPrice || 0);
+
     const existing = items.find((r) => r.item_id === itm.itemId && (r.batch || "") === batch);
     if (existing) {
       const newQty = (Number(existing.qty) || 0) + 1;
-      const max = existing.available_qty ?? Infinity;
+      const max    = existing.available_qty ?? Infinity;
       if (newQty > max) {
         message.warning(`Only ${max} in stock for ${existing.item_name}`);
         pendingQtyFocusKey.current = existing.key;
@@ -337,24 +395,43 @@ export default function StockTransferPage({ onClose }) {
       return;
     }
 
+    // Add row with MRP defaults immediately so the user sees something
+    const rowKey = crypto.randomUUID();
     const row = {
-      key: crypto.randomUUID(),
-      item_id: itm.itemId,
-      item_name: itm.itemName,
-      barcode: itm.barcode,
-      qty: 1,
-      available_qty: isFinite(available) ? available : null,
-      tax_rate: Number(itm.taxRate || 0),
-      standard_price: Number(itm.standardPrice || 0),
-      amount: round2n(Number(itm.standardPrice || 0)),
-      batch: batch,
-      unit: itm.unitName || "",
-      expiry: itm.expiry || "",
+      key:              rowKey,
+      item_id:          itm.itemId,
+      item_name:        itm.itemName,
+      barcode:          itm.barcode,
+      qty:              1,
+      available_qty:    isFinite(available) ? available : null,
+      tax_rate:         Number(itm.taxRate || 0),
+      standard_price:   mrp,
+      mrp,
+      discount_percent: 0,
+      discount_amount:  0,
+      rate:             mrp,
+      amount:           round2n(mrp),
+      batch,
+      unit:   itm.unitName || "",
+      expiry: itm.expiry   || "",
     };
-    pendingQtyFocusKey.current = row.key;
+    pendingQtyFocusKey.current = rowKey;
     setItems((prev) => [row, ...prev]);
     setItemQuery("");
     setLookupOpen(false);
+
+    // Async: fetch discount and update the row in place
+    const disc = await fetchDiscount(itm.itemId, mrp);
+    setItems((prev) => prev.map((r) => {
+      if (r.key !== rowKey) return r;
+      return {
+        ...r,
+        discount_percent: disc.discountPercent,
+        discount_amount:  disc.discountAmount,
+        rate:             disc.rate,
+        amount:           round2n(r.qty * disc.rate),
+      };
+    }));
   };
 
   const resetForm = () => {
@@ -376,8 +453,8 @@ export default function StockTransferPage({ onClose }) {
     setSavingHold(true);
     try {
       const rec = {
-        id: crypto.randomUUID(),
-        name: `DC_${toBranchCode}_${todayIST()}`,
+        id:        crypto.randomUUID(),
+        name:      `DC_${toBranchCode}_${todayIST()}`,
         createdAt: nowIST(),
         payload: {
           toBranchCode, toBranchName, toBranchState, toBranchGst,
@@ -409,7 +486,8 @@ export default function StockTransferPage({ onClose }) {
     setDeliveryAddress2(String(p.deliveryAddress2 || ""));
     setPrintMode(p.printMode === "thermal" ? "thermal" : "a4");
     setReasonCode(String(p.reasonCode || "NORMAL DC"));
-    setItems(Array.isArray(p.items) ? p.items : []);
+    // Normalise rows so discount fields always exist (backward compat with old holds)
+    setItems((Array.isArray(p.items) ? p.items : []).map(normaliseRow));
     const next = holdRows.filter((x) => x.id !== selectedHoldId);
     setHoldRows(next);
     writeHoldList(next);
@@ -419,14 +497,14 @@ export default function StockTransferPage({ onClose }) {
   };
 
   const saveTransfer = async () => {
-    if (!tenantId || !token) { message.error("Missing login session. Please login again."); return; }
+    if (!tenantId || !token)  { message.error("Missing login session. Please login again."); return; }
     if (!navigator.onLine) {
       message.error("No network connection. Stock Transfer requires an active internet connection.");
       return;
     }
     if (!fromBranch || !toBranchCode) { message.warning("Select source and destination branch."); return; }
-    if (!items.length) { message.warning("Add items first."); return; }
-    if (fromBranch === toBranchCode) { message.warning("Destination branch cannot be same as source."); return; }
+    if (!items.length)                 { message.warning("Add items first.");                      return; }
+    if (fromBranch === toBranchCode)   { message.warning("Destination branch cannot be same as source."); return; }
 
     const overStock = items.filter(
       (r) => r.available_qty != null && Number(r.qty) > Number(r.available_qty)
@@ -438,41 +516,50 @@ export default function StockTransferPage({ onClose }) {
       return;
     }
 
-    const headerId = crypto.randomUUID();
+    const headerId     = crypto.randomUUID();
     const { voucherNumber, numericSeq: numericVoucher } = generateTransferVoucherNumber(fromBranch);
-    const voucherDate = nowIST();
+    const voucherDate  = nowIST();
     const body = {
-      id: headerId,
-      branch_code: fromBranch,
-      to_branch_code: toBranchCode,
-      voucher_type: "STOCK_TRANSFER",
-      voucher_prefix: "ST",
-      voucher_number: voucherNumber,
+      id:                    headerId,
+      branch_code:           fromBranch,
+      to_branch_code:        toBranchCode,
+      voucher_type:          "STOCK_TRANSFER",
+      voucher_prefix:        "ST",
+      voucher_number:        voucherNumber,
       numeric_voucher_number: numericVoucher,
-      voucher_date: voucherDate,
-      description: "Stock Transfer",
-      reason_code: reasonCode,
-      delivery_to_location: deliveryLocation,
-      delivery_to_address1: deliveryAddress1,
-      delivery_to_address2: deliveryAddress2,
-      to_branch_name: toBranchName,
-      to_branch_state: toBranchState,
-      to_branch_gst: toBranchGst,
-      lines: items.map((r) => ({
-        id: crypto.randomUUID(),
-        item_id: r.item_id,
-        item_name: r.item_name,
-        barcode: r.barcode,
-        qty: Number(r.qty) || 0,
-        rate: Number(r.standard_price) || 0,
-        standard_price: Number(r.standard_price) || 0,
-        amount: Number(r.amount) || 0,
-        tax_rate: Number(r.tax_rate) || 0,
-        cess_rate: 0,
-        unit: r.unit || "",
-        batch: r.batch || "",
-        expiry: r.expiry || null,
-      })),
+      voucher_date:          voucherDate,
+      description:           "Stock Transfer",
+      reason_code:           reasonCode,
+      delivery_to_location:  deliveryLocation,
+      delivery_to_address1:  deliveryAddress1,
+      delivery_to_address2:  deliveryAddress2,
+      to_branch_name:        toBranchName,
+      to_branch_state:       toBranchState,
+      to_branch_gst:         toBranchGst,
+      lines: items.map((r) => {
+        const mrp            = Number(r.mrp ?? r.standard_price) || 0;
+        const rate           = Number(r.rate)                     || mrp;
+        const discountAmount = Number(r.discount_amount)          || 0;
+        const discountPct    = Number(r.discount_percent)         || 0;
+        return {
+          id:               crypto.randomUUID(),
+          item_id:          r.item_id,
+          item_name:        r.item_name,
+          barcode:          r.barcode,
+          qty:              Number(r.qty) || 0,
+          mrp,
+          discount_percent: discountPct,
+          discount_amount:  discountAmount,
+          rate,
+          standard_price:   mrp,
+          amount:           round2n((Number(r.qty) || 0) * rate),
+          tax_rate:         Number(r.tax_rate) || 0,
+          cess_rate:        0,
+          unit:             r.unit   || "",
+          batch:            r.batch  || "",
+          expiry:           r.expiry || null,
+        };
+      }),
     };
 
     lastActivityRef.current = Date.now();
@@ -484,14 +571,14 @@ export default function StockTransferPage({ onClose }) {
         apiUrl(`/api/${tenantId}/stock-transfer`),
       ];
 
-      let result = null;
+      let result  = null;
       let lastErr = "";
       for (const url of urls) {
         try {
           const r = await fetch(url, {
-            method: "POST",
+            method:  "POST",
             headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+            body:    JSON.stringify(body),
           });
           if (r.ok) { result = await r.json().catch(() => ({})); break; }
           const t = await r.text().catch(() => "");
@@ -509,9 +596,9 @@ export default function StockTransferPage({ onClose }) {
       const printArgs = {
         printMode,
         fromBranch,
-        fromBranchName: String(fromBranchObj.branchName ?? ""),
-        fromBranchGst: String(fromBranchObj.branchGst ?? ""),
-        fromBranchState: String(fromBranchObj.branchState ?? ""),
+        fromBranchName:    String(fromBranchObj.branchName    ?? ""),
+        fromBranchGst:     String(fromBranchObj.branchGst     ?? ""),
+        fromBranchState:   String(fromBranchObj.branchState   ?? ""),
         fromBranchAddress: [
           fromBranchObj.branchBuildingAddress,
           fromBranchObj.branchAddress1,
@@ -523,7 +610,11 @@ export default function StockTransferPage({ onClose }) {
         items, totalAmount, totalQty,
       };
 
-      const cacheLines = items.map((r) => ({ itemId: r.item_id, batchCode: r.batch || "", qty: Number(r.qty) || 0 }));
+      const cacheLines = items.map((r) => ({
+        itemId:    r.item_id,
+        batchCode: r.batch || "",
+        qty:       Number(r.qty) || 0,
+      }));
 
       if (!result) {
         throw new Error(lastErr || "Server did not confirm the stock transfer. Please check your network and try again.");
@@ -534,8 +625,8 @@ export default function StockTransferPage({ onClose }) {
 
       if (window.POS?.printHtml) {
         await window.POS.printHtml({
-          html: buildTransferHtml(printArgs),
-          silent: printMode === "thermal",
+          html:       buildTransferHtml(printArgs),
+          silent:     printMode === "thermal",
           deviceName: "",
         }).catch(() => {});
       }
@@ -554,7 +645,7 @@ export default function StockTransferPage({ onClose }) {
     {
       title: "Item",
       dataIndex: "item_name",
-      width: 220,
+      width: 200,
       render: (name, row) =>
         row.ai_suggested ? (
           <Space size={4}>
@@ -569,23 +660,23 @@ export default function StockTransferPage({ onClose }) {
           </Space>
         ) : <span style={{ fontWeight: 600 }}>{name}</span>,
     },
-    { title: "Barcode", dataIndex: "barcode", width: 130 },
+    { title: "Barcode", dataIndex: "barcode", width: 110 },
     {
       title: "Qty",
       dataIndex: "qty",
-      width: 80,
+      width: 75,
       render: (_, row) => (
         <InputNumber
           ref={(el) => {
             if (el) qtyRefs.current.set(row.key, el);
-            else qtyRefs.current.delete(row.key);
+            else    qtyRefs.current.delete(row.key);
           }}
           min={0}
           max={row.available_qty != null ? row.available_qty : undefined}
           value={row.qty}
           onChange={(v) => {
             const newQty = Number(v || 0);
-            const max = row.available_qty;
+            const max    = row.available_qty;
             if (max != null && newQty > max) {
               message.warning(`Only ${max} in stock for ${row.item_name}`);
               updateRow(row.key, { qty: max });
@@ -605,14 +696,45 @@ export default function StockTransferPage({ onClose }) {
       ),
     },
     {
+      title: "MRP",
+      dataIndex: "mrp",
+      width: 80,
+      render: (_, row) => (
+        <span style={{ display: "block", textAlign: "right", paddingRight: 4 }}>
+          {round2(row.mrp ?? row.standard_price)}
+        </span>
+      ),
+    },
+    {
+      title: "Disc %",
+      dataIndex: "discount_percent",
+      width: 70,
+      render: (v) => (
+        <span style={{ display: "block", textAlign: "right", paddingRight: 4 }}>
+          {round2(v)}
+        </span>
+      ),
+    },
+    {
+      title: "Disc Amt",
+      dataIndex: "discount_amount",
+      width: 80,
+      render: (v) => (
+        <span style={{ display: "block", textAlign: "right", paddingRight: 4 }}>
+          {round2(v)}
+        </span>
+      ),
+    },
+    {
       title: "Rate",
-      dataIndex: "standard_price",
-      width: 100,
+      dataIndex: "rate",
+      width: 85,
       render: (_, row) => (
         <InputNumber
           min={0}
-          value={row.standard_price}
-          onChange={(v) => updateRow(row.key, { standard_price: Number(v || 0) })}
+          max={Number(row.mrp ?? row.standard_price) || undefined}
+          value={row.rate}
+          onChange={(v) => updateRow(row.key, { rate: Number(v || 0) })}
           style={{ width: "100%", borderRadius: 0 }}
         />
       ),
@@ -623,11 +745,20 @@ export default function StockTransferPage({ onClose }) {
       width: 70,
       render: (v) => (v == null ? "-" : Number(v).toFixed(2)),
     },
-    { title: "Tax%", dataIndex: "tax_rate", width: 60 },
-    { title: "Amount", dataIndex: "amount", width: 100, render: (v) => round2(v) },
-    { title: "Batch", dataIndex: "batch", width: 90 },
-    { title: "Unit", dataIndex: "unit", width: 60 },
-    { title: "Expiry", dataIndex: "expiry", width: 100 },
+    { title: "Tax%", dataIndex: "tax_rate", width: 55 },
+    {
+      title: "Amount",
+      dataIndex: "amount",
+      width: 95,
+      render: (v) => (
+        <span style={{ display: "block", textAlign: "right", paddingRight: 4, fontWeight: 600 }}>
+          {round2(v)}
+        </span>
+      ),
+    },
+    { title: "Batch",  dataIndex: "batch",  width: 85 },
+    { title: "Unit",   dataIndex: "unit",   width: 55 },
+    { title: "Expiry", dataIndex: "expiry", width: 90 },
     {
       title: "",
       key: "x",
@@ -671,7 +802,7 @@ export default function StockTransferPage({ onClose }) {
               onClick={async () => {
                 setSyncing(true);
                 const { synced, failed } = await syncPendingStockTransfers().catch(() => ({ synced: 0, failed: 0 }));
-                const count = await getPendingStockCount().catch(() => 0);
+                const count    = await getPendingStockCount().catch(() => 0);
                 const failedNow = await getFailedStockCount().catch(() => 0);
                 setPendingCount(count);
                 setFailedCount(failedNow);
@@ -690,7 +821,7 @@ export default function StockTransferPage({ onClose }) {
                 setRetrying(true);
                 await retryFailedStockTransfers().catch(() => {});
                 const { synced } = await syncPendingStockTransfers().catch(() => ({ synced: 0 }));
-                const count = await getPendingStockCount().catch(() => 0);
+                const count    = await getPendingStockCount().catch(() => 0);
                 const failedNow = await getFailedStockCount().catch(() => 0);
                 setPendingCount(count);
                 setFailedCount(failedNow);
@@ -802,7 +933,6 @@ export default function StockTransferPage({ onClose }) {
             />
           </div>
 
-          {/* AI error detail */}
           {aiState === "error" && aiError && (
             <div style={{ fontSize: 10, color: "#7f1d1d", background: "#fee2e2", border: "1px solid #fca5a5", padding: "3px 5px" }}>
               {aiError}
@@ -863,7 +993,7 @@ export default function StockTransferPage({ onClose }) {
 
         {/* ══ RIGHT PANEL ══ */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "6px 8px", overflow: "hidden", background: "#c8dcd8" }}>
-          {/* Item search + totals on same row */}
+          {/* Item search + totals */}
           <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 5 }}>
             <div style={{ flex: 1 }}>
               {lbl("Item Search / Barcode")}
@@ -907,7 +1037,7 @@ export default function StockTransferPage({ onClose }) {
             columns={columns}
             pagination={false}
             rowKey="key"
-            scroll={{ x: 1000, y: "calc(100vh - 150px)" }}
+            scroll={{ x: 1200, y: "calc(100vh - 150px)" }}
             style={{ flex: 1 }}
           />
         </div>

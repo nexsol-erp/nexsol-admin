@@ -116,6 +116,7 @@ import SalesmanReport from "./components/SalesmanReport";
 import CategoryItemReport from "./components/CategoryItemReport";
 import MenuMapPage from "./components/MenuMapPage";
 import SetupWizardPage from "./components/SetupWizardPage";
+import StockTransferDiscountPage from "./components/StockTransferDiscountPage";
 
 // Accounting
 import ReceiptEntry from "./components/accounting/ReceiptEntry";
@@ -181,6 +182,7 @@ const ROUTE_ORDER = [
   { key: "Item Search",                      path: "/itemsearch" },
   { key: "Item Creation",                    path: "/createitemmaster" },
   { key: "Branch Price",                     path: "/branch-price" },
+  { key: "Stock Transfer Discount",          path: "/stock-transfer-discount" },
   { key: "Price Edit Category Wise",         path: "/category-price-edit" },
   { key: "Category Link",                    path: "/item-category-linker" },
   { key: "Manage Account Heads",             path: "/manage-account-heads" },
@@ -437,6 +439,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/day-end-report" element={<DayEndReport />} />
             <Route path="/day-end-clear" element={<DayEndClearPage />} />
             <Route path="/branch-price" element={<BranchPricePage />} />
+            <Route path="/stock-transfer-discount" element={<StockTransferDiscountPage />} />
             <Route path="/version-management" element={<VersionManagementPage />} />
 
 <Route
