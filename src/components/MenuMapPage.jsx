@@ -117,6 +117,7 @@ const SECTIONS = [
       { label: "Item Search", path: "/itemsearch" },
       { label: "Item Creation", path: "/createitemmaster" },
       { label: "Branch Price", path: "/branch-price" },
+      { label: "Stock Transfer Discount", path: "/stock-transfer-discount" },
       { label: "Price Edit Category Wise", path: "/category-price-edit" },
       { label: "Category Type", path: "/categorytypemaster" },
       { label: "Category Name", path: "/categorynamemaster" },

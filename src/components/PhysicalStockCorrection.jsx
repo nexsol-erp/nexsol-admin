@@ -118,9 +118,27 @@ const PhysicalStockCorrection = () => {
         headers: { Authorization: `Bearer ${token}` },
         params: { branchCode: branch, itemId },
       });
-      setRows(prev => prev.map(r =>
-        r.id === id ? { ...r, batches: res.data || [], loadingBatch: false } : r
-      ));
+      const fetched = res.data || [];
+      if (fetched.length > 0) {
+        setRows(prev => prev.map(r =>
+          r.id === id ? { ...r, batches: fetched, loadingBatch: false } : r
+        ));
+      } else {
+        // No existing stock — inject a synthetic entry so the user can still
+        // enter the physical count for an item with zero system quantity.
+        setRows(prev => prev.map(r =>
+          r.id === id
+            ? {
+                ...r,
+                batches: [{ batchNo: "NO STOCK", currentStock: 0 }],
+                selectedBatch: "NO STOCK",
+                systemQty: 0,
+                difference: 0,
+                loadingBatch: false,
+              }
+            : r
+        ));
+      }
     } catch (err) {
       console.error("Error fetching batches:", err);
       setRows(prev => prev.map(r => r.id === id ? { ...r, loadingBatch: false } : r));
@@ -239,9 +257,15 @@ const PhysicalStockCorrection = () => {
                     </Button>
                   </TableCell>
                   <TableCell>
-                    <Select fullWidth size="small" value={row.selectedBatch} onChange={(e) => handleBatchChange(row.id, e.target.value)} disabled={!row.batches.length}>
-                      <MenuItem value="" disabled><em>{row.batches.length ? t("Select Batch") : t("Click Load first")}</em></MenuItem>
-                      {row.batches.map((b) => <MenuItem key={b.batchNo} value={b.batchNo}>{b.batchNo} ({b.currentStock})</MenuItem>)}
+                    <Select fullWidth size="small" value={row.selectedBatch} onChange={(e) => handleBatchChange(row.id, e.target.value)} disabled={row.batches.length === 0}>
+                      <MenuItem value="" disabled><em>{t("Click Load first")}</em></MenuItem>
+                      {row.batches.map((b) => (
+                        <MenuItem key={b.batchNo} value={b.batchNo}>
+                          {b.batchNo === "NO STOCK"
+                            ? t("No stock in system (qty 0)")
+                            : `${b.batchNo} (${b.currentStock})`}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </TableCell>
                   <TableCell align="right">{row.systemQty.toFixed(3)}</TableCell>
