@@ -108,6 +108,7 @@ import BranchInventoryReport from "./components/BranchInventoryReport";
 import BranchInventoryLedger from "./components/BranchInventoryLedger";
 import ItemTransferReport from "./components/ItemTransferReport";
 import AIDashboardPage from "./components/AIDashboardPage";
+import AIReportChatbot from "./components/AIReportChatbot";
 import MenuMasterPage from "./components/MenuMasterPage";
 import RoleMenuPage from "./components/RoleMenuPage";
 import RoleManagementPage from "./components/RoleManagementPage";
@@ -144,6 +145,7 @@ import { BranchProvider } from "./components/BranchContext";
 const ROUTE_ORDER = [
   { key: "Dashboard",                        path: "/dashboard" },
   { key: "AI Stock Intelligence",            path: "/ai-dashboard" },
+  { key: "AI Report Assistant",             path: "/ai-report" },
   { key: "Menu Map",                         path: "/menu-map" },
   { key: "Admin Page",                       path: "/branch-request-list" },
   { key: "Reprocess Voucher",               path: "/reprocess-voucher-form" },
@@ -460,6 +462,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/category-item-report" element={<CategoryItemReport />} />
 <Route path="/menu-map" element={<MenuMapPage />} />
 <Route path="/ai-dashboard" element={<AIDashboardPage />} />
+<Route path="/ai-report"    element={<AIReportChatbot />} />
 <Route path="/menu-master" element={<MenuMasterPage />} />
 <Route path="/role-menu" element={<RoleMenuPage />} />
 <Route path="/role-management" element={<RoleManagementPage />} />
