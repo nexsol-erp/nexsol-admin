@@ -114,6 +114,7 @@ import RoleManagementPage from "./components/RoleManagementPage";
 import SalesmanReport from "./components/SalesmanReport";
 import CategoryItemReport from "./components/CategoryItemReport";
 import MenuMapPage from "./components/MenuMapPage";
+import SetupWizardPage from "./components/SetupWizardPage";
 
 // Accounting
 import ReceiptEntry from "./components/accounting/ReceiptEntry";
@@ -248,6 +249,10 @@ const ROUTE_ORDER = [
 
 /** Resolves the first route a user may land on after login. */
 async function resolveLoginLanding(loginRoles) {
+  // New tenants must complete the setup wizard before accessing the app
+  const setupCompleted = localStorage.getItem("setupCompleted");
+  if (setupCompleted === "false") return "/setup-wizard";
+
   if (loginRoles.includes("system-admin")) return "/dashboard";
 
   const tenancyId = localStorage.getItem("tenancyId");
@@ -297,9 +302,35 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
   };
 
   const isAuthenticated = !!roles.length;
+  const setupCompleted = localStorage.getItem("setupCompleted");
+  const needsSetup = isAuthenticated && setupCompleted === "false";
 
   if (!isAuthenticated) {
     return <LoginForm onLogin={handleLogin} />;
+  }
+
+  // Redirect to wizard if setup is not complete (but allow /setup-wizard itself)
+  if (needsSetup && window.location.pathname !== "/setup-wizard") {
+    return (
+      <SetupWizardPage
+        onComplete={() => {
+          localStorage.setItem("setupCompleted", "true");
+          navigate("/dashboard");
+        }}
+      />
+    );
+  }
+
+  // Show wizard directly when on /setup-wizard route
+  if (window.location.pathname === "/setup-wizard") {
+    return (
+      <SetupWizardPage
+        onComplete={() => {
+          localStorage.setItem("setupCompleted", "true");
+          navigate("/dashboard");
+        }}
+      />
+    );
   }
 
   return (

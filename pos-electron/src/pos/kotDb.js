@@ -53,6 +53,12 @@ export async function convertKot(headerId) {
   await db.kot_headers.put({ ...h, status: "converted" });
 }
 
+export async function markKotBilled(headerId) {
+  const h = await db.kot_headers.get(headerId);
+  if (!h) return;
+  await db.kot_headers.put({ ...h, status: "billed" });
+}
+
 export async function closeKot(headerId) {
   const h = await db.kot_headers.get(headerId);
   if (!h) return;
