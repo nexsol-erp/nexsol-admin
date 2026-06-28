@@ -257,7 +257,7 @@ export default function StockTransferDiscountPage() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" fontWeight="bold" mb={2}>
+      <Typography variant="h5" fontWeight="bold" mb={2} sx={{ color: "#1a237e" }}>
         Stock Transfer Discount Master
       </Typography>
 
@@ -308,17 +308,12 @@ export default function StockTransferDiscountPage() {
       ) : (
         <TableContainer component={Paper} elevation={2}>
           <Table size="small">
-            <TableHead sx={{ background: "#f0f4f8" }}>
+            <TableHead sx={{ background: "#1976d2" }}>
               <TableRow>
-                <TableCell>Item</TableCell>
-                <TableCell>Branch</TableCell>
-                <TableCell>Disc %</TableCell>
-                <TableCell>Rate</TableCell>
-                <TableCell>Effective From</TableCell>
-                <TableCell>Effective To</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Remarks</TableCell>
-                <TableCell align="center">Actions</TableCell>
+                {["Item","Branch","Disc %","Rate","Effective From","Effective To","Status","Remarks"].map(h => (
+                  <TableCell key={h} sx={{ color: "#fff", fontWeight: 700 }}>{h}</TableCell>
+                ))}
+                <TableCell align="center" sx={{ color: "#fff", fontWeight: 700 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -333,9 +328,9 @@ export default function StockTransferDiscountPage() {
                 <TableRow key={row.id} hover>
                   <TableCell>
                     <Box>
-                      <Typography variant="body2" fontWeight={600}>{row.item_name || row.item_id}</Typography>
+                      <Typography variant="body2" fontWeight={600} sx={{ color: "#212121" }}>{row.item_name || row.item_id}</Typography>
                       {row.item_name && (
-                        <Typography variant="caption" color="text.secondary">{row.item_id}</Typography>
+                        <Typography variant="caption" sx={{ color: "#666" }}>{row.item_id}</Typography>
                       )}
                     </Box>
                   </TableCell>
@@ -409,11 +404,15 @@ export default function StockTransferDiscountPage() {
                 {itemSuggestions.map(itm => (
                   <Box
                     key={itm.itemId}
-                    sx={{ px: 2, py: 1, cursor: "pointer", "&:hover": { background: "#f5f5f5" } }}
+                    sx={{
+                      px: 2, py: 1, cursor: "pointer",
+                      color: "#212121",
+                      "&:hover": { background: "#e3f2fd", color: "#1565c0" },
+                    }}
                     onClick={() => pickItem(itm)}
                   >
-                    <Typography variant="body2" fontWeight={600}>{itm.itemName}</Typography>
-                    <Typography variant="caption" color="text.secondary">{itm.itemId}</Typography>
+                    <Typography variant="body2" fontWeight={600} sx={{ color: "inherit" }}>{itm.itemName}</Typography>
+                    <Typography variant="caption" sx={{ color: "inherit", opacity: 0.65 }}>{itm.itemId}</Typography>
                   </Box>
                 ))}
               </Paper>
