@@ -136,6 +136,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
     // ── Dashboard & Intelligence ──────────────────────────────────────────
     { menuKey: "Dashboard", label: t("Dashboard"), icon: <Dashboard />, link: "/dashboard", roles: ["admin", "manager"] },
     { menuKey: "AI Stock Intelligence", label: t("AI Stock Intelligence"), icon: <AutoGraph />, link: "/ai-dashboard", roles: ["admin", "manager"] },
+    { menuKey: "AI Report Assistant",  label: t("AI Report Assistant"),  icon: <AutoGraph />, link: "/ai-report",    roles: ["admin", "manager", "user"] },
     { menuKey: "Menu Map", label: t("Menu Map"), icon: <Map />, link: "/menu-map", roles: ["admin", "manager", "user"] },
 
     // ── Setup & Administration ────────────────────────────────────────────
