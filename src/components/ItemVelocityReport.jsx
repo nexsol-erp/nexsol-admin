@@ -138,16 +138,11 @@ const ItemVelocityReport = () => {
   }, []);
 
   const fetchReport = async () => {
-    if (!selectedBranch) { setError("Please select a branch."); return; }
     setError(null);
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        branchCode: selectedBranch.branchCode,
-        fromDate,
-        toDate,
-        limit,
-      });
+      const params = new URLSearchParams({ fromDate, toDate, limit });
+      if (selectedBranch)   params.set("branchCode",   selectedBranch.branchCode);
       if (selectedCategory) params.set("categoryName", selectedCategory.categoryName);
       const res = await fetch(`/api/${tenancyId}/reports/item-velocity?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
