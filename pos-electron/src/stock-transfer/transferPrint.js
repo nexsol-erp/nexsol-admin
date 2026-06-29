@@ -47,30 +47,30 @@ export function buildTransferHtml({
   );
 
   const td = (val, align = "right", bold = false) =>
-    `<td style="padding:4px 6px;border:1px solid #ccc;text-align:${align};${bold ? "font-weight:bold;" : ""}">${Number(val).toFixed(2)}</td>`;
+    `<td style="padding:2px 4px;border:1px solid #ccc;text-align:${align};${bold ? "font-weight:bold;" : ""}">${Number(val).toFixed(2)}</td>`;
 
   const taxSummaryA4 = `
-    <div style="margin-top:16px;">
-      <div style="font-weight:bold;font-size:12px;margin-bottom:4px;border-bottom:2px solid #999;padding-bottom:3px;">GST / Tax Summary</div>
-      <table style="width:100%;border-collapse:collapse;font-size:11px;">
+    <div style="margin-top:10px;">
+      <div style="font-weight:bold;font-size:9px;margin-bottom:3px;border-bottom:2px solid #999;padding-bottom:2px;">GST / Tax Summary</div>
+      <table style="width:100%;border-collapse:collapse;font-size:9px;">
         <thead>
           <tr style="background:#f0f0f0;">
-            <th style="padding:4px 6px;border:1px solid #ccc;text-align:left;">GST Rate%</th>
-            <th style="padding:4px 6px;border:1px solid #ccc;text-align:right;">Taxable Value</th>
-            <th style="padding:4px 6px;border:1px solid #ccc;text-align:right;">CGST</th>
-            <th style="padding:4px 6px;border:1px solid #ccc;text-align:right;">SGST</th>
-            <th style="padding:4px 6px;border:1px solid #ccc;text-align:right;">Total Tax</th>
-            <th style="padding:4px 6px;border:1px solid #ccc;text-align:right;">Amount</th>
+            <th style="padding:2px 4px;border:1px solid #ccc;text-align:left;">GST Rate%</th>
+            <th style="padding:2px 4px;border:1px solid #ccc;text-align:right;">Taxable Value</th>
+            <th style="padding:2px 4px;border:1px solid #ccc;text-align:right;">CGST</th>
+            <th style="padding:2px 4px;border:1px solid #ccc;text-align:right;">SGST</th>
+            <th style="padding:2px 4px;border:1px solid #ccc;text-align:right;">Total Tax</th>
+            <th style="padding:2px 4px;border:1px solid #ccc;text-align:right;">Amount</th>
           </tr>
         </thead>
         <tbody>
           ${taxSummary.map((r) => `
             <tr>
-              <td style="padding:4px 6px;border:1px solid #ccc;">${r.rate.toFixed(2)}%</td>
+              <td style="padding:2px 4px;border:1px solid #ccc;">${r.rate.toFixed(2)}%</td>
               ${td(r.taxable)}${td(r.cgst)}${td(r.sgst)}${td(r.totalTax)}${td(r.amount)}
             </tr>`).join("")}
           <tr style="background:#f0f0f0;">
-            <td style="padding:4px 6px;border:1px solid #ccc;font-weight:bold;">TOTAL</td>
+            <td style="padding:2px 4px;border:1px solid #ccc;font-weight:bold;">TOTAL</td>
             ${td(taxTotal.taxable,"right",true)}${td(taxTotal.cgst,"right",true)}${td(taxTotal.sgst,"right",true)}${td(taxTotal.totalTax,"right",true)}${td(taxTotal.amount,"right",true)}
           </tr>
         </tbody>
@@ -114,36 +114,38 @@ export function buildTransferHtml({
       const discAmt     = Number(r.discount_amount  ?? 0);
       const rate        = Number(r.rate ?? mrp);
       const amount      = Number(r.amount ?? 0);
+      const barcodeHtml = r.barcode
+        ? `<div style="font-size:8px;color:#555;margin-top:1px;">${e(r.barcode)}</div>`
+        : "";
       return `
       <tr>
-        <td style="padding:4px 6px;border:1px solid #ccc;">${i + 1}</td>
-        <td style="padding:4px 6px;border:1px solid #ccc;">${e(r.item_name)}</td>
-        <td style="padding:4px 6px;border:1px solid #ccc;">${e(r.barcode || "")}</td>
-        <td style="padding:4px 6px;border:1px solid #ccc;text-align:center;">${e(r.unit || "")}</td>
-        <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${Number(r.qty || 0).toFixed(2)}</td>
-        <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${mrp.toFixed(2)}</td>
-        <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${discPct.toFixed(2)}%</td>
-        <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${discAmt.toFixed(2)}</td>
-        <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${rate.toFixed(2)}</td>
-        <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${Number(r.tax_rate || 0).toFixed(2)}%</td>
-        <td style="padding:4px 6px;border:1px solid #ccc;text-align:right;">${amount.toFixed(2)}</td>
+        <td style="padding:2px 4px;border:1px solid #ccc;">${i + 1}</td>
+        <td style="padding:2px 4px;border:1px solid #ccc;">${e(r.item_name)}${barcodeHtml}</td>
+        <td style="padding:2px 4px;border:1px solid #ccc;text-align:center;">${e(r.unit || "")}</td>
+        <td style="padding:2px 4px;border:1px solid #ccc;text-align:right;">${Number(r.qty || 0).toFixed(2)}</td>
+        <td style="padding:2px 4px;border:1px solid #ccc;text-align:right;">${mrp.toFixed(2)}</td>
+        <td style="padding:2px 4px;border:1px solid #ccc;text-align:right;">${discPct.toFixed(2)}%</td>
+        <td style="padding:2px 4px;border:1px solid #ccc;text-align:right;">${discAmt.toFixed(2)}</td>
+        <td style="padding:2px 4px;border:1px solid #ccc;text-align:right;">${rate.toFixed(2)}</td>
+        <td style="padding:2px 4px;border:1px solid #ccc;text-align:right;">${Number(r.tax_rate || 0).toFixed(2)}%</td>
+        <td style="padding:2px 4px;border:1px solid #ccc;text-align:right;">${amount.toFixed(2)}</td>
       </tr>`;
     }).join("");
 
     return `<html><head><style>
-      @page { size: A4; margin: 15mm; }
-      body { font-family: Arial, sans-serif; font-size: 12px; color: #111; }
-      h2 { text-align: center; margin: 0 0 12px; font-size: 16px; letter-spacing: 1px; }
-      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-      .box { border: 1px solid #bbb; border-radius: 4px; padding: 8px 10px; }
-      .box-title { font-weight: bold; font-size: 11px; color: #555; margin-bottom: 4px; text-transform: uppercase; }
-      .box p { margin: 2px 0; }
-      .meta { display: flex; gap: 24px; margin-bottom: 12px; }
-      .meta span { font-size: 11px; }
+      @page { size: A4; margin: 10mm; }
+      body { font-family: Arial, sans-serif; font-size: 9px; color: #111; }
+      h2 { text-align: center; margin: 0 0 8px; font-size: 13px; letter-spacing: 1px; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+      .box { border: 1px solid #bbb; border-radius: 4px; padding: 5px 8px; }
+      .box-title { font-weight: bold; font-size: 9px; color: #555; margin-bottom: 3px; text-transform: uppercase; }
+      .box p { margin: 1px 0; }
+      .meta { display: flex; gap: 20px; margin-bottom: 8px; }
+      .meta span { font-size: 9px; }
       table { width: 100%; border-collapse: collapse; }
       thead tr { background: #f0f0f0; }
-      th { padding: 5px 6px; border: 1px solid #ccc; text-align: left; font-size: 11px; }
-      .totals { margin-top: 10px; display: flex; justify-content: flex-end; gap: 30px; font-weight: bold; }
+      th { padding: 3px 4px; border: 1px solid #ccc; text-align: left; font-size: 9px; }
+      .totals { margin-top: 8px; display: flex; justify-content: flex-end; gap: 24px; font-weight: bold; font-size: 9px; }
     </style></head><body>
       <h2>STOCK TRANSFER</h2>
       <div class="meta">
@@ -169,7 +171,7 @@ export function buildTransferHtml({
       </div>
       <table>
         <thead><tr>
-          <th>#</th><th>Item</th><th>Barcode</th><th>Unit</th>
+          <th>#</th><th>Item</th><th>Unit</th>
           <th style="text-align:right">Qty</th>
           <th style="text-align:right">MRP</th>
           <th style="text-align:right">Disc%</th>
