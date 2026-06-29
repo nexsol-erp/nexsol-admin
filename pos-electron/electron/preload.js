@@ -26,6 +26,10 @@ contextBridge.exposeInMainWorld("POS", {
   // Logger — writes to <userData>/logs/pos.log
   log: (level, message) => ipcRenderer.invoke("log:write", level, message),
 
+  // Persistent device key — survives localStorage clears (stored in app userData dir)
+  getDeviceKey: () => ipcRenderer.invoke("device:get-key"),
+  setDeviceKey: (key) => ipcRenderer.invoke("device:set-key", key),
+
   // UPI customer display (second monitor)
   upi: {
     showCustomerDisplay: (payload) => ipcRenderer.invoke("upi:show-customer-display", payload),
