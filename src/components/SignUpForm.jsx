@@ -114,17 +114,16 @@ const SignUpForm = ({ onSignUp, onClose, onLogin }) => {
   const fieldSx = {
     mb: 0.5,
     "& .MuiOutlinedInput-root": {
-      backgroundColor: "#f4f6fb",
+      backgroundColor: "#f0f4ff",
       borderRadius: "10px",
-      "& fieldset": { borderColor: "#dde3f0" },
-      "&:hover fieldset": { borderColor: "#7986cb" },
-      "&.Mui-focused fieldset": { borderColor: "#3f51b5", borderWidth: 2 },
+      "& fieldset": { borderColor: "#c7d2fe" },
+      "&:hover fieldset": { borderColor: "#6366f1" },
+      "&.Mui-focused fieldset": { borderColor: "#3b82f6", borderWidth: 2 },
     },
-    "& .MuiInputLabel-root": { color: "#6b7280", fontSize: "0.875rem" },
-    "& .MuiInputLabel-root.Mui-focused": { color: "#3f51b5" },
-    "& input": { color: "#111827", fontSize: "0.9rem" },
-    "& .MuiInputAdornment-root svg": { color: "#9ca3af", fontSize: "1.1rem" },
-    "&:focus-within .MuiInputAdornment-root svg": { color: "#3f51b5" },
+    "& .MuiInputLabel-root": { color: "#374151", fontSize: "1rem", fontWeight: 500 },
+    "& .MuiInputLabel-root.Mui-focused": { color: "#3b82f6" },
+    "& input": { color: "#111827", fontSize: "1rem", py: "12px" },
+    "& .MuiInputAdornment-root svg": { color: "#6366f1", fontSize: "1.3rem" },
   };
 
   return (
@@ -174,7 +173,7 @@ const SignUpForm = ({ onSignUp, onClose, onLogin }) => {
       </Box>
 
       {/* ── Form body ─────────────────────────────────────────────── */}
-      <Box sx={{ px: 3, pt: 2.5, pb: 2 }}>
+      <Box sx={{ px: 3, pt: 2.5, pb: 3, bgcolor: "#ffffff" }}>
         {error.general && (
           <Alert severity="error" sx={{ mb: 2, borderRadius: "8px", fontSize: "0.82rem" }}>
             {error.general}
@@ -183,34 +182,34 @@ const SignUpForm = ({ onSignUp, onClose, onLogin }) => {
 
         <form onSubmit={handleSubmit} autoComplete="off">
           <TextField
-            label="Username" fullWidth size="small" sx={fieldSx}
+            label="Username" fullWidth sx={fieldSx}
             value={username} onChange={e => setUsername(e.target.value)}
             InputProps={{
               startAdornment: <InputAdornment position="start"><PersonIcon /></InputAdornment>,
             }}
           />
-          {error.username && <Typography sx={{ color: "#e53e3e", fontSize: "0.75rem", mb: 0.5, ml: 0.5 }}>{error.username}</Typography>}
+          {error.username && <Typography sx={{ color: "#e53e3e", fontSize: "0.82rem", mb: 0.5, ml: 0.5 }}>{error.username}</Typography>}
 
           <TextField
-            label="Email" type="email" fullWidth size="small" sx={{ ...fieldSx, mt: 1.5 }}
+            label="Email" type="email" fullWidth sx={{ ...fieldSx, mt: 1.5 }}
             value={email} onChange={e => setEmail(e.target.value)}
             InputProps={{
               startAdornment: <InputAdornment position="start"><EmailIcon /></InputAdornment>,
             }}
           />
-          {error.email && <Typography sx={{ color: "#e53e3e", fontSize: "0.75rem", mb: 0.5, ml: 0.5 }}>{error.email}</Typography>}
+          {error.email && <Typography sx={{ color: "#e53e3e", fontSize: "0.82rem", mb: 0.5, ml: 0.5 }}>{error.email}</Typography>}
 
           <TextField
-            label="Mobile Number" type="tel" fullWidth size="small" sx={{ ...fieldSx, mt: 1.5 }}
+            label="Mobile Number" type="tel" fullWidth sx={{ ...fieldSx, mt: 1.5 }}
             value={mobileNumber} onChange={e => setMobileNumber(e.target.value)}
             InputProps={{
               startAdornment: <InputAdornment position="start"><PhoneIcon /></InputAdornment>,
             }}
           />
-          {error.mobileNumber && <Typography sx={{ color: "#e53e3e", fontSize: "0.75rem", mb: 0.5, ml: 0.5 }}>{error.mobileNumber}</Typography>}
+          {error.mobileNumber && <Typography sx={{ color: "#e53e3e", fontSize: "0.82rem", mb: 0.5, ml: 0.5 }}>{error.mobileNumber}</Typography>}
 
           <TextField
-            label="Password" type={showPassword ? "text" : "password"} fullWidth size="small" sx={{ ...fieldSx, mt: 1.5 }}
+            label="Password" type={showPassword ? "text" : "password"} fullWidth sx={{ ...fieldSx, mt: 1.5 }}
             value={password} onChange={e => setPassword(e.target.value)}
             InputProps={{
               startAdornment: <InputAdornment position="start"><LockIcon /></InputAdornment>,
@@ -223,10 +222,10 @@ const SignUpForm = ({ onSignUp, onClose, onLogin }) => {
               ),
             }}
           />
-          {error.password && <Typography sx={{ color: "#e53e3e", fontSize: "0.75rem", mb: 0.5, ml: 0.5 }}>{error.password}</Typography>}
+          {error.password && <Typography sx={{ color: "#e53e3e", fontSize: "0.82rem", mb: 0.5, ml: 0.5 }}>{error.password}</Typography>}
 
           <TextField
-            label="Confirm Password" type={showConfirm ? "text" : "password"} fullWidth size="small" sx={{ ...fieldSx, mt: 1.5 }}
+            label="Confirm Password" type={showConfirm ? "text" : "password"} fullWidth sx={{ ...fieldSx, mt: 1.5 }}
             value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
             InputProps={{
               startAdornment: <InputAdornment position="start"><LockIcon /></InputAdornment>,
@@ -239,7 +238,7 @@ const SignUpForm = ({ onSignUp, onClose, onLogin }) => {
               ),
             }}
           />
-          {error.confirmPassword && <Typography sx={{ color: "#e53e3e", fontSize: "0.75rem", mb: 0.5, ml: 0.5 }}>{error.confirmPassword}</Typography>}
+          {error.confirmPassword && <Typography sx={{ color: "#e53e3e", fontSize: "0.82rem", mb: 0.5, ml: 0.5 }}>{error.confirmPassword}</Typography>}
 
           <Button
             type="submit" fullWidth disabled={submitting}
