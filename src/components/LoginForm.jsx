@@ -13,7 +13,9 @@ import {
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import CloseIcon from "@mui/icons-material/Close";
+import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import SignUpForm from "./SignUpForm";
+import { useNavigate } from "react-router-dom";
 
 // ✅ Decode JWT payload (base64url) without any library
 const decodeJwtPayload = (token) => {
@@ -38,6 +40,7 @@ const decodeJwtPayload = (token) => {
 };
 
 const LoginForm = ({ onLogin, autoOpen = false }) => {
+  const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
@@ -165,6 +168,18 @@ const LoginForm = ({ onLogin, autoOpen = false }) => {
             </Typography>
           </Box>
           <Button
+            onClick={() => navigate("/")}
+            size="small"
+            startIcon={<HomeRoundedIcon />}
+            sx={{
+              mr: 1.5, color: "rgba(255,255,255,0.7)",
+              textTransform: "none", fontWeight: 500, borderRadius: "8px",
+              "&:hover": { color: "#fff", bgcolor: "rgba(255,255,255,0.08)" },
+            }}
+          >
+            Home
+          </Button>
+          <Button
             onClick={() => { setIsSignUp(false); setModalOpen(true); }}
             variant="outlined"
             size="small"
@@ -291,7 +306,6 @@ const LoginForm = ({ onLogin, autoOpen = false }) => {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         aria-labelledby="auth-modal-title"
-        aria-describedby="auth-modal-description"
       >
         <Box
           sx={{
@@ -299,107 +313,207 @@ const LoginForm = ({ onLogin, autoOpen = false }) => {
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            backgroundColor: "white",
-            color: "#000",
-            // No padding when signup — the form provides its own header flush to edges
-            padding: isSignUp ? 0 : "20px",
-            borderRadius: "8px",
-            overflow: "hidden",
-            width: { xs: "92vw", sm: isSignUp ? 460 : 480 },
+            width: { xs: "92vw", sm: isSignUp ? 460 : 440 },
             maxWidth: "92vw",
-            maxHeight: "95vh",
+            maxHeight: "92vh",
             overflowY: "auto",
+            borderRadius: "20px",
+            overflow: "hidden",
+            outline: "none",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.6)",
+            border: "1px solid rgba(255,255,255,0.1)",
           }}
         >
-          {/* Login header row — hidden during signup (SignUpForm has its own header) */}
-          {!isSignUp && (
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-              <Typography variant="h4" sx={{ color: "#000" }}>
-                {t("login")}
-              </Typography>
-              <IconButton onClick={() => setModalOpen(false)} sx={{ color: "#000" }}>
-                <CloseIcon />
-              </IconButton>
-            </Box>
-          )}
-
           {isSignUp ? (
-            <SignUpForm
-              onSignUp={() => setModalOpen(false)}
-              onClose={() => setModalOpen(false)}
-              onLogin={(roles) => { onLogin?.(roles); setModalOpen(false); }}
-            />
+            /* ── Signup: keep existing SignUpForm, just dark-wrap it ── */
+            <Box sx={{ bgcolor: "#0f172a" }}>
+              <SignUpForm
+                onSignUp={() => setModalOpen(false)}
+                onClose={() => setModalOpen(false)}
+                onLogin={(roles) => { onLogin?.(roles); setModalOpen(false); }}
+              />
+            </Box>
           ) : (
-            <>
-              <form onSubmit={handleSubmit}>
-                <TextField
-                  label={t("username")}
-                  fullWidth margin="normal"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  variant="outlined"
-                  InputLabelProps={{ style: { color: "#555" } }}
-                  sx={{
-                    input: { color: "#000" },
-                    "& .MuiOutlinedInput-root": {
-                      backgroundColor: "#fff",
-                      "& fieldset": { borderColor: "#ccc" },
-                      "&:hover fieldset": { borderColor: "#999" },
-                      "&.Mui-focused fieldset": { borderColor: "#1976d2" },
-                    },
-                  }}
-                />
-                <TextField
-                  label={t("password")}
-                  type="password"
-                  fullWidth margin="normal"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  variant="outlined"
-                  InputLabelProps={{ style: { color: "#555" } }}
-                  sx={{
-                    input: { color: "#000" },
-                    "& .MuiOutlinedInput-root": {
-                      backgroundColor: "#fff",
-                      "& fieldset": { borderColor: "#ccc" },
-                      "&:hover fieldset": { borderColor: "#999" },
-                      "&.Mui-focused fieldset": { borderColor: "#1976d2" },
-                    },
-                  }}
-                />
-                <Button type="submit" variant="contained" color="primary" fullWidth>
-                  {t("login")}
-                </Button>
-              </form>
+            /* ── Login dialog ── */
+            <Box
+              sx={{
+                background: "linear-gradient(160deg, #0f172a 0%, #1e3a8a 100%)",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              {/* Subtle orb */}
+              <Box sx={{
+                position: "absolute", top: -60, right: -60,
+                width: 200, height: 200, borderRadius: "50%",
+                bgcolor: "rgba(59,130,246,0.18)", filter: "blur(50px)",
+                pointerEvents: "none",
+              }} />
 
-              <Select
-                value={selectedLanguage}
-                onChange={handleLanguageChange}
-                fullWidth displayEmpty
-                MenuProps={{
-                  PaperProps: {
-                    sx: { bgcolor: "#fff", color: "#000", "& .MuiMenuItem-root": { color: "#000" } },
-                  },
-                }}
+              {/* Header strip */}
+              <Box
                 sx={{
-                  mt: 2, color: "#000", backgroundColor: "#fff",
-                  ".MuiSelect-icon": { color: "#000" },
-                  ".MuiOutlinedInput-notchedOutline": { borderColor: "#ccc" },
-                  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#999" },
-                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#1976d2" },
+                  px: 3.5, pt: 3.5, pb: 2.5,
+                  borderBottom: "1px solid rgba(255,255,255,0.08)",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
                 }}
               >
-                <MenuItem disabled value=""><em>{t("selectLanguage") || "Select Language"}</em></MenuItem>
-                <MenuItem value="en">English</MenuItem>
-                <MenuItem value="ar">العربية</MenuItem>
-                <MenuItem value="fr">Français</MenuItem>
-                <MenuItem value="ml">മലയാളം</MenuItem>
-                <MenuItem value="hi">हिन्दी</MenuItem>
-                <MenuItem value="ta">தமிழ்</MenuItem>
-                <MenuItem value="kn">ಕನ್ನಡ</MenuItem>
-                <MenuItem value="te">తెలుగు</MenuItem>
-              </Select>
-            </>
+                {/* Logo + title */}
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      width: 36, height: 36, borderRadius: "10px",
+                      background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      boxShadow: "0 4px 12px rgba(59,130,246,0.45)",
+                    }}
+                  >
+                    <Typography sx={{ color: "#fff", fontWeight: 800, fontSize: 17 }}>T</Typography>
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontWeight: 800, fontSize: 16, color: "#fff", lineHeight: 1.1 }}>
+                      Tradelink<span style={{ color: "#60a5fa" }}>247</span>
+                    </Typography>
+                    <Typography sx={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+                      Cloud ERP & POS
+                    </Typography>
+                  </Box>
+                </Box>
+                <IconButton
+                  onClick={() => setModalOpen(false)}
+                  size="small"
+                  sx={{
+                    color: "rgba(255,255,255,0.5)",
+                    "&:hover": { color: "#fff", bgcolor: "rgba(255,255,255,0.1)" },
+                  }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Box>
+
+              {/* Form body */}
+              <Box sx={{ px: 3.5, py: 3 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: 22, color: "#fff", mb: 0.5 }}>
+                  Welcome back
+                </Typography>
+                <Typography sx={{ fontSize: 13.5, color: "rgba(255,255,255,0.5)", mb: 3 }}>
+                  Sign in to continue to your dashboard
+                </Typography>
+
+                <form onSubmit={handleSubmit}>
+                  <TextField
+                    label={t("username")}
+                    fullWidth
+                    margin="normal"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    variant="outlined"
+                    InputLabelProps={{ style: { color: "rgba(255,255,255,0.5)" } }}
+                    sx={{
+                      mb: 1.5,
+                      "& .MuiOutlinedInput-root": {
+                        color: "#fff",
+                        borderRadius: "10px",
+                        bgcolor: "rgba(255,255,255,0.07)",
+                        "& fieldset": { borderColor: "rgba(255,255,255,0.15)" },
+                        "&:hover fieldset": { borderColor: "rgba(255,255,255,0.35)" },
+                        "&.Mui-focused fieldset": { borderColor: "#3b82f6" },
+                      },
+                    }}
+                  />
+                  <TextField
+                    label={t("password")}
+                    type="password"
+                    fullWidth
+                    margin="normal"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    variant="outlined"
+                    InputLabelProps={{ style: { color: "rgba(255,255,255,0.5)" } }}
+                    sx={{
+                      mb: 2.5,
+                      "& .MuiOutlinedInput-root": {
+                        color: "#fff",
+                        borderRadius: "10px",
+                        bgcolor: "rgba(255,255,255,0.07)",
+                        "& fieldset": { borderColor: "rgba(255,255,255,0.15)" },
+                        "&:hover fieldset": { borderColor: "rgba(255,255,255,0.35)" },
+                        "&.Mui-focused fieldset": { borderColor: "#3b82f6" },
+                      },
+                    }}
+                  />
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    fullWidth
+                    size="large"
+                    sx={{
+                      background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+                      color: "#fff", fontWeight: 700, fontSize: 15,
+                      borderRadius: "10px", py: 1.4,
+                      textTransform: "none",
+                      boxShadow: "0 8px 20px rgba(59,130,246,0.45)",
+                      "&:hover": { opacity: 0.92, boxShadow: "0 10px 26px rgba(59,130,246,0.55)" },
+                    }}
+                  >
+                    {t("login")}
+                  </Button>
+                </form>
+
+                {/* Language selector */}
+                <Select
+                  value={selectedLanguage}
+                  onChange={handleLanguageChange}
+                  fullWidth
+                  displayEmpty
+                  variant="outlined"
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        bgcolor: "#1e293b", color: "#fff",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        "& .MuiMenuItem-root": {
+                          color: "#cbd5e1",
+                          "&:hover": { bgcolor: "rgba(59,130,246,0.15)" },
+                          "&.Mui-selected": { bgcolor: "rgba(59,130,246,0.2)", color: "#fff" },
+                        },
+                      },
+                    },
+                  }}
+                  sx={{
+                    mt: 2, color: "rgba(255,255,255,0.6)",
+                    borderRadius: "10px",
+                    bgcolor: "rgba(255,255,255,0.06)",
+                    ".MuiSelect-icon": { color: "rgba(255,255,255,0.4)" },
+                    ".MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.15)" },
+                    "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.35)" },
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#3b82f6" },
+                  }}
+                >
+                  <MenuItem disabled value=""><em style={{ color: "rgba(255,255,255,0.35)" }}>{t("selectLanguage") || "Select Language"}</em></MenuItem>
+                  <MenuItem value="en">English</MenuItem>
+                  <MenuItem value="ar">العربية</MenuItem>
+                  <MenuItem value="fr">Français</MenuItem>
+                  <MenuItem value="ml">മലയാളം</MenuItem>
+                  <MenuItem value="hi">हिन्दी</MenuItem>
+                  <MenuItem value="ta">தமிழ்</MenuItem>
+                  <MenuItem value="kn">ಕನ್ನಡ</MenuItem>
+                  <MenuItem value="te">తెలుగు</MenuItem>
+                </Select>
+
+                {/* Switch to sign up */}
+                <Typography sx={{ mt: 3, textAlign: "center", fontSize: 13.5, color: "rgba(255,255,255,0.45)" }}>
+                  Don't have an account?{" "}
+                  <Box
+                    component="span"
+                    onClick={() => setIsSignUp(true)}
+                    sx={{ color: "#60a5fa", fontWeight: 600, cursor: "pointer", "&:hover": { color: "#93c5fd" } }}
+                  >
+                    Sign up free
+                  </Box>
+                </Typography>
+              </Box>
+            </Box>
           )}
         </Box>
       </Modal>
