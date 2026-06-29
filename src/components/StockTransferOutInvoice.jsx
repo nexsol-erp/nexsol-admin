@@ -273,16 +273,17 @@ const voucherDate = searchParams.get("voucherDate") || "";
           <meta charset="utf-8" />
           <title>${title}</title>
           <style>
-            @page { size: A4; margin: 10mm; }
+            @page { size: A4; margin: 8mm; }
             body {
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
                 Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-              font-size: 12px;
+              font-size: 9px;
               margin: 0; padding: 0;
             }
             table { border-collapse: collapse; width: 100%; }
-            th, td { border: 1px solid #000; padding: 4px; }
+            th, td { border: 1px solid #000; padding: 2px 3px; font-size: 9px; }
             .no-border td, .no-border th { border: none !important; }
+            .item-barcode { font-size: 8px; color: #444; }
           </style>
         </head>
         <body>${printContents}</body>
@@ -575,7 +576,12 @@ const voucherDate = searchParams.get("voucherDate") || "";
                           return (
                             <TableRow key={line.id || index}>
                               <TableCell>{index + 1}</TableCell>
-                              <TableCell>{line.itemName}</TableCell>
+                              <TableCell>
+                                <div>{line.itemName}</div>
+                                {line.barcode && (
+                                  <div className="item-barcode" style={{ fontSize: "9px", color: "#555" }}>{line.barcode}</div>
+                                )}
+                              </TableCell>
                               <TableCell>{line.hsnCode}</TableCell>
                               <TableCell align="right">{line.qty}</TableCell>
                               <TableCell>{line.uom}</TableCell>
