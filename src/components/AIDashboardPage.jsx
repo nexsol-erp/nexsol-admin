@@ -26,6 +26,7 @@ import {
 } from "@mui/material";
 import Grid from "@mui/material/Unstable_Grid2";
 import { Bar } from "react-chartjs-2";
+import * as XLSX from "xlsx";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -190,6 +191,24 @@ const AIDashboardPage = () => {
       ),
     [recommendations, dismissed]
   );
+
+  const exportRecsToExcel = () => {
+    const rows = visibleRecs.map((r) => ({
+      Urgency:          r.urgency,
+      "Item Name":      r.item_name,
+      "From Branch":    r.from_branch,
+      "To Branch":      r.to_branch,
+      "Transfer Qty":   r.qty,
+      "Current Stock":  r.to_current_stock,
+      [`${horizon}d Forecast`]: r.to_forecast_7d != null ? Number(r.to_forecast_7d).toFixed(1) : "",
+      "Donor Surplus":  r.from_surplus,
+      Confidence:       r.confidence,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Transfer Recommendations");
+    XLSX.writeFile(wb, `transfer_recommendations_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
 
   const chartData = useMemo(() => {
     if (!forecasts.length) return null;
@@ -375,6 +394,14 @@ const AIDashboardPage = () => {
               Reset ({dismissed.size} hidden)
             </Button>
           )}
+          <Button
+            size="small"
+            variant="outlined"
+            disabled={visibleRecs.length === 0}
+            onClick={exportRecsToExcel}
+          >
+            Export Excel
+          </Button>
         </Box>
 
         {visibleRecs.length === 0 ? (

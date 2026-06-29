@@ -89,6 +89,8 @@ const ItemVelocityReport = () => {
 
   const [branches, setBranches]         = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(null);
+  const [categories, setCategories]     = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const [fromDate, setFromDate]         = useState(dayjs().startOf("month").format("YYYY-MM-DD"));
   const [toDate, setToDate]             = useState(dayjs().format("YYYY-MM-DD"));
   const [limit, setLimit]               = useState(10);
@@ -108,11 +110,10 @@ const ItemVelocityReport = () => {
   }, [fromDate, toDate]);
 
   useEffect(() => {
+    const headers = { Authorization: `Bearer ${token}` };
     const fetchBranches = async () => {
       try {
-        const res = await fetch(`/api/${tenancyId}/branches`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(`/api/${tenancyId}/branches`, { headers });
         if (!res.ok) return;
         const data = await res.json();
         const list = Array.isArray(data) ? data : data.branches || data.data || [];
@@ -123,7 +124,16 @@ const ItemVelocityReport = () => {
         if (filtered.length === 1) setSelectedBranch(filtered[0]);
       } catch {}
     };
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch(`/api/${tenancyId}/categoriesNames`, { headers });
+        if (!res.ok) return;
+        const data = await res.json();
+        setCategories(Array.isArray(data) ? data : []);
+      } catch {}
+    };
     fetchBranches();
+    fetchCategories();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -138,6 +148,7 @@ const ItemVelocityReport = () => {
         toDate,
         limit,
       });
+      if (selectedCategory) params.set("categoryName", selectedCategory.categoryName);
       const res = await fetch(`/api/${tenancyId}/reports/item-velocity?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -199,6 +210,15 @@ const ItemVelocityReport = () => {
           onChange={(_, v) => { setSelectedBranch(v); setFetched(false); }}
           renderInput={(p) => <TextField {...p} label="Branch" size="small" sx={{ width: 220 }} />}
           isOptionEqualToValue={(o, v) => o.branchCode === v.branchCode}
+        />
+
+        <Autocomplete
+          options={categories}
+          getOptionLabel={(c) => c.categoryName || ""}
+          value={selectedCategory}
+          onChange={(_, v) => { setSelectedCategory(v); setFetched(false); }}
+          renderInput={(p) => <TextField {...p} label="Category (optional)" size="small" sx={{ width: 210 }} />}
+          isOptionEqualToValue={(o, v) => o.id === v.id}
         />
 
         <TextField
