@@ -120,7 +120,7 @@ export function buildTransferHtml({
       return `
       <tr>
         <td style="padding:2px 4px;border:1px solid #ccc;">${i + 1}</td>
-        <td style="padding:2px 4px;border:1px solid #ccc;">${e(r.item_name)}${barcodeHtml}</td>
+        <td style="padding:2px 4px;border:1px solid #ccc;"><span style="font-size:8px;">${e(r.item_name)}</span>${barcodeHtml}</td>
         <td style="padding:2px 4px;border:1px solid #ccc;text-align:center;">${e(r.unit || "")}</td>
         <td style="padding:2px 4px;border:1px solid #ccc;text-align:right;">${Number(r.qty || 0).toFixed(2)}</td>
         <td style="padding:2px 4px;border:1px solid #ccc;text-align:right;">${mrp.toFixed(2)}</td>

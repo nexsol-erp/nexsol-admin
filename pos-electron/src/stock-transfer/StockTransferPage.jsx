@@ -77,7 +77,7 @@ export default function StockTransferPage({ onClose }) {
   const [deliveryAddress1, setDeliveryAddress1] = useState("");
   const [deliveryAddress2, setDeliveryAddress2] = useState("");
 
-  const [printMode, setPrintMode] = useState("pdf");
+  const [printMode, setPrintMode] = useState("a4");
   const [reasonCode, setReasonCode] = useState("NORMAL DC");
   const [items, setItems] = useState([]);
   const [saving, setSaving] = useState(false);
