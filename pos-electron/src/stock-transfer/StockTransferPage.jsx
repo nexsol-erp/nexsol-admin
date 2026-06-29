@@ -194,7 +194,7 @@ export default function StockTransferPage({ onClose }) {
   const fetchDiscount = useCallback(async (itemId, mrp) => {
     if (!tenantId || !token || !mrp) return { discountPercent: 0, discountAmount: 0, rate: mrp };
     try {
-      const branchParam = fromBranch ? `?branchId=${encodeURIComponent(fromBranch)}` : "";
+      const branchParam = toBranchCode ? `?branchId=${encodeURIComponent(toBranchCode)}` : "";
       const url = apiUrl(`/api/${tenantId}/stock-transfer-discounts/item/${itemId}${branchParam}`);
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) return { discountPercent: 0, discountAmount: 0, rate: mrp };
@@ -214,7 +214,7 @@ export default function StockTransferPage({ onClose }) {
       // Network error – fall back to no discount
     }
     return { discountPercent: 0, discountAmount: 0, rate: mrp };
-  }, [tenantId, token, fromBranch]);
+  }, [tenantId, token, toBranchCode]);
 
   // ── AI recommendations ────────────────────────────────────────────────────
   const fetchAiRecommendations = useCallback(async (targetBranch, limit) => {
