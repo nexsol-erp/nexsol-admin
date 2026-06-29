@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   useNavigate,
+  useLocation,
 } from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { CssBaseline, Box, CircularProgress, AppBar, Toolbar, IconButton, Typography } from "@mui/material";
@@ -308,12 +309,13 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
     navigate(landing);
   };
 
+  const location = useLocation();
   const isAuthenticated = !!roles.length;
   const setupCompleted = localStorage.getItem("setupCompleted");
   const needsSetup = isAuthenticated && setupCompleted === "false";
 
   if (!isAuthenticated) {
-    return <LoginForm onLogin={handleLogin} />;
+    return <LoginForm onLogin={handleLogin} autoOpen={location.pathname === "/login"} />;
   }
 
   // Redirect to wizard if setup is not complete (but allow /setup-wizard itself)
