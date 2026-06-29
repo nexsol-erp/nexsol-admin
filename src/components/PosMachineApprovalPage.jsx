@@ -41,20 +41,11 @@ export default function PosMachineApprovalPage() {
     try {
       const url = filter === "PENDING"
         ? `/api/${tenancyId}/pos-machines/pending`
-        : `/api/${tenancyId}/pos-machines?branchCode=ALL`;
+        : filter === "ALL"
+          ? `/api/${tenancyId}/pos-machines/all`
+          : `/api/${tenancyId}/pos-machines/all?status=${filter}`;
 
-      // For PENDING we have a dedicated endpoint; for ALL we use the list endpoint
-      // but need branch. We'll fetch pending or all depending on filter.
-      let resp;
-      if (filter === "PENDING") {
-        resp = await fetch(`/api/${tenancyId}/pos-machines/pending`, { headers });
-      } else {
-        // Fetch all branches by getting machines for each branch isn't ideal —
-        // use the general list with a placeholder that the backend handles broadly.
-        // For now the backend list endpoint requires branchCode, so we list pending only.
-        // When filter is ALL, still use pending endpoint but show all status.
-        resp = await fetch(`/api/${tenancyId}/pos-machines/pending`, { headers });
-      }
+      const resp = await fetch(url, { headers });
 
       if (resp.status === 403) {
         setActionMsg({ type: "error", text: "You do not have permission to view this page (admin or MACHINE_ADMIN role required)." });
@@ -143,7 +134,7 @@ export default function PosMachineApprovalPage() {
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">
           <TableHead>
-            <TableRow sx={{ bgcolor: "grey.50" }}>
+            <TableRow sx={{ bgcolor: "action.hover" }}>
               <TableCell><strong>Branch</strong></TableCell>
               <TableCell><strong>Machine Code</strong></TableCell>
               <TableCell><strong>Machine Name</strong></TableCell>
