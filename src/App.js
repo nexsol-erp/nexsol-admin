@@ -96,6 +96,8 @@ import ProductionExecutionPage from "./components/ProductionExecutionPage";
 
 
 import "./i18n"; // i18n config
+import LandingPage from "./components/landing/LandingPage";
+import SignUpPage from "./components/landing/SignUpPage";
 import KOTEntry from "./components/KOTEntry";
 import GoodsReceiptForm from "./components/GoodsReceiptForm";
 import ReceiptModePage from "./components/ReceiptModePage";
@@ -539,7 +541,26 @@ const App = () => {
         <CssBaseline />
         <Router>
           <Routes>
+            {/* Public pages — no auth required */}
+            <Route path="/" element={<LandingPage />} />
+            <Route
+              path="/signup"
+              element={
+                <SignUpPage
+                  onLogin={async (loginRoles) => {
+                    localStorage.setItem("roles", JSON.stringify(loginRoles));
+                    setRoles(loginRoles);
+                    const landing = await resolveLoginLanding(loginRoles);
+                    window.location.href = landing;
+                  }}
+                />
+              }
+            />
             <Route path="/privacy" element={<PrivacyPolicyPage isPublic />} />
+            <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
+            <Route path="/refund-policy" element={<RefundPolicyPage />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicyPage isPublic />} />
+            {/* Authenticated app — all other routes */}
             <Route
               path="/*"
               element={
