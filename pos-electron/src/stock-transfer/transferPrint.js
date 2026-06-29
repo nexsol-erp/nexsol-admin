@@ -185,6 +185,20 @@ export function buildTransferHtml({
         <span>Total Amount: ${Number(totalAmount || 0).toFixed(2)}</span>
       </div>
       ${taxSummaryA4}
+      <div style="margin-top:24px;border-top:1px solid #ccc;padding-top:12px;">
+        <div style="font-size:11px;font-weight:bold;margin-bottom:4px;">Declaration:</div>
+        <div style="font-size:11px;line-height:1.6;color:#333;">
+          We declare that this Delivery Challan shows the actual price of the goods and that all particulars are true and correct.
+        </div>
+        <div style="margin-top:32px;display:flex;justify-content:space-between;align-items:flex-end;">
+          <div style="font-size:11px;color:#555;">Place &amp; Date: ___________________</div>
+          <div style="text-align:center;">
+            <div style="border-top:1px solid #333;width:180px;margin-bottom:4px;"></div>
+            <div style="font-size:11px;font-weight:bold;">Authorised Signatory</div>
+            <div style="font-size:10px;color:#555;">${e(fromBranchName || fromBranch)}</div>
+          </div>
+        </div>
+      </div>
     </body></html>`;
   }
 
@@ -271,7 +285,15 @@ export function buildTransferHtml({
   <div class="total-line"><span>Total Amount</span><span>${Number(totalAmount || 0).toFixed(2)}</span></div>
   ${taxSummaryThermal}
   <hr class="solid"/>
-  <div class="footer">*** End of Stock Transfer ***</div>
+  <div style="font-size:8px;line-height:1.5;margin:4px 0;text-align:justify;">
+    <b>Declaration:</b> We declare that this Delivery Challan shows the actual price of the goods and that all particulars are true and correct.
+  </div>
+  <hr class="dash"/>
+  <div style="margin-top:24px;font-size:9px;text-align:center;">
+    <div style="border-top:1px solid #000;width:140px;margin:0 auto 3px;"></div>
+    <div style="font-weight:bold;">Authorised Signatory</div>
+    <div>${e(fromBranchName || fromBranch)}</div>
+  </div>
   <br/><br/>
 </body>
 </html>`;
