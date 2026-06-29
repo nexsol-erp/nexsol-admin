@@ -1,45 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Box } from '@mui/material';
+import { Box, Typography, Chip } from '@mui/material';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import { useWebSocket } from './WebSocketContext';
 import Feed from './Feed';
 import Layout from './Layout';
-import { useNavigate } from 'react-router-dom'; // ✅ Make sure this is imported
 
 const Dashboard = () => {
   const { data } = useWebSocket();
-  const [dashboardData, setDashboardData] = useState(null);
-  const navigate = useNavigate(); // ✅ Must be declared inside the component
 
   useEffect(() => {
     if (data && data.type === 'dashboard') {
-      setDashboardData(data.payload);
+      // reserved for future dashboard payload handling
     }
   }, [data]);
 
-  const handlePublish = async () => {
-    try {
-      const tenancyId = localStorage.getItem("tenancyId");
-      const token = localStorage.getItem("jwtToken");
-
-      const response = await fetch(`/api/${tenancyId}/item-category-map/publish`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.ok) {
-        alert("✅ Item categories published successfully!");
-      } else {
-        alert("❌ Failed to publish item categories.");
-      }
-    } catch (error) {
-      console.error("Error publishing:", error);
-      alert("⚠️ An error occurred while publishing item categories.");
-    }
-  };
-
+  const now = new Date();
+  const greeting = now.getHours() < 12 ? 'Good Morning' : now.getHours() < 17 ? 'Good Afternoon' : 'Good Evening';
+  const dateLabel = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
     <Box
@@ -47,26 +24,60 @@ const Dashboard = () => {
         display: 'flex',
         flexDirection: 'column',
         minHeight: '100vh',
-        backgroundColor: '#4CAF50',
+        background: 'linear-gradient(160deg, #0f172a 0%, #1a2038 60%, #1e293b 100%)',
       }}
     >
-      {/* Top Bar with Back Button */}
-      <Box sx={{ p: 2, textAlign: 'left' }}>
-        <Button
-          variant="contained"
-          color="secondary"
-          onClick={() => navigate('/main')}
-        >
-          Back to Home
-        </Button>
-        <Button variant="contained" color="primary" onClick={handlePublish}>
-          Publish Item Categories
-        </Button>
+      {/* Page header */}
+      <Box
+        sx={{
+          px: { xs: 2, md: 4 },
+          pt: 3,
+          pb: 2,
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 1,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box
+            sx={{
+              width: 40, height: 40, borderRadius: '11px',
+              background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 14px rgba(59,130,246,0.4)',
+            }}
+          >
+            <DashboardIcon sx={{ color: '#fff', fontSize: 22 }} />
+          </Box>
+          <Box>
+            <Typography sx={{ fontWeight: 700, fontSize: 20, color: '#f1f5f9', lineHeight: 1.2 }}>
+              Dashboard
+            </Typography>
+            <Typography sx={{ fontSize: 12, color: '#64748b' }}>
+              {greeting} — overview of your business today
+            </Typography>
+          </Box>
+        </Box>
+
+        <Chip
+          label={dateLabel}
+          size="small"
+          sx={{
+            bgcolor: 'rgba(59,130,246,0.12)',
+            color: '#93c5fd',
+            border: '1px solid rgba(59,130,246,0.25)',
+            fontWeight: 500,
+            fontSize: 12,
+          }}
+        />
       </Box>
 
-      {/* Main Layout and Feed */}
+      {/* Main content */}
       <Layout>
-      <Feed />
+        <Feed />
       </Layout>
     </Box>
   );
