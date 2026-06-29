@@ -61,6 +61,18 @@ ipcMain.handle("log:write", (_evt, level, message) => {
   writeLog("renderer", level, message);
 });
 
+// Persist the POS device key in app userData so it survives localStorage clears.
+// This prevents a cleared localStorage from triggering a new machine registration.
+const _deviceKeyPath = path.join(app.getPath("userData"), "device.key");
+ipcMain.handle("device:get-key", () => {
+  try { return fs.existsSync(_deviceKeyPath) ? fs.readFileSync(_deviceKeyPath, "utf8").trim() : null; }
+  catch { return null; }
+});
+ipcMain.handle("device:set-key", (_evt, key) => {
+  try { fs.writeFileSync(_deviceKeyPath, key, "utf8"); return true; }
+  catch { return false; }
+});
+
 let win;
 let customerDisplayWin = null;
 

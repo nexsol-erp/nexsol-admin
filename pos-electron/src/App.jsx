@@ -95,6 +95,10 @@ export default function App() {
   const [cacheClearing, setCacheClearing] = useState(false);
   const [isDayEndDone, setIsDayEndDone] = useState(() => checkDayEndDone(localStorage.getItem("selectedBranchCode") || ""));
   const [dayEndBlock, setDayEndBlock] = useState(null); // "YYYY-MM-DD" of pending date, or null
+  const [machineStatus, setMachineStatus] = useState(() => {
+    const branch = localStorage.getItem("selectedBranchCode") || "";
+    return localStorage.getItem(`posMachineStatus_${branch}`) || "";
+  });
 
   // Recheck day-end status and date-advance block whenever page, branch, or login changes.
   useEffect(() => {
@@ -185,14 +189,30 @@ export default function App() {
   }, [selectedBranchCode, loggedIn]);
 
   // Register this machine with the server on login / branch change.
-  // Idempotent — safe to call every time. Updates local FY + machineCode cache.
+  // New devices come back PENDING; approved devices come back with machineCode + FY data.
   useEffect(() => {
     if (!loggedIn || !selectedBranchCode) return;
     const tenantId = localStorage.getItem("tenancyId") || "";
     if (!tenantId) return;
     const machineName = window.navigator?.userAgent?.split(" ").pop() || "";
-    registerMachine(tenantId, selectedBranchCode, machineName);
+    registerMachine(tenantId, selectedBranchCode, machineName).then((data) => {
+      if (data?.status) setMachineStatus(data.status);
+    });
   }, [selectedBranchCode, loggedIn]);
+
+  // Poll every 30 s while PENDING so the screen unblocks as soon as admin approves.
+  useEffect(() => {
+    if (machineStatus !== "PENDING" || !loggedIn || !selectedBranchCode) return;
+    const tenantId = localStorage.getItem("tenancyId") || "";
+    if (!tenantId) return;
+    const machineName = window.navigator?.userAgent?.split(" ").pop() || "";
+    const id = setInterval(() => {
+      registerMachine(tenantId, selectedBranchCode, machineName).then((data) => {
+        if (data?.status) setMachineStatus(data.status);
+      });
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [machineStatus, loggedIn, selectedBranchCode]);
 
   const reloadCache = async () => {
     setCacheLoading(true);
@@ -234,6 +254,52 @@ export default function App() {
     });
     return () => unsubscribe?.();
   }, [hasWB, hasPhysicalStock]);
+
+  if (loggedIn && machineStatus === "PENDING") {
+    const machineId = localStorage.getItem(`posMachineId_${selectedBranchCode}`) || "—";
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f0f2f5" }}>
+        <div style={{ textAlign: "center", background: "#fff", padding: "48px 64px", borderRadius: 12, boxShadow: "0 4px 24px rgba(0,0,0,0.1)", maxWidth: 480 }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+          <h2 style={{ marginBottom: 8 }}>Machine Pending Approval</h2>
+          <p style={{ color: "#6b7280", marginBottom: 24 }}>
+            This POS terminal is registered but has not yet been approved by an administrator.
+            Please ask your manager to approve this machine in the Admin panel.
+          </p>
+          <div style={{ background: "#f9fafb", borderRadius: 8, padding: "12px 16px", marginBottom: 24, fontSize: 12, color: "#374151" }}>
+            <strong>Branch:</strong> {selectedBranchCode}<br />
+            <strong>Registration ID:</strong> {machineId}
+          </div>
+          <p style={{ fontSize: 12, color: "#9ca3af" }}>Checking for approval every 30 seconds…</p>
+          <Button danger size="small" style={{ marginTop: 16 }} onClick={() => { logout(); setLoggedIn(false); setMachineStatus(""); }}>
+            Logout
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loggedIn && machineStatus === "REJECTED") {
+    const machineId = localStorage.getItem(`posMachineId_${selectedBranchCode}`) || "—";
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f0f2f5" }}>
+        <div style={{ textAlign: "center", background: "#fff", padding: "48px 64px", borderRadius: 12, boxShadow: "0 4px 24px rgba(0,0,0,0.1)", maxWidth: 480 }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🚫</div>
+          <h2 style={{ marginBottom: 8, color: "#dc2626" }}>Machine Registration Rejected</h2>
+          <p style={{ color: "#6b7280", marginBottom: 24 }}>
+            An administrator has rejected this POS terminal. Contact your manager to resolve this.
+          </p>
+          <div style={{ background: "#f9fafb", borderRadius: 8, padding: "12px 16px", marginBottom: 24, fontSize: 12, color: "#374151" }}>
+            <strong>Branch:</strong> {selectedBranchCode}<br />
+            <strong>Registration ID:</strong> {machineId}
+          </div>
+          <Button danger size="small" onClick={() => { logout(); setLoggedIn(false); setMachineStatus(""); }}>
+            Logout
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "#f0f2f5" }}>

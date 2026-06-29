@@ -117,6 +117,7 @@ import CategoryItemReport from "./components/CategoryItemReport";
 import MenuMapPage from "./components/MenuMapPage";
 import SetupWizardPage from "./components/SetupWizardPage";
 import StockTransferDiscountPage from "./components/StockTransferDiscountPage";
+import PosMachineApprovalPage from "./components/PosMachineApprovalPage";
 
 // Accounting
 import ReceiptEntry from "./components/accounting/ReceiptEntry";
@@ -469,6 +470,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/menu-master" element={<MenuMasterPage />} />
 <Route path="/role-menu" element={<RoleMenuPage />} />
 <Route path="/role-management" element={<RoleManagementPage />} />
+<Route path="/pos-machine-approval" element={<PosMachineApprovalPage />} />
 <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
 <Route path="/refund-policy" element={<RefundPolicyPage />} />
 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
