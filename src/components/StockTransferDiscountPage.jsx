@@ -51,15 +51,15 @@ export default function StockTransferDiscountPage() {
   const token    = localStorage.getItem("jwtToken")  || "";
   const headers  = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
-  const [rows, setRows]           = useState([]);
-  const [branches, setBranches]   = useState([]);
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState(null);
-  const [success, setSuccess]     = useState(null);
+  const [rows, setRows]         = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState(null);
+  const [success, setSuccess]   = useState(null);
 
-  const [filterActive,  setFilterActive]  = useState("all");
-  const [filterBranch,  setFilterBranch]  = useState("");
-  const [filterSearch,  setFilterSearch]  = useState("");
+  const [filterActive, setFilterActive] = useState("all");
+  const [filterBranch, setFilterBranch] = useState("");
+  const [filterSearch, setFilterSearch] = useState("");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId,     setEditId]     = useState(null);
@@ -138,48 +138,48 @@ export default function StockTransferDiscountPage() {
     setDialogOpen(true);
   };
 
-  // Backend returns camelCase: itemId, itemName, branchId, discountPercent, effectiveFrom, effectiveTo
+  // Entity @JsonProperty uses snake_case — read snake_case fields from the row
   const openEdit = (row) => {
     setEditId(row.id);
     setForm({
-      item_id:          row.itemId  || "",
-      item_name:        row.itemName || "",
-      branch_id:        row.branchId || "",
-      discount_type:    row.discountPercent != null ? "percent" : "rate",
-      discount_percent: row.discountPercent != null ? String(row.discountPercent) : "",
-      rate:             row.rate            != null ? String(row.rate)            : "",
-      effective_from:   row.effectiveFrom   ? row.effectiveFrom.slice(0, 10)     : "",
-      effective_to:     row.effectiveTo     ? row.effectiveTo.slice(0, 10)       : "",
+      item_id:          row.item_id  || "",
+      item_name:        row.item_name || "",
+      branch_id:        row.branch_id || "",
+      discount_type:    row.discount_percent != null ? "percent" : "rate",
+      discount_percent: row.discount_percent != null ? String(row.discount_percent) : "",
+      rate:             row.rate             != null ? String(row.rate)             : "",
+      effective_from:   row.effective_from   ? row.effective_from.slice(0, 10)     : "",
+      effective_to:     row.effective_to     ? row.effective_to.slice(0, 10)       : "",
       remarks:          row.remarks || "",
     });
-    setItemSearch(row.itemName || row.itemId || "");
+    setItemSearch(row.item_name || row.item_id || "");
     setItemSuggestions([]);
     setFormError("");
     setDialogOpen(true);
   };
 
-  // Backend entity expects camelCase field names
+  // Entity @JsonProperty uses snake_case — send snake_case payload
   const buildPayload = () => {
     const payload = {
-      itemId:        form.item_id,
-      itemName:      form.item_name,
-      branchId:      form.branch_id || null,
-      effectiveFrom: form.effective_from,
-      effectiveTo:   form.effective_to || null,
-      remarks:       form.remarks || null,
+      item_id:        form.item_id,
+      item_name:      form.item_name,
+      branch_id:      form.branch_id || null,
+      effective_from: form.effective_from,
+      effective_to:   form.effective_to || null,
+      remarks:        form.remarks || null,
     };
     if (form.discount_type === "percent") {
-      payload.discountPercent = parseFloat(form.discount_percent);
-      payload.rate            = null;
+      payload.discount_percent = parseFloat(form.discount_percent);
+      payload.rate             = null;
     } else {
-      payload.rate            = parseFloat(form.rate);
-      payload.discountPercent = null;
+      payload.rate             = parseFloat(form.rate);
+      payload.discount_percent = null;
     }
     return payload;
   };
 
   const validateForm = () => {
-    if (!form.item_id) return "Please select an item.";
+    if (!form.item_id)        return "Please select an item.";
     if (!form.effective_from) return "Effective From is required.";
     if (form.discount_type === "percent") {
       const v = parseFloat(form.discount_percent);
@@ -232,38 +232,46 @@ export default function StockTransferDiscountPage() {
     }
   };
 
-  // Filter uses camelCase keys returned by backend
   const displayed = rows.filter(r => {
     if (filterActive === "active"   && !r.active) return false;
     if (filterActive === "inactive" &&  r.active) return false;
-    if (filterBranch && r.branchId !== filterBranch) return false;
+    if (filterBranch && r.branch_id !== filterBranch) return false;
     if (filterSearch) {
       const q = filterSearch.toLowerCase();
       if (
-        !String(r.itemName || "").toLowerCase().includes(q) &&
-        !String(r.itemId   || "").toLowerCase().includes(q)
+        !String(r.item_name || "").toLowerCase().includes(q) &&
+        !String(r.item_id   || "").toLowerCase().includes(q)
       ) return false;
     }
     return true;
   });
 
+  // ── shared field sx: lets MUI theme drive all colors, works in light + dark ──
+  const fieldSx = { mb: 2 };
+
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" fontWeight="bold" mb={2} sx={{ color: "#1a237e" }}>
+      <Typography variant="h5" fontWeight="bold" mb={2} color="primary">
         Stock Transfer Discount Master
       </Typography>
 
       {error   && <Alert severity="error"   sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-      {/* Filters + Add */}
+      {/* ── Filters + Add ── */}
       <Box sx={{ display: "flex", gap: 2, mb: 2, flexWrap: "wrap", alignItems: "center" }}>
         <TextField
           size="small"
           placeholder="Search item…"
           value={filterSearch}
           onChange={e => setFilterSearch(e.target.value)}
-          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small"/></InputAdornment> }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
           sx={{ width: 220 }}
         />
 
@@ -289,24 +297,26 @@ export default function StockTransferDiscountPage() {
         </Button>
       </Box>
 
-      {/* Table */}
+      {/* ── Table ── */}
       {loading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}><CircularProgress /></Box>
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+          <CircularProgress />
+        </Box>
       ) : (
         <TableContainer component={Paper} elevation={2}>
           <Table size="small">
-            <TableHead sx={{ background: "#1976d2" }}>
-              <TableRow>
+            <TableHead>
+              <TableRow sx={{ bgcolor: "primary.main" }}>
                 {["Item", "Branch", "Disc %", "Rate", "Effective From", "Effective To", "Status", "Remarks"].map(h => (
-                  <TableCell key={h} sx={{ color: "#fff", fontWeight: 700 }}>{h}</TableCell>
+                  <TableCell key={h} sx={{ color: "primary.contrastText", fontWeight: 700 }}>{h}</TableCell>
                 ))}
-                <TableCell align="center" sx={{ color: "#fff", fontWeight: 700 }}>Actions</TableCell>
+                <TableCell align="center" sx={{ color: "primary.contrastText", fontWeight: 700 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {displayed.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ color: "#888", py: 3 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 3, color: "text.secondary" }}>
                     No discount records found.
                   </TableCell>
                 </TableRow>
@@ -314,24 +324,40 @@ export default function StockTransferDiscountPage() {
               {displayed.map(row => (
                 <TableRow key={row.id} hover>
                   <TableCell>
-                    <Typography variant="body2" fontWeight={600} sx={{ color: "#212121" }}>
-                      {row.itemName || row.itemId}
+                    <Typography variant="body2" fontWeight={600} color="text.primary">
+                      {row.item_name || row.item_id}
                     </Typography>
-                    {row.itemName && (
-                      <Typography variant="caption" sx={{ color: "#666" }}>{row.itemId}</Typography>
+                    {row.item_name && (
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {row.item_id}
+                      </Typography>
                     )}
                   </TableCell>
-                  <TableCell sx={{ color: "#333" }}>
-                    {row.branchId || <em style={{ color: "#888" }}>Company-wide</em>}
+                  <TableCell>
+                    <Typography variant="body2" color={row.branch_id ? "text.primary" : "text.disabled"}>
+                      {row.branch_id || "Company-wide"}
+                    </Typography>
                   </TableCell>
-                  <TableCell sx={{ color: "#333" }}>
-                    {row.discountPercent != null ? `${row.discountPercent}%` : "—"}
+                  <TableCell>
+                    <Typography variant="body2" color="text.primary">
+                      {row.discount_percent != null ? `${row.discount_percent}%` : "—"}
+                    </Typography>
                   </TableCell>
-                  <TableCell sx={{ color: "#333" }}>
-                    {row.rate != null ? Number(row.rate).toFixed(2) : "—"}
+                  <TableCell>
+                    <Typography variant="body2" color="text.primary">
+                      {row.rate != null ? Number(row.rate).toFixed(2) : "—"}
+                    </Typography>
                   </TableCell>
-                  <TableCell sx={{ color: "#333" }}>{row.effectiveFrom?.slice(0, 10) || ""}</TableCell>
-                  <TableCell sx={{ color: "#333" }}>{row.effectiveTo?.slice(0, 10)   || "—"}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.primary">
+                      {row.effective_from?.slice(0, 10) || ""}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.primary">
+                      {row.effective_to?.slice(0, 10) || "—"}
+                    </Typography>
+                  </TableCell>
                   <TableCell>
                     <Chip
                       label={row.active ? "Active" : "Inactive"}
@@ -341,7 +367,9 @@ export default function StockTransferDiscountPage() {
                   </TableCell>
                   <TableCell sx={{ maxWidth: 160 }}>
                     <Tooltip title={row.remarks || ""}>
-                      <Typography variant="body2" noWrap sx={{ color: "#333" }}>{row.remarks || "—"}</Typography>
+                      <Typography variant="body2" noWrap color="text.secondary">
+                        {row.remarks || "—"}
+                      </Typography>
                     </Tooltip>
                   </TableCell>
                   <TableCell align="center">
@@ -365,19 +393,27 @@ export default function StockTransferDiscountPage() {
         </TableContainer>
       )}
 
-      {/* Add / Edit Dialog */}
+      {/* ── Add / Edit Dialog ── */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: "#1a237e", fontWeight: 700 }}>
+        <DialogTitle
+          sx={{
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+            fontWeight: 700,
+          }}
+        >
           {editId ? "Edit Discount" : "Add Stock Transfer Discount"}
         </DialogTitle>
-        <DialogContent dividers sx={{ bgcolor: "#fafafa" }}>
+
+        <DialogContent dividers>
           {formError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
 
           {/* Item search */}
-          <Box sx={{ position: "relative", mb: 2 }}>
+          <Box sx={{ position: "relative", ...fieldSx }}>
             <TextField
               label="Item Search"
-              fullWidth size="small"
+              fullWidth
+              size="small"
               value={itemSearch}
               onChange={e => {
                 setItemSearch(e.target.value);
@@ -386,20 +422,28 @@ export default function StockTransferDiscountPage() {
               }}
               InputProps={{
                 endAdornment: searchingItems
-                  ? <InputAdornment position="end"><CircularProgress size={16}/></InputAdornment>
+                  ? <InputAdornment position="end"><CircularProgress size={16} /></InputAdornment>
                   : null,
-                style: { color: "#212121", backgroundColor: "#fff" },
               }}
-              InputLabelProps={{ style: { color: "#555" } }}
-              helperText={form.item_id ? `Selected: ${form.item_id}` : "Type item name or code"}
+              helperText={form.item_id ? `✓ Selected: ${form.item_id}` : "Type item name or code"}
             />
+
             {itemSuggestions.length > 0 && (
               <Paper
-                elevation={6}
+                elevation={8}
                 sx={{
-                  position: "absolute", top: "100%", left: 0, right: 0,
-                  zIndex: 1300, maxHeight: 220, overflowY: "auto",
-                  bgcolor: "#ffffff", border: "1px solid #ddd",
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  zIndex: 1400,
+                  maxHeight: 220,
+                  overflowY: "auto",
+                  bgcolor: "background.paper",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderTop: "2px solid",
+                  borderTopColor: "primary.main",
                 }}
               >
                 {itemSuggestions.map(itm => (
@@ -407,16 +451,18 @@ export default function StockTransferDiscountPage() {
                     key={itm.itemId}
                     onClick={() => pickItem(itm)}
                     sx={{
-                      px: 2, py: 1, cursor: "pointer",
-                      borderBottom: "1px solid #f0f0f0",
-                      bgcolor: "#fff",
-                      "&:hover": { bgcolor: "#e3f2fd" },
+                      px: 2,
+                      py: 1,
+                      cursor: "pointer",
+                      borderBottom: "1px solid",
+                      borderColor: "divider",
+                      "&:hover": { bgcolor: "action.hover" },
                     }}
                   >
-                    <Typography variant="body2" fontWeight={600} sx={{ color: "#212121" }}>
+                    <Typography variant="body2" fontWeight={600} color="text.primary">
                       {itm.itemName}
                     </Typography>
-                    <Typography variant="caption" sx={{ color: "#666" }}>
+                    <Typography variant="caption" color="text.secondary">
                       {itm.itemId}
                     </Typography>
                   </Box>
@@ -426,17 +472,18 @@ export default function StockTransferDiscountPage() {
           </Box>
 
           {/* Branch */}
-          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-            <FormLabel sx={{ fontSize: 12, mb: 0.5, color: "#555" }}>
-              Branch (leave blank for company-wide)
+          <FormControl fullWidth size="small" sx={fieldSx}>
+            <FormLabel sx={{ fontSize: 12, mb: 0.5, color: "text.secondary" }}>
+              Branch <Typography component="span" variant="caption" color="text.disabled">(leave blank for company-wide)</Typography>
             </FormLabel>
             <Select
               value={form.branch_id}
               onChange={e => setForm(f => ({ ...f, branch_id: e.target.value }))}
               displayEmpty
-              sx={{ bgcolor: "#fff", color: "#212121" }}
             >
-              <MenuItem value="">Company-wide</MenuItem>
+              <MenuItem value="">
+                <Typography variant="body2" color="text.secondary">Company-wide</Typography>
+              </MenuItem>
               {branches.map(b => (
                 <MenuItem key={b.branchCode} value={b.branchCode}>
                   {b.branchCode}{b.branchName ? ` — ${b.branchName}` : ""}
@@ -446,45 +493,60 @@ export default function StockTransferDiscountPage() {
           </FormControl>
 
           {/* Discount type */}
-          <FormControl component="fieldset" sx={{ mb: 1 }}>
-            <FormLabel component="legend" sx={{ fontSize: 12, color: "#555" }}>Discount Type</FormLabel>
-            <RadioGroup
-              row
-              value={form.discount_type}
-              onChange={e => setForm(f => ({ ...f, discount_type: e.target.value, discount_percent: "", rate: "" }))}
-            >
-              <FormControlLabel value="percent" control={<Radio size="small"/>} label={<span style={{ color: "#212121" }}>Discount %</span>} />
-              <FormControlLabel value="rate"    control={<Radio size="small"/>} label={<span style={{ color: "#212121" }}>Fixed Rate</span>}  />
-            </RadioGroup>
-            <FormHelperText sx={{ color: "#777" }}>Only one can be entered.</FormHelperText>
-          </FormControl>
+          <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
+            <FormControl component="fieldset" fullWidth>
+              <FormLabel component="legend" sx={{ fontSize: 12, color: "text.secondary" }}>
+                Discount Type
+              </FormLabel>
+              <RadioGroup
+                row
+                value={form.discount_type}
+                onChange={e => setForm(f => ({
+                  ...f,
+                  discount_type: e.target.value,
+                  discount_percent: "",
+                  rate: "",
+                }))}
+              >
+                <FormControlLabel
+                  value="percent"
+                  control={<Radio size="small" />}
+                  label={<Typography variant="body2" color="text.primary">Discount %</Typography>}
+                />
+                <FormControlLabel
+                  value="rate"
+                  control={<Radio size="small" />}
+                  label={<Typography variant="body2" color="text.primary">Fixed Rate</Typography>}
+                />
+              </RadioGroup>
+              <FormHelperText>Only one of discount % or rate can be set.</FormHelperText>
+            </FormControl>
+          </Paper>
 
           {form.discount_type === "percent" ? (
             <TextField
               label="Discount %"
               type="number"
-              fullWidth size="small"
-              sx={{ mb: 2 }}
+              fullWidth
+              size="small"
               value={form.discount_percent}
               onChange={e => setForm(f => ({ ...f, discount_percent: e.target.value }))}
               inputProps={{ min: 0, max: 100, step: 0.01 }}
               InputProps={{
                 endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                style: { color: "#212121", backgroundColor: "#fff" },
               }}
-              InputLabelProps={{ style: { color: "#555" } }}
+              sx={fieldSx}
             />
           ) : (
             <TextField
               label="Transfer Rate"
               type="number"
-              fullWidth size="small"
-              sx={{ mb: 2 }}
+              fullWidth
+              size="small"
               value={form.rate}
               onChange={e => setForm(f => ({ ...f, rate: e.target.value }))}
               inputProps={{ min: 0, step: 0.01 }}
-              InputProps={{ style: { color: "#212121", backgroundColor: "#fff" } }}
-              InputLabelProps={{ style: { color: "#555" } }}
+              sx={fieldSx}
             />
           )}
 
@@ -492,40 +554,41 @@ export default function StockTransferDiscountPage() {
             <TextField
               label="Effective From"
               type="date"
-              fullWidth size="small"
+              fullWidth
+              size="small"
               value={form.effective_from}
               onChange={e => setForm(f => ({ ...f, effective_from: e.target.value }))}
-              InputLabelProps={{ shrink: true, style: { color: "#555" } }}
-              InputProps={{ style: { color: "#212121", backgroundColor: "#fff" } }}
+              InputLabelProps={{ shrink: true }}
             />
             <TextField
               label="Effective To"
               type="date"
-              fullWidth size="small"
+              fullWidth
+              size="small"
               value={form.effective_to}
               onChange={e => setForm(f => ({ ...f, effective_to: e.target.value }))}
-              InputLabelProps={{ shrink: true, style: { color: "#555" } }}
-              InputProps={{ style: { color: "#212121", backgroundColor: "#fff" } }}
-              helperText={<span style={{ color: "#777" }}>Leave blank = no end date</span>}
+              InputLabelProps={{ shrink: true }}
+              helperText="Leave blank = no end date"
             />
           </Box>
 
           <TextField
             label="Remarks"
-            fullWidth size="small"
-            multiline rows={2}
+            fullWidth
+            size="small"
+            multiline
+            rows={2}
             value={form.remarks}
             onChange={e => setForm(f => ({ ...f, remarks: e.target.value }))}
-            InputProps={{ style: { color: "#212121", backgroundColor: "#fff" } }}
-            InputLabelProps={{ style: { color: "#555" } }}
           />
         </DialogContent>
-        <DialogActions sx={{ bgcolor: "#f5f5f5" }}>
-          <Button onClick={() => setDialogOpen(false)} disabled={saving} sx={{ color: "#555" }}>
+
+        <DialogActions sx={{ px: 3, py: 1.5 }}>
+          <Button onClick={() => setDialogOpen(false)} disabled={saving} color="inherit">
             Cancel
           </Button>
-          <Button variant="contained" onClick={handleSave} disabled={saving}>
-            {saving ? <CircularProgress size={18} /> : editId ? "Update" : "Save"}
+          <Button variant="contained" onClick={handleSave} disabled={saving} sx={{ minWidth: 90 }}>
+            {saving ? <CircularProgress size={18} color="inherit" /> : editId ? "Update" : "Save"}
           </Button>
         </DialogActions>
       </Dialog>
