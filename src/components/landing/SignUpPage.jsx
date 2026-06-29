@@ -1,9 +1,12 @@
 import React from "react";
 import {
-  Box, Typography, Paper, Link,
+  Box, Typography, Paper, Link, CssBaseline,
 } from "@mui/material";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import SignUpForm from "../SignUpForm";
+
+const lightTheme = createTheme({ palette: { mode: "light" } });
 
 const SignUpPage = ({ onLogin }) => {
   const navigate = useNavigate();
@@ -18,6 +21,8 @@ const SignUpPage = ({ onLogin }) => {
   };
 
   return (
+    <ThemeProvider theme={lightTheme}>
+    <CssBaseline />
     <Box
       sx={{
         minHeight: "100vh",
@@ -115,6 +120,7 @@ const SignUpPage = ({ onLogin }) => {
         </Typography>
       </Box>
     </Box>
+    </ThemeProvider>
   );
 };
 
