@@ -1,45 +1,69 @@
 import React, { useState } from "react";
 import {
-  Box,
-  Button,
-  TextField,
-  Typography,
-  Paper,
-  CircularProgress,
-  Grid,
-  StepIcon,
+  Box, Button, TextField, Typography, Paper, CircularProgress,
+  Grid, FormControl, InputLabel, Select, MenuItem,
+  Alert, Snackbar, Divider,
 } from "@mui/material";
-import { Select, MenuItem, InputLabel, FormControl } from "@mui/material";
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import AddBusinessIcon from "@mui/icons-material/AddBusiness";
 
-import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
+const FIELD_SX = {
+  "& .MuiOutlinedInput-root": { borderRadius: "10px" },
+};
+
+const SectionHeader = ({ label }) => (
+  <Grid item xs={12}>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1, mb: 0.5 }}>
+      <Divider sx={{ flex: 1 }} />
+      <Typography
+        variant="caption"
+        sx={{
+          fontWeight: 700, letterSpacing: "0.8px",
+          color: "text.secondary", textTransform: "uppercase", px: 1,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {label}
+      </Typography>
+      <Divider sx={{ flex: 1 }} />
+    </Box>
+  </Grid>
+);
+
 const BranchCreationPage = () => {
-  const [branchCode, setBranchCode] = useState("");
-  const [branchName, setBranchName] = useState("");
-  const [branchState, setBranchState] = useState("");
+  const [branchCode,            setBranchCode]            = useState("");
+  const [branchName,            setBranchName]            = useState("");
+  const [branchState,           setBranchState]           = useState("");
   const [branchBuildingAddress, setBranchBuildingAddress] = useState("");
-  const [branchStreetAddress, setBranchStreetAddress] = useState("");
-  const [branchAddress1, setBranchAddress1] = useState("");
-  const [branchAddress2, setBranchAddress2] = useState("");
-  const [branchGst, setBranchGst] = useState("");
-  const [branchInvoicePrefix, setBranchInvoicePrefix] = useState("");
-  const [isControlBranch, setIsControlBranch] = useState("");
-  
-  const [branchType, setBranchType] = useState("");
-  const [clientDbType, setClientDbType] = useState("");
-
-
-  const [error, setError] = useState("");
+  const [branchStreetAddress,   setBranchStreetAddress]   = useState("");
+  const [branchAddress1,        setBranchAddress1]        = useState("");
+  const [branchAddress2,        setBranchAddress2]        = useState("");
+  const [branchGst,             setBranchGst]             = useState("");
+  const [branchInvoicePrefix,   setBranchInvoicePrefix]   = useState("");
+  const [branchType,            setBranchType]            = useState("");
+  const [error,   setError]   = useState("");
+  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const resetForm = () => {
+    setBranchName("");
+    setBranchState("");
+    setBranchBuildingAddress("");
+    setBranchStreetAddress("");
+    setBranchAddress1("");
+    setBranchAddress2("");
+    setBranchGst("");
+    setBranchInvoicePrefix("");
+    setBranchType("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
-    // Validate branch code to contain only letters and numbers
     const branchCodeRegex = /^[A-Za-z0-9]+$/;
     if (!branchCodeRegex.test(branchCode)) {
-      setError(
-        "Branch Code must contain only letters and numbers without spaces or special characters."
-      );
+      setError("Branch Code must contain only letters and numbers — no spaces or special characters.");
       return;
     }
 
@@ -52,309 +76,232 @@ const BranchCreationPage = () => {
       branchAddress1,
       branchAddress2,
       branchGst,
-      branchInvoicePrefix, // include the new field
-      isControlBranch,
+      branchInvoicePrefix,
       branchType,
-      clientDbType,
     };
 
     setLoading(true);
-    setError("");
-
     try {
       const tenancyId = localStorage.getItem("tenancyId");
-      const token = localStorage.getItem("jwtToken");
-      const response = await fetch(`/api/${tenancyId}/createbranch`, {
+      const token     = localStorage.getItem("jwtToken");
+      const response  = await fetch(`/api/${tenancyId}/createbranch`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          "X-Tenant-ID": `${tenancyId}`, // <-- Set tenantId in header
+          Authorization:    `Bearer ${token}`,
+          "Content-Type":   "application/json",
+          "X-Tenant-ID":    `${tenancyId}`,
         },
         body: JSON.stringify(formData),
       });
 
       const data = await response.json();
-      setLoading(false);
       if (data.success) {
-        alert("Branch created successfully!");
-        //setBranchCode("");
-        setBranchName("");
-        setBranchState("");
-        setBranchBuildingAddress("");
-        setBranchStreetAddress("");
-        setBranchAddress1("");
-        setBranchAddress2("");
-        setBranchGst("");
-        setBranchInvoicePrefix(""); // reset the new field
-        setIsControlBranch("");
-        setBranchType("");
-        setClientDbType("");
-
-
+        setSuccess(true);
+        resetForm();
       } else {
-        setError(data.message);
+        setError(data.message || "Failed to create branch. Please try again.");
       }
-    } catch (error) {
-      console.error("Error:", error);
-      setLoading(false);
+    } catch (err) {
+      console.error("Error:", err);
       setError("An error occurred. Please try again later.");
-    }
-  };
-
-  const handleDownload = async () => {
-    const tenancyId = localStorage.getItem("tenancyId");
-    const token = localStorage.getItem("jwtToken");
-    const fileName = "nexsol-pos.zip";
-    const url = `/api/${tenancyId}/download/${branchCode}/${fileName}`;
-
-    try {
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/octet-stream",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to download file");
-      }
-
-      const blob = await response.blob();
-      const link = document.createElement("a");
-      link.href = window.URL.createObjectURL(blob);
-      link.setAttribute("download", fileName);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      console.error("Error downloading file:", error);
-    }
-  };
-
-   
-  const handlePublisBranch = async () => {
-    const tenancyId = localStorage.getItem("tenancyId");
-    const token = localStorage.getItem("jwtToken");
-    const fileName = "nexsol-pos.zip";
-    const url = `/api/${tenancyId}/publish-branch`;
-
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/octet-stream",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to publish branch ");
-      }
-
-    } catch (error) {
-      console.error("Error downloading file:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Box
-      sx={{
-        flexGrow: 1,
-        p: 3,
-        ml: "240px",
-        mt: 2,
-      }}
-    >
-      <Paper elevation={3} sx={{ padding: 4, maxWidth: 800 }}>
-        <Typography variant="h4" gutterBottom>
-          Branch Creation
-        </Typography>
-        {error && (
-          <Typography color="error" variant="body1" gutterBottom>
-            {error}
+    <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 900 }}>
+
+      {/* ── Page header ──────────────────────────────────────────────── */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
+        <Box
+          sx={{
+            width: 42, height: 42, borderRadius: "12px",
+            background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 4px 14px rgba(59,130,246,0.4)",
+          }}
+        >
+          <AccountTreeIcon sx={{ color: "#fff", fontSize: 22 }} />
+        </Box>
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+            Branch Creation
           </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Add a new branch to your organisation
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* ── Form card ────────────────────────────────────────────────── */}
+      <Paper
+        variant="outlined"
+        sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3 }}
+      >
+        {error && (
+          <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }} onClose={() => setError("")}>
+            {error}
+          </Alert>
         )}
+
         <form onSubmit={handleSubmit}>
-          <Grid container spacing={2}>
+          <Grid container spacing={2.5}>
+
+            {/* ── Branch identity ──────────────────────────────────── */}
+            <SectionHeader label="Branch Identity" />
+
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Branch Code"
-                fullWidth
-                margin="normal"
+                fullWidth size="small" required
                 value={branchCode}
-                onChange={(e) => setBranchCode(e.target.value)}
-                required
+                onChange={(e) => setBranchCode(e.target.value.toUpperCase())}
+                inputProps={{ maxLength: 10 }}
+                helperText="Letters and numbers only, no spaces"
+                sx={FIELD_SX}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Branch Name"
-                fullWidth
-                margin="normal"
+                fullWidth size="small" required
                 value={branchName}
                 onChange={(e) => setBranchName(e.target.value)}
-                required
+                sx={FIELD_SX}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="GST Number"
+                fullWidth size="small" required
+                value={branchGst}
+                onChange={(e) => setBranchGst(e.target.value.toUpperCase())}
+                sx={FIELD_SX}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Branch State"
-                fullWidth
-                margin="normal"
-                value={branchState}
-                onChange={(e) => setBranchState(e.target.value)}
-                required
+                label="Invoice Prefix"
+                fullWidth size="small" required
+                value={branchInvoicePrefix}
+                onChange={(e) => setBranchInvoicePrefix(e.target.value.toUpperCase())}
+                helperText="e.g. INV, POS, BIL"
+                sx={FIELD_SX}
               />
             </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth size="small" required sx={FIELD_SX}>
+                <InputLabel>Branch Type</InputLabel>
+                <Select
+                  value={branchType}
+                  label="Branch Type"
+                  onChange={(e) => setBranchType(e.target.value)}
+                >
+                  <MenuItem value="BAKERY_OUTLET">Bakery Outlet</MenuItem>
+                  <MenuItem value="BAKERY_BO">Bakery Back Office</MenuItem>
+                  <MenuItem value="BAKERY_CGN">Bakery Central Godown</MenuItem>
+                  <MenuItem value="BAKERY_PROD">Bakery Production</MenuItem>
+                  <MenuItem value="WB">Weigh Bridge</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            {/* ── Address ──────────────────────────────────────────── */}
+            <SectionHeader label="Address" />
+
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Branch Building"
-                fullWidth
-                margin="normal"
+                label="Building / Premises"
+                fullWidth size="small" required
                 value={branchBuildingAddress}
                 onChange={(e) => setBranchBuildingAddress(e.target.value)}
-                required
+                sx={FIELD_SX}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Branch Street"
-                fullWidth
-                margin="normal"
+                label="Street"
+                fullWidth size="small" required
                 value={branchStreetAddress}
                 onChange={(e) => setBranchStreetAddress(e.target.value)}
-                required
+                sx={FIELD_SX}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Branch Address1"
-                fullWidth
-                margin="normal"
+                label="Address Line 1"
+                fullWidth size="small" required
                 value={branchAddress1}
                 onChange={(e) => setBranchAddress1(e.target.value)}
-                required
+                sx={FIELD_SX}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Branch Address2"
-                fullWidth
-                margin="normal"
+                label="Address Line 2"
+                fullWidth size="small"
                 value={branchAddress2}
                 onChange={(e) => setBranchAddress2(e.target.value)}
-                required
+                sx={FIELD_SX}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Branch GST"
-                fullWidth
-                margin="normal"
-                value={branchGst}
-                onChange={(e) => setBranchGst(e.target.value)}
-                required
+                label="State"
+                fullWidth size="small" required
+                value={branchState}
+                onChange={(e) => setBranchState(e.target.value)}
+                sx={FIELD_SX}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Branch Invoice Prefix"
-                fullWidth
-                margin="normal"
-                value={branchInvoicePrefix}
-                onChange={(e) => setBranchInvoicePrefix(e.target.value)}
-                required
-              />
+
+            {/* ── Submit ───────────────────────────────────────────── */}
+            <Grid item xs={12}>
+              <Divider sx={{ mb: 2 }} />
+              <Button
+                type="submit"
+                variant="contained"
+                size="large"
+                disabled={loading}
+                startIcon={
+                  loading
+                    ? <CircularProgress size={18} color="inherit" />
+                    : <AddBusinessIcon />
+                }
+                sx={{
+                  background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
+                  color: "#fff", fontWeight: 700, borderRadius: "10px",
+                  px: 4, textTransform: "none", fontSize: 15,
+                  boxShadow: "0 4px 14px rgba(59,130,246,0.35)",
+                  "&:hover": { opacity: 0.92 },
+                  "&:disabled": { opacity: 0.6 },
+                }}
+              >
+                {loading ? "Creating Branch…" : "Create Branch"}
+              </Button>
             </Grid>
-            <Grid item xs={12} sm={6}>
-  <FormControl fullWidth margin="normal" required>
-    <InputLabel id="is-control-branch-label">Is Control Branch</InputLabel>
-    <Select
-      labelId="is-control-branch-label"
-      value={isControlBranch}
-      label="Is Control Branch"
-      onChange={(e) => setIsControlBranch(e.target.value)}
-    >
-      <MenuItem value="Y">Y</MenuItem>
-      <MenuItem value="N">N</MenuItem>
-    </Select>
-  </FormControl>
-</Grid>
-<Grid item xs={12} sm={6}>
-  <FormControl fullWidth margin="normal" required>
-    <InputLabel id="branch-type-label">Branch Type</InputLabel>
-    <Select
-      labelId="branch-type-label"
-      value={branchType}
-      label="Branch Type"
-      onChange={(e) => setBranchType(e.target.value)}
-    >
-      <MenuItem value="BAKERY_OUTLET">Bakery Outlet</MenuItem>
-      <MenuItem value="BAKERY_BO">Bakery Back Office</MenuItem>
-      <MenuItem value="BAKERY_CGN">Bakery Central Godown</MenuItem>
-      <MenuItem value="BAKERY_PROD">Bakery Production</MenuItem>
-      <MenuItem value="WB">Weigh Bridge</MenuItem>
-    </Select>
-  </FormControl>
-</Grid>
-
-<Grid item xs={12} sm={6}>
-  <FormControl fullWidth margin="normal" required>
-    <InputLabel id="client-db-type-label">Client DB Type</InputLabel>
-    <Select
-      labelId="client-db-type-label"
-      value={clientDbType}
-      label="Client DB Type"
-      onChange={(e) => setClientDbType(e.target.value)}
-    >
-      <MenuItem value="MULTI_USER">Multi User</MenuItem>
-      <MenuItem value="SINGLE_USER">Single User</MenuItem>
-    </Select>
-  </FormControl>
-</Grid>
-
 
           </Grid>
-          <Box mt={2}>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth
-              disabled={loading} 
-              sx={{ mb: 2 }} // Add bottom margin
-            >
-              {loading ? <CircularProgress size={24} /> : "Create Branch"}
-            </Button>
-            <Button 
-            variant="contained"
-            color="primary"
-            fullWidth
-            startIcon={<CloudDownloadIcon />}
-            onClick={handleDownload}
-            disabled={!branchCode}
-            sx={{ mb: 2 }} // Add bottom margin
-          >
-            Download Client Application
-          </Button>
-         
-          
-            <Button 
-            variant="contained"
-            color="primary"
-            fullWidth
-            startIcon={<StepIcon />}
-            onClick={handlePublisBranch}
-             
-            sx={{ mb: 2 }} // Add bottom margin
-          >
-            Publish Branch
-          </Button>
-          </Box>
         </form>
       </Paper>
+
+      {/* ── Success toast ─────────────────────────────────────────── */}
+      <Snackbar
+        open={success}
+        autoHideDuration={4000}
+        onClose={() => setSuccess(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          severity="success"
+          onClose={() => setSuccess(false)}
+          sx={{ borderRadius: 2, fontWeight: 600 }}
+        >
+          Branch created successfully!
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
