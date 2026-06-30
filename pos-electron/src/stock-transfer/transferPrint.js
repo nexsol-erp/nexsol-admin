@@ -120,7 +120,7 @@ export function buildTransferHtml({
       return `
       <tr>
         <td style="padding:2px 4px;border:1px solid #ccc;">${i + 1}</td>
-        <td style="padding:2px 4px;border:1px solid #ccc;"><span style="font-size:9px;">${e(r.item_name)}</span>${barcodeHtml}</td>
+        <td style="padding:2px 4px;border:1px solid #ccc;"><span style="font-size:10px;">${e(r.item_name)}</span>${barcodeHtml}</td>
         <td style="padding:2px 4px;border:1px solid #ccc;text-align:center;">${e(r.unit || "")}</td>
         <td style="padding:2px 4px;border:1px solid #ccc;text-align:right;">${Number(r.qty || 0).toFixed(2)}</td>
         <td style="padding:2px 4px;border:1px solid #ccc;text-align:right;">${mrp.toFixed(2)}</td>
@@ -212,7 +212,7 @@ export function buildTransferHtml({
     const amount = Number(r.amount ?? 0);
     return `
     <tr>
-      <td>${e(r.item_name)}</td>
+      <td style="font-size:10px;">${e(r.item_name)}</td>
       <td class="num">${Number(r.qty || 0).toFixed(2)}</td>
       <td class="num">${mrp.toFixed(2)}</td>
       <td class="num">${discPct.toFixed(2)}%</td>
