@@ -722,6 +722,14 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const [branchInfo, setBranchInfo] = useState(null);
   useEffect(() => {
     if (!selectedBranchCode) { log("branchInfo: no selectedBranchCode, skipping fetch"); return; }
+
+    // Load cached value immediately so receipt prints correctly when offline
+    const cacheKey = `branchInfo_${selectedBranchCode}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) setBranchInfo(JSON.parse(cached));
+    } catch {}
+
     const tenantId = localStorage.getItem("tenancyId") || "";
     const token    = localStorage.getItem("jwtToken") || "";
     log("branchInfo fetch | tenantId:", tenantId, "| branchCode:", selectedBranchCode);
@@ -738,6 +746,10 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
         const found = list.find((b) => b.branchCode === selectedBranchCode) || null;
         setBranchInfo(found);
         log("branchInfo set:", JSON.stringify(found));
+        // Persist to cache so the next offline session has the latest details
+        if (found) {
+          try { localStorage.setItem(cacheKey, JSON.stringify(found)); } catch {}
+        }
       })
       .catch((e) => logError("branchInfo fetch error:", e.message));
   }, [selectedBranchCode]);
