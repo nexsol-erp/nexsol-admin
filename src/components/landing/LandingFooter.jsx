@@ -134,7 +134,7 @@ const LandingFooter = () => {
 
             {/* Contact info */}
             <ContactItem icon={EmailIcon}>support@tradelink247.com</ContactItem>
-            <ContactItem icon={PhoneIcon}>+91 98765 43210</ContactItem>
+            <ContactItem icon={PhoneIcon}>+91 9995620056</ContactItem>
             <ContactItem icon={LocationOnIcon}>
               Kerala, India — serving businesses nationwide
             </ContactItem>
