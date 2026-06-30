@@ -16,7 +16,8 @@ const Feed = () => {
   const [topUsers, setTopUsers] = useState([]);
 
   const [branchSalesData, setBranchSalesData] = useState([]);
-  const [branchSalesLoadedViaSocket, setBranchSalesLoadedViaSocket] = useState(false);
+  const [branchSalesLoadedViaSocket,  setBranchSalesLoadedViaSocket]  = useState(false);
+  const [topUsersLoadedViaSocket,     setTopUsersLoadedViaSocket]     = useState(false);
 
   // Request all data on mount
   useEffect(() => {
@@ -35,6 +36,7 @@ const Feed = () => {
       if (parsedData.GET_TOP_USERS) {
         try {
           setTopUsers(JSON.parse(parsedData.GET_TOP_USERS));
+          setTopUsersLoadedViaSocket(true);
         } catch (err) {
           console.error("Failed to parse top users:", err);
         }
@@ -52,15 +54,20 @@ const Feed = () => {
     }
   }, [data]);
 
-  // Fallback to API after timeout
+  // Fallback: if WebSocket doesn't deliver within 2s, hit REST directly
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (!branchSalesLoadedViaSocket) {
-        fetchBranchSalesFallback();
-      }
+      if (!branchSalesLoadedViaSocket) fetchBranchSalesFallback();
     }, 2000);
     return () => clearTimeout(timer);
   }, [branchSalesLoadedViaSocket]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!topUsersLoadedViaSocket) fetchConnectionStatusFallback();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [topUsersLoadedViaSocket]);
 
   const fetchAll = () => {
     sendMessage({ action: "GET_USED_SPACE" });
@@ -68,6 +75,7 @@ const Feed = () => {
     sendMessage({ action: "GET_USERS" });
     sendMessage({ action: "GET_TOP_USERS" });
     setBranchSalesLoadedViaSocket(false);
+    setTopUsersLoadedViaSocket(false);
     sendMessage({ action: "GET_BRANCH_SALES_SUMMARY" });
   };
 
@@ -75,19 +83,27 @@ const Feed = () => {
     try {
       const tenancyId = localStorage.getItem("tenancyId");
       const token = localStorage.getItem("jwtToken");
-
       const res = await fetch(`/api/${tenancyId}/sales/branchwise-today`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (res.ok) {
-        const json = await res.json();
-        setBranchSalesData(json);
-      } else {
-        console.warn("Fallback: Failed to fetch branch sales data.");
-      }
+      if (res.ok) setBranchSalesData(await res.json());
+      else console.warn("Fallback: Failed to fetch branch sales data.");
     } catch (err) {
       console.error("Fallback: Error fetching branch sales:", err);
+    }
+  };
+
+  const fetchConnectionStatusFallback = async () => {
+    try {
+      const tenancyId = localStorage.getItem("tenancyId");
+      const token = localStorage.getItem("jwtToken");
+      const res = await fetch(`/api/${tenancyId}/connection-status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setTopUsers(await res.json());
+      else console.warn("Fallback: Failed to fetch connection status.");
+    } catch (err) {
+      console.error("Fallback: Error fetching connection status:", err);
     }
   };
 
