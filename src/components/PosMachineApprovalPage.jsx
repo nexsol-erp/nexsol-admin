@@ -7,6 +7,7 @@ import {
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import TableSortLabel from "@mui/material/TableSortLabel";
 
 function statusChip(status) {
   const map = {
@@ -33,6 +34,7 @@ export default function PosMachineApprovalPage() {
   const [loading, setLoading]     = useState(false);
   const [actionMsg, setActionMsg] = useState(null); // { type: "success"|"error", text }
   const [acting, setActing]       = useState(null); // id being acted on
+  const [sortDir, setSortDir]     = useState("asc");
 
   const load = useCallback(async () => {
     if (!tenancyId) return;
@@ -93,7 +95,13 @@ export default function PosMachineApprovalPage() {
     }
   };
 
-  const visible = machines.filter((m) => filter === "ALL" || m.status === filter);
+  const visible = machines
+    .filter((m) => filter === "ALL" || m.status === filter)
+    .slice()
+    .sort((a, b) => {
+      const cmp = (a.branchCode || "").localeCompare(b.branchCode || "");
+      return sortDir === "asc" ? cmp : -cmp;
+    });
 
   return (
     <Box sx={{ p: 3, maxWidth: 1100, mx: "auto" }}>
@@ -135,7 +143,15 @@ export default function PosMachineApprovalPage() {
         <Table size="small">
           <TableHead>
             <TableRow sx={{ bgcolor: "action.hover" }}>
-              <TableCell><strong>Branch</strong></TableCell>
+              <TableCell sortDirection={sortDir}>
+                <TableSortLabel
+                  active
+                  direction={sortDir}
+                  onClick={() => setSortDir((d) => d === "asc" ? "desc" : "asc")}
+                >
+                  <strong>Branch</strong>
+                </TableSortLabel>
+              </TableCell>
               <TableCell><strong>Machine Code</strong></TableCell>
               <TableCell><strong>Machine Name</strong></TableCell>
               <TableCell><strong>Device Key</strong></TableCell>
