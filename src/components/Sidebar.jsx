@@ -15,6 +15,12 @@ import {
   Typography,
   Button,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Alert,
 } from "@mui/material";
 import {
   Dashboard,
@@ -51,6 +57,7 @@ import {
   AccountBalance,
   Build,
   Map,
+  LockReset,
 } from "@mui/icons-material";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -123,6 +130,48 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
     localStorage.removeItem("categories");
     setAllowedMenuNames(null);
     setMenuFetchTrigger((n) => n + 1);
+  };
+
+  // ── Change password dialog ──────────────────────────────────────────────
+  const [pwOpen, setPwOpen]             = useState(false);
+  const [pwCurrent, setPwCurrent]       = useState("");
+  const [pwNew, setPwNew]               = useState("");
+  const [pwConfirm, setPwConfirm]       = useState("");
+  const [pwLoading, setPwLoading]       = useState(false);
+  const [pwError, setPwError]           = useState("");
+  const [pwSuccess, setPwSuccess]       = useState("");
+
+  const openPwDialog = () => {
+    setPwCurrent(""); setPwNew(""); setPwConfirm("");
+    setPwError(""); setPwSuccess("");
+    setPwOpen(true);
+  };
+
+  const handleChangePassword = async () => {
+    if (pwNew !== pwConfirm) { setPwError("New passwords do not match"); return; }
+    if (pwNew.length < 4)    { setPwError("New password must be at least 4 characters"); return; }
+    setPwLoading(true);
+    setPwError("");
+    try {
+      const tenancyId = localStorage.getItem("tenancyId");
+      const token     = localStorage.getItem("jwtToken");
+      const res = await fetch(`/api/${tenancyId}/change-password`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPwSuccess("Password changed successfully. Please log in again.");
+        setTimeout(() => { localStorage.removeItem("jwtToken"); window.location.reload(); }, 2000);
+      } else {
+        setPwError(data.message || "Failed to change password");
+      }
+    } catch {
+      setPwError("Network error. Please try again.");
+    } finally {
+      setPwLoading(false);
+    }
   };
 
   const toggleMenu = (idx) =>
@@ -645,6 +694,24 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
           />
         </ListItemButton>
 
+        {/* Change Password */}
+        <ListItemButton
+          onClick={openPwDialog}
+          sx={{
+            borderRadius: "8px",
+            px: 1.5,
+            py: 0.6,
+            mb: 0.5,
+            "& .MuiListItemText-primary": { fontSize: 13, color: C.textMuted },
+            "&:hover": { bgcolor: C.hover, "& .MuiListItemText-primary": { color: C.text } },
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 34 }}>
+            <LockReset sx={{ fontSize: 18, color: C.icon }} />
+          </ListItemIcon>
+          <ListItemText primary={t("Change Password")} />
+        </ListItemButton>
+
         {/* Logout */}
         <ListItemButton
           onClick={handleLogout}
@@ -667,6 +734,42 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         </ListItemButton>
       </Box>
     </Box>
+  );
+
+  /* ── Change Password Dialog ─────────────────────────────────────────── */
+  const pwDialog = (
+    <Dialog open={pwOpen} onClose={() => !pwLoading && setPwOpen(false)} maxWidth="xs" fullWidth>
+      <DialogTitle>Change Password</DialogTitle>
+      <DialogContent>
+        {pwError   && <Alert severity="error"   sx={{ mb: 1.5 }}>{pwError}</Alert>}
+        {pwSuccess && <Alert severity="success" sx={{ mb: 1.5 }}>{pwSuccess}</Alert>}
+        <TextField
+          label="Current Password" type="password" fullWidth margin="dense"
+          value={pwCurrent} onChange={(e) => setPwCurrent(e.target.value)}
+          disabled={pwLoading || !!pwSuccess}
+        />
+        <TextField
+          label="New Password" type="password" fullWidth margin="dense"
+          value={pwNew} onChange={(e) => setPwNew(e.target.value)}
+          disabled={pwLoading || !!pwSuccess}
+        />
+        <TextField
+          label="Confirm New Password" type="password" fullWidth margin="dense"
+          value={pwConfirm} onChange={(e) => setPwConfirm(e.target.value)}
+          disabled={pwLoading || !!pwSuccess}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setPwOpen(false)} disabled={pwLoading}>Cancel</Button>
+        <Button
+          onClick={handleChangePassword}
+          variant="contained"
+          disabled={pwLoading || !!pwSuccess || !pwCurrent || !pwNew || !pwConfirm}
+        >
+          {pwLoading ? "Saving…" : "Change Password"}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 
   return (
@@ -701,6 +804,8 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
       >
         {drawerContent}
       </Drawer>
+
+      {pwDialog}
     </Box>
   );
 };
