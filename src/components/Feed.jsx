@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Stack, Button } from "@mui/material";
+import { Box, Stack } from "@mui/material";
 import ProfilCard from "./ProfilCard";
 import Chart from "./Chart";
 import img1 from "../hosting.png";
@@ -69,6 +69,15 @@ const Feed = () => {
     return () => clearTimeout(timer);
   }, [topUsersLoadedViaSocket]);
 
+  // Poll connection status and branch sales every 30 seconds so the dashboard stays live
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchConnectionStatusFallback();
+      fetchBranchSalesFallback();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const fetchAll = () => {
     sendMessage({ action: "GET_USED_SPACE" });
     sendMessage({ action: "GET_REVENUE" });
@@ -114,13 +123,6 @@ const Feed = () => {
         <Stack direction={{ xs: "column", md: "row" }} spacing={4}>
           {/* Add your ProfilCards here */}
         </Stack>
-
-        {/* Refresh Button */}
-        <Box textAlign="right">
-          <Button variant="contained" onClick={fetchAll}>
-            Refresh Branch Sales Summary
-          </Button>
-        </Box>
 
         {/* Chart Section */}
         <Chart topUsers={topUsers} branchSalesData={branchSalesData} />
