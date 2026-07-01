@@ -28,6 +28,7 @@ import {
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import LockResetIcon from "@mui/icons-material/LockReset";
 
 const UserCreationPage = () => {
   const [username, setUsername] = useState("");
@@ -47,6 +48,13 @@ const UserCreationPage = () => {
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Reset password
+  const [resetTarget, setResetTarget]   = useState(null);
+  const [resetPw, setResetPw]           = useState("");
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [resetSaving, setResetSaving]   = useState(false);
+  const [resetError, setResetError]     = useState("");
 
   useEffect(() => {
     fetchBranches();
@@ -157,6 +165,32 @@ const UserCreationPage = () => {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (resetPw !== resetConfirm) { setResetError("Passwords do not match"); return; }
+    if (resetPw.length < 4)       { setResetError("Password must be at least 4 characters"); return; }
+    setResetSaving(true);
+    setResetError("");
+    try {
+      const token     = localStorage.getItem("jwtToken");
+      const tenancyId = localStorage.getItem("tenancyId");
+      const res = await fetch(`/api/${tenancyId}/users/${resetTarget.id}/reset-password`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword: resetPw }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResetTarget(null);
+      } else {
+        setResetError(data.message || "Failed to reset password");
+      }
+    } catch {
+      setResetError("Network error. Please try again.");
+    } finally {
+      setResetSaving(false);
+    }
+  };
+
   const saveRoles = async () => {
     setSaving(true);
     try {
@@ -260,6 +294,9 @@ const UserCreationPage = () => {
                       <IconButton size="small" onClick={() => openEditDialog(user)} title="Edit roles">
                         <EditIcon fontSize="small" />
                       </IconButton>
+                      <IconButton size="small" color="warning" onClick={() => { setResetTarget(user); setResetPw(""); setResetConfirm(""); setResetError(""); }} title="Reset password">
+                        <LockResetIcon fontSize="small" />
+                      </IconButton>
                       <IconButton size="small" color="error" onClick={() => setDeleteTarget(user)} title="Delete user">
                         <DeleteIcon fontSize="small" />
                       </IconButton>
@@ -282,6 +319,30 @@ const UserCreationPage = () => {
           <Button onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
           <Button onClick={handleDelete} color="error" variant="contained" disabled={deleting}>
             {deleting ? "Deleting…" : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={!!resetTarget} onClose={() => !resetSaving && setResetTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Reset Password — {resetTarget?.username}</DialogTitle>
+        <DialogContent>
+          {resetError && <Box sx={{ mb: 1.5, color: "error.main", fontSize: 13 }}>{resetError}</Box>}
+          <TextField
+            label="New Password" type="password" fullWidth margin="dense"
+            value={resetPw} onChange={(e) => setResetPw(e.target.value)}
+            disabled={resetSaving}
+          />
+          <TextField
+            label="Confirm New Password" type="password" fullWidth margin="dense"
+            value={resetConfirm} onChange={(e) => setResetConfirm(e.target.value)}
+            disabled={resetSaving}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResetTarget(null)} disabled={resetSaving}>Cancel</Button>
+          <Button onClick={handleResetPassword} variant="contained" color="warning" disabled={resetSaving || !resetPw || !resetConfirm}>
+            {resetSaving ? "Saving…" : "Reset Password"}
           </Button>
         </DialogActions>
       </Dialog>
