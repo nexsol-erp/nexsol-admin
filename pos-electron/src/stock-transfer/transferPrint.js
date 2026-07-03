@@ -51,16 +51,16 @@ export function buildTransferHtml({
 
   const taxSummaryA4 = `
     <div style="margin-top:10px;">
-      <div style="font-weight:bold;font-size:9px;margin-bottom:3px;border-bottom:2px solid #999;padding-bottom:2px;">GST / Tax Summary</div>
-      <table style="width:100%;border-collapse:collapse;font-size:9px;">
+      <div style="font-weight:bold;font-size:10px;margin-bottom:3px;border-bottom:2px solid #999;padding-bottom:2px;">GST / Tax Summary</div>
+      <table style="width:100%;border-collapse:collapse;font-size:10px;">
         <thead>
           <tr style="background:#f0f0f0;">
-            <th style="padding:2px 4px;border:1px solid #ccc;text-align:left;">GST Rate%</th>
-            <th style="padding:2px 4px;border:1px solid #ccc;text-align:right;">Taxable Value</th>
-            <th style="padding:2px 4px;border:1px solid #ccc;text-align:right;">CGST</th>
-            <th style="padding:2px 4px;border:1px solid #ccc;text-align:right;">SGST</th>
-            <th style="padding:2px 4px;border:1px solid #ccc;text-align:right;">Total Tax</th>
-            <th style="padding:2px 4px;border:1px solid #ccc;text-align:right;">Amount</th>
+            <th style="padding:2px 4px;border:1px solid #ccc;text-align:left;font-size:10px;">GST Rate%</th>
+            <th style="padding:2px 4px;border:1px solid #ccc;text-align:right;font-size:10px;">Taxable Value</th>
+            <th style="padding:2px 4px;border:1px solid #ccc;text-align:right;font-size:10px;">CGST</th>
+            <th style="padding:2px 4px;border:1px solid #ccc;text-align:right;font-size:10px;">SGST</th>
+            <th style="padding:2px 4px;border:1px solid #ccc;text-align:right;font-size:10px;">Total Tax</th>
+            <th style="padding:2px 4px;border:1px solid #ccc;text-align:right;font-size:10px;">Amount</th>
           </tr>
         </thead>
         <tbody>
@@ -120,7 +120,7 @@ export function buildTransferHtml({
       return `
       <tr>
         <td style="padding:2px 4px;border:1px solid #ccc;">${i + 1}</td>
-        <td style="padding:2px 4px;border:1px solid #ccc;"><span style="font-size:10px;">${e(r.item_name)}</span>${barcodeHtml}</td>
+        <td style="padding:2px 4px;border:1px solid #ccc;">${e(r.item_name)}${barcodeHtml}</td>
         <td style="padding:2px 4px;border:1px solid #ccc;text-align:center;">${e(r.unit || "")}</td>
         <td style="padding:2px 4px;border:1px solid #ccc;text-align:right;">${Number(r.qty || 0).toFixed(2)}</td>
         <td style="padding:2px 4px;border:1px solid #ccc;text-align:right;">${mrp.toFixed(2)}</td>
@@ -134,18 +134,18 @@ export function buildTransferHtml({
 
     return `<html><head><style>
       @page { size: A4; margin: 10mm; }
-      body { font-family: Arial, sans-serif; font-size: 9px; color: #111; }
-      h2 { text-align: center; margin: 0 0 8px; font-size: 13px; letter-spacing: 1px; }
+      body { font-family: Arial, sans-serif; font-size: 10px; color: #111; }
+      h2 { text-align: center; margin: 0 0 8px; font-size: 14px; letter-spacing: 1px; }
       .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
       .box { border: 1px solid #bbb; border-radius: 4px; padding: 5px 8px; }
-      .box-title { font-weight: bold; font-size: 9px; color: #555; margin-bottom: 3px; text-transform: uppercase; }
+      .box-title { font-weight: bold; font-size: 10px; color: #555; margin-bottom: 3px; text-transform: uppercase; }
       .box p { margin: 1px 0; }
       .meta { display: flex; gap: 20px; margin-bottom: 8px; }
-      .meta span { font-size: 9px; }
+      .meta span { font-size: 10px; }
       table { width: 100%; border-collapse: collapse; }
       thead tr { background: #f0f0f0; }
-      th { padding: 3px 4px; border: 1px solid #ccc; text-align: left; font-size: 9px; }
-      .totals { margin-top: 8px; display: flex; justify-content: flex-end; gap: 24px; font-weight: bold; font-size: 9px; }
+      th { padding: 3px 4px; border: 1px solid #ccc; text-align: left; font-size: 10px; }
+      .totals { margin-top: 8px; display: flex; justify-content: flex-end; gap: 24px; font-weight: bold; font-size: 10px; }
     </style></head><body>
       <h2>STOCK TRANSFER</h2>
       <div class="meta">
