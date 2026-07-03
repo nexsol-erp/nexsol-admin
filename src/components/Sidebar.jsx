@@ -207,6 +207,9 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         { menuKey: "Admin Page",                    label: t("Admin Page"),                     link: "/branch-request-list",          roles: ["admin", "WB"] },
         { menuKey: "Reprocess Voucher",             label: t("Reprocess Voucher"),              link: "/reprocess-voucher-form",       roles: ["admin", "WB"] },
         { menuKey: "POS Machine Approval",          label: t("POS Machine Approval"),           link: "/pos-machine-approval",          roles: ["admin", "MACHINE_ADMIN"] },
+        { menuKey: "Financial Year Setup",           label: t("Financial Year Setup"),            link: "/financialyearpage",              roles: ["admin", "franchiseeuser"] },
+        { menuKey: "UPI Payment Setup",              label: t("UPI Payment Setup"),               link: "/upi-config",                     roles: ["admin"] },
+        { menuKey: "Accounting Setup",               label: t("Accounting Setup"),                link: "/accounting/setup",               roles: ["admin"] },
       ],
     },
 
@@ -277,9 +280,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
       menuKey: "Masters", label: t("Masters"), icon: <Tune />, link: "",
       roles: ["admin", "user", "cgn", "franchiseeuser"], hasSubmenu: true,
       submenu: [
-        { menuKey: "Financial Year Setup",     label: t("Financial Year Setup"),     link: "/financialyearpage",    roles: ["admin", "franchiseeuser"] },
         { menuKey: "Receipt Modes",            label: t("Receipt Modes"),            link: "/receipt-modes",        roles: ["admin"] },
-        { menuKey: "UPI Payment Setup",        label: t("UPI Payment Setup"),        link: "/upi-config",           roles: ["admin"] },
         { menuKey: "Item Search",              label: t("Item Search"),              link: "/itemsearch",           roles: ["admin", "user", "cgn", "franchiseeuser"] },
         { menuKey: "Item Creation",            label: t("Item Creation"),            link: "/createitemmaster",     roles: ["admin", "user"] },
         { menuKey: "Branch Price",              label: t("Branch Price"),              link: "/branch-price",               roles: ["admin", "franchiseeuser"] },

@@ -141,6 +141,7 @@ import InterBranchTransfer from "./components/accounting/InterBranchTransfer";
 import PeriodClosing from "./components/accounting/PeriodClosing";
 import BudgetManager from "./components/accounting/BudgetManager";
 import BudgetVsActual from "./components/accounting/BudgetVsActual";
+import AccountingSetup from "./components/accounting/AccountingSetup";
 import { UnitProvider } from "./components/UnitContext";
 import { BranchProvider } from "./components/BranchContext";
 
@@ -229,6 +230,7 @@ const ROUTE_ORDER = [
   { key: "Salesman Report",                  path: "/salesman-report" },
   { key: "Category Item Report",             path: "/category-item-report" },
   // Accounting
+  { key: "Accounting Setup",                 path: "/accounting/setup" },
   { key: "Receipt Entry",                   path: "/accounting/receipt-entry" },
   { key: "Payment Entry",                   path: "/accounting/payment-entry" },
   { key: "Trial Balance",                   path: "/accounting/trial-balance" },
@@ -480,6 +482,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
 
             {/* Accounting */}
+            <Route path="/accounting/setup" element={<AccountingSetup />} />
             <Route path="/accounting/receipt-entry" element={<ReceiptEntry />} />
             <Route path="/accounting/payment-entry" element={<PaymentEntry />} />
             <Route path="/accounting/trial-balance" element={<TrialBalance />} />

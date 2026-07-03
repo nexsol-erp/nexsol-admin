@@ -156,6 +156,9 @@ function calcRowFromTotal(row) {
 export default function PurchaseEntryForm() {
   const barcodeRef = useRef(null);
   const qtyRef = useRef(null);
+  const rateRef = useRef(null);
+  const totalRef = useRef(null);
+  const pendingQtyRef = useRef("1");
 
   const [supplierName, setSupplierName] = useState("");
   const [suppliers, setSuppliers] = useState([]);
@@ -171,6 +174,7 @@ export default function PurchaseEntryForm() {
   const [pendingQty, setPendingQty] = useState("1");
   const [pendingItem, setPendingItem] = useState(null);
   const [pendingRate, setPendingRate] = useState(0);
+  const [pendingTotal, setPendingTotal] = useState("");
   const [pendingUnit, setPendingUnit] = useState("");
   const [pendingConvFactor, setPendingConvFactor] = useState("1");
   const [nameValue, setNameValue] = useState(null);
@@ -220,6 +224,8 @@ export default function PurchaseEntryForm() {
     setTimeout(() => barcodeRef.current?.focus(), 150);
   }, []);
 
+  useEffect(() => { pendingQtyRef.current = pendingQty; }, [pendingQty]);
+
   const fetchLastRate = useCallback(async (itemId) => {
     const tenancyId = localStorage.getItem("tenancyId");
     const token = localStorage.getItem("jwtToken");
@@ -230,17 +236,39 @@ export default function PurchaseEntryForm() {
       );
       if (res.ok) {
         const rate = await res.json();
-        setPendingRate(typeof rate === "number" ? rate : 0);
+        const r = typeof rate === "number" ? rate : 0;
+        setPendingRate(r);
+        const q = toFloat(pendingQtyRef.current, 1);
+        setPendingTotal(r > 0 && q > 0 ? (r * q).toFixed(2) : "");
         return;
       }
     } catch {}
     setPendingRate(0);
+    setPendingTotal("");
   }, []);
 
   const focusQty = useCallback(() => {
     setPendingQty("1");
     setTimeout(() => {
       const input = qtyRef.current;
+      if (!input) return;
+      input.focus();
+      input.select();
+    }, 60);
+  }, []);
+
+  const focusRate = useCallback(() => {
+    setTimeout(() => {
+      const input = rateRef.current;
+      if (!input) return;
+      input.focus();
+      input.select();
+    }, 60);
+  }, []);
+
+  const focusTotal = useCallback(() => {
+    setTimeout(() => {
+      const input = totalRef.current;
       if (!input) return;
       input.focus();
       input.select();
@@ -293,6 +321,7 @@ export default function PurchaseEntryForm() {
     setPendingItem(null);
     setPendingRate(0);
     setPendingQty("1");
+    setPendingTotal("");
     setPendingUnit("");
     setPendingConvFactor("1");
     barcodeRef.current?.focus();
@@ -335,6 +364,7 @@ export default function PurchaseEntryForm() {
     }
     setPendingItem(found);
     setPendingRate(0);
+    setPendingTotal("");
     setPendingUnit(found.unitName || "");
     setPendingConvFactor("1");
     setBarcodeInput("");
@@ -346,6 +376,7 @@ export default function PurchaseEntryForm() {
     if (!item) return;
     setPendingItem(item);
     setPendingRate(0);
+    setPendingTotal("");
     setPendingUnit(item.unitName || "");
     setPendingConvFactor("1");
     setNameValue(null);
@@ -761,10 +792,54 @@ export default function PurchaseEntryForm() {
             type="number"
             sx={{ width: 90 }}
             value={pendingQty}
-            onChange={(e) => setPendingQty(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitPending(); } }}
+            onChange={(e) => {
+              const val = e.target.value;
+              setPendingQty(val);
+              const r = toFloat(pendingRate);
+              const q = toFloat(val, 1);
+              if (r > 0 && q > 0) setPendingTotal((r * q).toFixed(2));
+            }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusRate(); } }}
             onFocus={(e) => e.target.select()}
             inputProps={{ min: 0.01, step: 1, style: { textAlign: "right" } }}
+          />
+          <TextField
+            inputRef={rateRef}
+            label="Rate incl. Tax"
+            size="small"
+            type="number"
+            sx={{ width: 130 }}
+            value={pendingRate}
+            onChange={(e) => {
+              const val = e.target.value;
+              setPendingRate(val);
+              const r = toFloat(val);
+              const q = toFloat(pendingQty, 1);
+              if (r >= 0 && q > 0) setPendingTotal((r * q).toFixed(2));
+            }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusTotal(); } }}
+            onFocus={(e) => e.target.select()}
+            disabled={!pendingItem}
+            inputProps={{ min: 0, step: 0.01, style: { textAlign: "right" } }}
+          />
+          <TextField
+            inputRef={totalRef}
+            label="Total"
+            size="small"
+            type="number"
+            sx={{ width: 110 }}
+            value={pendingTotal}
+            onChange={(e) => {
+              const val = e.target.value;
+              setPendingTotal(val);
+              const t = toFloat(val);
+              const q = toFloat(pendingQty, 1);
+              if (t > 0 && q > 0) setPendingRate(+(t / q).toFixed(4));
+            }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitPending(); } }}
+            onFocus={(e) => e.target.select()}
+            disabled={!pendingItem}
+            inputProps={{ min: 0, style: { textAlign: "right", fontWeight: 600 } }}
           />
           <UnitSelect
             label="Purch. Unit"
@@ -805,7 +880,7 @@ export default function PurchaseEntryForm() {
           )}
         </Stack>
         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
-          Scan / select item → enter qty / unit / conv. factor → press Enter in any field to add
+          Scan / select item → <b>Qty</b> [Enter] → <b>Rate incl. Tax</b> [Enter] → <b>Total</b> [Enter] → row added · editing Total back-calculates Rate
         </Typography>
       </Paper>
 
@@ -822,37 +897,48 @@ export default function PurchaseEntryForm() {
           </Button>
         </Box>
         <TableContainer>
-          <Table size="small">
+          <Table size="small" sx={{ tableLayout: "fixed" }}>
+            <colgroup>
+              <col style={{ width: 36 }} />   {/* # */}
+              <col style={{ minWidth: 180, width: "30%" }} />  {/* Item */}
+              <col style={{ width: 90 }} />   {/* Qty */}
+              <col style={{ width: 110 }} />  {/* Rate incl. Tax */}
+              <col style={{ width: 110 }} />  {/* Total */}
+              <col style={{ width: 72 }} />   {/* Tax % */}
+              <col style={{ width: 96 }} />   {/* Purch. Unit */}
+              <col style={{ width: 72 }} />   {/* Conv. */}
+              <col style={{ width: 90 }} />   {/* Inv. Qty */}
+              <col style={{ width: 40 }} />   {/* Delete */}
+            </colgroup>
             <TableHead>
               <TableRow sx={{ bgcolor: "action.selected" }}>
-                <TableCell sx={{ fontWeight: "bold", width: 36 }}>#</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>#</TableCell>
                 <TableCell sx={{ fontWeight: "bold" }}>Item</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Barcode</TableCell>
-                <TableCell sx={{ fontWeight: "bold", textAlign: "right" }}>Std Price</TableCell>
-                <TableCell sx={{ fontWeight: "bold", width: 80 }}>Purch. Unit</TableCell>
-                <TableCell sx={{ fontWeight: "bold", textAlign: "right", width: 70 }}>Conv.</TableCell>
-                <TableCell sx={{ fontWeight: "bold", width: 70 }}>Inv. Unit</TableCell>
+                <TableCell sx={{ fontWeight: "bold", textAlign: "right" }}>Qty</TableCell>
                 <TableCell sx={{ fontWeight: "bold", textAlign: "right" }}>Rate incl. Tax</TableCell>
-                <TableCell sx={{ fontWeight: "bold", textAlign: "right" }}>Rate excl. Tax</TableCell>
-                <TableCell sx={{ fontWeight: "bold", textAlign: "right" }}>Purch. Qty</TableCell>
-                <TableCell sx={{ fontWeight: "bold", textAlign: "right" }}>Inv. Qty</TableCell>
-                <TableCell sx={{ fontWeight: "bold", textAlign: "right" }}>Tax %</TableCell>
                 <TableCell sx={{ fontWeight: "bold", textAlign: "right" }}>Total</TableCell>
-                <TableCell sx={{ width: 40 }} />
+                <TableCell sx={{ fontWeight: "bold", textAlign: "right" }}>Tax %</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Purch. Unit</TableCell>
+                <TableCell sx={{ fontWeight: "bold", textAlign: "right" }}>Conv.</TableCell>
+                <TableCell sx={{ fontWeight: "bold", textAlign: "right" }}>Inv. Qty</TableCell>
+                <TableCell />
               </TableRow>
             </TableHead>
             <TableBody>
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={14} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                  <TableCell colSpan={10} align="center" sx={{ py: 4, color: "text.secondary" }}>
                     No items yet — scan a barcode or search by name above
                   </TableCell>
                 </TableRow>
               )}
               {rows.map((row, idx) => (
                 <TableRow key={row._key} hover>
-                  <TableCell>{idx + 1}</TableCell>
-                  <TableCell sx={{ minWidth: 220 }}>
+                  {/* # */}
+                  <TableCell sx={{ verticalAlign: "top", pt: 1 }}>{idx + 1}</TableCell>
+
+                  {/* Item — barcode + std price shown as sub-text */}
+                  <TableCell sx={{ verticalAlign: "top", pt: 0.5 }}>
                     <Autocomplete
                       options={itemList}
                       getOptionLabel={(o) =>
@@ -890,50 +976,17 @@ export default function PurchaseEntryForm() {
                         />
                       )}
                     />
+                    {(row.barcode || row.standardPrice != null) && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25, lineHeight: 1.3 }}>
+                        {row.barcode ? row.barcode : ""}
+                        {row.barcode && row.standardPrice != null ? " · " : ""}
+                        {row.standardPrice != null ? `Std: ${toFloat(row.standardPrice).toFixed(2)}` : ""}
+                      </Typography>
+                    )}
                   </TableCell>
-                  <TableCell sx={{ fontSize: 12, color: "text.secondary" }}>
-                    {row.barcode}
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontSize: 12, color: "text.secondary", whiteSpace: "nowrap" }}>
-                    {row.standardPrice != null ? toFloat(row.standardPrice).toFixed(2) : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <UnitSelect
-                      value={row.unit || ""}
-                      onChange={(v) => updateRow(row._key, "unit", v)}
-                      sx={{ width: 90 }}
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <TextField
-                      size="small"
-                      type="number"
-                      value={row.conversionFactor ?? 1}
-                      onChange={(e) => updateRow(row._key, "conversionFactor", e.target.value)}
-                      onFocus={(e) => e.target.select()}
-                      inputProps={{ style: { textAlign: "right", padding: "2px 6px" }, min: 1 }}
-                      sx={{ width: 65 }}
-                    />
-                  </TableCell>
-                  <TableCell sx={{ fontSize: 12, color: "text.secondary", whiteSpace: "nowrap" }}>
-                    {row.inventoryUnit || "—"}
-                  </TableCell>
-                  <TableCell align="right">
-                    <TextField
-                      size="small"
-                      type="number"
-                      value={row.rateIncludingTax}
-                      onChange={(e) =>
-                        updateRow(row._key, "rateIncludingTax", e.target.value)
-                      }
-                      inputProps={{ style: { textAlign: "right", padding: "2px 6px" }, min: 0 }}
-                      sx={{ width: 100 }}
-                    />
-                  </TableCell>
-                  <TableCell align="right" sx={{ color: "text.secondary", minWidth: 90 }}>
-                    {row.rateBeforeTax.toFixed(2)}
-                  </TableCell>
-                  <TableCell align="right">
+
+                  {/* Qty — inv qty shown as sub-text */}
+                  <TableCell align="right" sx={{ verticalAlign: "top", pt: 0.5 }}>
                     <TextField
                       size="small"
                       type="number"
@@ -941,35 +994,33 @@ export default function PurchaseEntryForm() {
                       onChange={(e) => updateRow(row._key, "quantity", e.target.value)}
                       onFocus={(e) => e.target.select()}
                       inputProps={{ style: { textAlign: "right", padding: "2px 6px" }, min: 0 }}
-                      sx={{ width: 80 }}
+                      sx={{ width: "100%" }}
                     />
+                    {row.inventoryUnit && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "right", mt: 0.25, lineHeight: 1.3 }}>
+                        {(row.inventoryQty ?? row.quantity ?? 0).toFixed(2)} {row.inventoryUnit}
+                      </Typography>
+                    )}
                   </TableCell>
-                  <TableCell align="right">
-                    <Tooltip title={`Inv. Qty = Purch. Qty × Conv. Factor`} placement="top">
-                      <TextField
-                        size="small"
-                        type="number"
-                        value={row.inventoryQty ?? row.quantity ?? 0}
-                        onChange={(e) => updateRow(row._key, "inventoryQty", e.target.value)}
-                        onFocus={(e) => e.target.select()}
-                        inputProps={{ style: { textAlign: "right", padding: "2px 6px", fontWeight: 600, color: "#1565c0" }, min: 0 }}
-                        sx={{ width: 90 }}
-                      />
-                    </Tooltip>
-                  </TableCell>
-                  <TableCell align="right">
+
+                  {/* Rate incl. Tax — rate excl. shown as sub-text */}
+                  <TableCell align="right" sx={{ verticalAlign: "top", pt: 0.5 }}>
                     <TextField
                       size="small"
                       type="number"
-                      value={row.taxRate}
-                      onChange={(e) =>
-                        updateRow(row._key, "taxRate", e.target.value)
-                      }
+                      value={row.rateIncludingTax}
+                      onChange={(e) => updateRow(row._key, "rateIncludingTax", e.target.value)}
+                      onFocus={(e) => e.target.select()}
                       inputProps={{ style: { textAlign: "right", padding: "2px 6px" }, min: 0 }}
-                      sx={{ width: 70 }}
+                      sx={{ width: "100%" }}
                     />
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "right", mt: 0.25, lineHeight: 1.3 }}>
+                      Excl: {row.rateBeforeTax.toFixed(2)}
+                    </Typography>
                   </TableCell>
-                  <TableCell align="right">
+
+                  {/* Total */}
+                  <TableCell align="right" sx={{ verticalAlign: "top", pt: 0.5 }}>
                     <TextField
                       size="small"
                       type="number"
@@ -977,10 +1028,62 @@ export default function PurchaseEntryForm() {
                       onChange={(e) => updateRow(row._key, "totalAmount", e.target.value)}
                       onFocus={(e) => e.target.select()}
                       inputProps={{ style: { textAlign: "right", padding: "2px 6px", fontWeight: 600 }, min: 0 }}
-                      sx={{ width: 100 }}
+                      sx={{ width: "100%" }}
                     />
                   </TableCell>
-                  <TableCell>
+
+                  {/* Tax % */}
+                  <TableCell align="right" sx={{ verticalAlign: "top", pt: 0.5 }}>
+                    <TextField
+                      size="small"
+                      type="number"
+                      value={row.taxRate}
+                      onChange={(e) => updateRow(row._key, "taxRate", e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      inputProps={{ style: { textAlign: "right", padding: "2px 6px" }, min: 0 }}
+                      sx={{ width: "100%" }}
+                    />
+                  </TableCell>
+
+                  {/* Purch. Unit */}
+                  <TableCell sx={{ verticalAlign: "top", pt: 0.5 }}>
+                    <UnitSelect
+                      value={row.unit || ""}
+                      onChange={(v) => updateRow(row._key, "unit", v)}
+                      sx={{ width: "100%" }}
+                    />
+                  </TableCell>
+
+                  {/* Conv. Factor */}
+                  <TableCell align="right" sx={{ verticalAlign: "top", pt: 0.5 }}>
+                    <TextField
+                      size="small"
+                      type="number"
+                      value={row.conversionFactor ?? 1}
+                      onChange={(e) => updateRow(row._key, "conversionFactor", e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      inputProps={{ style: { textAlign: "right", padding: "2px 6px" }, min: 1 }}
+                      sx={{ width: "100%" }}
+                    />
+                  </TableCell>
+
+                  {/* Inv. Qty */}
+                  <TableCell align="right" sx={{ verticalAlign: "top", pt: 0.5 }}>
+                    <Tooltip title="Inv. Qty = Purch. Qty × Conv. Factor" placement="top">
+                      <TextField
+                        size="small"
+                        type="number"
+                        value={row.inventoryQty ?? row.quantity ?? 0}
+                        onChange={(e) => updateRow(row._key, "inventoryQty", e.target.value)}
+                        onFocus={(e) => e.target.select()}
+                        inputProps={{ style: { textAlign: "right", padding: "2px 6px", fontWeight: 600, color: "#1565c0" }, min: 0 }}
+                        sx={{ width: "100%" }}
+                      />
+                    </Tooltip>
+                  </TableCell>
+
+                  {/* Delete */}
+                  <TableCell sx={{ verticalAlign: "top", pt: 0.5 }}>
                     <IconButton
                       size="small"
                       color="error"
@@ -994,7 +1097,7 @@ export default function PurchaseEntryForm() {
 
               {rows.length > 0 && (
                 <TableRow sx={{ bgcolor: "action.selected" }}>
-                  <TableCell colSpan={12} align="right">
+                  <TableCell colSpan={4} align="right">
                     <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center">
                       <Chip label={`${rows.length} item${rows.length !== 1 ? "s" : ""}`} size="small" />
                       <Typography fontWeight="bold">Grand Total</Typography>
@@ -1005,7 +1108,7 @@ export default function PurchaseEntryForm() {
                       {grandTotal.toFixed(2)}
                     </Typography>
                   </TableCell>
-                  <TableCell />
+                  <TableCell colSpan={5} />
                 </TableRow>
               )}
             </TableBody>
