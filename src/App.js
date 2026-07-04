@@ -121,6 +121,8 @@ import MenuMapPage from "./components/MenuMapPage";
 import SetupWizardPage from "./components/SetupWizardPage";
 import StockTransferDiscountPage from "./components/StockTransferDiscountPage";
 import PosMachineApprovalPage from "./components/PosMachineApprovalPage";
+import BranchProfitReport from "./components/BranchProfitReport";
+import ItemCostOverridePage from "./components/ItemCostOverridePage";
 
 // Accounting
 import ReceiptEntry from "./components/accounting/ReceiptEntry";
@@ -229,6 +231,8 @@ const ROUTE_ORDER = [
   { key: "Item Transfer Report",             path: "/item-transfer-report" },
   { key: "Salesman Report",                  path: "/salesman-report" },
   { key: "Category Item Report",             path: "/category-item-report" },
+  { key: "Branch Profit Report",             path: "/branch-profit-report" },
+  { key: "Item Cost Override",               path: "/item-cost-override" },
   // Accounting
   { key: "Accounting Setup",                 path: "/accounting/setup" },
   { key: "Receipt Entry",                   path: "/accounting/receipt-entry" },
@@ -470,6 +474,8 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/item-transfer-report" element={<ItemTransferReport />} />
 <Route path="/salesman-report" element={<SalesmanReport />} />
 <Route path="/category-item-report" element={<CategoryItemReport />} />
+<Route path="/branch-profit-report" element={<BranchProfitReport />} />
+<Route path="/item-cost-override" element={<ItemCostOverridePage />} />
 <Route path="/menu-map" element={<MenuMapPage />} />
 <Route path="/ai-dashboard" element={<AIDashboardPage />} />
 <Route path="/ai-report"    element={<AIReportChatbot />} />
