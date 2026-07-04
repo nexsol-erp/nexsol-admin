@@ -2,14 +2,16 @@ import React, { useEffect, useState } from "react";
 import {
   Box, Button, TextField, Typography, Paper, CircularProgress,
   Grid, Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, Alert, Divider,
+  TableRow, Alert, Divider, FormControl, InputLabel, Select, MenuItem,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
+
+const BRANCH_TYPE_OPTIONS = ["CGN", "FRANCHISE", "FRANCHISEE", "OUTLET", "PRODUCTION"];
 
 const EMPTY_FORM = {
   branchName: "", branchState: "", branchBuildingAddress: "",
   branchAddress1: "", branchAddress2: "", branchStreetAddress: "",
-  branchGst: "", branchInvoicePrefix: "",
+  branchGst: "", branchInvoicePrefix: "", branchType: "",
 };
 
 const BranchUpdatePage = () => {
@@ -51,6 +53,7 @@ const BranchUpdatePage = () => {
       branchStreetAddress:    branch.branchStreetAddress   || "",
       branchGst:              branch.branchGst             || "",
       branchInvoicePrefix:    branch.branchInvoicePrefix   || "",
+      branchType:             branch.branchType            || "",
     });
     setMessage(null);
   };
@@ -160,6 +163,23 @@ const BranchUpdatePage = () => {
                   {field("Street",                  "branchStreetAddress")}
                   {field("State",                   "branchState")}
                   {field("Invoice Prefix",          "branchInvoicePrefix", { inputProps: { maxLength: 4 } })}
+
+                  {/* Branch Type */}
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Branch Type</InputLabel>
+                      <Select
+                        label="Branch Type"
+                        value={form.branchType}
+                        onChange={(e) => setForm((f) => ({ ...f, branchType: e.target.value }))}
+                      >
+                        <MenuItem value=""><em>— Select Type —</em></MenuItem>
+                        {BRANCH_TYPE_OPTIONS.map((t) => (
+                          <MenuItem key={t} value={t}>{t}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
                 </Grid>
 
                 <Box sx={{ mt: 3 }}>

@@ -200,7 +200,6 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         { menuKey: "User Creation",                 label: t("5. Create Users"),                link: "/usercreationpage",             roles: ["admin"] },
         { menuKey: "Branch Assignment",             label: t("6. Assign Branches & Roles"),     link: "/branchassingment",             roles: ["admin"] },
         { menuKey: "Transfer Branch Permissions",   label: t("7. Transfer Branch Permissions"), link: "/branch-transfer-assignment",   roles: ["admin"] },
-        { menuKey: "Branch Details",                label: t("Branch Details"),                 link: "/branch-update",                roles: ["admin"] },
         { menuKey: "Branch Day End Settings",       label: t("Branch Day End Settings"),        link: "/branch-day-end-settings",      roles: ["admin"] },
         { menuKey: "Clear Day End",                 label: t("Clear Day End"),                  link: "/day-end-clear",                roles: ["admin"] },
         { menuKey: "Version Management",            label: t("Version Management"),             link: "/version-management",           roles: ["admin"] },
@@ -280,6 +279,8 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
       menuKey: "Masters", label: t("Masters"), icon: <Tune />, link: "",
       roles: ["admin", "user", "cgn", "franchiseeuser"], hasSubmenu: true,
       submenu: [
+        { menuKey: "Branch Details",           label: t("Branch Details"),           link: "/branch-update",        roles: ["admin"] },
+        { menuKey: "Item Cost Override",       label: t("Item Cost Override"),       link: "/item-cost-override",   roles: ["admin"] },
         { menuKey: "Receipt Modes",            label: t("Receipt Modes"),            link: "/receipt-modes",        roles: ["admin"] },
         { menuKey: "Item Search",              label: t("Item Search"),              link: "/itemsearch",           roles: ["admin", "user", "cgn", "franchiseeuser"] },
         { menuKey: "Item Creation",            label: t("Item Creation"),            link: "/createitemmaster",     roles: ["admin", "user"] },
@@ -335,6 +336,8 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         { menuKey: "Category Item Report",                 label: t("Category Item Report"),                 link: "/category-item-report",                  roles: ["admin", "manager", "user"] },
         { menuKey: "Stock Transfer In Report",             label: t("Stock Transfer In Report"),             link: "/stocktransfer-in-report",               roles: ["admin", "franchiseeuser", "user"] },
         { menuKey: "Stock Transfer Out Report",            label: t("Stock Transfer Out Report"),            link: "/stocktransfer-out-report",              roles: ["admin", "franchiseeuser"] },
+        // Profit
+        { menuKey: "Branch Profit Report",                 label: t("Branch Profit Report"),                 link: "/branch-profit-report",                  roles: ["admin", "manager"] },
         // Operations
         { menuKey: "Day End Report",                       label: t("Day End Report"),                       link: "/day-end-report",                        roles: ["admin", "manager"] },
         { menuKey: "Bill Series Report",                   label: t("Bill Series Report"),                   link: "/billseriesreport",                      roles: ["admin", "user", "manager"] },

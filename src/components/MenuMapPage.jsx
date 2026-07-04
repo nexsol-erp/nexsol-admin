@@ -35,7 +35,6 @@ const SECTIONS = [
       { label: "Create Users", path: "/usercreationpage" },
       { label: "Assign Branches & Roles", path: "/branchassingment" },
       { label: "Transfer Branch Permissions", path: "/branch-transfer-assignment" },
-      { label: "Branch Details", path: "/branch-update" },
       { label: "Branch Day End Settings", path: "/branch-day-end-settings" },
       { label: "Clear Day End", path: "/day-end-clear" },
       { label: "Version Management", path: "/version-management" },
@@ -111,6 +110,8 @@ const SECTIONS = [
     icon: <Tune />,
     color: "#004D40",
     items: [
+      { label: "Branch Details", path: "/branch-update" },
+      { label: "Item Cost Override", path: "/item-cost-override" },
       { label: "Financial Year Setup", path: "/financialyearpage" },
       { label: "Receipt Modes", path: "/receipt-modes" },
       { label: "UPI Payment Setup", path: "/upi-config" },
@@ -145,6 +146,7 @@ const SECTIONS = [
       { label: "All Branch Categorywise Sales", path: "/sales-category-wise-report-all-branch" },
       { label: "Season Sales Report", path: "/seasonalreport" },
       { label: "Salesman Report", path: "/salesman-report" },
+      { label: "Branch Profit Report", path: "/branch-profit-report" },
     ],
   },
   {
