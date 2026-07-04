@@ -397,7 +397,7 @@ const BranchProfitReport = () => {
                     onClick={() => isEditable(row) && openOverrideDialog(row)}
                   >
                     <TableCell>
-                      <Typography variant="body2" fontWeight={500}>{row.branch}</Typography>
+                      <Typography variant="body2" fontWeight={500}>{row.branchCode}</Typography>
                       <Typography variant="caption" color="text.secondary">{row.branchType}</Typography>
                     </TableCell>
                     <TableCell>{row.billNumber}</TableCell>
@@ -471,8 +471,8 @@ const BranchProfitReport = () => {
                   {bSum.map((b, i) => (
                     <TableRow key={i}>
                       <TableCell>
-                        <b>{b.branchName}</b>
-                        <Typography variant="caption" color="text.secondary" display="block">{b.branchCode}</Typography>
+                        <b>{b.branchCode}</b>
+                        <Typography variant="caption" color="text.secondary" display="block">{b.branchName}</Typography>
                       </TableCell>
                       <TableCell align="right">{fmt(b.salesAmount)}</TableCell>
                       <TableCell align="right">{fmt(b.costAmount)}</TableCell>

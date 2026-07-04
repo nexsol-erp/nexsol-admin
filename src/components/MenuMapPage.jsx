@@ -61,6 +61,9 @@ const SECTIONS = [
     items: [
       { label: "Purchase Entry", path: "/purchaseentry" },
       { label: "Goods Receipt", path: "/goodsreceipt" },
+      { label: "Purchase Correction", path: "/purchase-correction" },
+      { label: "Purchase Correction Approval", path: "/purchase-correction-approval" },
+      { label: "Purchase Correction History", path: "/purchase-correction-history" },
     ],
   },
   {
