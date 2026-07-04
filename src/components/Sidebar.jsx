@@ -228,8 +228,11 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
       menuKey: "Purchase", label: t("Purchase"), icon: <ShoppingCart />, link: "",
       roles: ["admin", "manager", "user"], hasSubmenu: true,
       submenu: [
-        { menuKey: "Purchase Entry", label: t("Purchase Entry"), link: "/purchaseentry", roles: ["user", "manager", "admin"] },
-        { menuKey: "Goods Receipt",  label: t("Goods Receipt"),  link: "/goodsreceipt",  roles: ["user", "manager", "admin"] },
+        { menuKey: "Purchase Entry",               label: t("Purchase Entry"),               link: "/purchaseentry",                roles: ["user", "manager", "admin"] },
+        { menuKey: "Goods Receipt",                label: t("Goods Receipt"),                link: "/goodsreceipt",                 roles: ["user", "manager", "admin"] },
+        { menuKey: "Purchase Correction",          label: t("Purchase Correction"),          link: "/purchase-correction",          roles: ["admin", "manager"] },
+        { menuKey: "Purchase Correction Approval", label: t("Purchase Correction Approval"), link: "/purchase-correction-approval", roles: ["admin", "manager"] },
+        { menuKey: "Purchase Correction History",  label: t("Purchase Correction History"),  link: "/purchase-correction-history",  roles: ["admin", "manager", "user"] },
       ],
     },
 
