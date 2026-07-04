@@ -296,7 +296,7 @@ const BranchProfitReport = () => {
             <InputLabel>Branch</InputLabel>
             <Select value={branchCode} label="Branch" onChange={e => setBranchCode(e.target.value)}>
               <MenuItem value="">All Branches</MenuItem>
-              {branches.map(b => <MenuItem key={b.id} value={b.branchCode}>{b.branchName || b.branchCode}</MenuItem>)}
+              {branches.map(b => <MenuItem key={b.id} value={b.branchCode}>{b.branchCode} - {b.branchName || b.branchCode}</MenuItem>)}
             </Select>
           </FormControl>
 
