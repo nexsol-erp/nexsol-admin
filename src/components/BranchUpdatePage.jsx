@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 
-const BRANCH_TYPE_OPTIONS = ["CGN", "FRANCHISE", "FRANCHISEE", "OUTLET", "PRODUCTION"];
+const BRANCH_TYPE_OPTIONS = ["BAKERY_CGN", "BAKERY_OUTLET", "BAKERY_PROD", "FRANCHISE_OUTLET", "CGN", "FRANCHISE", "FRANCHISEE", "OUTLET", "PRODUCTION"];
 
 const EMPTY_FORM = {
   branchName: "", branchState: "", branchBuildingAddress: "",

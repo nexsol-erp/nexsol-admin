@@ -36,7 +36,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { useNavigate } from "react-router-dom";
 
-const BRANCH_TYPES = ["ALL", "CGN", "FRANCHISE", "OUTLET", "PRODUCTION"];
+const BRANCH_TYPES = ["ALL", "BAKERY_CGN", "BAKERY_OUTLET", "BAKERY_PROD", "FRANCHISE_OUTLET", "CGN", "FRANCHISE", "FRANCHISEE", "OUTLET", "PRODUCTION"];
 
 // ── Summary card ─────────────────────────────────────────────────────────────
 function SummaryCard({ label, value, sub, color }) {
@@ -120,9 +120,36 @@ const BranchProfitReport = () => {
     load();
   }, [allowedBranches]);
 
+  const MAX_DAYS = 31;
+
+  const dateRangeDays = useMemo(() => {
+    if (!fromDate || !toDate) return 0;
+    return dayjs(toDate).diff(dayjs(fromDate), "day");
+  }, [fromDate, toDate]);
+
+  const handleFromDateChange = (val) => {
+    setFromDate(val);
+    // Auto-clamp toDate if it would exceed MAX_DAYS
+    if (toDate && dayjs(toDate).diff(dayjs(val), "day") > MAX_DAYS) {
+      setToDate(dayjs(val).add(MAX_DAYS, "day").format("YYYY-MM-DD"));
+    }
+  };
+
+  const handleToDateChange = (val) => {
+    setToDate(val);
+    // Auto-clamp fromDate if range exceeds MAX_DAYS
+    if (fromDate && dayjs(val).diff(dayjs(fromDate), "day") > MAX_DAYS) {
+      setFromDate(dayjs(val).subtract(MAX_DAYS, "day").format("YYYY-MM-DD"));
+    }
+  };
+
   // ── Fetch report ───────────────────────────────────────────────────────────
   const fetchReport = async () => {
     if (!fromDate || !toDate) { setError("Please select a date range."); return; }
+    if (dateRangeDays > MAX_DAYS) {
+      setError(`Date range cannot exceed ${MAX_DAYS} days. Current range: ${dateRangeDays} days.`);
+      return;
+    }
     setError(""); setLoading(true); setReportData(null);
     try {
       const tenancyId = localStorage.getItem("tenancyId");
@@ -131,7 +158,6 @@ const BranchProfitReport = () => {
       if (branchCode) {
         params.set("branchCode", branchCode);
       } else if (allowedBranches.length > 0) {
-        // No specific branch selected but user has an allow-list — enforce it server-side
         params.set("branchCodes", allowedBranches.join(","));
       }
       if (branchType && branchType !== "ALL") params.set("branchType", branchType);
@@ -140,7 +166,10 @@ const BranchProfitReport = () => {
 
       const res = await fetch(`/api/${tenancyId}/reports/branch-profit?${params}`,
         { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Server error: ${res.status}`);
+      }
       setReportData(await res.json());
     } catch (e) {
       setError(e.message || "Failed to fetch report.");
@@ -256,9 +285,12 @@ const BranchProfitReport = () => {
       <Paper sx={{ p: 2, mb: 2 }}>
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "flex-end" }}>
           <TextField label="From Date" type="date" size="small" value={fromDate}
-            onChange={e => setFromDate(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ minWidth: 160 }} />
+            onChange={e => handleFromDateChange(e.target.value)}
+            InputLabelProps={{ shrink: true }} sx={{ minWidth: 160 }} />
           <TextField label="To Date" type="date" size="small" value={toDate}
-            onChange={e => setToDate(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ minWidth: 160 }} />
+            onChange={e => handleToDateChange(e.target.value)}
+            InputLabelProps={{ shrink: true }} sx={{ minWidth: 160 }}
+            helperText={`Max ${MAX_DAYS} days · ${dateRangeDays} day${dateRangeDays !== 1 ? "s" : ""} selected`} />
 
           <FormControl size="small" sx={{ minWidth: 180 }}>
             <InputLabel>Branch</InputLabel>
@@ -304,6 +336,15 @@ const BranchProfitReport = () => {
             color={summary.profitPercentage >= 0 ? "#388e3c" : "#d32f2f"}
             sub={`${summary.totalRows} rows · ${summary.missingCostRows} missing cost · ${summary.negativeProfitRows} negative profit`} />
         </Box>
+      )}
+
+      {/* ── Truncation warning ── */}
+      {reportData?.summary?.truncated && (
+        <Alert severity="warning" sx={{ mb: 1 }}>
+          Results are limited to {reportData.summary.maxRows?.toLocaleString()} rows.
+          Narrow the date range or add filters (branch / item / category) to see complete data.
+          Use Excel export to download the full visible set.
+        </Alert>
       )}
 
       {/* ── Legend ── */}
