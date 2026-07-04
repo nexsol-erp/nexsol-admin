@@ -126,6 +126,8 @@ import ItemCostOverridePage from "./components/ItemCostOverridePage";
 import PurchaseCorrectionPage from "./components/PurchaseCorrectionPage";
 import PurchaseCorrectionApprovalPage from "./components/PurchaseCorrectionApprovalPage";
 import PurchaseCorrectionHistoryPage from "./components/PurchaseCorrectionHistoryPage";
+import BranchExpenseEntryPage from "./components/BranchExpenseEntryPage";
+import MonthlyBranchProfitReport from "./components/MonthlyBranchProfitReport";
 
 // Accounting
 import ReceiptEntry from "./components/accounting/ReceiptEntry";
@@ -235,6 +237,8 @@ const ROUTE_ORDER = [
   { key: "Salesman Report",                  path: "/salesman-report" },
   { key: "Category Item Report",             path: "/category-item-report" },
   { key: "Branch Profit Report",             path: "/branch-profit-report" },
+  { key: "Branch Monthly Expense",           path: "/branch-monthly-expense" },
+  { key: "Monthly Branch Profit Report",     path: "/monthly-branch-profit-report" },
   { key: "Item Cost Override",               path: "/item-cost-override" },
   { key: "Purchase Correction",             path: "/purchase-correction" },
   { key: "Purchase Correction Approval",    path: "/purchase-correction-approval" },
@@ -481,6 +485,8 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/salesman-report" element={<SalesmanReport />} />
 <Route path="/category-item-report" element={<CategoryItemReport />} />
 <Route path="/branch-profit-report" element={<BranchProfitReport />} />
+<Route path="/branch-monthly-expense" element={<BranchExpenseEntryPage />} />
+<Route path="/monthly-branch-profit-report" element={<MonthlyBranchProfitReport />} />
 <Route path="/item-cost-override" element={<ItemCostOverridePage />} />
 <Route path="/purchase-correction" element={<PurchaseCorrectionPage />} />
 <Route path="/purchase-correction-approval" element={<PurchaseCorrectionApprovalPage />} />

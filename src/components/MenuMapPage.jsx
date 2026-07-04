@@ -114,6 +114,7 @@ const SECTIONS = [
     color: "#004D40",
     items: [
       { label: "Branch Details", path: "/branch-update" },
+      { label: "Branch Monthly Expense", path: "/branch-monthly-expense" },
       { label: "Item Cost Override", path: "/item-cost-override" },
       { label: "Financial Year Setup", path: "/financialyearpage" },
       { label: "Receipt Modes", path: "/receipt-modes" },
@@ -150,6 +151,7 @@ const SECTIONS = [
       { label: "Season Sales Report", path: "/seasonalreport" },
       { label: "Salesman Report", path: "/salesman-report" },
       { label: "Branch Profit Report", path: "/branch-profit-report" },
+      { label: "Monthly Branch Profit Report", path: "/monthly-branch-profit-report" },
     ],
   },
   {
