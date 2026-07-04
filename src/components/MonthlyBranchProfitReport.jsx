@@ -303,8 +303,9 @@ const MonthlyBranchProfitReport = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{row.branchName}</Typography>
-                        <Typography variant="caption" color="text.secondary">{row.branchCode}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {row.branchCode} - {row.branchName}
+                        </Typography>
                       </TableCell>
                       <TableCell align="right">{fmt(row.salesAmount)}</TableCell>
                       <TableCell align="right">{fmt(row.costAmount)}</TableCell>
