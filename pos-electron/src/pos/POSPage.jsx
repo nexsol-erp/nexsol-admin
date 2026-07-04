@@ -452,6 +452,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   };
 
   const clearForm = () => {
+    savingRef.current = false;
     setItems([]); setTendered(0);
     setReceipts((prev) => prev.map((r) => ({ ...r, amount: 0 })));
     setCustomerMobile("");
@@ -678,6 +679,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       clearForm();
     } catch (e) {
       if (e.httpStatus === 401) {
+        savingRef.current = false;
         message.error("Session expired — please log in again.", 6);
         return;
       }
@@ -701,10 +703,10 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
           message.error("Save failed and could not queue offline: " + qErr.message);
         }
       } else {
+        savingRef.current = false;
         message.error("Save failed: " + (e.message || "Unknown error"));
       }
     } finally {
-      savingRef.current = false;
       setIsSaving(false);
     }
   };
