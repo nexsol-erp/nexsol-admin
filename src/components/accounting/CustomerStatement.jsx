@@ -1,21 +1,32 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box, Typography, TextField, Button, Table, TableHead,
   TableRow, TableCell, TableBody, Paper, Chip,
 } from "@mui/material";
+import Autocomplete from "@mui/material/Autocomplete";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { getCustomerStatement } from "./accountingApi";
+import { getCustomers, getCustomerStatement } from "./accountingApi";
+import { useFinancialYear } from "./useFinancialYear";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
 const TYPE_COLOR = { INVOICE: "warning", RECEIPT: "success", PAYMENT: "info" };
 
 export default function CustomerStatement() {
-  const [customerId, setCustomerId] = useState("");
-  const [from, setFrom]             = useState("");
-  const [to, setTo]                 = useState("");
-  const [lines, setLines]           = useState([]);
+  const [customers, setCustomers]       = useState([]);
+  const [selectedCustomer, setSelected] = useState(null);
+  const [from, setFrom]                 = useState("");
+  const [to, setTo]                     = useState("");
+  const [lines, setLines]               = useState([]);
+
+  useFinancialYear(setFrom, setTo);
+
+  const customerId = selectedCustomer?.id || "";
+
+  useEffect(() => {
+    getCustomers().then((d) => setCustomers(Array.isArray(d) ? d : []));
+  }, []);
 
   const load = async () => {
     if (!customerId || !from || !to) return;
@@ -30,7 +41,7 @@ export default function CustomerStatement() {
     })));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "CustomerStatement");
-    saveAs(new Blob([XLSX.write(wb, { type: "array", bookType: "xlsx" })]), `CustomerStatement_${customerId}.xlsx`);
+    saveAs(new Blob([XLSX.write(wb, { type: "array", bookType: "xlsx" })]), `CustomerStatement_${selectedCustomer?.name || customerId}.xlsx`);
   };
 
   const closing = lines.length ? lines[lines.length - 1].balance : 0;
@@ -40,10 +51,18 @@ export default function CustomerStatement() {
       <Typography variant="h5" gutterBottom>Customer Statement</Typography>
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box display="flex" gap={2} flexWrap="wrap" alignItems="flex-end">
-          <TextField label="Customer ID" value={customerId} onChange={(e) => setCustomerId(e.target.value)} sx={{ width: 200 }} />
+          <Autocomplete
+            options={customers}
+            getOptionLabel={(c) => c.name || ""}
+            value={selectedCustomer}
+            onChange={(_, val) => { setSelected(val); setLines([]); }}
+            sx={{ width: 300 }}
+            renderInput={(params) => <TextField {...params} label="Customer" placeholder="Search customer…" />}
+            isOptionEqualToValue={(o, v) => o.id === v.id}
+          />
           <TextField label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
           <TextField label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <Button variant="contained" onClick={load}>Load</Button>
+          <Button variant="contained" onClick={load} disabled={!customerId || !from || !to}>Load</Button>
           {lines.length > 0 && <Button variant="outlined" onClick={exportXlsx}>Export Excel</Button>}
         </Box>
       </Paper>

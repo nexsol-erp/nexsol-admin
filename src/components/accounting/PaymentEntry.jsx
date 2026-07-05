@@ -3,28 +3,33 @@ import {
   Box, Typography, TextField, MenuItem, Button, Table, TableHead,
   TableRow, TableCell, TableBody, Paper, Alert, Divider, Chip,
 } from "@mui/material";
-import { getLedgerAccounts, getSupplierOutstanding, createPayment } from "./accountingApi";
+import Autocomplete from "@mui/material/Autocomplete";
+import { getLedgerAccounts, getSuppliers, getSupplierOutstanding, createPayment } from "./accountingApi";
 
 const fmt = (n) => Number(n || 0).toFixed(2);
 
 export default function PaymentEntry() {
-  const [accounts, setAccounts]       = useState([]);
-  const [supplierId, setSupplierId]   = useState("");
-  const [outstanding, setOutstanding] = useState([]);
-  const [allocation, setAllocation]   = useState({});
-  const [form, setForm]               = useState({
+  const [accounts, setAccounts]         = useState([]);
+  const [suppliers, setSuppliers]       = useState([]);
+  const [selectedSupplier, setSelected] = useState(null);
+  const [outstanding, setOutstanding]   = useState([]);
+  const [allocation, setAllocation]     = useState({});
+  const [form, setForm]                 = useState({
     paymentDate: new Date().toISOString().split("T")[0],
     paymentMode: "CASH", cashBankAccountId: "", narration: "",
   });
   const [msg, setMsg] = useState(null);
 
+  const supplierId = selectedSupplier?.id || "";
+
   useEffect(() => {
     getLedgerAccounts().then((data) => setAccounts(Array.isArray(data) ? data : []));
+    getSuppliers().then((data) => setSuppliers(Array.isArray(data) ? data : []));
   }, []);
 
-  const loadOutstanding = () => {
-    if (!supplierId) return;
-    getSupplierOutstanding(supplierId).then((data) => {
+  const loadOutstanding = (id) => {
+    if (!id) return;
+    getSupplierOutstanding(id).then((data) => {
       setOutstanding(Array.isArray(data) ? data : []);
       setAllocation({});
     });
@@ -34,7 +39,7 @@ export default function PaymentEntry() {
 
   const handleSubmit = async () => {
     if (!supplierId || !form.cashBankAccountId) {
-      setMsg({ type: "error", text: "Supplier ID and Cash/Bank account are required." });
+      setMsg({ type: "error", text: "Supplier and Cash/Bank account are required." });
       return;
     }
     const lines = outstanding
@@ -44,7 +49,7 @@ export default function PaymentEntry() {
     try {
       await createPayment({ supplierId, ...form, totalAmount: totalAllocated, allocations: lines });
       setMsg({ type: "success", text: "Payment posted successfully." });
-      setOutstanding([]); setAllocation({}); setSupplierId("");
+      setOutstanding([]); setAllocation({}); setSelected(null);
     } catch {
       setMsg({ type: "error", text: "Failed to post payment." });
     }
@@ -58,8 +63,20 @@ export default function PaymentEntry() {
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="subtitle1" gutterBottom>Supplier & Invoice</Typography>
         <Box display="flex" gap={2} flexWrap="wrap" alignItems="flex-end">
-          <TextField label="Supplier ID" value={supplierId} onChange={(e) => setSupplierId(e.target.value)} sx={{ width: 200 }} />
-          <Button variant="outlined" onClick={loadOutstanding}>Load Outstanding</Button>
+          <Autocomplete
+            options={suppliers}
+            getOptionLabel={(s) => s.supplierName || ""}
+            value={selectedSupplier}
+            onChange={(_, val) => {
+              setSelected(val);
+              setOutstanding([]);
+              setAllocation({});
+              if (val) loadOutstanding(val.id);
+            }}
+            sx={{ width: 300 }}
+            renderInput={(params) => <TextField {...params} label="Supplier" placeholder="Search supplier…" />}
+            isOptionEqualToValue={(o, v) => o.id === v.id}
+          />
         </Box>
 
         {outstanding.length > 0 && (

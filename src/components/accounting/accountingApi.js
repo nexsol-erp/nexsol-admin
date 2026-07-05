@@ -21,6 +21,15 @@ const api = {
 // ── Ledger Accounts ───────────────────────────────────────────
 export const getLedgerAccounts = () => api.get("/ledger-accounts");
 
+// ── Suppliers ─────────────────────────────────────────────────
+export const getSuppliers = () => api.get("/suppliers");
+
+// ── Customers ─────────────────────────────────────────────────
+export const getCustomers = () => api.get("/customers");
+
+// ── Financial Year ────────────────────────────────────────────
+export const getActiveFY = () => api.get("/financial-year/active");
+
 // ── Phase 2: Receipts / Payments ──────────────────────────────
 export const getCustomerOutstanding = (customerId) =>
   api.get(`/receipts/customer-outstanding/${customerId}`);
