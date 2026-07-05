@@ -380,6 +380,15 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
       ],
     },
 
+    // ── Franchise Management ──────────────────────────────────────────────
+    {
+      menuKey: "Franchise Management", label: t("Franchise"), icon: <Business />, link: "",
+      roles: ["admin", "system-admin"], hasSubmenu: true,
+      submenu: [
+        { menuKey: "Franchise Master", label: t("Franchise Master"), link: "/franchise-master", roles: ["admin", "system-admin"] },
+      ],
+    },
+
     // ── Tools & Design ────────────────────────────────────────────────────
     {
       menuKey: "Tools", label: t("Tools & Design"), icon: <Build />, link: "",

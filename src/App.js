@@ -127,6 +127,7 @@ import PurchaseCorrectionHistoryPage from "./components/PurchaseCorrectionHistor
 import BranchExpenseEntryPage from "./components/BranchExpenseEntryPage";
 import MonthlyBranchProfitReport from "./components/MonthlyBranchProfitReport";
 import ExpenseHeadManagementPage from "./components/ExpenseHeadManagementPage";
+import FranchiseMasterPage from "./components/FranchiseMasterPage";
 
 // Accounting
 import ReceiptEntry from "./components/accounting/ReceiptEntry";
@@ -239,6 +240,8 @@ const ROUTE_ORDER = [
   { key: "Monthly Branch Profit Report",     path: "/monthly-branch-profit-report" },
   { key: "Expense Head Management",          path: "/expense-head-management" },
   { key: "Item Cost Override",               path: "/item-cost-override" },
+  // Franchise
+  { key: "Franchise Master",                 path: "/franchise-master" },
   { key: "Purchase Correction",             path: "/purchase-correction" },
   { key: "Purchase Correction Approval",    path: "/purchase-correction-approval" },
   { key: "Purchase Correction History",     path: "/purchase-correction-history" },
@@ -522,6 +525,9 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/accounting/period-closing" element={<PeriodClosing />} />
             <Route path="/accounting/budget-manager" element={<BudgetManager />} />
             <Route path="/accounting/budget-vs-actual" element={<BudgetVsActual />} />
+
+            {/* Franchise */}
+            <Route path="/franchise-master" element={<FranchiseMasterPage />} />
 
           </Routes>
         </WebSocketProvider>
