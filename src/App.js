@@ -148,6 +148,7 @@ import PeriodClosing from "./components/accounting/PeriodClosing";
 import BudgetManager from "./components/accounting/BudgetManager";
 import BudgetVsActual from "./components/accounting/BudgetVsActual";
 import AccountingSetup from "./components/accounting/AccountingSetup";
+import LedgerAccountsPage from "./components/accounting/LedgerAccountsPage";
 import { UnitProvider } from "./components/UnitContext";
 import { BranchProvider } from "./components/BranchContext";
 
@@ -243,6 +244,7 @@ const ROUTE_ORDER = [
   { key: "Purchase Correction History",     path: "/purchase-correction-history" },
   // Accounting
   { key: "Accounting Setup",                 path: "/accounting/setup" },
+  { key: "Ledger Accounts",                  path: "/accounting/ledger-accounts" },
   { key: "Receipt Entry",                   path: "/accounting/receipt-entry" },
   { key: "Payment Entry",                   path: "/accounting/payment-entry" },
   { key: "Trial Balance",                   path: "/accounting/trial-balance" },
@@ -501,6 +503,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 
             {/* Accounting */}
             <Route path="/accounting/setup" element={<AccountingSetup />} />
+            <Route path="/accounting/ledger-accounts" element={<LedgerAccountsPage />} />
             <Route path="/accounting/receipt-entry" element={<ReceiptEntry />} />
             <Route path="/accounting/payment-entry" element={<PaymentEntry />} />
             <Route path="/accounting/trial-balance" element={<TrialBalance />} />

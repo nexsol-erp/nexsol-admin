@@ -108,8 +108,8 @@ export default function AccountingSetup() {
                   <TableCell>{a.accountName}</TableCell>
                   <TableCell><Chip label={a.accountType} size="small" /></TableCell>
                   <TableCell>{a.groupName || "—"}</TableCell>
-                  <TableCell>{a.isCash ? "✓" : ""}</TableCell>
-                  <TableCell>{a.isBank ? "✓" : ""}</TableCell>
+                  <TableCell>{a.cash ? "✓" : ""}</TableCell>
+                  <TableCell>{a.bank ? "✓" : ""}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
