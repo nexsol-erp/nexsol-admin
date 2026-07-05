@@ -29,7 +29,7 @@ export default function BankReconciliation() {
   const [newStmt, setNewStmt]   = useState({ description: "", debitAmount: "", creditAmount: "", referenceNumber: "", statementDate: "" });
 
   useEffect(() => {
-    getLedgerAccounts().then((d) => setAccounts((Array.isArray(d) ? d : []).filter((a) => a.isBank)));
+    getLedgerAccounts().then((d) => setAccounts((Array.isArray(d) ? d : []).filter((a) => a.bank)));
   }, []);
 
   const load = async () => {

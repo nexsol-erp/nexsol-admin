@@ -129,7 +129,7 @@ export default function PaymentEntry() {
           </TextField>
           <TextField select label="Cash / Bank Account" value={form.cashBankAccountId}
             onChange={(e) => setForm({ ...form, cashBankAccountId: e.target.value })} sx={{ width: 240 }}>
-            {accounts.filter((a) => a.isCash || a.isBank).map((a) => (
+            {accounts.filter((a) => a.cash || a.bank).map((a) => (
               <MenuItem key={a.id} value={a.id}>{a.accountName}</MenuItem>
             ))}
           </TextField>
