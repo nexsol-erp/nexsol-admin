@@ -8,6 +8,7 @@ import {
   getUnmatchedGlEntries, matchReconciliation, unmatchReconciliation,
   getBankReconciliationSummary, createBankStatement,
 } from "./accountingApi";
+import { useFinancialYear } from "./useFinancialYear";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
@@ -17,6 +18,8 @@ export default function BankReconciliation() {
   const [accountId, setAccountId] = useState("");
   const [from, setFrom]         = useState("");
   const [to, setTo]             = useState("");
+
+  useFinancialYear(setFrom, setTo);
   const [stmtLines, setStmtLines] = useState([]);
   const [glLines, setGlLines]   = useState([]);
   const [summary, setSummary]   = useState(null);

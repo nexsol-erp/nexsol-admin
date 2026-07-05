@@ -161,6 +161,7 @@ export default function PurchaseEntryForm() {
   const pendingQtyRef = useRef("1");
 
   const [supplierName, setSupplierName] = useState("");
+  const [supplierId, setSupplierId]     = useState("");
   const [suppliers, setSuppliers] = useState([]);
   const [supplierInvNo, setSupplierInvNo] = useState("");
   const [supplierInvDate, setSupplierInvDate] = useState(
@@ -429,6 +430,7 @@ export default function PurchaseEntryForm() {
 
   const buildPayload = (variant) => ({
     supplierName,
+    supplierId,
     branchCode: localStorage.getItem("branchCode") || "",
     roundOff,
     ...(variant === "final"
@@ -566,7 +568,7 @@ export default function PurchaseEntryForm() {
           if (printAfterSave) printBill({ type: "final", supplierName, supplierInvNo, supplierInvDate, rows });
           setEditingId(null);
           setRows([]);
-          setSupplierName("");
+          setSupplierName(""); setSupplierId("");
           setSupplierInvNo("");
           setBillTotal("");
           setFieldErrors({ supplier: false, supplierInvNo: false });
@@ -606,7 +608,7 @@ export default function PurchaseEntryForm() {
         }
         setActiveDraftId(null);
         setRows([]);
-        setSupplierName("");
+        setSupplierName(""); setSupplierId("");
         setSupplierInvNo("");
         setBillTotal("");
         setFieldErrors({ supplier: false, supplierInvNo: false });
@@ -633,7 +635,7 @@ export default function PurchaseEntryForm() {
           </Typography>
           {editingId && (
             <Chip label="Editing existing purchase" color="warning" size="small" onDelete={() => {
-              setEditingId(null); setRows([]); setSupplierName(""); setSupplierInvNo("");
+              setEditingId(null); setRows([]); setSupplierName(""); setSupplierId(""); setSupplierInvNo("");
             }} />
           )}
         </Stack>
@@ -698,6 +700,14 @@ export default function PurchaseEntryForm() {
               }
               freeSolo
               value={supplierName}
+              onChange={(_, v) => {
+                if (v && typeof v === "object") {
+                  setSupplierName(v.supplierName || "");
+                  setSupplierId(v.id || "");
+                } else {
+                  setSupplierId("");
+                }
+              }}
               onInputChange={(_, v) => {
                 setSupplierName(v);
                 if (fieldErrors.supplier) setFieldErrors((f) => ({ ...f, supplier: false }));

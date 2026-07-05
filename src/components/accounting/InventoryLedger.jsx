@@ -6,6 +6,7 @@ import {
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { getInventoryLedger } from "./accountingApi";
+import { useFinancialYear } from "./useFinancialYear";
 
 const fmt2 = (n) => Number(n || 0).toFixed(2);
 const fmt4 = (n) => Number(n || 0).toFixed(4);
@@ -16,6 +17,8 @@ export default function InventoryLedger() {
   const [from, setFrom]         = useState("");
   const [to, setTo]             = useState("");
   const [rows, setRows]         = useState([]);
+
+  useFinancialYear(setFrom, setTo);
 
   const load = async () => {
     if (!itemId || !from || !to) return;

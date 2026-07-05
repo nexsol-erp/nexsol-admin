@@ -6,6 +6,7 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import { getLedgerAccounts, createInterBranchTransfer, getInterBranchTransfers } from "./accountingApi";
+import { useFinancialYear } from "./useFinancialYear";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
@@ -22,6 +23,8 @@ export default function InterBranchTransfer() {
   const [from, setFrom]         = useState("");
   const [to, setTo]             = useState("");
   const [msg, setMsg]           = useState(null);
+
+  useFinancialYear(setFrom, setTo);
 
   useEffect(() => {
     getLedgerAccounts().then((d) => setAccounts(Array.isArray(d) ? d : []));

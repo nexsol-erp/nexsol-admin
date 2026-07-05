@@ -1,11 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box, Typography, TextField, Button, Paper, Table, TableHead,
   TableRow, TableCell, TableBody, Chip, Grid,
+  FormControl, InputLabel, MenuItem, Select,
 } from "@mui/material";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { getBalanceSheet } from "./accountingApi";
+import { useFinancialYear } from "./useFinancialYear";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
@@ -23,7 +25,7 @@ function BSSection({ title, rows, total, color }) {
               <TableCell>{r.accountName}</TableCell>
               <TableCell align="right">₹ {fmt(r.openingBalance)}</TableCell>
               <TableCell align="right">{r.periodMovement >= 0 ? "+" : ""}{fmt(r.periodMovement)}</TableCell>
-              <TableCell align="right" fontWeight={600}>₹ {fmt(r.closingBalance)}</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 600 }}>₹ {fmt(r.closingBalance)}</TableCell>
             </TableRow>
           ))}
           <TableRow sx={{ bgcolor: "action.hover" }}>
@@ -38,12 +40,41 @@ function BSSection({ title, rows, total, color }) {
 
 export default function BalanceSheet() {
   const [asOfDate, setAsOfDate] = useState("");
-  const [branch, setBranch]     = useState("");
+  const [branchCode, setBranch] = useState("");
+  const [branches, setBranches] = useState([]);
   const [data, setData]         = useState(null);
+
+  const tenancyId = localStorage.getItem("tenancyId");
+  const token     = localStorage.getItem("jwtToken");
+
+  const allowedBranches = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("allowedBranches");
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch { return []; }
+  }, []);
+
+  useFinancialYear(null, setAsOfDate);
+
+  useEffect(() => {
+    fetch(`/api/${tenancyId}/branches`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => {
+        const list = Array.isArray(d) ? d : d.branches || [];
+        const filtered = allowedBranches.length
+          ? list.filter((b) => allowedBranches.includes(b.branchCode))
+          : list;
+        setBranches(filtered);
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line
 
   const load = async () => {
     if (!asOfDate) return;
-    const res = await getBalanceSheet(asOfDate, branch);
+    const res = await getBalanceSheet(asOfDate, branchCode);
     setData(res);
   };
 
@@ -69,7 +100,17 @@ export default function BalanceSheet() {
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box display="flex" gap={2} flexWrap="wrap" alignItems="flex-end">
           <TextField label="As of Date" type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField label="Branch" value={branch} onChange={(e) => setBranch(e.target.value)} sx={{ width: 140 }} placeholder="All" />
+          <FormControl sx={{ minWidth: 220 }}>
+            <InputLabel>Branch</InputLabel>
+            <Select value={branchCode} label="Branch" onChange={(e) => setBranch(e.target.value)}>
+              <MenuItem value="">All Branches</MenuItem>
+              {branches.map((b) => (
+                <MenuItem key={b.branchCode} value={b.branchCode}>
+                  {b.branchCode} - {b.branchName}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <Button variant="contained" onClick={load}>Generate</Button>
           {data && <Button variant="outlined" onClick={exportXlsx}>Export Excel</Button>}
           {data && (
@@ -116,9 +157,12 @@ export default function BalanceSheet() {
                 <Typography>Current Year Profit</Typography>
                 <Typography fontWeight={700}>₹ {fmt(data.currentYearProfit)}</Typography>
               </Box>
-              <Box display="flex" justifyContent="space-between" px={1} mt={1} sx={{ bgcolor: "primary.light", p: 1, borderRadius: 1 }}>
-                <Typography fontWeight={700}>Total Liabilities + Equity</Typography>
-                <Typography fontWeight={700}>₹ {fmt(data.totalLiabilitiesAndEquity)}</Typography>
+              <Box
+                display="flex" justifyContent="space-between" px={1} mt={1}
+                sx={{ bgcolor: "primary.main", color: "primary.contrastText", p: 1, borderRadius: 1 }}
+              >
+                <Typography fontWeight={700} color="inherit">Total Liabilities + Equity</Typography>
+                <Typography fontWeight={700} color="inherit">₹ {fmt(data.totalLiabilitiesAndEquity)}</Typography>
               </Box>
             </Paper>
           </Grid>

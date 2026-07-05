@@ -1,11 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box, Typography, TextField, Button, Table, TableHead, TableRow,
   TableCell, TableBody, Paper, TableFooter, Chip,
+  FormControl, InputLabel, MenuItem, Select,
 } from "@mui/material";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { getTrialBalance } from "./accountingApi";
+import { useFinancialYear } from "./useFinancialYear";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
@@ -15,8 +17,37 @@ export default function TrialBalance() {
   const [from, setFrom]           = useState("");
   const [to, setTo]               = useState("");
   const [branchCode, setBranch]   = useState("");
+
+  useFinancialYear(setFrom, setTo);
+  const [branches, setBranches]   = useState([]);
   const [rows, setRows]           = useState([]);
   const [loading, setLoading]     = useState(false);
+
+  const tenancyId = localStorage.getItem("tenancyId");
+  const token     = localStorage.getItem("jwtToken");
+
+  const allowedBranches = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("allowedBranches");
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch { return []; }
+  }, []);
+
+  useEffect(() => {
+    fetch(`/api/${tenancyId}/branches`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => {
+        const list = Array.isArray(data) ? data : data.branches || [];
+        const filtered = allowedBranches.length
+          ? list.filter((b) => allowedBranches.includes(b.branchCode))
+          : list;
+        setBranches(filtered);
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line
 
   const load = async () => {
     if (!from || !to) return;
@@ -46,7 +77,17 @@ export default function TrialBalance() {
         <Box display="flex" gap={2} flexWrap="wrap" alignItems="flex-end">
           <TextField label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
           <TextField label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField label="Branch Code" value={branchCode} onChange={(e) => setBranch(e.target.value)} sx={{ width: 160 }} placeholder="All branches" />
+          <FormControl sx={{ minWidth: 220 }}>
+            <InputLabel>Branch</InputLabel>
+            <Select value={branchCode} label="Branch" onChange={(e) => setBranch(e.target.value)}>
+              <MenuItem value="">All Branches</MenuItem>
+              {branches.map((b) => (
+                <MenuItem key={b.branchCode} value={b.branchCode}>
+                  {b.branchCode} - {b.branchName}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <Button variant="contained" onClick={load} disabled={loading}>Generate</Button>
           {rows.length > 0 && <Button variant="outlined" onClick={exportXlsx}>Export Excel</Button>}
         </Box>
