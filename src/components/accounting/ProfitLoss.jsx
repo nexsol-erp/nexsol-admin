@@ -6,6 +6,7 @@ import {
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { getProfitLoss } from "./accountingApi";
+import { useFinancialYear } from "./useFinancialYear";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
@@ -35,6 +36,8 @@ export default function ProfitLoss() {
   const [to, setTo]             = useState("");
   const [branch, setBranch]     = useState("");
   const [data, setData]         = useState(null);
+
+  useFinancialYear(setFrom, setTo);
 
   const load = async () => {
     if (!from || !to) return;

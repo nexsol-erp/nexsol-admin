@@ -3,13 +3,15 @@ import {
   Box, Typography, TextField, MenuItem, Button, Table, TableHead,
   TableRow, TableCell, TableBody, Paper, Alert, Divider, Chip,
 } from "@mui/material";
-import { getLedgerAccounts, getCustomerOutstanding, createReceipt } from "./accountingApi";
+import Autocomplete from "@mui/material/Autocomplete";
+import { getLedgerAccounts, getCustomers, getCustomerOutstanding, createReceipt } from "./accountingApi";
 
 const fmt = (n) => Number(n || 0).toFixed(2);
 
 export default function ReceiptEntry() {
   const [accounts, setAccounts]         = useState([]);
-  const [customerId, setCustomerId]     = useState("");
+  const [customers, setCustomers]       = useState([]);
+  const [selectedCustomer, setSelected] = useState(null);
   const [outstanding, setOutstanding]   = useState([]);
   const [allocation, setAllocation]     = useState({});
   const [form, setForm]                 = useState({
@@ -18,13 +20,16 @@ export default function ReceiptEntry() {
   });
   const [msg, setMsg] = useState(null);
 
+  const customerId = selectedCustomer?.id || "";
+
   useEffect(() => {
     getLedgerAccounts().then((data) => setAccounts(Array.isArray(data) ? data : []));
+    getCustomers().then((data) => setCustomers(Array.isArray(data) ? data : []));
   }, []);
 
-  const loadOutstanding = () => {
-    if (!customerId) return;
-    getCustomerOutstanding(customerId).then((data) => {
+  const loadOutstanding = (id) => {
+    if (!id) return;
+    getCustomerOutstanding(id).then((data) => {
       setOutstanding(Array.isArray(data) ? data : []);
       setAllocation({});
     });
@@ -34,7 +39,7 @@ export default function ReceiptEntry() {
 
   const handleSubmit = async () => {
     if (!customerId || !form.cashBankAccountId) {
-      setMsg({ type: "error", text: "Customer ID and Cash/Bank account are required." });
+      setMsg({ type: "error", text: "Customer and Cash/Bank account are required." });
       return;
     }
     const lines = outstanding
@@ -42,11 +47,9 @@ export default function ReceiptEntry() {
       .map((inv) => ({ salesVoucherNumber: inv.voucherNumber, allocatedAmount: Number(allocation[inv.voucherNumber]) }));
 
     try {
-      await createReceipt({
-        customerId, ...form, totalAmount: totalAllocated, allocations: lines,
-      });
+      await createReceipt({ customerId, ...form, totalAmount: totalAllocated, allocations: lines });
       setMsg({ type: "success", text: "Receipt posted successfully." });
-      setOutstanding([]); setAllocation({}); setCustomerId("");
+      setOutstanding([]); setAllocation({}); setSelected(null);
     } catch {
       setMsg({ type: "error", text: "Failed to post receipt." });
     }
@@ -60,8 +63,20 @@ export default function ReceiptEntry() {
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="subtitle1" gutterBottom>Customer & Invoice</Typography>
         <Box display="flex" gap={2} flexWrap="wrap" alignItems="flex-end">
-          <TextField label="Customer ID" value={customerId} onChange={(e) => setCustomerId(e.target.value)} sx={{ width: 200 }} />
-          <Button variant="outlined" onClick={loadOutstanding}>Load Outstanding</Button>
+          <Autocomplete
+            options={customers}
+            getOptionLabel={(c) => c.name || ""}
+            value={selectedCustomer}
+            onChange={(_, val) => {
+              setSelected(val);
+              setOutstanding([]);
+              setAllocation({});
+              if (val) loadOutstanding(val.id);
+            }}
+            sx={{ width: 300 }}
+            renderInput={(params) => <TextField {...params} label="Customer" placeholder="Search customer…" />}
+            isOptionEqualToValue={(o, v) => o.id === v.id}
+          />
         </Box>
 
         {outstanding.length > 0 && (

@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box, Typography, TextField, MenuItem, Button, Table, TableHead,
   TableRow, TableCell, TableBody, Paper, Chip,
+  FormControl, InputLabel, Select,
 } from "@mui/material";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { getLedgerAccounts, getLedgerStatement } from "./accountingApi";
+import { useFinancialYear } from "./useFinancialYear";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
@@ -15,11 +17,37 @@ export default function LedgerStatement() {
   const [from, setFrom]             = useState("");
   const [to, setTo]                 = useState("");
   const [branchCode, setBranch]     = useState("");
+
+  useFinancialYear(setFrom, setTo);
+  const [branches, setBranches]     = useState([]);
   const [result, setResult]         = useState(null);
+
+  const tenancyId = localStorage.getItem("tenancyId");
+  const token     = localStorage.getItem("jwtToken");
+
+  const allowedBranches = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("allowedBranches");
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch { return []; }
+  }, []);
 
   useEffect(() => {
     getLedgerAccounts().then((d) => setAccounts(Array.isArray(d) ? d : []));
-  }, []);
+    fetch(`/api/${tenancyId}/branches`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => {
+        const list = Array.isArray(data) ? data : data.branches || [];
+        const filtered = allowedBranches.length
+          ? list.filter((b) => allowedBranches.includes(b.branchCode))
+          : list;
+        setBranches(filtered);
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line
 
   const load = async () => {
     if (!accountId || !from || !to) return;
@@ -49,7 +77,17 @@ export default function LedgerStatement() {
           </TextField>
           <TextField label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
           <TextField label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField label="Branch" value={branchCode} onChange={(e) => setBranch(e.target.value)} sx={{ width: 140 }} placeholder="All" />
+          <FormControl sx={{ minWidth: 220 }}>
+            <InputLabel>Branch</InputLabel>
+            <Select value={branchCode} label="Branch" onChange={(e) => setBranch(e.target.value)}>
+              <MenuItem value="">All Branches</MenuItem>
+              {branches.map((b) => (
+                <MenuItem key={b.branchCode} value={b.branchCode}>
+                  {b.branchCode} - {b.branchName}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <Button variant="contained" onClick={load}>Load</Button>
           {result && <Button variant="outlined" onClick={exportXlsx}>Export Excel</Button>}
         </Box>
