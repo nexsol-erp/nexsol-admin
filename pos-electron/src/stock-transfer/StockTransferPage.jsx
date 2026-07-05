@@ -334,6 +334,7 @@ export default function StockTransferPage({ onClose }) {
     () => items.reduce((s, r) => s + (Number(r.qty) || 0), 0),
     [items]
   );
+  const totalUniqueItems = useMemo(() => items.length, [items]);
   const totalAmount = useMemo(
     () => items.reduce((s, r) => s + (Number(r.amount) || 0), 0),
     [items]
@@ -1003,6 +1004,14 @@ export default function StockTransferPage({ onClose }) {
                 }}
                 placeholder="Scan barcode — Enter / F2 to browse"
                 style={{ borderRadius: 0 }}
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              <span style={{ fontSize: 13, fontWeight: "bold", color: "#000" }}>Items</span>
+              <Input
+                readOnly
+                value={totalUniqueItems}
+                style={{ width: 55, fontSize: 14, fontWeight: "bold", borderRadius: 0, textAlign: "right" }}
               />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
