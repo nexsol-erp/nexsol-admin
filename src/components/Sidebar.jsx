@@ -283,7 +283,8 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
       roles: ["admin", "user", "cgn", "franchiseeuser"], hasSubmenu: true,
       submenu: [
         { menuKey: "Branch Details",           label: t("Branch Details"),           link: "/branch-update",          roles: ["admin"] },
-        { menuKey: "Branch Monthly Expense",   label: t("Branch Monthly Expense"),   link: "/branch-monthly-expense", roles: ["admin", "manager"] },
+        { menuKey: "Branch Monthly Expense",   label: t("Branch Monthly Expense"),   link: "/branch-monthly-expense",   roles: ["admin", "manager"] },
+        { menuKey: "Expense Head Management",  label: t("Expense Head Management"),  link: "/expense-head-management",  roles: ["admin"] },
         { menuKey: "Item Cost Override",       label: t("Item Cost Override"),       link: "/item-cost-override",     roles: ["admin"] },
         { menuKey: "Receipt Modes",            label: t("Receipt Modes"),            link: "/receipt-modes",        roles: ["admin"] },
         { menuKey: "Item Search",              label: t("Item Search"),              link: "/itemsearch",           roles: ["admin", "user", "cgn", "franchiseeuser"] },
@@ -298,8 +299,6 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         { menuKey: "Tax Update Manager",       label: t("Tax Update Manager"),       link: "/tax-update-manager",   roles: ["admin", "user"] },
         { menuKey: "Tax Update Preview",       label: t("Tax Update Preview"),       link: "/tax-update-preview",   roles: ["admin", "user"] },
         { menuKey: "Supplier Creation",        label: t("Supplier Creation"),        link: "/suppliercreation",     roles: ["admin", "user", "cgn"] },
-        { menuKey: "Manage Account Heads",     label: t("Manage Account Heads"),     link: "/manage-account-heads", roles: ["admin", "user"] },
-        { menuKey: "Statement Of Account",     label: t("Statement Of Account"),     link: "/statement-of-account", roles: ["admin", "user"] },
       ],
     },
 

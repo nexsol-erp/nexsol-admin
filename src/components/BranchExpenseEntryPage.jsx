@@ -232,7 +232,7 @@ const BranchExpenseEntryPage = () => {
           <InputLabel>Branch</InputLabel>
           <Select value={branchCode} label="Branch" onChange={e => setBranchCode(e.target.value)}>
             {branches.map(b => (
-              <MenuItem key={b.branchCode} value={b.branchCode}>{b.branchName}</MenuItem>
+              <MenuItem key={b.branchCode} value={b.branchCode}>{b.branchCode} - {b.branchName}</MenuItem>
             ))}
           </Select>
         </FormControl>
@@ -271,7 +271,7 @@ const BranchExpenseEntryPage = () => {
             <Box>
               <Typography variant="caption" color="text.secondary">Branch</Typography>
               <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                {branches.find(b => b.branchCode === branchCode)?.branchName || branchCode}
+                {branchCode} - {branches.find(b => b.branchCode === branchCode)?.branchName || branchCode}
               </Typography>
             </Box>
             <Box>

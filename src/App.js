@@ -64,8 +64,6 @@ import StockReportExclusionPage from "./components/StockReportExclusionPage"
 import SalesReportAllBranch from "./components/SalesReportAllBranch"
 import WeighBridgeEngageReport from "./components/WeighBridgeEngageReport";
 import WeighbridgeUsageReport from "./components/WeighbridgeUsageReport";
-import ManageAccountHeads from "./components/ManageAccountHeads";
-import StatementOfAccount from "./components/StatementOfAccount";
 import BranchRequestList from "./components/BranchRequestList";
 import ReprocessVoucherForm from "./components/ReprocessVoucherForm"
 import BranchStockReport from "./components/BranchStockReport"
@@ -128,6 +126,7 @@ import PurchaseCorrectionApprovalPage from "./components/PurchaseCorrectionAppro
 import PurchaseCorrectionHistoryPage from "./components/PurchaseCorrectionHistoryPage";
 import BranchExpenseEntryPage from "./components/BranchExpenseEntryPage";
 import MonthlyBranchProfitReport from "./components/MonthlyBranchProfitReport";
+import ExpenseHeadManagementPage from "./components/ExpenseHeadManagementPage";
 
 // Accounting
 import ReceiptEntry from "./components/accounting/ReceiptEntry";
@@ -197,8 +196,6 @@ const ROUTE_ORDER = [
   { key: "Stock Transfer Discount",          path: "/stock-transfer-discount" },
   { key: "Price Edit Category Wise",         path: "/category-price-edit" },
   { key: "Category Link",                    path: "/item-category-linker" },
-  { key: "Manage Account Heads",             path: "/manage-account-heads" },
-  { key: "Statement Of Account",             path: "/statement-of-account" },
   { key: "Category Type",                    path: "/categorytypemaster" },
   { key: "Category Name",                    path: "/categorynamemaster" },
   { key: "Supplier Creation",                path: "/suppliercreation" },
@@ -239,6 +236,7 @@ const ROUTE_ORDER = [
   { key: "Branch Profit Report",             path: "/branch-profit-report" },
   { key: "Branch Monthly Expense",           path: "/branch-monthly-expense" },
   { key: "Monthly Branch Profit Report",     path: "/monthly-branch-profit-report" },
+  { key: "Expense Head Management",          path: "/expense-head-management" },
   { key: "Item Cost Override",               path: "/item-cost-override" },
   { key: "Purchase Correction",             path: "/purchase-correction" },
   { key: "Purchase Correction Approval",    path: "/purchase-correction-approval" },
@@ -437,8 +435,6 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/sales-report-all-branch" element={<SalesReportAllBranch />} />
             <Route path="/bridge-count" element={<WeighBridgeEngageReport />} />
             <Route path="/weighbridgeusage" element={<WeighbridgeUsageReport />} />
-            <Route path="/manage-account-heads" element={<ManageAccountHeads />} />
-            <Route path="/statement-of-account" element={<StatementOfAccount />} />
             <Route path="/branch-request-list" element={<BranchRequestList />} />
             <Route path="/reprocess-voucher-form" element={<ReprocessVoucherForm />} />
             <Route path="/branch-stock-report" element={<BranchStockReport />} />
@@ -487,6 +483,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/branch-profit-report" element={<BranchProfitReport />} />
 <Route path="/branch-monthly-expense" element={<BranchExpenseEntryPage />} />
 <Route path="/monthly-branch-profit-report" element={<MonthlyBranchProfitReport />} />
+<Route path="/expense-head-management" element={<ExpenseHeadManagementPage />} />
 <Route path="/item-cost-override" element={<ItemCostOverridePage />} />
 <Route path="/purchase-correction" element={<PurchaseCorrectionPage />} />
 <Route path="/purchase-correction-approval" element={<PurchaseCorrectionApprovalPage />} />
