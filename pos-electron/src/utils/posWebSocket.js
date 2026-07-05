@@ -25,8 +25,9 @@ const stateListeners = new Set();
 // ─── URL builder ─────────────────────────────────────────────────────────────
 
 function buildWsUrl() {
-  const base = wsBaseUrl || deriveWsBase();
-  return `${base}/ws?company=${encodeURIComponent(tenantId)}&branch=${encodeURIComponent(branchCode)}`;
+  const base    = wsBaseUrl || deriveWsBase();
+  const version = import.meta.env.VITE_APP_VERSION || "0.0.0";
+  return `${base}/ws?company=${encodeURIComponent(tenantId)}&branch=${encodeURIComponent(branchCode)}&version=${encodeURIComponent(version)}`;
 }
 
 /** Derive WebSocket base from the REST API server URL in pos-config. */
@@ -170,9 +171,10 @@ function _scheduleReconnect() {
 }
 
 function _startPing() {
+  const version = import.meta.env.VITE_APP_VERSION || "0.0.0";
   pingTimer = setInterval(() => {
     if (ws?.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ action: "PING" }));
+      ws.send(JSON.stringify({ action: "PING", version }));
     }
   }, PING_INTERVAL_MS);
 }

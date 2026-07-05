@@ -42,6 +42,11 @@ export default function MediaControlCard({ topUsers }) {
                 <Typography variant="caption" sx={{ color: online ? "#4ade80" : "#f87171", fontWeight: 500 }}>
                   {user.connectionStatus}
                 </Typography>
+                {user.clientVersion && (
+                  <Typography variant="caption" sx={{ color: "#94a3b8", fontFamily: "monospace" }}>
+                    v{user.clientVersion}
+                  </Typography>
+                )}
                 {user.lastSeen && (
                   <Typography variant="caption" sx={{ color: "#64748b", ml: "auto" }}>
                     {fmtLastSeen(user.lastSeen)}

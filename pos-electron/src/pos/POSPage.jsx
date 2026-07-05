@@ -283,6 +283,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const totalAmount      = useMemo(() => items.reduce((s, r) => s + (Number(r.amount) || 0), 0), [items]);
   const activeOffers     = useMemo(() => evaluateSchemes(items, schemes, categoryMap), [items, schemes, categoryMap]);
   const totalQty         = useMemo(() => items.reduce((s, r) => s + (Number(r.qty) || 0), 0), [items]);
+  const totalUniqueItems = useMemo(() => items.length, [items]);
   const totalReceived    = useMemo(() => receipts.reduce((s, r) => s + (Number(r.amount) || 0), 0), [receipts]);
 
   // Sum all itemwise discount amounts from active ITEMWISE_DISCOUNT scheme offers
@@ -408,6 +409,12 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
         return [row, ...prev];
       }
     });
+
+    if (resolvedKey) {
+      setReceipts((prev) => prev.map((r) =>
+        r.receipt_mode.toUpperCase() === "CASH" ? r : { ...r, amount: 0 }
+      ));
+    }
 
     setItemQuery("");
     if (resolvedKey) pendingQtyFocusKey.current = resolvedKey;
@@ -1278,6 +1285,11 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
                   }
                 }}
               />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              <span style={{ fontSize: 13, fontWeight: "bold", color: "#000" }}>Items</span>
+              <Input readOnly value={totalUniqueItems}
+                style={{ width: 55, fontSize: 14, fontWeight: "bold", borderRadius: 0, textAlign: "right" }} />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
               <span style={{ fontSize: 13, fontWeight: "bold", color: "#000" }}>QTY</span>
