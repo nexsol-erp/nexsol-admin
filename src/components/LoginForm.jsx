@@ -75,28 +75,28 @@ const LoginForm = ({ onLogin, autoOpen = false }) => {
       const data = await response.json();
 
       if (data.success) {
-        // Store raw login response fields
-        localStorage.setItem("jwtToken", data.token);
-        localStorage.setItem("tenancyId", data.tenancyId);
-        localStorage.setItem("roles", JSON.stringify(data.roles || []));
+        // ── Multi-tenant: user must select a company first ──────────────
+        if (data.needsTenantSelection) {
+          localStorage.setItem("partialToken",   data.token);
+          localStorage.setItem("pendingTenants", JSON.stringify(data.accessibleTenants || []));
+          setModalOpen(false);
+          navigate("/tenant-select");
+          return;
+        }
 
-        // Store setup status so the app can redirect to wizard if needed
-        const setupCompleted = data.setupCompleted !== false; // default true for legacy
+        // ── Single tenant: standard flow ─────────────────────────────────
+        localStorage.setItem("jwtToken",  data.token);
+        localStorage.setItem("tenancyId", data.tenancyId);
+        localStorage.setItem("roles",     JSON.stringify(data.roles || []));
+
+        const setupCompleted = data.setupCompleted !== false;
         localStorage.setItem("setupCompleted", setupCompleted ? "true" : "false");
 
-        // ✅ Extract allowed branches from JWT claims and store
         const payload = decodeJwtPayload(data.token);
-        const allowedBranches =
-          payload && Array.isArray(payload.branches) ? payload.branches : [];
+        localStorage.setItem("allowedBranches",
+          JSON.stringify(payload?.branches || []));
 
-        localStorage.setItem(
-          "allowedBranches",
-          JSON.stringify(allowedBranches)
-        );
-
-        // Notify parent
         onLogin?.(data.roles || []);
-
         setModalOpen(false);
       } else {
         alert(data.message || "Login failed");

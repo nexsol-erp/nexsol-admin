@@ -89,6 +89,67 @@ export async function registerMachine(tenantId, branchCode, machineName = "") {
   }
 }
 
+// ─── Machine selection helpers ────────────────────────────────────────────────
+
+/**
+ * Returns all APPROVED machines for a branch so a pending terminal can pick one.
+ */
+export async function fetchApprovedMachines(tenantId, branchCode) {
+  const token = localStorage.getItem("jwtToken") || "";
+  try {
+    const res = await fetch(
+      apiUrl(`/api/${tenantId}/pos-machines/approved?branchCode=${encodeURIComponent(branchCode)}`),
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Claims an existing APPROVED machine code for this terminal.
+ * The device_key on that machine record is updated to point at this terminal.
+ * On success, persists all FY + machine data exactly like registerMachine does.
+ */
+export async function claimMachine(tenantId, branchCode, machineCode) {
+  const token     = localStorage.getItem("jwtToken") || "";
+  const deviceKey = await getOrCreateDeviceKey();
+
+  try {
+    const res = await fetch(apiUrl(`/api/${tenantId}/pos-machines/claim`), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ branchCode, machineCode, deviceKey }),
+    });
+    if (!res.ok) {
+      try { const err = await res.json(); console.error("[claimMachine]", err?.error || res.status); } catch {}
+      return null;
+    }
+    const data = await res.json();
+    if (data.error) { console.error("[claimMachine]", data.error); return null; }
+
+    // Persist exactly like an APPROVED register response
+    localStorage.setItem(`posMachineStatus_${branchCode}`, "APPROVED");
+    localStorage.setItem(`posMachineId_${branchCode}`,     data.machineId   || "");
+    localStorage.setItem(`posMachineCode_${branchCode}`,   data.machineCode || machineCode);
+    if (data.branchInvoicePrefix) localStorage.setItem(`posBranchPrefix_${branchCode}`, data.branchInvoicePrefix);
+    if (data.fyCode)              localStorage.setItem(`posFyCode_${branchCode}`,        data.fyCode);
+    if (data.fyStartDate)         localStorage.setItem(`posFyStart_${branchCode}`,       data.fyStartDate);
+    if (data.fyEndDate)           localStorage.setItem(`posFyEnd_${branchCode}`,         data.fyEndDate);
+
+    const seqKey   = `posSeq_${branchCode}_${data.machineCode}_${data.fyCode}`;
+    const localSeq = parseInt(localStorage.getItem(seqKey) || "0", 10);
+    if (localSeq === 0 && data.lastSequence > 0) {
+      localStorage.setItem(seqKey, String(data.lastSequence));
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Voucher number generation ────────────────────────────────────────────────
 
 function resolvedFyCode(branchCode) {

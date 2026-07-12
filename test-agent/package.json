@@ -1,0 +1,17 @@
+{
+  "name": "nexsol-e2e-test-agent",
+  "version": "1.0.0",
+  "description": "AI-driven E2E test agent for Nexsol ERP",
+  "main": "agent.js",
+  "scripts": {
+    "test": "node agent.js",
+    "install-browsers": "npx playwright install"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "playwright": "^1.47.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

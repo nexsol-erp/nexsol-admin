@@ -92,6 +92,8 @@ import PhysicalStockCorrection from "./components/PhysicalStockCorrection";
 import ProductionDefPage from "./components/ProductionDefPage";
 import ProductionPlanningPage from "./components/ProductionPlanningPage";
 import ProductionExecutionPage from "./components/ProductionExecutionPage";
+import ProductionPlanningReport from "./components/ProductionPlanningReport";
+import ProductionExecutionReport from "./components/ProductionExecutionReport";
 
 
 import "./i18n"; // i18n config
@@ -128,6 +130,13 @@ import BranchExpenseEntryPage from "./components/BranchExpenseEntryPage";
 import MonthlyBranchProfitReport from "./components/MonthlyBranchProfitReport";
 import ExpenseHeadManagementPage from "./components/ExpenseHeadManagementPage";
 import FranchiseMasterPage from "./components/FranchiseMasterPage";
+import EventMonitorPage from "./components/EventMonitorPage";
+import MasterSyncPage from "./components/MasterSyncPage";
+import FranchiseStockTransferPage from "./components/FranchiseStockTransferPage";
+import TenantSelectorPage from "./components/TenantSelectorPage";
+import FranchiseTransferConfigPage from "./components/FranchiseTransferConfigPage";
+import FranchiseMigrationPage from "./components/FranchiseMigrationPage";
+import FranchiseUsersPage from "./components/FranchiseUsersPage";
 
 // Accounting
 import ReceiptEntry from "./components/accounting/ReceiptEntry";
@@ -232,6 +241,8 @@ const ROUTE_ORDER = [
   { key: "Branch Inventory Ledger",          path: "/branch-inventory-ledger" },
   { key: "Stock Transfer Out Report",        path: "/stocktransfer-out-report" },
   { key: "Stock Transfer In Report",         path: "/stocktransfer-in-report" },
+  { key: "Production Planning Report",       path: "/production-planning-report" },
+  { key: "Production Execution Report",      path: "/production-execution-report" },
   { key: "Item Transfer Report",             path: "/item-transfer-report" },
   { key: "Salesman Report",                  path: "/salesman-report" },
   { key: "Category Item Report",             path: "/category-item-report" },
@@ -242,6 +253,9 @@ const ROUTE_ORDER = [
   { key: "Item Cost Override",               path: "/item-cost-override" },
   // Franchise
   { key: "Franchise Master",                 path: "/franchise-master" },
+  { key: "Event Monitor",                    path: "/event-monitor" },
+  { key: "Master Sync",                      path: "/master-sync" },
+  { key: "Franchise Stock Transfer",         path: "/franchise-stock-transfer" },
   { key: "Purchase Correction",             path: "/purchase-correction" },
   { key: "Purchase Correction Approval",    path: "/purchase-correction-approval" },
   { key: "Purchase Correction History",     path: "/purchase-correction-history" },
@@ -476,6 +490,8 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/production-def" element={<ProductionDefPage />} />
 <Route path="/production-planning" element={<ProductionPlanningPage />} />
 <Route path="/production-execution" element={<ProductionExecutionPage />} />
+<Route path="/production-planning-report" element={<ProductionPlanningReport />} />
+<Route path="/production-execution-report" element={<ProductionExecutionReport />} />
 <Route path="/goodsreceipt" element={<GoodsReceiptForm />} />
 <Route path="/receipt-modes" element={<ReceiptModePage />} />
 <Route path="/upi-config" element={<UpiConfigPage />} />
@@ -527,7 +543,13 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/accounting/budget-vs-actual" element={<BudgetVsActual />} />
 
             {/* Franchise */}
-            <Route path="/franchise-master" element={<FranchiseMasterPage />} />
+            <Route path="/franchise-master"          element={<FranchiseMasterPage />} />
+            <Route path="/event-monitor"             element={<EventMonitorPage />} />
+            <Route path="/master-sync"               element={<MasterSyncPage />} />
+            <Route path="/franchise-stock-transfer"  element={<FranchiseStockTransferPage />} />
+            <Route path="/franchise-transfer-config" element={<FranchiseTransferConfigPage />} />
+            <Route path="/franchise-migration"       element={<FranchiseMigrationPage />} />
+            <Route path="/franchise-users"           element={<FranchiseUsersPage />} />
 
           </Routes>
         </WebSocketProvider>
@@ -544,7 +566,14 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 const App = () => {
   const { i18n } = useTranslation();
   const [mode, setMode] = useState("dark");
-  const [roles, setRoles] = useState([]);
+  const [roles, setRoles] = useState(() => {
+    try {
+      if (window.location.pathname === "/login") return [];
+      const token = localStorage.getItem("jwtToken");
+      if (!token) return [];
+      return JSON.parse(localStorage.getItem("roles") || "[]");
+    } catch { return []; }
+  });
   const [language, setLanguage] = useState("en");
 
   // Language preference
@@ -592,6 +621,20 @@ const App = () => {
             <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
             <Route path="/refund-policy" element={<RefundPolicyPage />} />
             <Route path="/privacy-policy" element={<PrivacyPolicyPage isPublic />} />
+            {/* Tenant selection — shown after login for multi-tenant users */}
+            <Route
+              path="/tenant-select"
+              element={
+                <TenantSelectorPage
+                  onLogin={async (loginRoles) => {
+                    localStorage.setItem("roles", JSON.stringify(loginRoles));
+                    setRoles(loginRoles);
+                    const landing = await resolveLoginLanding(loginRoles);
+                    window.location.href = landing;
+                  }}
+                />
+              }
+            />
             {/* Authenticated app — all other routes */}
             <Route
               path="/*"

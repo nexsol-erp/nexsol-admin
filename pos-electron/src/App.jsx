@@ -17,7 +17,7 @@ import SalesReturnPage from "./pos/SalesReturnPage";
 import UpdateChecker from "./components/UpdateChecker";
 import { isLoggedIn, logout, isAdminRole, getBranchLock, clearBranchLock } from "./auth/auth";
 import { clearItemCache, hasCache, loadAllItemsToCache } from "./cache/itemCache";
-import { registerMachine } from "./utils/posDevice";
+import { registerMachine, fetchApprovedMachines, claimMachine } from "./utils/posDevice";
 import { log } from "./utils/logger";
 import { todayIST } from "./utils/timeUtils";
 
@@ -99,6 +99,10 @@ export default function App() {
     const branch = localStorage.getItem("selectedBranchCode") || "";
     return localStorage.getItem(`posMachineStatus_${branch}`) || "";
   });
+  const [approvedMachines,    setApprovedMachines]    = useState([]);
+  const [fetchingMachines,    setFetchingMachines]    = useState(false);
+  const [selectedMachineCode, setSelectedMachineCode] = useState("");
+  const [claiming,            setClaiming]            = useState(false);
 
   // Recheck day-end status and date-advance block whenever page, branch, or login changes.
   useEffect(() => {
@@ -214,6 +218,27 @@ export default function App() {
     return () => clearInterval(id);
   }, [machineStatus, loggedIn, selectedBranchCode]);
 
+  // Fetch approved machines for the branch whenever the PENDING screen is shown.
+  useEffect(() => {
+    if (machineStatus !== "PENDING" || !loggedIn || !selectedBranchCode) return;
+    const tenantId = localStorage.getItem("tenancyId") || "";
+    if (!tenantId) return;
+    setFetchingMachines(true);
+    fetchApprovedMachines(tenantId, selectedBranchCode).then((list) => {
+      setApprovedMachines(list);
+      setFetchingMachines(false);
+    });
+  }, [machineStatus, loggedIn, selectedBranchCode]);
+
+  // Update window title whenever machine code is available.
+  useEffect(() => {
+    if (machineStatus !== "APPROVED" || !selectedBranchCode) return;
+    const code = localStorage.getItem(`posMachineCode_${selectedBranchCode}`) || "";
+    if (code && window.POS?.setWindowTitle) {
+      window.POS.setWindowTitle(code);
+    }
+  }, [machineStatus, selectedBranchCode]);
+
   const reloadCache = async () => {
     setCacheLoading(true);
     try {
@@ -257,21 +282,87 @@ export default function App() {
 
   if (loggedIn && machineStatus === "PENDING") {
     const machineId = localStorage.getItem(`posMachineId_${selectedBranchCode}`) || "—";
+    const tenantId  = localStorage.getItem("tenancyId") || "";
+
+    const handleClaim = async () => {
+      if (!selectedMachineCode) return;
+      setClaiming(true);
+      const data = await claimMachine(tenantId, selectedBranchCode, selectedMachineCode);
+      setClaiming(false);
+      if (data?.status === "APPROVED") {
+        setMachineStatus("APPROVED");
+      } else {
+        message.error("Failed to claim machine. Please try again.");
+      }
+    };
+
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f0f2f5" }}>
-        <div style={{ textAlign: "center", background: "#fff", padding: "48px 64px", borderRadius: 12, boxShadow: "0 4px 24px rgba(0,0,0,0.1)", maxWidth: 480 }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
-          <h2 style={{ marginBottom: 8 }}>Machine Pending Approval</h2>
-          <p style={{ color: "#6b7280", marginBottom: 24 }}>
+        <div style={{ background: "#fff", padding: "40px 48px", borderRadius: 12, boxShadow: "0 4px 24px rgba(0,0,0,0.1)", maxWidth: 520, width: "100%" }}>
+          <div style={{ textAlign: "center", fontSize: 48, marginBottom: 12 }}>⏳</div>
+          <h2 style={{ textAlign: "center", marginBottom: 6 }}>Machine Pending Approval</h2>
+          <p style={{ color: "#6b7280", marginBottom: 20, textAlign: "center" }}>
             This POS terminal is registered but has not yet been approved by an administrator.
-            Please ask your manager to approve this machine in the Admin panel.
           </p>
-          <div style={{ background: "#f9fafb", borderRadius: 8, padding: "12px 16px", marginBottom: 24, fontSize: 12, color: "#374151" }}>
+
+          <div style={{ background: "#f9fafb", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 12, color: "#374151" }}>
             <strong>Branch:</strong> {selectedBranchCode}<br />
             <strong>Registration ID:</strong> {machineId}
           </div>
-          <p style={{ fontSize: 12, color: "#9ca3af" }}>Checking for approval every 30 seconds…</p>
-          <Button danger size="small" style={{ marginTop: 16 }} onClick={() => { logout(); setLoggedIn(false); setMachineStatus(""); }}>
+
+          {/* Machine picker */}
+          <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 20, marginBottom: 20 }}>
+            <p style={{ fontWeight: 600, marginBottom: 8, color: "#111827" }}>
+              Or select an existing machine for this branch:
+            </p>
+            {fetchingMachines ? (
+              <p style={{ color: "#9ca3af", fontSize: 13 }}>Loading machines…</p>
+            ) : approvedMachines.length === 0 ? (
+              <p style={{ color: "#9ca3af", fontSize: 13 }}>
+                No approved machines found for branch <strong>{selectedBranchCode}</strong>. Ask your manager to approve this terminal.
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+                {approvedMachines.map((m) => (
+                  <label
+                    key={m.id}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "10px 14px", borderRadius: 8, cursor: "pointer",
+                      border: `2px solid ${selectedMachineCode === m.machineCode ? "#1976d2" : "#e5e7eb"}`,
+                      background: selectedMachineCode === m.machineCode ? "#eff6ff" : "#fff",
+                      transition: "border-color 0.15s",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="machineCode"
+                      value={m.machineCode}
+                      checked={selectedMachineCode === m.machineCode}
+                      onChange={() => setSelectedMachineCode(m.machineCode)}
+                      style={{ accentColor: "#1976d2" }}
+                    />
+                    <span style={{ fontWeight: 700, fontSize: 15, color: "#1976d2" }}>{m.machineCode}</span>
+                    {m.machineName && <span style={{ color: "#6b7280", fontSize: 13 }}>— {m.machineName}</span>}
+                  </label>
+                ))}
+              </div>
+            )}
+            <Button
+              type="primary"
+              disabled={!selectedMachineCode || claiming}
+              loading={claiming}
+              onClick={handleClaim}
+              style={{ width: "100%" }}
+            >
+              Use Machine {selectedMachineCode || "…"}
+            </Button>
+          </div>
+
+          <p style={{ fontSize: 12, color: "#9ca3af", textAlign: "center", marginBottom: 12 }}>
+            Checking for approval every 30 seconds…
+          </p>
+          <Button danger size="small" style={{ width: "100%" }} onClick={() => { logout(); setLoggedIn(false); setMachineStatus(""); }}>
             Logout
           </Button>
         </div>

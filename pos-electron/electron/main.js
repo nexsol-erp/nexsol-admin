@@ -9,6 +9,13 @@ if (!app.isPackaged) {
   app.setPath("userData", path.join(__dirname, "../.electron-cache"));
 }
 
+// Enable CDP remote debugging when the E2E_CDP_PORT env var is set.
+// app.commandLine.appendSwitch is the correct way for Electron 32+
+// (passing --remote-debugging-port on the CLI is rejected by Electron 32).
+if (process.env.E2E_CDP_PORT) {
+  app.commandLine.appendSwitch("remote-debugging-port", process.env.E2E_CDP_PORT);
+}
+
 // ── File logger ───────────────────────────────────────────────────────────────
 // Writes to <userData>/logs/pos.log — readable while the app is running.
 let _logStream = null;
@@ -201,6 +208,13 @@ function createWindow() {
     win.show();
     win.setTitle(appTitle);
     setTimeout(() => { if (!splash.isDestroyed()) splash.close(); }, 300);
+  });
+
+  // Renderer sends this once the machine code is known (APPROVED / claimed).
+  ipcMain.on("window:set-title", (_evt, machineCode) => {
+    if (win && !win.isDestroyed() && machineCode) {
+      win.setTitle(`${appTitle} — ${machineCode}`);
+    }
   });
 
   // Prevent the page <title> tag from overriding the window title.

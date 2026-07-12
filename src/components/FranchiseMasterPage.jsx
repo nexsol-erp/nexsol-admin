@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box, Grid, Paper, Typography, Button, TextField, Select, MenuItem,
   FormControl, InputLabel, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Chip, Tabs, Tab, IconButton, Divider,
   CircularProgress, Snackbar, Alert, Dialog, DialogTitle,
-  DialogContent, DialogActions, Tooltip, InputAdornment,
+  DialogContent, DialogActions, Tooltip, InputAdornment, LinearProgress,
 } from "@mui/material";
 import {
   Add, Edit, Refresh, Search, Business, Settings,
-  CheckCircle, Cancel, Pause, Delete,
+  CheckCircle, Cancel, Pause, Delete, PlayArrow, Replay,
+  CheckCircleOutline, ErrorOutline, HourglassEmpty, RadioButtonUnchecked,
 } from "@mui/icons-material";
 
 const API = () => {
@@ -61,6 +62,9 @@ export default function FranchiseMasterPage() {
   const [dashboard, setDashboard]       = useState({});
   const [snack, setSnack]               = useState({ open: false, msg: "", sev: "success" });
   const [confirmDialog, setConfirmDialog] = useState({ open: false, action: "", status: "" });
+  const [provSteps, setProvSteps]       = useState([]);
+  const [provisioning, setProvisioning] = useState(false);
+  const pollRef = useRef(null);
 
   // Config form
   const [cfgKey, setCfgKey]     = useState("");
@@ -68,7 +72,60 @@ export default function FranchiseMasterPage() {
   const [cfgType, setCfgType]   = useState("STRING");
   const [cfgDesc, setCfgDesc]   = useState("");
 
+  // Branches
+  const [branches,        setBranches]        = useState([]);
+  const [franchiseDbName, setFranchiseDbName] = useState("");
+  const [branchForm,      setBranchForm]      = useState({
+    branchCode: "", branchName: "", addressLine1: "", city: "",
+    state: "", pincode: "", gstNumber: "", managerName: "",
+    managerPhone: "", contactPhone: "", isHeadOffice: false,
+  });
+  const [addingBranch,    setAddingBranch]    = useState(false);
+  // "link existing" mode
+  const [branchMode,      setBranchMode]      = useState("new"); // "new" | "existing"
+  const [masterBranches,  setMasterBranches]  = useState([]);
+  const [loadingMaster,   setLoadingMaster]   = useState(false);
+
   const showSnack = (msg, sev = "success") => setSnack({ open: true, msg, sev });
+
+  const openAddBranch = (mode) => {
+    setBranchMode(mode);
+    setBranchForm({ branchCode: "", branchName: "", addressLine1: "", city: "", state: "", pincode: "", gstNumber: "", managerName: "", managerPhone: "", contactPhone: "", isHeadOffice: false });
+    setAddingBranch(true);
+    if (mode === "existing") {
+      setLoadingMaster(true);
+      const { tenancyId, headers } = API();
+      fetch(`/api/${tenancyId}/branches`, { headers })
+        .then(r => r.json())
+        .then(data => {
+          // Response shape: { branches: [...] }
+          const list = Array.isArray(data?.branches) ? data.branches : [];
+          // Only master (non-franchise) branches, filtered against already-linked ones
+          const linked = new Set(branches.map(b => b.branchCode));
+          setMasterBranches(
+            list.filter(b => !b.isFranchiseBranch && !linked.has(b.branchCode))
+          );
+        })
+        .catch(() => setMasterBranches([]))
+        .finally(() => setLoadingMaster(false));
+    }
+  };
+
+  const applyMasterBranch = (b) => {
+    setBranchForm({
+      branchCode:   b.branchCode         || "",
+      branchName:   b.branchName         || "",
+      addressLine1: b.branchAddress1     || b.branchBuildingAddress || "",
+      city:         b.branchBuildingAddress || "",
+      state:        b.branchState        || "",
+      pincode:      "",
+      gstNumber:    b.branchGst          || "",
+      managerName:  "",
+      managerPhone: "",
+      contactPhone: "",
+      isHeadOffice: false,
+    });
+  };
 
   const fetchFranchises = useCallback(() => {
     const { base, headers } = API();
@@ -95,6 +152,14 @@ export default function FranchiseMasterPage() {
       .catch(() => setConfigs([]));
   }, []);
 
+  const fetchProvSteps = useCallback((id) => {
+    const { base, headers } = API();
+    return fetch(`${base}/${id}/provision/steps`, { headers })
+      .then(r => r.json())
+      .then(d => { setProvSteps(d.steps || []); return d.steps || []; })
+      .catch(() => []);
+  }, []);
+
   useEffect(() => {
     fetchFranchises();
     fetchDashboard();
@@ -103,6 +168,47 @@ export default function FranchiseMasterPage() {
   useEffect(() => {
     if (selected) fetchConfigs(selected.id);
   }, [selected, fetchConfigs]);
+
+  const fetchBranches = useCallback((franchiseId) => {
+    const { tenancyId, headers } = API();
+    fetch(`/api/${tenancyId}/franchise-branches/by-franchise/${franchiseId}`, { headers })
+      .then(r => r.json())
+      .then(d => setBranches(Array.isArray(d) ? d : []))
+      .catch(() => setBranches([]));
+  }, []);
+
+  useEffect(() => {
+    if (selected && tab === 3) {
+      fetchBranches(selected.id);
+      const { base, headers } = API();
+      fetch(`${base}/${selected.id}/mapping`, { headers })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => setFranchiseDbName(d?.dbName || ""))
+        .catch(() => setFranchiseDbName(""));
+    }
+  }, [selected, tab, fetchBranches]);
+
+  // Polling: fetch provisioning steps every 3s when franchise is PROVISIONING
+  useEffect(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    if (!selected) return;
+    if (selected.status === "PROVISIONING") {
+      fetchProvSteps(selected.id);
+      pollRef.current = setInterval(async () => {
+        const steps = await fetchProvSteps(selected.id);
+        const allDone = steps.length > 0 && steps.every(s => s.step_status === "COMPLETED");
+        const anyFailed = steps.some(s => s.step_status === "FAILED");
+        if (allDone || anyFailed) {
+          clearInterval(pollRef.current); pollRef.current = null;
+          fetchFranchises(); fetchDashboard();
+          setSelected(prev => ({ ...prev, status: allDone ? "ACTIVE" : "PROVISIONING_FAILED" }));
+        }
+      }, 3000);
+    } else if (selected.status === "PROVISIONING_FAILED") {
+      fetchProvSteps(selected.id);
+    }
+    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+  }, [selected?.id, selected?.status, fetchProvSteps, fetchFranchises, fetchDashboard]);
 
   const filtered = franchises.filter(f =>
     !search ||
@@ -247,6 +353,46 @@ export default function FranchiseMasterPage() {
       .catch(() => showSnack("Network error", "error"));
   };
 
+  // ── Provisioning ────────────────────────────────────────────────────────
+
+  const handleProvision = () => {
+    const { base, headers } = API();
+    setProvisioning(true);
+    fetch(`${base}/${selected.id}/provision`, { method: "POST", headers })
+      .then(r => r.json())
+      .then(d => {
+        setProvisioning(false);
+        if (d.success) {
+          showSnack("Provisioning started");
+          setSelected(prev => ({ ...prev, status: "PROVISIONING" }));
+          fetchFranchises();
+          setTab(2);
+        } else {
+          showSnack(d.message || "Failed to start provisioning", "error");
+        }
+      })
+      .catch(() => { setProvisioning(false); showSnack("Network error", "error"); });
+  };
+
+  const handleRetry = () => {
+    const { base, headers } = API();
+    setProvisioning(true);
+    fetch(`${base}/${selected.id}/provision/retry`, { method: "POST", headers })
+      .then(r => r.json())
+      .then(d => {
+        setProvisioning(false);
+        if (d.success) {
+          showSnack("Retry started");
+          setSelected(prev => ({ ...prev, status: "PROVISIONING" }));
+          fetchFranchises();
+          setTab(2);
+        } else {
+          showSnack(d.message || "Retry failed", "error");
+        }
+      })
+      .catch(() => { setProvisioning(false); showSnack("Network error", "error"); });
+  };
+
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
@@ -305,10 +451,10 @@ export default function FranchiseMasterPage() {
                 <TableContainer>
                   <Table size="small" stickyHeader>
                     <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Code</TableCell>
-                        <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Name</TableCell>
-                        <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Status</TableCell>
+                      <TableRow sx={{ bgcolor: "#1976d2" }}>
+                        <TableCell sx={{ fontWeight: 700, fontSize: 12, color: "#fff", bgcolor: "#1976d2" }}>Code</TableCell>
+                        <TableCell sx={{ fontWeight: 700, fontSize: 12, color: "#fff", bgcolor: "#1976d2" }}>Name</TableCell>
+                        <TableCell sx={{ fontWeight: 700, fontSize: 12, color: "#fff", bgcolor: "#1976d2" }}>Status</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -369,8 +515,20 @@ export default function FranchiseMasterPage() {
 
               {/* Status Action Buttons */}
               <Box sx={{ px: 1.5, pb: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
+                {selected.status === "DRAFT" && (
+                  <Button size="small" color="primary" variant="contained"
+                    startIcon={provisioning ? <CircularProgress size={14} color="inherit" /> : <PlayArrow />}
+                    disabled={provisioning} onClick={handleProvision}>
+                    {provisioning ? "Starting..." : "Provision"}
+                  </Button>
+                )}
                 {selected.status === "ACTIVE" && (
                   <>
+                    <Button size="small" color="secondary" variant="outlined"
+                      startIcon={provisioning ? <CircularProgress size={14} color="inherit" /> : <Replay />}
+                      disabled={provisioning} onClick={handleRetry}>
+                      {provisioning ? "Starting..." : "Retry Provisioning"}
+                    </Button>
                     <Button size="small" color="warning" variant="outlined" startIcon={<Pause />}
                       onClick={() => handleStatusChange("SUSPENDED")}>Suspend</Button>
                     <Button size="small" color="error" variant="outlined" startIcon={<Cancel />}
@@ -386,8 +544,21 @@ export default function FranchiseMasterPage() {
                   </>
                 )}
                 {selected.status === "PROVISIONING_FAILED" && (
-                  <Button size="small" color="info" variant="outlined"
-                    onClick={() => handleStatusChange("DRAFT")}>Reset to Draft</Button>
+                  <>
+                    <Button size="small" color="warning" variant="contained"
+                      startIcon={provisioning ? <CircularProgress size={14} color="inherit" /> : <Replay />}
+                      disabled={provisioning} onClick={handleRetry}>
+                      {provisioning ? "Starting..." : "Retry"}
+                    </Button>
+                    <Button size="small" color="info" variant="outlined"
+                      onClick={() => handleStatusChange("DRAFT")}>Reset to Draft</Button>
+                  </>
+                )}
+                {selected.status === "PROVISIONING" && (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <CircularProgress size={16} />
+                    <Typography variant="caption" sx={{ color: "info.main" }}>Provisioning in progress…</Typography>
+                  </Box>
                 )}
               </Box>
 
@@ -397,6 +568,8 @@ export default function FranchiseMasterPage() {
                 <Tab label="Details" sx={{ fontSize: 12, minHeight: 36 }} />
                 <Tab label="Config" icon={<Settings fontSize="small" />} iconPosition="start"
                      sx={{ fontSize: 12, minHeight: 36 }} />
+                <Tab label="Provisioning" sx={{ fontSize: 12, minHeight: 36 }} />
+                <Tab label="Branches" sx={{ fontSize: 12, minHeight: 36 }} />
               </Tabs>
               <Divider />
 
@@ -429,6 +602,80 @@ export default function FranchiseMasterPage() {
                       </Grid>
                     ))}
                   </Grid>
+                )}
+
+                {/* ── Provisioning Tab ── */}
+                {tab === 2 && (
+                  <Box>
+                    <Box sx={{ display: "flex", alignItems: "center", mb: 1.5, gap: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, flexGrow: 1 }}>
+                        Provisioning Steps
+                      </Typography>
+                      <IconButton size="small" onClick={() => fetchProvSteps(selected.id)}>
+                        <Refresh fontSize="small" />
+                      </IconButton>
+                    </Box>
+                    {selected.status === "PROVISIONING" && (
+                      <LinearProgress sx={{ mb: 1.5, borderRadius: 1 }} />
+                    )}
+                    {provSteps.length === 0 ? (
+                      <Box sx={{ textAlign: "center", py: 4, color: "text.secondary" }}>
+                        <Typography variant="body2">
+                          {["DRAFT", "ACTIVE"].includes(selected.status)
+                            ? "Click Provision to start the automated setup."
+                            : "No provisioning log found."}
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Box>
+                        {provSteps.map((step, idx) => {
+                          const isDone    = step.step_status === "COMPLETED";
+                          const isFailed  = step.step_status === "FAILED";
+                          const isRunning = step.step_status === "RUNNING";
+                          const isPending = step.step_status === "PENDING";
+                          return (
+                            <Box key={idx} sx={{
+                              display: "flex", alignItems: "flex-start", gap: 1.5,
+                              py: 1, borderBottom: "1px solid", borderColor: "divider",
+                            }}>
+                              <Box sx={{ mt: 0.3 }}>
+                                {isDone    && <CheckCircleOutline sx={{ color: "success.main", fontSize: 20 }} />}
+                                {isFailed  && <ErrorOutline sx={{ color: "error.main", fontSize: 20 }} />}
+                                {isRunning && <CircularProgress size={18} />}
+                                {isPending && <RadioButtonUnchecked sx={{ color: "text.disabled", fontSize: 20 }} />}
+                              </Box>
+                              <Box sx={{ flexGrow: 1 }}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: 13 }}>
+                                    {step.step_name?.replace(/_/g, " ")}
+                                  </Typography>
+                                  <Chip label={step.step_status} size="small"
+                                    color={isDone ? "success" : isFailed ? "error" : isRunning ? "info" : "default"}
+                                    sx={{ fontSize: 10, height: 18 }} />
+                                  {step.retry_count > 0 && (
+                                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                                      Retry #{step.retry_count}
+                                    </Typography>
+                                  )}
+                                </Box>
+                                {step.error_message && (
+                                  <Typography variant="caption" sx={{ color: "error.main", display: "block", mt: 0.3 }}>
+                                    {step.error_message}
+                                  </Typography>
+                                )}
+                                {(step.started_at || step.completed_at) && (
+                                  <Typography variant="caption" sx={{ color: "text.disabled", fontSize: 10 }}>
+                                    {step.started_at ? `Started: ${new Date(step.started_at).toLocaleTimeString()}` : ""}
+                                    {step.completed_at ? ` · Done: ${new Date(step.completed_at).toLocaleTimeString()}` : ""}
+                                  </Typography>
+                                )}
+                              </Box>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    )}
+                  </Box>
                 )}
 
                 {/* ── Config Tab ── */}
@@ -468,12 +715,12 @@ export default function FranchiseMasterPage() {
                     <TableContainer>
                       <Table size="small">
                         <TableHead>
-                          <TableRow>
-                            <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Key</TableCell>
-                            <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Value</TableCell>
-                            <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Type</TableCell>
-                            <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Description</TableCell>
-                            <TableCell />
+                          <TableRow sx={{ bgcolor: "#1976d2" }}>
+                            <TableCell sx={{ fontWeight: 700, fontSize: 12, color: "#fff" }}>Key</TableCell>
+                            <TableCell sx={{ fontWeight: 700, fontSize: 12, color: "#fff" }}>Value</TableCell>
+                            <TableCell sx={{ fontWeight: 700, fontSize: 12, color: "#fff" }}>Type</TableCell>
+                            <TableCell sx={{ fontWeight: 700, fontSize: 12, color: "#fff" }}>Description</TableCell>
+                            <TableCell sx={{ bgcolor: "#1976d2" }} />
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -495,6 +742,221 @@ export default function FranchiseMasterPage() {
                                 <IconButton size="small" color="error"
                                   onClick={() => handleDeleteConfig(c.id)}>
                                   <Delete fontSize="small" />
+                                </IconButton>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                )}
+
+                {/* ── Branches Tab ── */}
+                {tab === 3 && (
+                  <Box>
+                    {/* Add branch form */}
+                    {addingBranch ? (
+                      <Box sx={{ mb: 2, p: 1.5, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", mb: 1.5, gap: 1 }}>
+                          <Typography variant="subtitle2" fontWeight={700} sx={{ flexGrow: 1 }}>
+                            {branchMode === "existing" ? "Link Existing Branch" : "Add New Branch"}
+                          </Typography>
+                          {/* Mode toggle */}
+                          <Chip
+                            label="New Branch"
+                            size="small"
+                            variant={branchMode === "new" ? "filled" : "outlined"}
+                            color={branchMode === "new" ? "primary" : "default"}
+                            onClick={() => openAddBranch("new")}
+                            sx={{ cursor: "pointer", fontSize: 11 }}
+                          />
+                          <Chip
+                            label="Use Existing Branch"
+                            size="small"
+                            variant={branchMode === "existing" ? "filled" : "outlined"}
+                            color={branchMode === "existing" ? "primary" : "default"}
+                            onClick={() => openAddBranch("existing")}
+                            sx={{ cursor: "pointer", fontSize: 11 }}
+                          />
+                        </Box>
+
+                        {/* Existing branch picker */}
+                        {branchMode === "existing" && (
+                          <Box sx={{ mb: 1.5 }}>
+                            {loadingMaster ? (
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 1 }}>
+                                <CircularProgress size={14} />
+                                <Typography variant="caption">Loading master branches…</Typography>
+                              </Box>
+                            ) : masterBranches.length === 0 ? (
+                              <Alert severity="info" sx={{ fontSize: 12 }}>
+                                All master branches are already linked to this franchise, or none exist.
+                              </Alert>
+                            ) : (
+                              <FormControl fullWidth size="small">
+                                <InputLabel sx={{ fontSize: 13 }}>Select Master Branch</InputLabel>
+                                <Select
+                                  label="Select Master Branch"
+                                  value={branchForm.branchCode}
+                                  onChange={e => {
+                                    const picked = masterBranches.find(b => b.branchCode === e.target.value);
+                                    if (picked) applyMasterBranch(picked);
+                                  }}
+                                  sx={{ fontSize: 13 }}
+                                >
+                                  {masterBranches.map(b => (
+                                    <MenuItem key={b.branchCode} value={b.branchCode} sx={{ fontSize: 13 }}>
+                                      {b.branchCode} — {b.branchName}
+                                      {b.branchBuildingAddress ? ` (${b.branchBuildingAddress})` : ""}
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                            )}
+                          </Box>
+                        )}
+
+                        <Grid container spacing={1}>
+                          <Grid item xs={6} sm={2}>
+                            <TextField fullWidth size="small" label="Branch Code *" sx={FIELD_SX}
+                              value={branchForm.branchCode}
+                              disabled={branchMode === "existing" && !!branchForm.branchCode}
+                              inputProps={{ style: { textTransform: "uppercase" } }}
+                              onChange={e => setBranchForm(p => ({ ...p, branchCode: e.target.value }))} />
+                          </Grid>
+                          <Grid item xs={6} sm={4}>
+                            <TextField fullWidth size="small" label="Branch Name *" sx={FIELD_SX}
+                              value={branchForm.branchName}
+                              onChange={e => setBranchForm(p => ({ ...p, branchName: e.target.value }))} />
+                          </Grid>
+                          <Grid item xs={6} sm={3}>
+                            <TextField fullWidth size="small" label="Manager Name" sx={FIELD_SX}
+                              value={branchForm.managerName}
+                              onChange={e => setBranchForm(p => ({ ...p, managerName: e.target.value }))} />
+                          </Grid>
+                          <Grid item xs={6} sm={3}>
+                            <TextField fullWidth size="small" label="Manager Phone" sx={FIELD_SX}
+                              value={branchForm.managerPhone}
+                              onChange={e => setBranchForm(p => ({ ...p, managerPhone: e.target.value }))} />
+                          </Grid>
+                          <Grid item xs={12} sm={4}>
+                            <TextField fullWidth size="small" label="Address" sx={FIELD_SX}
+                              value={branchForm.addressLine1}
+                              onChange={e => setBranchForm(p => ({ ...p, addressLine1: e.target.value }))} />
+                          </Grid>
+                          <Grid item xs={6} sm={2}>
+                            <TextField fullWidth size="small" label="City" sx={FIELD_SX}
+                              value={branchForm.city}
+                              onChange={e => setBranchForm(p => ({ ...p, city: e.target.value }))} />
+                          </Grid>
+                          <Grid item xs={6} sm={2}>
+                            <TextField fullWidth size="small" label="State" sx={FIELD_SX}
+                              value={branchForm.state}
+                              onChange={e => setBranchForm(p => ({ ...p, state: e.target.value }))} />
+                          </Grid>
+                          <Grid item xs={6} sm={2}>
+                            <TextField fullWidth size="small" label="Pincode" sx={FIELD_SX}
+                              value={branchForm.pincode}
+                              onChange={e => setBranchForm(p => ({ ...p, pincode: e.target.value }))} />
+                          </Grid>
+                          <Grid item xs={6} sm={2}>
+                            <TextField fullWidth size="small" label="GST Number" sx={FIELD_SX}
+                              value={branchForm.gstNumber}
+                              onChange={e => setBranchForm(p => ({ ...p, gstNumber: e.target.value }))} />
+                          </Grid>
+                        </Grid>
+                        <Box sx={{ mt: 1.5, display: "flex", gap: 1 }}>
+                          <Button variant="contained" size="small" onClick={async () => {
+                            if (!branchForm.branchCode || !branchForm.branchName) {
+                              showSnack("Branch Code and Name are required", "error"); return;
+                            }
+                            const { tenancyId, headers } = API();
+                            if (!franchiseDbName) {
+                              showSnack("Franchise DB not loaded yet — please wait and retry", "error"); return;
+                            }
+                            try {
+                              const res = await fetch(`/api/${tenancyId}/franchise-branches`, {
+                                method: "POST", headers,
+                                body: JSON.stringify({
+                                  ...branchForm,
+                                  franchiseId: selected.id,
+                                  franchiseTenant: franchiseDbName,
+                                  branchCode: branchForm.branchCode.toUpperCase(),
+                                }),
+                              });
+                              const data = await res.json();
+                              if (!res.ok) throw new Error(data.error || "Failed");
+                              showSnack(branchMode === "existing" ? "Branch linked successfully" : "Branch created successfully");
+                              setBranchForm({ branchCode: "", branchName: "", addressLine1: "", city: "", state: "", pincode: "", gstNumber: "", managerName: "", managerPhone: "", contactPhone: "", isHeadOffice: false });
+                              setAddingBranch(false);
+                              fetchBranches(selected.id);
+                            } catch (e) { showSnack(e.message, "error"); }
+                          }}>
+                            {branchMode === "existing" ? "Link Branch" : "Save Branch"}
+                          </Button>
+                          <Button size="small" onClick={() => setAddingBranch(false)}>Cancel</Button>
+                        </Box>
+                      </Box>
+                    ) : (
+                      <Box sx={{ display: "flex", gap: 1, mb: 1.5 }}>
+                        <Button size="small" variant="outlined" startIcon={<Add />}
+                          onClick={() => openAddBranch("new")}>
+                          New Branch
+                        </Button>
+                        <Button size="small" variant="outlined" color="secondary" startIcon={<Add />}
+                          onClick={() => openAddBranch("existing")}>
+                          Use Existing Branch
+                        </Button>
+                      </Box>
+                    )}
+
+                    <TableContainer>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: "#1976d2" }}>
+                            {["Code", "Branch Name", "Manager", "Phone", "City", "GST", "Status", ""].map(h => (
+                              <TableCell key={h} sx={{ color: "#fff", fontWeight: 700, fontSize: 12, bgcolor: "#1976d2" }}>{h}</TableCell>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {branches.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={8} align="center" sx={{ color: "text.secondary", fontSize: 13, py: 3 }}>
+                                No branches yet — click "Add Branch" to create one
+                              </TableCell>
+                            </TableRow>
+                          ) : branches.map(b => (
+                            <TableRow key={b.id} hover>
+                              <TableCell sx={{ fontSize: 12, fontWeight: 700 }}>
+                                {b.branchCode}
+                                {b.isHeadOffice && <Chip label="HO" size="small" color="primary" sx={{ ml: 0.5, height: 16, fontSize: 9 }} />}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: 12 }}>{b.branchName}</TableCell>
+                              <TableCell sx={{ fontSize: 12 }}>{b.managerName || "—"}</TableCell>
+                              <TableCell sx={{ fontSize: 12 }}>{b.managerPhone || "—"}</TableCell>
+                              <TableCell sx={{ fontSize: 12 }}>{b.city || "—"}</TableCell>
+                              <TableCell sx={{ fontSize: 12 }}>{b.gstNumber || "—"}</TableCell>
+                              <TableCell>
+                                <Chip size="small"
+                                  label={b.status}
+                                  color={b.status === "ACTIVE" ? "success" : "default"}
+                                  sx={{ fontSize: 10, height: 18 }} />
+                              </TableCell>
+                              <TableCell>
+                                <IconButton size="small"
+                                  title={b.status === "ACTIVE" ? "Suspend" : "Activate"}
+                                  onClick={async () => {
+                                    const { tenancyId, headers } = API();
+                                    const newStatus = b.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
+                                    await fetch(`/api/${tenancyId}/franchise-branches/${b.id}/status`, {
+                                      method: "PATCH", headers,
+                                      body: JSON.stringify({ status: newStatus }),
+                                    });
+                                    fetchBranches(selected.id);
+                                  }}>
+                                  {b.status === "ACTIVE" ? <Pause fontSize="small" /> : <PlayArrow fontSize="small" />}
                                 </IconButton>
                               </TableCell>
                             </TableRow>

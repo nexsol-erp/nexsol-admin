@@ -244,6 +244,45 @@ const ProductionExecutionPage = () => {
     setLoading(true);
     setMessage({ text: "", severity: "info" });
 
+    // Always (re)compute raw materials from the current rows right before saving,
+    // instead of relying on a separately-clicked "Generate" step — avoids saving
+    // a stale/empty raw-material list if Generate was skipped or hadn't resolved yet.
+    let rawMaterialsForSave = rawMaterialSummary;
+    const genRows = validRows.filter(r => parseFloat(r.qty) > 0);
+    if (genRows.length > 0) {
+      try {
+        const genRes = await fetch(`/api/${tenancyId}/production-generate-raw-materials`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(genRows.map(r => ({ itemName: r.itemName, qty: parseFloat(r.qty) }))),
+        });
+        if (genRes.ok) {
+          const details = await genRes.json();
+          const map = {};
+          details.forEach(row => {
+            const name = row.itemName;
+            if (!map[name]) map[name] = { itemName: name, itemId: row.itemId || "", barcode: row.barcode || "", standardPrice: row.standardPrice || 0, qty: 0 };
+            map[name].qty += parseFloat(row.qty) || 0;
+          });
+          rawMaterialsForSave = Object.values(map);
+          setRawMaterialDetails(details);
+          setRawMaterialSummary(rawMaterialsForSave);
+        }
+      } catch (e) {
+        console.error("Error generating raw materials before save", e);
+      }
+    }
+
+    if (rawMaterialsForSave.length === 0) {
+      const proceed = window.confirm(
+        "No raw materials will be consumed for this production (no Bill of Materials found for the entered item(s), or items were typed as free text instead of selected from the list). Finished goods stock will still increase. Continue anyway?"
+      );
+      if (!proceed) {
+        setLoading(false);
+        return;
+      }
+    }
+
     const payload = {
       voucherDate: `${voucherDate}T00:00:00`,
       voucherNumber: "EXEC-" + Date.now(),
@@ -261,7 +300,7 @@ const ProductionExecutionPage = () => {
         batch: r.batch,
         expiry: r.expiry,
       })),
-      rawMaterials: rawMaterialSummary.map(r => ({
+      rawMaterials: rawMaterialsForSave.map(r => ({
         itemName: r.itemName,
         itemId: r.itemId || "",
         qty: r.qty,
@@ -282,7 +321,11 @@ const ProductionExecutionPage = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        setMessage({ text: `Execution saved! Voucher: ${data.voucherNumber}. Stock updated in inventroy.`, severity: "success" });
+        if (data.warning) {
+          setMessage({ text: `Execution saved (Voucher: ${data.voucherNumber}), but stock was NOT updated for: ${data.skippedItems?.join(", ") || ""}. Re-select these items from the item list (not free text) in Production Def / Execution and re-run.`, severity: "warning" });
+        } else {
+          setMessage({ text: `Execution saved! Voucher: ${data.voucherNumber}. Stock updated in inventory.`, severity: "success" });
+        }
         setProductionRows([emptyRow()]);
         setRawMaterialDetails([]);
         setRawMaterialSummary([]);

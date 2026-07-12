@@ -93,13 +93,18 @@ export default function StockTransferHistoryPage({ onClose }) {
             lines: [],
           });
         }
+        const mrp  = toNum(r.mrp ?? r.rate);
+        const rate = toNum(r.rate);
         map.get(key).lines.push({
-          item_name: String(r.itemName ?? ""),
-          qty: toNum(r.qty),
-          standard_price: toNum(r.rate),
-          rate: toNum(r.rate),
-          amount: toNum(r.amount),
-          tax_rate: toNum(r.taxRate ?? 0),
+          item_name:        String(r.itemName ?? ""),
+          qty:              toNum(r.qty),
+          mrp,
+          standard_price:   mrp,
+          discount_percent: mrp > 0 && rate < mrp ? Math.round((mrp - rate) * 100 / mrp * 100) / 100 : 0,
+          discount_amount:  mrp > rate ? Math.round((mrp - rate) * 100) / 100 : 0,
+          rate,
+          amount:           toNum(r.amount),
+          tax_rate:         toNum(r.taxRate ?? 0),
           barcode: "", unit: "", batch: "",
         });
       }

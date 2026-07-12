@@ -1,5 +1,5 @@
 // StockTransferOutReport.jsx
-import React, { useState, useEffect , useMemo} from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   FormControl,
@@ -27,13 +27,20 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { useNavigate } from "react-router-dom";
 
+const decodeJwtSub = (token) => {
+  try {
+    if (!token) return null;
+    const b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = atob(b64.padEnd(b64.length + (4 - b64.length % 4) % 4, "="));
+    return JSON.parse(json).sub || null;
+  } catch { return null; }
+};
+
 const StockTransferOutReport = () => {
   const [fromBranch, setFromBranch] = useState("ALL");
   const [toBranch, setToBranch] = useState("ALL");
   const [reasonCode, setReasonCode] = useState("ALL");
   const [branches, setBranches] = useState([]);
-    const [branch, setBranch] = useState("");
-
   const [fromDate, setFromDate] = useState(
     dayjs().subtract(30, "day").format("YYYY-MM-DD")
   );
@@ -44,58 +51,57 @@ const StockTransferOutReport = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-    const allowedBranches = useMemo(() => {
-    try {
-      const raw = localStorage.getItem("allowedBranches");
-      const list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
-    } catch {
-      return [];
-    }
-  }, []);
-
-const fetchBranches = async () => {
+  const fetchBranches = async () => {
     try {
       setError("");
       const tenancyId = localStorage.getItem("tenancyId");
       const token = localStorage.getItem("jwtToken");
+      const username = decodeJwtSub(token);
 
-      const response = await fetch(`/api/${tenancyId}/branches`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const roles = (() => {
+        try { return JSON.parse(localStorage.getItem("roles") || "[]"); }
+        catch { return []; }
+      })();
+      const isAdmin = roles.some((r) =>
+        ["admin", "system-admin", "ADMIN", "SYSTEM_ADMIN"].includes(r)
+      );
 
-      if (!response.ok) throw new Error("Failed to fetch branches");
+      const [branchRes, permittedRes] = await Promise.all([
+        fetch(`/api/${tenancyId}/branches`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        !isAdmin && username
+          ? fetch(`/api/${tenancyId}/admin/users/${encodeURIComponent(username)}/transfer-branches`, {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+          : Promise.resolve(null),
+      ]);
 
-      const data = await response.json();
+      if (!branchRes.ok) throw new Error("Failed to fetch branches");
+      const branchData = await branchRes.json();
+      const allBranches = Array.isArray(branchData)
+        ? branchData
+        : branchData.branches || branchData.data || [];
 
-      // Normalize: support {branches:[...]} or {data:[...]} or [...]
-      const list = Array.isArray(data) ? data : data.branches || data.data || [];
+      // Deduplicate by branchCode
+      const uniqueBranches = [...new Map(allBranches.map((b) => [b.branchCode, b])).values()];
 
-      // ✅ Filter branches by allowedBranches list
-      const filtered = allowedBranches.length
-        ? list.filter((b) => allowedBranches.includes(b.branchCode))
-        : [];
+      // Admins get all branches; others get only their transfer-permitted list
+      let filtered = uniqueBranches;
+      if (!isAdmin && permittedRes && permittedRes.ok) {
+        const permData = await permittedRes.json();
+        const raw = Array.isArray(permData)
+          ? permData
+          : permData.branches || permData.data || [];
+        const permittedCodes = raw.map((x) => (typeof x === "string" ? x : x.branchCode));
+        filtered = uniqueBranches.filter((b) => permittedCodes.includes(b.branchCode));
+      }
 
       setBranches(filtered);
-
-      // ✅ Auto-select if only one branch allowed
-      if (!branch && filtered.length === 1) {
-        setBranch(filtered[0].branchCode);
-      }
-
-      // ✅ If current selection is not allowed anymore, clear it
-      if (branch && !filtered.some((b) => b.branchCode === branch)) {
-        setBranch("");
-      }
     } catch (e) {
       console.error("Error fetching branches:", e);
       setError("Failed to load branches.");
       setBranches([]);
-      setBranch("");
     }
   };
 
@@ -225,8 +231,8 @@ const handleRowClick = (row) => {
           >
             <MenuItem value="ALL">ALL</MenuItem>
             {branches.map((b) => (
-              <MenuItem key={b.id} value={b.branchCode}>
-                {b.branchCode}
+              <MenuItem key={b.branchCode} value={b.branchCode}>
+                {b.branchCode} {b.branchName ? `- ${b.branchName}` : ""}
               </MenuItem>
             ))}
           </Select>
@@ -242,8 +248,8 @@ const handleRowClick = (row) => {
           >
             <MenuItem value="ALL">ALL</MenuItem>
             {branches.map((b) => (
-              <MenuItem key={b.id} value={b.branchCode}>
-                {b.branchCode}
+              <MenuItem key={b.branchCode} value={b.branchCode}>
+                {b.branchCode} {b.branchName ? `- ${b.branchName}` : ""}
               </MenuItem>
             ))}
           </Select>

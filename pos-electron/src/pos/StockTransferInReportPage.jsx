@@ -29,12 +29,11 @@ function buildPrintHtml({ branchCode, fromDate, toDate, rows }) {
     <tr>
       <td>${esc(String(r.voucherDate || "").slice(0, 10))}</td>
       <td>${esc(r.voucherNumber || "")}</td>
-      <td>${esc(r.fromBranch || "")}</td>
+      <td>${esc(r.branchCode || "")}</td>
       <td>${esc(r.itemName || "")}</td>
       <td class="num">${fmt(r.qty)}</td>
       <td class="num">${fmt(r.rate)}</td>
       <td class="num">${fmt(r.amount)}</td>
-      <td>${esc(r.status || "")}</td>
     </tr>`).join("");
 
   return `<!DOCTYPE html>
@@ -68,7 +67,7 @@ function buildPrintHtml({ branchCode, fromDate, toDate, rows }) {
     <thead>
       <tr>
         <th>Date</th><th>Voucher</th><th>From</th><th>Item</th>
-        <th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th><th>Status</th>
+        <th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th>
       </tr>
     </thead>
     <tbody>${bodyRows}</tbody>
@@ -90,8 +89,8 @@ const columns = [
     render: (v) => String(v || "").slice(0, 10),
   },
   { title: "Voucher #",   dataIndex: "voucherNumber", key: "voucherNumber", width: 130 },
-  { title: "From Branch", dataIndex: "fromBranch",    key: "fromBranch",    width: 110 },
-  { title: "Item",        dataIndex: "itemName",       key: "itemName" },
+  { title: "From Branch", dataIndex: "branchCode",    key: "branchCode",    width: 110 },
+  { title: "Item",        dataIndex: "itemName",      key: "itemName" },
   {
     title: "Qty", dataIndex: "qty", key: "qty", align: "right", width: 80,
     render: (v) => fmt(v),
@@ -104,20 +103,12 @@ const columns = [
     title: "Amount", dataIndex: "amount", key: "amount", align: "right", width: 90,
     render: (v) => <Text strong>{fmt(v)}</Text>,
   },
-  {
-    title: "Status", dataIndex: "status", key: "status", width: 100,
-    render: (v) => (
-      <Tag color={v === "ACCEPTED" ? "success" : "warning"}>
-        {v === "ACCEPTED" ? "Accepted" : "Pending"}
-      </Tag>
-    ),
-  },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function StockTransferInReportPage({ selectedBranchCode }) {
-  const [dateRange, setDateRange] = useState([dayjs().startOf("month"), dayjs()]);
+  const [dateRange, setDateRange] = useState([dayjs().subtract(30, "day"), dayjs()]);
   const [rows,      setRows]      = useState([]);
   const [loading,   setLoading]   = useState(false);
   const [fetched,   setFetched]   = useState(false);
@@ -139,14 +130,19 @@ export default function StockTransferInReportPage({ selectedBranchCode }) {
 
     setLoading(true);
     try {
-      const params = new URLSearchParams({ branchCode, fromDate, toDate });
+      const params = new URLSearchParams({
+        fromBranch: "ALL",
+        toBranch:   branchCode,
+        fromDate,
+        toDate,
+      });
       const res = await fetch(
-        apiUrl(`/api/${tenantId}/reports/stock-transfer-in?${params}`),
+        apiUrl(`/api/${tenantId}/stock-transfers/in?${params}`),
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) throw new Error(await res.text().catch(() => `Error ${res.status}`));
       const data = await res.json();
-      setRows(Array.isArray(data) ? data : []);
+      setRows(Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []);
       setFetched(true);
     } catch (e) {
       message.error("Failed to load report: " + (e.message || "Unknown error"));
@@ -216,7 +212,6 @@ export default function StockTransferInReportPage({ selectedBranchCode }) {
                 <Table.Summary.Cell align="right">
                   <Text strong style={{ color: "#1d4ed8" }}>{fmt(totalAmount)}</Text>
                 </Table.Summary.Cell>
-                <Table.Summary.Cell />
               </Table.Summary.Row>
             </Table.Summary>
           ) : null

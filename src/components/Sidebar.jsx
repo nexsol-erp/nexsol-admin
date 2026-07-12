@@ -37,6 +37,7 @@ import {
   Analytics,
   AddBusiness,
   Business,
+  Hub,
   Group,
   Loyalty,
   Tune,
@@ -119,10 +120,15 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem("jwtToken");
+    localStorage.removeItem("partialToken");
+    localStorage.removeItem("roles");
     localStorage.removeItem("tenancyId");
-    localStorage.removeItem("authToken");
     localStorage.removeItem("branchCode");
-    window.location.reload();
+    localStorage.removeItem("allowedBranches");
+    localStorage.removeItem("pendingTenants");
+    localStorage.removeItem("setupCompleted");
+    window.location.href = "/login";
   };
 
   const handleRefresh = () => {
@@ -335,6 +341,9 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         { menuKey: "Category Item Report",                 label: t("Category Item Report"),                 link: "/category-item-report",                  roles: ["admin", "manager", "user"] },
         { menuKey: "Stock Transfer In Report",             label: t("Stock Transfer In Report"),             link: "/stocktransfer-in-report",               roles: ["admin", "franchiseeuser", "user"] },
         { menuKey: "Stock Transfer Out Report",            label: t("Stock Transfer Out Report"),            link: "/stocktransfer-out-report",              roles: ["admin", "franchiseeuser"] },
+        // Production
+        { menuKey: "Production Planning Report",           label: t("Production Planning Report"),           link: "/production-planning-report",            roles: ["admin", "manager", "user"] },
+        { menuKey: "Production Execution Report",          label: t("Production Execution Report"),          link: "/production-execution-report",           roles: ["admin", "manager", "user"] },
         // Profit
         { menuKey: "Branch Profit Report",             label: t("Branch Profit Report"),             link: "/branch-profit-report",              roles: ["admin", "manager"] },
         { menuKey: "Monthly Branch Profit Report",     label: t("Monthly Branch Profit Report"),     link: "/monthly-branch-profit-report",      roles: ["admin", "manager"] },
@@ -385,7 +394,13 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
       menuKey: "Franchise Management", label: t("Franchise"), icon: <Business />, link: "",
       roles: ["admin", "system-admin"], hasSubmenu: true,
       submenu: [
-        { menuKey: "Franchise Master", label: t("Franchise Master"), link: "/franchise-master", roles: ["admin", "system-admin"] },
+        { menuKey: "Franchise Master",         label: t("Franchise Master"),    link: "/franchise-master",         roles: ["admin", "system-admin"] },
+        { menuKey: "Event Monitor",            label: t("Event Monitor"),       link: "/event-monitor",            roles: ["admin", "system-admin"], icon: <Hub /> },
+        { menuKey: "Master Sync",              label: t("Master Sync"),         link: "/master-sync",              roles: ["admin", "system-admin"] },
+        { menuKey: "Franchise Stock Transfer", label: t("Stock Transfer"),      link: "/franchise-stock-transfer", roles: ["admin", "system-admin"] },
+        { menuKey: "Transfer Config",          label: t("Transfer Config"),     link: "/franchise-transfer-config",roles: ["admin", "system-admin"] },
+        { menuKey: "Franchise Migration",      label: t("Migration Utility"),   link: "/franchise-migration",      roles: ["admin", "system-admin"] },
+        { menuKey: "Franchise Users",          label: t("Franchise Users"),     link: "/franchise-users",          roles: ["admin", "system-admin"] },
       ],
     },
 
