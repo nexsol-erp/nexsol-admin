@@ -30,6 +30,11 @@ contextBridge.exposeInMainWorld("POS", {
   getDeviceKey: () => ipcRenderer.invoke("device:get-key"),
   setDeviceKey: (key) => ipcRenderer.invoke("device:set-key", key),
 
+
+  // Update the Electron window title to include the active machine code
+  setWindowTitle: (machineCode) => ipcRenderer.send("window:set-title", machineCode),
+
+
   // UPI customer display (second monitor)
   upi: {
     showCustomerDisplay: (payload) => ipcRenderer.invoke("upi:show-customer-display", payload),

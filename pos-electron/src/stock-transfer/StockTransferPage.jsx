@@ -76,6 +76,8 @@ export default function StockTransferPage({ onClose }) {
   const [deliveryLocation, setDeliveryLocation] = useState("");
   const [deliveryAddress1, setDeliveryAddress1] = useState("");
   const [deliveryAddress2, setDeliveryAddress2] = useState("");
+  // Central branch tracking — set when the selected "To Branch" belongs to the master tenant
+  const [targetTenantId, setTargetTenantId] = useState("");
 
   const [printMode, setPrintMode] = useState("a4");
   const [reasonCode, setReasonCode] = useState("NORMAL DC");
@@ -118,15 +120,27 @@ export default function StockTransferPage({ onClose }) {
   const branchOptions = useMemo(() => {
     const seen = new Set();
     return allBranches
-      .map((b) => String(b.branchCode ?? "").trim())
-      .filter((code) => code && code !== fromBranch)
-      .filter((code) => !transferBranchCodes || transferBranchCodes.has(code))
-      .filter((code) => {
+      .filter((b) => {
+        const code = String(b.branchCode ?? "").trim();
+        return code && code !== fromBranch;
+      })
+      .filter((b) => {
+        const code = String(b.branchCode ?? "").trim();
+        return !transferBranchCodes || transferBranchCodes.has(code);
+      })
+      .filter((b) => {
+        const code = String(b.branchCode ?? "").trim();
         if (seen.has(code)) return false;
         seen.add(code);
         return true;
       })
-      .map((code) => ({ value: code, label: code }));
+      .map((b) => {
+        const code = String(b.branchCode ?? "").trim();
+        const name = String(b.branchName ?? "").trim();
+        const suffix = b.isCentralBranch ? " [HQ]" : b.isFranchiseBranch ? " [FR]" : "";
+        const label = name ? `${code} - ${name}${suffix}` : code;
+        return { value: code, label };
+      });
   }, [allBranches, fromBranch, transferBranchCodes]);
 
   useEffect(() => {
@@ -169,7 +183,7 @@ export default function StockTransferPage({ onClose }) {
   }, [tenantId, token, username]);
 
   useEffect(() => {
-    if (!toBranchCode) return;
+    if (!toBranchCode) { setTargetTenantId(""); return; }
     const b = allBranches.find(
       (x) => String(x.branchCode ?? "").toUpperCase() === toBranchCode.toUpperCase()
     );
@@ -180,6 +194,8 @@ export default function StockTransferPage({ onClose }) {
     setDeliveryLocation(String(b.branchBuildingAddress ?? ""));
     setDeliveryAddress1(String(b.branchAddress1 ?? ""));
     setDeliveryAddress2(String(b.branchAddress2 ?? ""));
+    // Track if this is a central/master branch
+    setTargetTenantId(b.isCentralBranch ? String(b.targetTenantId ?? "") : "");
   }, [toBranchCode, allBranches]);
 
   const URGENCY_RANK = { critical: 0, high: 1, medium: 2 };
@@ -560,6 +576,44 @@ export default function StockTransferPage({ onClose }) {
     lastActivityRef.current = Date.now();
     try {
       setSaving(true);
+
+      // ── Franchise → Central transfer ──────────────────────────────────────
+      if (targetTenantId) {
+        const outboundBody = {
+          targetTenantId,
+          targetBranchCode: toBranchCode,
+          sourceBranchCode: fromBranch,
+          voucherNumber:    body.voucher_number,
+          userId:           username,
+          items: body.lines.map((l) => ({
+            item_id:   l.item_id,
+            item_name: l.item_name,
+            barcode:   l.barcode,
+            unit:      l.unit,
+            qty:       l.qty,
+            rate:      l.rate,
+            mrp:       l.mrp,
+            batch:     l.batch,
+            expiry:    l.expiry,
+            amount:    l.amount,
+          })),
+        };
+        const outRes = await fetch(apiUrl(`/api/${tenantId}/franchise-outbound/transfer`), {
+          method:  "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body:    JSON.stringify(outboundBody),
+        });
+        if (!outRes.ok) {
+          const errText = await outRes.text().catch(() => "");
+          throw new Error(`Franchise outbound failed: ${outRes.status} ${errText}`);
+        }
+        message.success("Stock transfer to central branch submitted successfully.");
+        setItems([]);
+        setToBranchCode("");
+        return;
+      }
+
+      // ── Normal same-tenant transfer ────────────────────────────────────────
       const urls = [
         apiUrl(`/api/${tenantId}/stock-transfers/out`),
         apiUrl(`/api/${tenantId}/stock-transfer/out`),

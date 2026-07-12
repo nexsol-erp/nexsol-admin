@@ -190,6 +190,8 @@ const SECTIONS = [
       { label: "Category Item Report", path: "/category-item-report" },
       { label: "Stock Transfer In Report", path: "/stocktransfer-in-report" },
       { label: "Stock Transfer Out Report", path: "/stocktransfer-out-report" },
+      { label: "Production Planning Report", path: "/production-planning-report" },
+      { label: "Production Execution Report", path: "/production-execution-report" },
     ],
   },
   {
