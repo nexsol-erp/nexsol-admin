@@ -99,10 +99,12 @@ export default function App() {
     const branch = localStorage.getItem("selectedBranchCode") || "";
     return localStorage.getItem(`posMachineStatus_${branch}`) || "";
   });
+
   const [approvedMachines,    setApprovedMachines]    = useState([]);
   const [fetchingMachines,    setFetchingMachines]    = useState(false);
   const [selectedMachineCode, setSelectedMachineCode] = useState("");
   const [claiming,            setClaiming]            = useState(false);
+
 
   // Recheck day-end status and date-advance block whenever page, branch, or login changes.
   useEffect(() => {

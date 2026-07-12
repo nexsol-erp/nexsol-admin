@@ -210,12 +210,14 @@ function createWindow() {
     setTimeout(() => { if (!splash.isDestroyed()) splash.close(); }, 300);
   });
 
+
   // Renderer sends this once the machine code is known (APPROVED / claimed).
   ipcMain.on("window:set-title", (_evt, machineCode) => {
     if (win && !win.isDestroyed() && machineCode) {
       win.setTitle(`${appTitle} — ${machineCode}`);
     }
   });
+
 
   // Prevent the page <title> tag from overriding the window title.
   win.on("page-title-updated", (e) => e.preventDefault());

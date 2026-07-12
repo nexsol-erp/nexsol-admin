@@ -91,6 +91,14 @@ const LoginForm = ({ onLogin, autoOpen = false }) => {
 
         const setupCompleted = data.setupCompleted !== false;
         localStorage.setItem("setupCompleted", setupCompleted ? "true" : "false");
+        // Store setup status so the app can redirect to wizard if needed
+        const setupCompleted = data.setupCompleted !== false; // default true for legacy
+        localStorage.setItem("setupCompleted", setupCompleted ? "true" : "false");
+
+        // ✅ Extract allowed branches from JWT claims and store
+        const payload = decodeJwtPayload(data.token);
+        const allowedBranches =
+          payload && Array.isArray(payload.branches) ? payload.branches : [];
 
         const payload = decodeJwtPayload(data.token);
         localStorage.setItem("allowedBranches",
