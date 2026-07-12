@@ -89,8 +89,6 @@ const LoginForm = ({ onLogin, autoOpen = false }) => {
         localStorage.setItem("tenancyId", data.tenancyId);
         localStorage.setItem("roles",     JSON.stringify(data.roles || []));
 
-        const setupCompleted = data.setupCompleted !== false;
-        localStorage.setItem("setupCompleted", setupCompleted ? "true" : "false");
         // Store setup status so the app can redirect to wizard if needed
         const setupCompleted = data.setupCompleted !== false; // default true for legacy
         localStorage.setItem("setupCompleted", setupCompleted ? "true" : "false");
@@ -99,10 +97,7 @@ const LoginForm = ({ onLogin, autoOpen = false }) => {
         const payload = decodeJwtPayload(data.token);
         const allowedBranches =
           payload && Array.isArray(payload.branches) ? payload.branches : [];
-
-        const payload = decodeJwtPayload(data.token);
-        localStorage.setItem("allowedBranches",
-          JSON.stringify(payload?.branches || []));
+        localStorage.setItem("allowedBranches", JSON.stringify(allowedBranches));
 
         onLogin?.(data.roles || []);
         setModalOpen(false);
