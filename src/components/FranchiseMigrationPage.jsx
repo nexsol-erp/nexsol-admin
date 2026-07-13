@@ -233,6 +233,40 @@ export default function FranchiseMigrationPage() {
       <Divider sx={{ my: 2 }} />
 
       <Typography variant="subtitle2" color="text.secondary" mb={1} textTransform="uppercase" letterSpacing={1}>
+        Step 7 — Stock Transfer Migration
+      </Typography>
+      <MigrationCard
+        title="Migrate Stock Transfers to Franchise DBs"
+        description={
+          "Copies stock_trans_out_hdr, stock_trans_out_dtl, stock_trans_in_hdr, and " +
+          "stock_trans_in_dtl from this tenant's database into each franchise DB, " +
+          "matched by branch codes in franchise_branch_link. " +
+          "Run Step 5 (stock-trans-columns) before this to ensure V028 columns exist. " +
+          "ON CONFLICT (id) DO NOTHING — safe to re-run."
+        }
+        endpoint="stock-transfers"
+        buttonLabel="Migrate Stock Transfers"
+      />
+
+      <Divider sx={{ my: 2 }} />
+
+      <Typography variant="subtitle2" color="text.secondary" mb={1} textTransform="uppercase" letterSpacing={1}>
+        Step 8 — Sales Migration
+      </Typography>
+      <MigrationCard
+        title="Migrate Sales to Franchise DBs"
+        description={
+          "Copies sales_trans_hdr, sales_dtl, and sales_receipts_dtl from this tenant's " +
+          "database into each franchise DB, matched by branch codes in franchise_branch_link. " +
+          "ON CONFLICT (id) DO NOTHING — safe to re-run."
+        }
+        endpoint="sales"
+        buttonLabel="Migrate Sales"
+      />
+
+      <Divider sx={{ my: 2 }} />
+
+      <Typography variant="subtitle2" color="text.secondary" mb={1} textTransform="uppercase" letterSpacing={1}>
         Reference — What Each Script Does
       </Typography>
       <TableContainer component={Paper} sx={{ "& th": { bgcolor: "#1976d2", color: "#fff", fontWeight: 700, fontSize: 12 } }}>
@@ -273,6 +307,16 @@ export default function FranchiseMigrationPage() {
             <TableRow>
               <TableCell>inventory</TableCell>
               <TableCell>item_batch_mst, pos_machine_mst (each franchise DB)</TableCell>
+              <TableCell><Chip label="Yes" color="success" size="small" /></TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell>stock-transfers</TableCell>
+              <TableCell>stock_trans_out_hdr, stock_trans_out_dtl, stock_trans_in_hdr, stock_trans_in_dtl (each franchise DB)</TableCell>
+              <TableCell><Chip label="Yes" color="success" size="small" /></TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell>sales</TableCell>
+              <TableCell>sales_trans_hdr, sales_dtl, sales_receipts_dtl (each franchise DB)</TableCell>
               <TableCell><Chip label="Yes" color="success" size="small" /></TableCell>
             </TableRow>
           </TableBody>

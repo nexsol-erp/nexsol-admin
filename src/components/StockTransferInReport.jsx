@@ -27,14 +27,6 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { useNavigate } from "react-router-dom";
 
-const decodeJwtSub = (token) => {
-  try {
-    if (!token) return null;
-    const b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    const json = atob(b64.padEnd(b64.length + (4 - b64.length % 4) % 4, "="));
-    return JSON.parse(json).sub || null;
-  } catch { return null; }
-};
 
 const StockTransferInReport = () => {
   const [fromBranch, setFromBranch] = useState("");
@@ -55,7 +47,6 @@ const StockTransferInReport = () => {
       setError("");
       const tenancyId = localStorage.getItem("tenancyId");
       const token = localStorage.getItem("jwtToken");
-      const username = decodeJwtSub(token);
 
       const roles = (() => {
         try { return JSON.parse(localStorage.getItem("roles") || "[]"); }
@@ -65,38 +56,35 @@ const StockTransferInReport = () => {
         ["admin", "system-admin", "ADMIN", "SYSTEM_ADMIN"].includes(r)
       );
 
-      const [branchRes, permittedRes] = await Promise.all([
-        fetch(`/api/${tenancyId}/branches`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        !isAdmin && username
-          ? fetch(`/api/${tenancyId}/admin/users/${encodeURIComponent(username)}/transfer-branches`, {
-              headers: { Authorization: `Bearer ${token}` },
-            })
-          : Promise.resolve(null),
-      ]);
-
-      if (!branchRes.ok) throw new Error("Failed to fetch branches");
-      const branchData = await branchRes.json();
+      const res = await fetch(`/api/${tenancyId}/branches`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch branches");
+      const branchData = await res.json();
       const allBranches = Array.isArray(branchData)
         ? branchData
         : branchData.branches || branchData.data || [];
 
-      // Deduplicate by branchCode
       const uniqueBranches = [...new Map(allBranches.map((b) => [b.branchCode, b])).values()];
 
-      // Admins get all branches; others get only their transfer-permitted list
-      let filtered = uniqueBranches;
-      if (!isAdmin && permittedRes && permittedRes.ok) {
-        const permData = await permittedRes.json();
-        const raw = Array.isArray(permData)
-          ? permData
-          : permData.branches || permData.data || [];
-        const permittedCodes = raw.map((x) => (typeof x === "string" ? x : x.branchCode));
-        filtered = uniqueBranches.filter((b) => permittedCodes.includes(b.branchCode));
+      if (isAdmin) {
+        setBranches(uniqueBranches);
+        return;
       }
 
-      setBranches(filtered);
+      // Filter to JWT-permitted branches stored at login
+      const allowedCodes = (() => {
+        try {
+          const parsed = JSON.parse(localStorage.getItem("allowedBranches") || "[]");
+          return Array.isArray(parsed) ? parsed.map(String) : [];
+        } catch { return []; }
+      })();
+
+      setBranches(
+        allowedCodes.length > 0
+          ? uniqueBranches.filter((b) => allowedCodes.includes(b.branchCode))
+          : uniqueBranches
+      );
     } catch (e) {
       console.error("Error fetching branches:", e);
       setError("Failed to load branches.");
