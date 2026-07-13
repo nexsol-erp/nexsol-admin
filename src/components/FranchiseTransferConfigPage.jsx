@@ -19,6 +19,7 @@ const API = () => {
 const emptyConfig = {
   allowStockTransfer:    false,
   allowedSourceBranches: "",
+  allowedTargetBranches: "",
   allowedItemCategories: "",
   transferPriceRule:     "COST_PRICE",
   customPricePct:        "",
@@ -47,6 +48,7 @@ export default function FranchiseTransferConfigPage() {
   const [form,         setForm]         = useState(emptyConfig);
   const [loading,      setLoading]      = useState(false);
   const [saving,       setSaving]       = useState(false);
+  const [resyncing,    setResyncing]    = useState(false);
   const [msg,          setMsg]          = useState(null);
 
   const { base, headers } = API();
@@ -55,8 +57,8 @@ export default function FranchiseTransferConfigPage() {
   useEffect(() => {
     fetch(`${base}/franchise`, { headers })
       .then((r) => r.json())
-      .then((data) => setFranchises(Array.isArray(data) ? data : data.content || []))
-      .catch(() => {});
+      .then((data) => setFranchises(Array.isArray(data) ? data : data.franchises || data.content || []))
+      .catch((e) => console.error("Failed to load franchises:", e));
   }, []);
 
   // ── Load config when franchise selected ───────────────────────────────────
@@ -72,6 +74,7 @@ export default function FranchiseTransferConfigPage() {
         setForm({
           allowStockTransfer:    data.allowStockTransfer    ?? false,
           allowedSourceBranches: data.allowedSourceBranches ?? "",
+          allowedTargetBranches: data.allowedTargetBranches ?? "",
           allowedItemCategories: data.allowedItemCategories ?? "",
           transferPriceRule:     data.transferPriceRule     ?? "COST_PRICE",
           customPricePct:        data.customPricePct        ?? "",
@@ -116,6 +119,7 @@ export default function FranchiseTransferConfigPage() {
         effectiveFrom:    form.effectiveFrom || null,
         effectiveTo:      form.effectiveTo   || null,
         allowedSourceBranches: form.allowedSourceBranches || null,
+        allowedTargetBranches: form.allowedTargetBranches || null,
         allowedItemCategories: form.allowedItemCategories || null,
         approverUserCode:       form.approverUserCode || null,
         notes:            form.notes || null,
@@ -136,6 +140,32 @@ export default function FranchiseTransferConfigPage() {
       setMsg({ type: "error", text: "Save failed: " + e.message });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResyncBranches = async () => {
+    const fr = franchises.find((f) => String(f.id) === String(selectedFr) || f.id === selectedFr);
+    if (!fr) return;
+    setResyncing(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`${base}/franchise/${fr.id}/resync-branches`, {
+        method: "POST",
+        headers,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || res.statusText);
+      }
+      const data = await res.json();
+      setMsg({
+        type: "success",
+        text: `Synced ${data.branchesSynced ?? 0} master branch(es) into this franchise's POS.`,
+      });
+    } catch (e) {
+      setMsg({ type: "error", text: "Resync failed: " + e.message });
+    } finally {
+      setResyncing(false);
     }
   };
 
@@ -288,8 +318,19 @@ export default function FranchiseTransferConfigPage() {
               <TextField
                 fullWidth size="small" label="Allowed Source Branches (JSON array)"
                 placeholder='["MAIN","HO"]'
+                helperText="Master branches this franchise can RECEIVE stock from"
                 value={form.allowedSourceBranches}
                 onChange={set("allowedSourceBranches")}
+                sx={FIELD_SX}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth size="small" label="Allowed Target Branches (JSON array)"
+                placeholder='["MAIN","HO"]'
+                helperText="Master branches this franchise can SEND stock to"
+                value={form.allowedTargetBranches}
+                onChange={set("allowedTargetBranches")}
                 sx={FIELD_SX}
               />
             </Grid>
@@ -303,6 +344,24 @@ export default function FranchiseTransferConfigPage() {
               />
             </Grid>
           </Grid>
+
+          <Divider sx={{ my: 2 }} />
+
+          {/* ── Branch sync ──────────────────────────────────────────────── */}
+          <Typography variant="subtitle2" mb={1} color="text.secondary">Franchise POS Branch List</Typography>
+          <Box display="flex" alignItems="center" gap={2}>
+            <Button
+              variant="outlined" size="small" startIcon={<RefreshIcon />}
+              disabled={resyncing}
+              onClick={handleResyncBranches}
+            >
+              {resyncing ? "Syncing…" : "Resync Master Branches to Franchise POS"}
+            </Button>
+            <Typography variant="caption" color="text.secondary">
+              Pushes all current master branches into this franchise's stock-transfer
+              "To Branch" dropdown. Run this if branches are missing there.
+            </Typography>
+          </Box>
 
           <Divider sx={{ my: 2 }} />
 
