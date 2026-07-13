@@ -18,6 +18,7 @@ import UpdateChecker from "./components/UpdateChecker";
 import { isLoggedIn, logout, isAdminRole, getBranchLock, clearBranchLock } from "./auth/auth";
 import { clearItemCache, hasCache, loadAllItemsToCache } from "./cache/itemCache";
 import { registerMachine, fetchApprovedMachines, claimMachine } from "./utils/posDevice";
+import { connect as wsConnect, disconnect as wsDisconnect } from "./utils/posWebSocket";
 import { log } from "./utils/logger";
 import { todayIST } from "./utils/timeUtils";
 
@@ -193,6 +194,16 @@ export default function App() {
     }
     prevBranchRef.current = selectedBranchCode;
   }, [selectedBranchCode, loggedIn]);
+
+  // WebSocket — kept alive for the whole app session (all pages, not just POS),
+  // so the server's online status reflects the app being open, not just the POS tab.
+  useEffect(() => {
+    if (!loggedIn || !selectedBranchCode) return;
+    const tenant = localStorage.getItem("tenancyId") || "";
+    const wsBase = typeof window !== "undefined" ? window.POS?.wsServer : "";
+    wsConnect(tenant, selectedBranchCode, wsBase);
+    return () => wsDisconnect();
+  }, [loggedIn, selectedBranchCode]);
 
   // Register this machine with the server on login / branch change.
   // New devices come back PENDING; approved devices come back with machineCode + FY data.
