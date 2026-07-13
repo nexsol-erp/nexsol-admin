@@ -68,7 +68,10 @@ export default function FranchiseTransferConfigPage() {
     setConfig(null);
     try {
       const res = await fetch(`${base}/franchise-transfer-config/${franchiseId}`, { headers });
-      if (res.ok) {
+      if (res.status === 204) {
+        setConfig(null);
+        setForm(emptyConfig);
+      } else if (res.ok) {
         const data = await res.json();
         setConfig(data);
         setForm({
@@ -87,9 +90,6 @@ export default function FranchiseTransferConfigPage() {
           effectiveTo:           data.effectiveTo           ?? "",
           notes:                 data.notes                 ?? "",
         });
-      } else if (res.status === 204) {
-        setConfig(null);
-        setForm(emptyConfig);
       }
     } catch (e) {
       setMsg({ type: "error", text: "Failed to load config: " + e.message });
