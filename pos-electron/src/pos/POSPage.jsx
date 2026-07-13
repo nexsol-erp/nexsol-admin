@@ -13,7 +13,7 @@ import { queueSale, getPendingCount, syncPendingSales } from "./offlineQueue";
 import { generateVoucherNumber } from "../utils/posDevice";
 import { nowIST, todayIST } from "../utils/timeUtils";
 import { db } from "../cache/itemCacheDb";
-import { connect as wsConnect, disconnect as wsDisconnect, onMessage as wsOnMessage, onStateChange } from "../utils/posWebSocket";
+import { isConnected as wsIsConnected, onMessage as wsOnMessage, onStateChange } from "../utils/posWebSocket";
 
 export default function POSPage({ onLogout, selectedBranchCode = "", prefillItems = null, onPrefillUsed }) {
 
@@ -41,7 +41,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const [holdCount, setHoldCount] = useState(0);
   const [recallOpen, setRecallOpen] = useState(false);
   const [heldBills, setHeldBills] = useState([]);
-  const [wsOnline, setWsOnline] = useState(false);
+  const [wsOnline, setWsOnline] = useState(wsIsConnected);
   const [schemes, setSchemes] = useState([]);
   const [categoryMap, setCategoryMap] = useState({});
   const [quickItems,        setQuickItems]        = useState([]);
@@ -131,12 +131,10 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
-  // WebSocket — connect once branch is known, reconnect if branch changes
+  // WebSocket — connection itself is owned by App.jsx (kept alive across page
+  // switches); here we just subscribe to state/messages while POSPage is mounted.
   useEffect(() => {
     if (!selectedBranchCode) return;
-    const tenant = localStorage.getItem("tenancyId") || "";
-    const wsBase = typeof window !== "undefined" ? window.POS?.wsServer : "";
-    wsConnect(tenant, selectedBranchCode, wsBase);
 
     const unsubState = onStateChange(setWsOnline);
 
@@ -184,7 +182,6 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       unsubPrice();
       unsubCatalog();
       unsubNotify();
-      wsDisconnect();
     };
   }, [selectedBranchCode]);
 
