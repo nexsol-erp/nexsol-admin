@@ -13,7 +13,7 @@ import { queueSale, getPendingCount, syncPendingSales } from "./offlineQueue";
 import { generateVoucherNumber } from "../utils/posDevice";
 import { nowIST, todayIST } from "../utils/timeUtils";
 import { db } from "../cache/itemCacheDb";
-import { isConnected as wsIsConnected, onMessage as wsOnMessage, onStateChange } from "../utils/posWebSocket";
+import { isConnected as wsIsConnected, onStateChange } from "../utils/posWebSocket";
 
 export default function POSPage({ onLogout, selectedBranchCode = "", prefillItems = null, onPrefillUsed }) {
 
@@ -131,58 +131,13 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
-  // WebSocket — connection itself is owned by App.jsx (kept alive across page
-  // switches); here we just subscribe to state/messages while POSPage is mounted.
+  // WebSocket — connection and message handling (PRICE_CHANGE/CATALOG_REFRESH/
+  // NOTIFICATION) are owned by App.jsx and stay alive across page switches.
+  // Here we just mirror the connection state for this page's online-status dot.
   useEffect(() => {
     if (!selectedBranchCode) return;
-
     const unsubState = onStateChange(setWsOnline);
-
-    // Price change — patch only the changed items in IndexedDB
-    const unsubPrice = wsOnMessage("PRICE_CHANGE", async (msg) => {
-      log("posWebSocket: PRICE_CHANGE received", JSON.stringify(msg));
-      const changed = Array.isArray(msg.items)
-        ? msg.items
-        : msg.itemId ? [msg] : [];
-
-      if (changed.length) {
-        for (const patch of changed) {
-          const existing = await db.items.get(patch.itemId);
-          if (existing) await db.items.put({ ...existing, ...patch });
-        }
-        message.info(`Price updated for ${changed.length} item(s)`, 3);
-      } else {
-        // No item data in message — fall back to full reload
-        message.info("Price update received — refreshing item cache…", 3);
-        import("../cache/itemCache").then(({ loadAllItemsToCache }) => {
-          loadAllItemsToCache().catch(() => {});
-        });
-      }
-    });
-
-    // Full catalogue refresh (new items added, bulk GST change, etc.)
-    const unsubCatalog = wsOnMessage("CATALOG_REFRESH", () => {
-      message.info("Catalogue updated — refreshing item cache…", 3);
-      import("../cache/itemCache").then(({ loadAllItemsToCache }) => {
-        loadAllItemsToCache().catch(() => {});
-      });
-    });
-
-    // Generic notification
-    const unsubNotify = wsOnMessage("NOTIFICATION", (msg) => {
-      const text = msg.message || msg.text || "New notification";
-      const type = (msg.type || "info").toLowerCase();
-      if (type === "error")   message.error(text, 6);
-      else if (type === "warning") message.warning(text, 5);
-      else message.info(text, 4);
-    });
-
-    return () => {
-      unsubState();
-      unsubPrice();
-      unsubCatalog();
-      unsubNotify();
-    };
+    return () => unsubState();
   }, [selectedBranchCode]);
 
   // Reload schemes whenever the active branch changes — only receives schemes published to that branch
