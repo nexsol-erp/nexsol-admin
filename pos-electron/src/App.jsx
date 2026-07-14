@@ -17,8 +17,9 @@ import SalesReturnPage from "./pos/SalesReturnPage";
 import UpdateChecker from "./components/UpdateChecker";
 import { isLoggedIn, logout, isAdminRole, getBranchLock, clearBranchLock } from "./auth/auth";
 import { clearItemCache, hasCache, loadAllItemsToCache } from "./cache/itemCache";
+import { db } from "./cache/itemCacheDb";
 import { registerMachine, fetchApprovedMachines, claimMachine } from "./utils/posDevice";
-import { connect as wsConnect, disconnect as wsDisconnect } from "./utils/posWebSocket";
+import { connect as wsConnect, disconnect as wsDisconnect, onMessage as wsOnMessage } from "./utils/posWebSocket";
 import { log } from "./utils/logger";
 import { todayIST } from "./utils/timeUtils";
 
@@ -203,6 +204,50 @@ export default function App() {
     const wsBase = typeof window !== "undefined" ? window.POS?.wsServer : "";
     wsConnect(tenant, selectedBranchCode, wsBase);
     return () => wsDisconnect();
+  }, [loggedIn, selectedBranchCode]);
+
+  // WebSocket message handlers — also kept alive for the whole app session (not
+  // just while POSPage is mounted), so price/catalog pushes still land on the
+  // local IndexedDB cache while the user is on Stock Transfer, Physical Stock, etc.
+  useEffect(() => {
+    if (!loggedIn || !selectedBranchCode) return;
+
+    const unsubPrice = wsOnMessage("PRICE_CHANGE", async (msg) => {
+      log("posWebSocket: PRICE_CHANGE received", JSON.stringify(msg));
+      const changed = Array.isArray(msg.items)
+        ? msg.items
+        : msg.itemId ? [msg] : [];
+
+      if (changed.length) {
+        for (const patch of changed) {
+          const existing = await db.items.get(patch.itemId);
+          if (existing) await db.items.put({ ...existing, ...patch });
+        }
+        message.info(`Price updated for ${changed.length} item(s)`, 3);
+      } else {
+        message.info("Price update received — refreshing item cache…", 3);
+        loadAllItemsToCache().catch(() => {});
+      }
+    });
+
+    const unsubCatalog = wsOnMessage("CATALOG_REFRESH", () => {
+      message.info("Catalogue updated — refreshing item cache…", 3);
+      loadAllItemsToCache().catch(() => {});
+    });
+
+    const unsubNotify = wsOnMessage("NOTIFICATION", (msg) => {
+      const text = msg.message || msg.text || "New notification";
+      const type = (msg.type || "info").toLowerCase();
+      if (type === "error")   message.error(text, 6);
+      else if (type === "warning") message.warning(text, 5);
+      else message.info(text, 4);
+    });
+
+    return () => {
+      unsubPrice();
+      unsubCatalog();
+      unsubNotify();
+    };
   }, [loggedIn, selectedBranchCode]);
 
   // Register this machine with the server on login / branch change.
