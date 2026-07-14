@@ -16,10 +16,10 @@ import StockTransferInReportPage from "./pos/StockTransferInReportPage";
 import SalesReturnPage from "./pos/SalesReturnPage";
 import UpdateChecker from "./components/UpdateChecker";
 import { isLoggedIn, logout, isAdminRole, getBranchLock, clearBranchLock } from "./auth/auth";
-import { clearItemCache, hasCache, loadAllItemsToCache } from "./cache/itemCache";
+import { clearItemCache, hasCache, loadAllItemsToCache, resyncItemsByCodes, resyncFromVersion } from "./cache/itemCache";
 import { db } from "./cache/itemCacheDb";
 import { registerMachine, fetchApprovedMachines, claimMachine } from "./utils/posDevice";
-import { connect as wsConnect, disconnect as wsDisconnect, onMessage as wsOnMessage } from "./utils/posWebSocket";
+import { connect as wsConnect, disconnect as wsDisconnect, onMessage as wsOnMessage, onStateChange as wsOnStateChange } from "./utils/posWebSocket";
 import { log } from "./utils/logger";
 import { todayIST } from "./utils/timeUtils";
 
@@ -43,6 +43,67 @@ function isDayEndRequired(branchCode) {
     const list = settings.dayEndRequiredBranches;
     return Array.isArray(list) && list.includes(branchCode);
   } catch { return false; }
+}
+
+// ── Catalog version tracking ──────────────────────────────────────────────
+// Lets a reconnecting POS terminal cheaply confirm nothing changed while it
+// was offline, instead of always doing a full item-cache reload.
+
+async function setLocalCatalogVersion(version) {
+  try {
+    await db.meta.put({ key: "catalog_version", value: String(version) });
+  } catch (e) {
+    log("catalog-version: failed to store local version", e?.message);
+  }
+}
+
+async function getLocalCatalogVersion() {
+  try {
+    const row = await db.meta.get("catalog_version");
+    return row?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function checkCatalogVersionAndResync() {
+  const tenantId = localStorage.getItem("tenancyId") || "";
+  const token    = localStorage.getItem("jwtToken")  || "";
+  if (!tenantId || !token) return;
+
+  try {
+    const localVersion = await getLocalCatalogVersion();
+
+    if (localVersion == null) {
+      // No local version recorded yet (e.g. cache cleared) — nothing to diff against,
+      // so seed it from a full reload rather than guessing.
+      log("posWebSocket: reconnected — no local catalog version, doing full reload to seed one");
+      await loadAllItemsToCache();
+      const res = await fetch(`/api/${tenantId}/items/catalog-version`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const { version } = await res.json();
+        await setLocalCatalogVersion(version);
+      }
+      return;
+    }
+
+    // Item-level resync when possible — only falls back to a full reload
+    // server-side if the changed set can't be enumerated (e.g. a bulk change).
+    const result = await resyncFromVersion(localVersion);
+    if (String(result.version) === String(localVersion) && !result.fullReload && !result.loaded) {
+      log("posWebSocket: reconnected — catalog version unchanged, nothing to resync");
+      return;
+    }
+    log("posWebSocket: reconnected — resynced", result.fullReload ? "(full reload)" : `${result.loaded} item(s)`,
+        "version", localVersion, "->", result.version);
+    await setLocalCatalogVersion(result.version);
+  } catch (e) {
+    // Resync itself failed — fail safe and do a full reload so we don't silently stay stale.
+    log("posWebSocket: catalog resync failed, reloading as a precaution", e?.message);
+    loadAllItemsToCache().catch(() => {});
+  }
 }
 
 // Returns null if ok to proceed, or "YYYY-MM-DD" (the date needing day end) if blocked.
@@ -86,6 +147,7 @@ export default function App() {
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [activePage, setActivePage] = useState("pos");
   const [roles, setRoles] = useState(getRoles);
+  const wasEverConnectedRef = useRef(false);
 
   const [branchOptions, setBranchOptions] = useState([]);
   const [selectedBranchCode, setSelectedBranchCode] = useState(() => {
@@ -212,6 +274,20 @@ export default function App() {
   useEffect(() => {
     if (!loggedIn || !selectedBranchCode) return;
 
+    // Reconnecting after a drop (not the very first connect this session) means we may
+    // have missed PRICE_CHANGE/CATALOG_REFRESH pushes while offline. Rather than always
+    // doing a full reload (expensive, and reconnects can happen with no price change at
+    // all), compare the server's cheap catalog-version counter against what we last saw —
+    // only reload if it actually moved.
+    const unsubState = wsOnStateChange((online) => {
+      if (online) {
+        if (wasEverConnectedRef.current) {
+          checkCatalogVersionAndResync();
+        }
+        wasEverConnectedRef.current = true;
+      }
+    });
+
     const unsubPrice = wsOnMessage("PRICE_CHANGE", async (msg) => {
       log("posWebSocket: PRICE_CHANGE received", JSON.stringify(msg));
       const changed = Array.isArray(msg.items)
@@ -219,20 +295,42 @@ export default function App() {
         : msg.itemId ? [msg] : [];
 
       if (changed.length) {
+        const missingCodes = [];
         for (const patch of changed) {
           const existing = await db.items.get(patch.itemId);
-          if (existing) await db.items.put({ ...existing, ...patch });
+          if (existing) {
+            await db.items.put({ ...existing, ...patch });
+          } else {
+            missingCodes.push(patch.itemId); // not cached locally — patch has nothing to apply to
+          }
         }
         message.info(`Price updated for ${changed.length} item(s)`, 3);
+
+        if (missingCodes.length === 0) {
+          // Every patched item was found and updated locally — safe to mark this version
+          // as caught up without touching the server again.
+          if (msg.version != null) setLocalCatalogVersion(msg.version);
+        } else {
+          // Some items weren't in the local cache — fetch just those instead of the
+          // whole catalogue, then mark synced once they're actually in.
+          log("posWebSocket: PRICE_CHANGE had unmatched item(s), fetching individually:", missingCodes);
+          resyncItemsByCodes(missingCodes)
+            .then(() => { if (msg.version != null) setLocalCatalogVersion(msg.version); })
+            .catch(() => {});
+        }
       } else {
         message.info("Price update received — refreshing item cache…", 3);
-        loadAllItemsToCache().catch(() => {});
+        loadAllItemsToCache()
+          .then(() => { if (msg.version != null) setLocalCatalogVersion(msg.version); })
+          .catch(() => {});
       }
     });
 
-    const unsubCatalog = wsOnMessage("CATALOG_REFRESH", () => {
+    const unsubCatalog = wsOnMessage("CATALOG_REFRESH", (msg) => {
       message.info("Catalogue updated — refreshing item cache…", 3);
-      loadAllItemsToCache().catch(() => {});
+      loadAllItemsToCache()
+        .then(() => { if (msg.version != null) setLocalCatalogVersion(msg.version); })
+        .catch(() => {});
     });
 
     const unsubNotify = wsOnMessage("NOTIFICATION", (msg) => {
@@ -244,6 +342,7 @@ export default function App() {
     });
 
     return () => {
+      unsubState();
       unsubPrice();
       unsubCatalog();
       unsubNotify();
