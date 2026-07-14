@@ -227,6 +227,86 @@ export async function loadAllItemsToCache({ pageSize = 500, onProgress } = {}) {
   return { loaded, total };
 }
 
+// Aggregate raw (possibly multi-batch) rows into one cache row per itemId — same
+// logic loadAllItemsToCache uses, factored out so targeted resyncs stay consistent.
+function aggregateByItemId(rawRows) {
+  const byItemId = new Map();
+  for (const row of rawRows) {
+    if (byItemId.has(row.itemId)) {
+      const existing = byItemId.get(row.itemId);
+      const a = Number(existing.availableQty);
+      const b = Number(row.availableQty);
+      existing.availableQty =
+        Number.isFinite(a) && Number.isFinite(b) ? a + b
+        : Number.isFinite(a) ? a
+        : Number.isFinite(b) ? b
+        : null;
+    } else {
+      byItemId.set(row.itemId, { ...row });
+    }
+  }
+  return Array.from(byItemId.values());
+}
+
+/**
+ * Fetches current stock-aware data for a specific set of business item codes and writes them
+ * into the local cache — used to resync just the items known to be missing/stale instead of
+ * reloading the whole catalogue.
+ */
+export async function resyncItemsByCodes(itemCodes) {
+  const codes = [...new Set((itemCodes || []).filter(Boolean))];
+  if (codes.length === 0) return { loaded: 0 };
+
+  const tenancyId = localStorage.getItem("tenancyId");
+  const token = localStorage.getItem("jwtToken");
+  if (!tenancyId || !token) throw new Error("Missing tenancyId/token. Please login again.");
+  const branchCode = getActiveBranchCode();
+
+  const url = apiUrl(
+    `/api/${tenancyId}/items/lookup?codes=${encodeURIComponent(codes.join(","))}&branchCode=${encodeURIComponent(branchCode)}`
+  );
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`items/lookup failed: ${res.status}`);
+  const data = await res.json();
+
+  const rows = Array.isArray(data?.items) ? data.items.map(normalizeItem).filter((r) => r.itemId) : [];
+  const aggregated = aggregateByItemId(rows);
+  await db.items.bulkPut(aggregated);
+  console.log("resyncItemsByCodes: resynced", aggregated.length, "of", codes.length, "requested items");
+  return { loaded: aggregated.length };
+}
+
+/**
+ * Fetches everything that changed since sinceVersion and applies it — item-level if the server
+ * can enumerate the changed items, or a full loadAllItemsToCache() if it can't (e.g. a bulk
+ * CATALOG_REFRESH happened in that range, or sinceVersion is too old to still be tracked).
+ * Returns the new version so the caller can persist it locally.
+ */
+export async function resyncFromVersion(sinceVersion) {
+  const tenancyId = localStorage.getItem("tenancyId");
+  const token = localStorage.getItem("jwtToken");
+  if (!tenancyId || !token) throw new Error("Missing tenancyId/token. Please login again.");
+  const branchCode = getActiveBranchCode();
+
+  const url = apiUrl(
+    `/api/${tenancyId}/items/changes?sinceVersion=${encodeURIComponent(sinceVersion)}&branchCode=${encodeURIComponent(branchCode)}`
+  );
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`items/changes failed: ${res.status}`);
+  const data = await res.json();
+
+  if (data.fullReloadRequired) {
+    await loadAllItemsToCache();
+    return { version: data.version, fullReload: true };
+  }
+
+  const rows = Array.isArray(data?.items) ? data.items.map(normalizeItem).filter((r) => r.itemId) : [];
+  const aggregated = aggregateByItemId(rows);
+  await db.items.bulkPut(aggregated);
+  console.log("resyncFromVersion: applied", aggregated.length, "changed item(s), version ->", data.version);
+  return { version: data.version, fullReload: false, loaded: aggregated.length };
+}
+
 // Very fast local search (barcode exact OR name contains).
 // stockFilter, if provided, is applied before the limit so DYNAMIC/in-stock items
 // are never crowded out by zero-qty items that happen to sort earlier.
