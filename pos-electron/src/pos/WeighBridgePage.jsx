@@ -348,7 +348,7 @@ export default function WeighBridgePage() {
         </div>
         <div>
           <Text strong style={{ fontSize: 12, display: "block", marginBottom: 2 }}>Mobile Number</Text>
-          <Input value={mobileNumber} onChange={(e) => setMobileNumber(e.target.value)} placeholder="Driver mobile" />
+          <Input value={mobileNumber} onChange={(e) => setMobileNumber(e.target.value)} placeholder="Driver mobile" maxLength={20} />
         </div>
         <div>
           <Text strong style={{ fontSize: 12, display: "block", marginBottom: 2 }}>Amount (₹)</Text>

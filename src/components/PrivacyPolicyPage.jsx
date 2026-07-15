@@ -160,7 +160,7 @@ const PrivacyPolicyPage = ({ isPublic = false }) => {
           <p style={s.p}>If you have any questions about this Privacy Policy, please contact us:</p>
           <div style={s.contactBox}>
             <p style={s.p}><strong>Maple ERP</strong></p>
-            <p style={s.p}>Email: <a href="mailto:support@tradelink247.com">support@tradelink247.com</a></p>
+            <p style={s.p}>Email: <a href="mailto:admin@tradelink247.com">admin@tradelink247.com</a></p>
             <p style={{ ...s.p, marginBottom: 0 }}>Website: <a href="https://www.tradelink247.com">www.tradelink247.com</a></p>
           </div>
         </div>
