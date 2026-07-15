@@ -277,10 +277,11 @@ export async function resyncItemsByCodes(itemCodes) {
 }
 
 /**
- * Fetches everything that changed since sinceVersion and applies it — item-level if the server
- * can enumerate the changed items, or a full loadAllItemsToCache() if it can't (e.g. a bulk
- * CATALOG_REFRESH happened in that range, or sinceVersion is too old to still be tracked).
- * Returns the new version so the caller can persist it locally.
+ * Fetches everything that changed since sinceVersion and applies it item-level when the server
+ * can enumerate the changed items. Never triggers a full reload itself — if the server reports
+ * fullReloadRequired (e.g. a bulk CATALOG_REFRESH happened in that range, or sinceVersion is too
+ * old to still be tracked), it just reports that back so the caller can prompt the user to click
+ * Refresh rather than silently pulling the whole catalogue.
  */
 export async function resyncFromVersion(sinceVersion) {
   const tenancyId = localStorage.getItem("tenancyId");
@@ -296,15 +297,14 @@ export async function resyncFromVersion(sinceVersion) {
   const data = await res.json();
 
   if (data.fullReloadRequired) {
-    await loadAllItemsToCache();
-    return { version: data.version, fullReload: true };
+    return { version: data.version, fullReloadRequired: true };
   }
 
   const rows = Array.isArray(data?.items) ? data.items.map(normalizeItem).filter((r) => r.itemId) : [];
   const aggregated = aggregateByItemId(rows);
   await db.items.bulkPut(aggregated);
   console.log("resyncFromVersion: applied", aggregated.length, "changed item(s), version ->", data.version);
-  return { version: data.version, fullReload: false, loaded: aggregated.length };
+  return { version: data.version, fullReloadRequired: false, loaded: aggregated.length };
 }
 
 // Very fast local search (barcode exact OR name contains).
