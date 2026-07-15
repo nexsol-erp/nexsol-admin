@@ -99,6 +99,9 @@ import ProductionExecutionReport from "./components/ProductionExecutionReport";
 
 import "./i18n"; // i18n config
 import LandingPage from "./components/landing/LandingPage";
+import PricingPage from "./components/landing/pricing/PricingPage";
+import PartnerPage from "./components/landing/PartnerPage";
+import PartnerApplyPage from "./components/landing/PartnerApplyPage";
 import SignUpPage from "./components/landing/SignUpPage";
 import KOTEntry from "./components/KOTEntry";
 import GoodsReceiptForm from "./components/GoodsReceiptForm";
@@ -607,6 +610,9 @@ const App = () => {
           <Routes>
             {/* Public pages — no auth required */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/partner" element={<PartnerPage />} />
+            <Route path="/partner/apply" element={<PartnerApplyPage />} />
             <Route
               path="/signup"
               element={

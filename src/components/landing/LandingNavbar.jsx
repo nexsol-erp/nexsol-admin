@@ -6,26 +6,40 @@ import {
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const NAV_LINKS = [
   { label: "Home", href: "home" },
   { label: "Features", href: "features" },
   { label: "Industries", href: "industries" },
-  { label: "Pricing", href: "pricing" },
-  { label: "Demo", href: "contact" },
+  { label: "Pricing", href: "/pricing", isRoute: true },
+  { label: "Partner", href: "/partner", isRoute: true },
   { label: "Contact", href: "contact" },
 ];
 
 const LandingNavbar = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const scrolled = useScrollTrigger({ disableHysteresis: true, threshold: 60 });
 
   const scrollTo = (id) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (location.pathname === "/") {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      navigate("/", { state: { scrollTo: id } });
+    }
     setDrawerOpen(false);
+  };
+
+  const handleNavClick = (link) => {
+    if (link.isRoute) {
+      navigate(link.href);
+      setDrawerOpen(false);
+    } else {
+      scrollTo(link.href);
+    }
   };
 
   const logoColor = scrolled ? "#1e40af" : "#ffffff";
@@ -76,7 +90,7 @@ const LandingNavbar = () => {
               {NAV_LINKS.map((link) => (
                 <Button
                   key={link.label}
-                  onClick={() => scrollTo(link.href)}
+                  onClick={() => handleNavClick(link)}
                   sx={{
                     color: navTextColor, fontWeight: 500, fontSize: 14, px: 1.8,
                     textTransform: "none", transition: "color 0.2s",
@@ -149,7 +163,7 @@ const LandingNavbar = () => {
           <List disablePadding>
             {NAV_LINKS.map((link) => (
               <ListItem key={link.label} disablePadding>
-                <ListItemButton onClick={() => scrollTo(link.href)} sx={{ borderRadius: "8px" }}>
+                <ListItemButton onClick={() => handleNavClick(link)} sx={{ borderRadius: "8px" }}>
                   <ListItemText
                     primary={link.label}
                     primaryTypographyProps={{ fontWeight: 500, color: "#334155" }}
