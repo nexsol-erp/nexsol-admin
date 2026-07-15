@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, Button, Menu, Popconfirm, Select, Tooltip, Typography, message } from "antd";
+import { Alert, Badge, Button, Menu, Popconfirm, Select, Tooltip, Typography, message } from "antd";
 import POSPage from "./pos/POSPage";
 import LoginPage from "./auth/LoginPage";
 import DayEndPage from "./dayend/DayEndPage";
@@ -66,43 +66,45 @@ async function getLocalCatalogVersion() {
   }
 }
 
+/**
+ * Checks for and applies any catalog changes made since the last version this terminal saw.
+ * Used both silently on WebSocket reconnect and from the manual "Sync Updates" button.
+ * Never performs a full reload itself — if one is required (bulk change, or no local version
+ * to diff from), it reports that back so the UI can prompt the user to click Refresh instead
+ * of pulling the whole catalogue automatically.
+ * Returns { status: "unchanged" | "resynced" | "fullReloadRequired" | "error", loaded }.
+ */
 async function checkCatalogVersionAndResync() {
   const tenantId = localStorage.getItem("tenancyId") || "";
   const token    = localStorage.getItem("jwtToken")  || "";
-  if (!tenantId || !token) return;
+  if (!tenantId || !token) return { status: "error" };
 
   try {
     const localVersion = await getLocalCatalogVersion();
 
     if (localVersion == null) {
-      // No local version recorded yet (e.g. cache cleared) — nothing to diff against,
-      // so seed it from a full reload rather than guessing.
-      log("posWebSocket: reconnected — no local catalog version, doing full reload to seed one");
-      await loadAllItemsToCache();
-      const res = await fetch(`/api/${tenantId}/items/catalog-version`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const { version } = await res.json();
-        await setLocalCatalogVersion(version);
-      }
-      return;
+      // No local version recorded yet (e.g. cache cleared) — nothing to diff against.
+      log("posWebSocket: no local catalog version — full refresh required");
+      return { status: "fullReloadRequired" };
     }
 
-    // Item-level resync when possible — only falls back to a full reload
-    // server-side if the changed set can't be enumerated (e.g. a bulk change).
+    // Item-level resync when possible — only reports fullReloadRequired if the server
+    // can't enumerate the changed set (e.g. a bulk change).
     const result = await resyncFromVersion(localVersion);
-    if (String(result.version) === String(localVersion) && !result.fullReload && !result.loaded) {
-      log("posWebSocket: reconnected — catalog version unchanged, nothing to resync");
-      return;
+    if (result.fullReloadRequired) {
+      log("posWebSocket: full refresh required (bulk change or version too old)");
+      return { status: "fullReloadRequired" };
     }
-    log("posWebSocket: reconnected — resynced", result.fullReload ? "(full reload)" : `${result.loaded} item(s)`,
-        "version", localVersion, "->", result.version);
+    if (String(result.version) === String(localVersion) && !result.loaded) {
+      log("posWebSocket: catalog version unchanged, nothing to resync");
+      return { status: "unchanged" };
+    }
+    log("posWebSocket: resynced", result.loaded, "item(s), version", localVersion, "->", result.version);
     await setLocalCatalogVersion(result.version);
+    return { status: "resynced", loaded: result.loaded };
   } catch (e) {
-    // Resync itself failed — fail safe and do a full reload so we don't silently stay stale.
-    log("posWebSocket: catalog resync failed, reloading as a precaution", e?.message);
-    loadAllItemsToCache().catch(() => {});
+    log("posWebSocket: catalog resync check failed", e?.message);
+    return { status: "error" };
   }
 }
 
@@ -157,6 +159,8 @@ export default function App() {
   });
   const [cacheLoading, setCacheLoading] = useState(false);
   const [cacheClearing, setCacheClearing] = useState(false);
+  const [syncingUpdates, setSyncingUpdates] = useState(false);
+  const [pendingFullRefresh, setPendingFullRefresh] = useState(false);
   const [isDayEndDone, setIsDayEndDone] = useState(() => checkDayEndDone(localStorage.getItem("selectedBranchCode") || ""));
   const [dayEndBlock, setDayEndBlock] = useState(null); // "YYYY-MM-DD" of pending date, or null
   const [machineStatus, setMachineStatus] = useState(() => {
@@ -282,7 +286,12 @@ export default function App() {
     const unsubState = wsOnStateChange((online) => {
       if (online) {
         if (wasEverConnectedRef.current) {
-          checkCatalogVersionAndResync();
+          checkCatalogVersionAndResync().then((result) => {
+            if (result.status === "fullReloadRequired") {
+              setPendingFullRefresh(true);
+              message.warning("Item updates are pending — click Refresh to apply them", 5);
+            }
+          });
         }
         wasEverConnectedRef.current = true;
       }
@@ -319,18 +328,17 @@ export default function App() {
             .catch(() => {});
         }
       } else {
-        message.info("Price update received — refreshing item cache…", 3);
-        loadAllItemsToCache()
-          .then(() => { if (msg.version != null) setLocalCatalogVersion(msg.version); })
-          .catch(() => {});
+        // No item data in the message — can't patch or resync surgically.
+        setPendingFullRefresh(true);
+        message.warning("Item updates are pending — click Refresh to apply them", 5);
       }
     });
 
-    const unsubCatalog = wsOnMessage("CATALOG_REFRESH", (msg) => {
-      message.info("Catalogue updated — refreshing item cache…", 3);
-      loadAllItemsToCache()
-        .then(() => { if (msg.version != null) setLocalCatalogVersion(msg.version); })
-        .catch(() => {});
+    const unsubCatalog = wsOnMessage("CATALOG_REFRESH", () => {
+      // Bulk/unenumerable change — don't silently pull the whole catalogue,
+      // let the user apply it on their own schedule via the Refresh button.
+      setPendingFullRefresh(true);
+      message.warning("Item updates are pending — click Refresh to apply them", 5);
     });
 
     const unsubNotify = wsOnMessage("NOTIFICATION", (msg) => {
@@ -400,11 +408,52 @@ export default function App() {
     setCacheLoading(true);
     try {
       await loadAllItemsToCache({});
+      // Seed/refresh the local catalog version so future reconnect/Sync Updates checks
+      // have an accurate baseline to diff against.
+      const tenantId = localStorage.getItem("tenancyId") || "";
+      const token    = localStorage.getItem("jwtToken")  || "";
+      if (tenantId && token) {
+        try {
+          const res = await fetch(`/api/${tenantId}/items/catalog-version`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const { version } = await res.json();
+            await setLocalCatalogVersion(version);
+          }
+        } catch { /* best-effort — next reconnect check will fail safe if this didn't take */ }
+      }
+      setPendingFullRefresh(false);
       message.success("Item cache loaded");
     } catch (e) {
       message.error(e.message || "Failed to load item cache");
     } finally {
       setCacheLoading(false);
+    }
+  };
+
+  // Manually check for and apply any price/item updates made while this terminal was
+  // offline or otherwise missed — same logic that runs automatically on reconnect.
+  // Never does a full reload itself — if one is required, it prompts the user to
+  // click Refresh instead.
+  const handleSyncUpdates = async () => {
+    setSyncingUpdates(true);
+    try {
+      const result = await checkCatalogVersionAndResync();
+      if (result.status === "unchanged") {
+        message.info("No updates pending — prices are already up to date");
+      } else if (result.status === "resynced") {
+        message.success(`Updated ${result.loaded} item(s)`);
+      } else if (result.status === "fullReloadRequired") {
+        setPendingFullRefresh(true);
+        message.warning("A full refresh is needed to apply pending updates — click Refresh", 5);
+      } else {
+        message.error("Could not check for updates");
+      }
+    } catch (e) {
+      message.error(e.message || "Could not check for updates");
+    } finally {
+      setSyncingUpdates(false);
     }
   };
 
@@ -615,9 +664,23 @@ export default function App() {
                   placeholder="Select branch"
                 />
               )}
-              <Button size="small" loading={cacheLoading} onClick={reloadCache}>
-                Refresh
-              </Button>
+              <Tooltip title="Check for and apply any price/item updates missed while offline">
+                <Button size="small" loading={syncingUpdates} onClick={handleSyncUpdates}>
+                  Sync Updates
+                </Button>
+              </Tooltip>
+              <Tooltip title={pendingFullRefresh ? "Updates are pending — click to apply" : "Reload item cache"}>
+                <Badge dot={pendingFullRefresh} offset={[-4, 4]}>
+                  <Button
+                    size="small"
+                    type={pendingFullRefresh ? "primary" : "default"}
+                    loading={cacheLoading}
+                    onClick={reloadCache}
+                  >
+                    Refresh
+                  </Button>
+                </Badge>
+              </Tooltip>
               <Popconfirm
                 title="Clear stock cache?"
                 description="Cached stock quantities will be wiped. Press Refresh afterwards to reload."
