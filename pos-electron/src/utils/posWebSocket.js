@@ -5,6 +5,19 @@ import { log, warn, error as logError } from "./logger";
 const RECONNECT_DELAYS = [1_000, 2_000, 4_000, 8_000, 15_000, 30_000]; // backoff steps
 const PING_INTERVAL_MS = 30_000; // keep-alive ping
 
+// Close code nexsol-connect uses when a new connection replaces a PRIOR connection from this
+// SAME machine (e.g. this terminal reconnecting after a crash while the old socket hadn't
+// timed out yet). Must NOT auto-reconnect on this code — the fresh connection already took
+// over, reconnecting again would just fight with it.
+const REPLACED_CLOSE_CODE = 4001;
+
+// Per-launch fallback identity for terminals that don't have an approved machine code yet
+// (e.g. still PENDING approval) — keeps them from colliding with each other under a shared
+// default. Once a real machine code is assigned, subsequent connects use that instead.
+const sessionFallbackMachineId = (typeof crypto !== "undefined" && crypto.randomUUID)
+  ? crypto.randomUUID()
+  : `sess-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
 // ─── State ───────────────────────────────────────────────────────────────────
 
 let ws            = null;
@@ -22,12 +35,17 @@ const handlers = {};
 // connection-state listeners
 const stateListeners = new Set();
 
+// listeners notified when this connection was forcibly replaced by another device/window
+const replacedListeners = new Set();
+
 // ─── URL builder ─────────────────────────────────────────────────────────────
 
 function buildWsUrl() {
   const base    = wsBaseUrl || deriveWsBase();
   const version = import.meta.env.VITE_APP_VERSION || "0.0.0";
-  return `${base}/ws?company=${encodeURIComponent(tenantId)}&branch=${encodeURIComponent(branchCode)}&version=${encodeURIComponent(version)}`;
+  const machine = localStorage.getItem(`posMachineCode_${branchCode}`) || sessionFallbackMachineId;
+  return `${base}/ws?company=${encodeURIComponent(tenantId)}&branch=${encodeURIComponent(branchCode)}` +
+    `&machine=${encodeURIComponent(machine)}&version=${encodeURIComponent(version)}`;
 }
 
 /** Derive WebSocket base from the REST API server URL in pos-config. */
@@ -102,6 +120,18 @@ export function onStateChange(fn) {
   return () => stateListeners.delete(fn);
 }
 
+/**
+ * Listen for this connection being forcibly replaced by another device/window connecting
+ * as the same branch. Fires instead of an automatic reconnect — the caller should surface
+ * this to the user rather than silently retrying.
+ * @param {Function} fn - fn()
+ * @returns {Function} unsubscribe
+ */
+export function onReplaced(fn) {
+  replacedListeners.add(fn);
+  return () => replacedListeners.delete(fn);
+}
+
 // ─── Internal ────────────────────────────────────────────────────────────────
 
 function _open() {
@@ -141,6 +171,13 @@ function _open() {
     log("posWebSocket: closed | code:", evt.code, "reason:", evt.reason);
     _clearTimers();
     _notifyState(false);
+
+    if (evt.code === REPLACED_CLOSE_CODE) {
+      // Another device/window connected as this same branch — don't fight over the slot.
+      warn("posWebSocket: connection replaced by another device/window for this branch — not reconnecting");
+      _notifyReplaced();
+      return;
+    }
     if (!intentionalClose) _scheduleReconnect();
   };
 }
@@ -186,4 +223,8 @@ function _clearTimers() {
 
 function _notifyState(online) {
   stateListeners.forEach((fn) => { try { fn(online); } catch {} });
+}
+
+function _notifyReplaced() {
+  replacedListeners.forEach((fn) => { try { fn(); } catch {} });
 }
