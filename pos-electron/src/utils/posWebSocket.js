@@ -11,6 +11,10 @@ const PING_INTERVAL_MS = 30_000; // keep-alive ping
 // over, reconnecting again would just fight with it.
 const REPLACED_CLOSE_CODE = 4001;
 
+// Close code the admin backend uses to force-disconnect this terminal (e.g. to push a
+// re-login/upgrade). Must NOT auto-reconnect — the app should log out instead.
+const KICKED_CLOSE_CODE = 4002;
+
 // Per-launch fallback identity for terminals that don't have an approved machine code yet
 // (e.g. still PENDING approval) — keeps them from colliding with each other under a shared
 // default. Once a real machine code is assigned, subsequent connects use that instead.
@@ -37,6 +41,9 @@ const stateListeners = new Set();
 
 // listeners notified when this connection was forcibly replaced by another device/window
 const replacedListeners = new Set();
+
+// listeners notified when an admin force-disconnected this terminal
+const kickedListeners = new Set();
 
 // ─── URL builder ─────────────────────────────────────────────────────────────
 
@@ -132,6 +139,18 @@ export function onReplaced(fn) {
   return () => replacedListeners.delete(fn);
 }
 
+/**
+ * Listen for this terminal being force-disconnected by an admin. Fires instead of an
+ * automatic reconnect — the caller should log the user out so they have to re-authenticate
+ * (and pick up any pending app update) rather than silently reconnecting.
+ * @param {Function} fn - fn(reason: string)
+ * @returns {Function} unsubscribe
+ */
+export function onKicked(fn) {
+  kickedListeners.add(fn);
+  return () => kickedListeners.delete(fn);
+}
+
 // ─── Internal ────────────────────────────────────────────────────────────────
 
 function _open() {
@@ -176,6 +195,11 @@ function _open() {
       // Another device/window connected as this same branch — don't fight over the slot.
       warn("posWebSocket: connection replaced by another device/window for this branch — not reconnecting");
       _notifyReplaced();
+      return;
+    }
+    if (evt.code === KICKED_CLOSE_CODE) {
+      warn("posWebSocket: terminal was disconnected by admin — not reconnecting:", evt.reason);
+      _notifyKicked(evt.reason || "Disconnected by admin");
       return;
     }
     if (!intentionalClose) _scheduleReconnect();
@@ -227,4 +251,8 @@ function _notifyState(online) {
 
 function _notifyReplaced() {
   replacedListeners.forEach((fn) => { try { fn(); } catch {} });
+}
+
+function _notifyKicked(reason) {
+  kickedListeners.forEach((fn) => { try { fn(reason); } catch {} });
 }

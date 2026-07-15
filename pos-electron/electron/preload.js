@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld("POS", {
   getPrinterPaperSize: (deviceName) => ipcRenderer.invoke("printer:get-paper-size", deviceName),
   savePrinterConfig: (settings) => ipcRenderer.invoke("config:save-printer", settings),
   closeWindow: () => ipcRenderer.invoke("window:close"),
+  // Quits the whole app (used to force-pick-up a pending update after being disconnected by an admin)
+  quitApp: () => ipcRenderer.send("app:quit"),
   onNavigate: (cb) => {
     if (typeof cb !== "function") return () => {};
     const handler = (_event, page) => cb(page);

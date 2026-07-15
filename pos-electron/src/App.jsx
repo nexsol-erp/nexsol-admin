@@ -19,8 +19,8 @@ import { isLoggedIn, logout, isAdminRole, getBranchLock, clearBranchLock } from 
 import { clearItemCache, hasCache, loadAllItemsToCache, resyncItemsByCodes, resyncFromVersion } from "./cache/itemCache";
 import { db } from "./cache/itemCacheDb";
 import { registerMachine, fetchApprovedMachines, claimMachine } from "./utils/posDevice";
-import { connect as wsConnect, disconnect as wsDisconnect, onMessage as wsOnMessage, onStateChange as wsOnStateChange, onReplaced as wsOnReplaced } from "./utils/posWebSocket";
-import { log } from "./utils/logger";
+import { connect as wsConnect, disconnect as wsDisconnect, onMessage as wsOnMessage, onStateChange as wsOnStateChange, onReplaced as wsOnReplaced, onKicked as wsOnKicked } from "./utils/posWebSocket";
+import { log, warn } from "./utils/logger";
 import { todayIST } from "./utils/timeUtils";
 
 const { Text } = Typography;
@@ -285,6 +285,29 @@ export default function App() {
       setSessionReplaced(true);
     });
 
+    // Admin force-disconnected this terminal — quit the whole app (not just log out) so the
+    // external launcher picks up any pending update on the next relaunch, and the user has to
+    // log in again from a clean process rather than the app silently reconnecting.
+    const unsubKicked = wsOnKicked((reason) => {
+      log("posWebSocket: kicked by admin —", reason);
+      message.warning(
+        (reason || "You have been disconnected by an administrator.") + " Closing the app…",
+        4
+      );
+      wsDisconnect();
+      logout();
+      setLoggedIn(false);
+      setTimeout(() => {
+        if (window.POS?.quitApp) {
+          window.POS.quitApp();
+        } else {
+          // Not running inside Electron (e.g. dev in a browser) — nothing more to do,
+          // the app already dropped back to the login screen above.
+          warn("posWebSocket: quitApp unavailable — staying on login screen");
+        }
+      }, 2500);
+    });
+
     // Reconnecting after a drop (not the very first connect this session) means we may
     // have missed PRICE_CHANGE/CATALOG_REFRESH pushes while offline. Rather than always
     // doing a full reload (expensive, and reconnects can happen with no price change at
@@ -358,6 +381,7 @@ export default function App() {
 
     return () => {
       unsubReplaced();
+      unsubKicked();
       unsubState();
       unsubPrice();
       unsubCatalog();
