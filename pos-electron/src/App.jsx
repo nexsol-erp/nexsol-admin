@@ -19,7 +19,7 @@ import { isLoggedIn, logout, isAdminRole, getBranchLock, clearBranchLock } from 
 import { clearItemCache, hasCache, loadAllItemsToCache, resyncItemsByCodes, resyncFromVersion } from "./cache/itemCache";
 import { db } from "./cache/itemCacheDb";
 import { registerMachine, fetchApprovedMachines, claimMachine } from "./utils/posDevice";
-import { connect as wsConnect, disconnect as wsDisconnect, onMessage as wsOnMessage, onStateChange as wsOnStateChange } from "./utils/posWebSocket";
+import { connect as wsConnect, disconnect as wsDisconnect, onMessage as wsOnMessage, onStateChange as wsOnStateChange, onReplaced as wsOnReplaced } from "./utils/posWebSocket";
 import { log } from "./utils/logger";
 import { todayIST } from "./utils/timeUtils";
 
@@ -161,6 +161,7 @@ export default function App() {
   const [cacheClearing, setCacheClearing] = useState(false);
   const [syncingUpdates, setSyncingUpdates] = useState(false);
   const [pendingFullRefresh, setPendingFullRefresh] = useState(false);
+  const [sessionReplaced, setSessionReplaced] = useState(false);
   const [isDayEndDone, setIsDayEndDone] = useState(() => checkDayEndDone(localStorage.getItem("selectedBranchCode") || ""));
   const [dayEndBlock, setDayEndBlock] = useState(null); // "YYYY-MM-DD" of pending date, or null
   const [machineStatus, setMachineStatus] = useState(() => {
@@ -278,6 +279,12 @@ export default function App() {
   useEffect(() => {
     if (!loggedIn || !selectedBranchCode) return;
 
+    setSessionReplaced(false);
+    const unsubReplaced = wsOnReplaced(() => {
+      log("posWebSocket: session replaced by another device/window for this branch");
+      setSessionReplaced(true);
+    });
+
     // Reconnecting after a drop (not the very first connect this session) means we may
     // have missed PRICE_CHANGE/CATALOG_REFRESH pushes while offline. Rather than always
     // doing a full reload (expensive, and reconnects can happen with no price change at
@@ -350,6 +357,7 @@ export default function App() {
     });
 
     return () => {
+      unsubReplaced();
       unsubState();
       unsubPrice();
       unsubCatalog();
@@ -718,6 +726,14 @@ export default function App() {
             </div>
           </div>
 
+          {sessionReplaced && (
+            <Alert
+              type="error"
+              showIcon
+              banner
+              message="This window's connection was replaced by another instance of this same terminal (e.g. a duplicate window/process). If that wasn't intentional, close the extra window and restart the app to receive live updates again."
+            />
+          )}
           {dayEndBlock && (
             <Alert
               type="error"
