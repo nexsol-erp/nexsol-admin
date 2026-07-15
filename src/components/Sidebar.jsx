@@ -212,6 +212,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         { menuKey: "Admin Page",                    label: t("Admin Page"),                     link: "/branch-request-list",          roles: ["admin", "WB"] },
         { menuKey: "Reprocess Voucher",             label: t("Reprocess Voucher"),              link: "/reprocess-voucher-form",       roles: ["admin", "WB"] },
         { menuKey: "POS Machine Approval",          label: t("POS Machine Approval"),           link: "/pos-machine-approval",          roles: ["admin", "MACHINE_ADMIN"] },
+        { menuKey: "Connected POS Terminals",       label: t("Connected POS Terminals"),        link: "/pos-sessions",                 roles: ["admin"] },
         { menuKey: "UPI Payment Setup",              label: t("UPI Payment Setup"),               link: "/upi-config",                     roles: ["admin"] },
       ],
     },

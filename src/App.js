@@ -65,6 +65,7 @@ import SalesReportAllBranch from "./components/SalesReportAllBranch"
 import WeighBridgeEngageReport from "./components/WeighBridgeEngageReport";
 import WeighbridgeUsageReport from "./components/WeighbridgeUsageReport";
 import BranchRequestList from "./components/BranchRequestList";
+import PosSessionsPage from "./components/PosSessionsPage";
 import ReprocessVoucherForm from "./components/ReprocessVoucherForm"
 import BranchStockReport from "./components/BranchStockReport"
 import BranchStockDiffReport from "./components/BranchStockDiffReport";
@@ -171,6 +172,7 @@ const ROUTE_ORDER = [
   { key: "AI Report Assistant",             path: "/ai-report" },
   { key: "Menu Map",                         path: "/menu-map" },
   { key: "Admin Page",                       path: "/branch-request-list" },
+  { key: "Connected POS Terminals",          path: "/pos-sessions" },
   { key: "Reprocess Voucher",               path: "/reprocess-voucher-form" },
   { key: "POS",                              path: "/pos" },
   { key: "KOT",                             path: "/kot" },
@@ -455,6 +457,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/bridge-count" element={<WeighBridgeEngageReport />} />
             <Route path="/weighbridgeusage" element={<WeighbridgeUsageReport />} />
             <Route path="/branch-request-list" element={<BranchRequestList />} />
+            <Route path="/pos-sessions" element={<PosSessionsPage />} />
             <Route path="/reprocess-voucher-form" element={<ReprocessVoucherForm />} />
             <Route path="/branch-stock-report" element={<BranchStockReport />} />
             <Route path="/branch-stock-diff-report" element={<BranchStockDiffReport />} />

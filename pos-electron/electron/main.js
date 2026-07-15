@@ -371,6 +371,12 @@ ipcMain.handle("window:close", async () => {
   return true;
 });
 
+// Quits the whole app (not just this window) — used when an admin force-disconnects this
+// terminal, so the external launcher can pick up a pending update on the next relaunch.
+ipcMain.on("app:quit", () => {
+  app.quit();
+});
+
 ipcMain.handle("printer:get-paper-size", async (_evt, deviceName) => {
   try {
     const printers = await win.webContents.getPrintersAsync();
