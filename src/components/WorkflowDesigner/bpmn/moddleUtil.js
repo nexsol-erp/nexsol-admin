@@ -58,6 +58,16 @@ export function setExtensionElementProp(element, commandStack, bpmnFactory, type
   });
 }
 
+/** Same as setExtensionElementProp but applies a whole object of properties as one undo step. */
+export function setExtensionElementProps(element, commandStack, bpmnFactory, type, properties) {
+  const target = ensureExtensionElement(element, commandStack, bpmnFactory, type);
+  commandStack.execute("element.updateModdleProperties", {
+    element,
+    moddleElement: target,
+    properties,
+  });
+}
+
 export function getConditionBody(element) {
   const bo = getBusinessObject(element);
   return bo.conditionExpression && bo.conditionExpression.get("body");

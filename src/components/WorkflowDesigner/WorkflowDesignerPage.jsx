@@ -15,6 +15,7 @@ import "bpmn-js/dist/assets/bpmn-font/css/bpmn.css";
 import "@bpmn-io/properties-panel/dist/assets/properties-panel.css";
 
 import customModules from "./bpmn/customModules";
+import { getExtensionElement, setExtensionElementProps } from "./bpmn/moddleUtil";
 import {
   listWorkflowDefinitions,
   getWorkflowDefinition,
@@ -73,6 +74,16 @@ export default function WorkflowDesignerPage() {
   const [versionHistory, setVersionHistory] = useState([]);
   const [validationResult, setValidationResult] = useState(null);
   const [validationPanelVisible, setValidationPanelVisible] = useState(false);
+  const [settingsDialogVisible, setSettingsDialogVisible] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({
+    category: "",
+    description: "",
+    businessObjectType: "",
+    tags: "",
+    slaHours: "",
+    effectiveFrom: "",
+    effectiveTo: "",
+  });
 
   const refreshRootInfo = useCallback(() => {
     const modeler = modelerRef.current;
@@ -333,6 +344,41 @@ export default function WorkflowDesignerPage() {
     }
   };
 
+  const getRootProcessElement = () => {
+    const modeler = modelerRef.current;
+    if (!modeler) return null;
+    return modeler.get("elementRegistry").getAll().find((el) => el.type === "bpmn:Process") || null;
+  };
+
+  // Category/description/business object type/tags/SLA/effective dates are pure authoring
+  // metadata — nothing in DbBackedEngine reads or enforces any of this today (no process-
+  // level SLA-breach tracking or effective-date gating exists in the runtime). Stored as a
+  // tl:WorkflowConfig extension on the root bpmn:Process, same pattern as tl:FlowConfig/
+  // tl:ServiceConfig, so it round-trips through export/import/versions for free.
+  const handleOpenSettings = () => {
+    const root = getRootProcessElement();
+    if (!root) return;
+    const cfg = getExtensionElement(root, "tl:WorkflowConfig");
+    setSettingsForm({
+      category: (cfg && cfg.get("category")) || "",
+      description: (cfg && cfg.get("description")) || "",
+      businessObjectType: (cfg && cfg.get("businessObjectType")) || "",
+      tags: (cfg && cfg.get("tags")) || "",
+      slaHours: (cfg && cfg.get("slaHours")) || "",
+      effectiveFrom: (cfg && cfg.get("effectiveFrom")) || "",
+      effectiveTo: (cfg && cfg.get("effectiveTo")) || "",
+    });
+    setSettingsDialogVisible(true);
+  };
+
+  const handleSaveSettings = () => {
+    const root = getRootProcessElement();
+    if (!root) return;
+    const modeler = modelerRef.current;
+    setExtensionElementProps(root, modeler.get("commandStack"), modeler.get("bpmnFactory"), "tl:WorkflowConfig", settingsForm);
+    setSettingsDialogVisible(false);
+  };
+
   const handleImportClick = () => fileInputRef.current?.click();
 
   const handleImportFile = async (event) => {
@@ -393,6 +439,7 @@ export default function WorkflowDesignerPage() {
           <button onClick={handleValidate} disabled={busy || !ready}>Validate</button>
           <button onClick={handlePublish} disabled={busy || !ready || !canEdit} title={!canEdit ? "Requires admin or system-admin role" : undefined}>Publish</button>
           <button onClick={handleShowVersionHistory} disabled={busy || !processId}>Version History</button>
+          <button onClick={handleOpenSettings} disabled={busy || !ready}>Workflow Settings</button>
           <button onClick={handleImportClick} disabled={busy || !canEdit} title={!canEdit ? "Requires admin or system-admin role" : undefined}>Import BPMN</button>
           <button onClick={handleExport} disabled={busy || !ready}>Export BPMN</button>
           <input
@@ -512,6 +559,84 @@ export default function WorkflowDesignerPage() {
               ))}
             </ul>
             <button onClick={() => setHistoryDialogVisible(false)}>Close</button>
+          </div>
+        </div>
+      )}
+
+      {settingsDialogVisible && (
+        <div className="wd-modal-backdrop" onClick={() => setSettingsDialogVisible(false)}>
+          <div className="wd-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Workflow Settings — {processName}</h3>
+            <p className="wd-settings-hint">
+              Reference metadata only — not enforced by the workflow engine (no SLA-breach tracking or
+              effective-date gating exists in the runtime today).
+            </p>
+            <div className="wd-settings-form">
+              <label>
+                Category
+                <input
+                  type="text"
+                  value={settingsForm.category}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, category: e.target.value })}
+                />
+              </label>
+              <label>
+                Description
+                <textarea
+                  rows={3}
+                  value={settingsForm.description}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, description: e.target.value })}
+                />
+              </label>
+              <label>
+                Business object type
+                <input
+                  type="text"
+                  placeholder="e.g. PurchaseOrder"
+                  value={settingsForm.businessObjectType}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, businessObjectType: e.target.value })}
+                />
+              </label>
+              <label>
+                Tags (comma-separated)
+                <input
+                  type="text"
+                  value={settingsForm.tags}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, tags: e.target.value })}
+                />
+              </label>
+              <label>
+                SLA (hours)
+                <input
+                  type="number"
+                  min="0"
+                  value={settingsForm.slaHours}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, slaHours: e.target.value })}
+                />
+              </label>
+              <div className="wd-settings-date-row">
+                <label>
+                  Effective from
+                  <input
+                    type="date"
+                    value={settingsForm.effectiveFrom}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, effectiveFrom: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Effective to
+                  <input
+                    type="date"
+                    value={settingsForm.effectiveTo}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, effectiveTo: e.target.value })}
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="wd-settings-actions">
+              <button onClick={handleSaveSettings}>Apply</button>
+              <button onClick={() => setSettingsDialogVisible(false)}>Cancel</button>
+            </div>
           </div>
         </div>
       )}

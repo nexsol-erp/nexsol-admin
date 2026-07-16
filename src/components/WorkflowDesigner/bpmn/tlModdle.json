@@ -29,6 +29,19 @@
         { "name": "kafkaTopic", "isAttr": true, "type": "String" },
         { "name": "kafkaKey", "isAttr": true, "type": "String" }
       ]
+    },
+    {
+      "name": "WorkflowConfig",
+      "superClass": ["Element"],
+      "properties": [
+        { "name": "category", "isAttr": true, "type": "String" },
+        { "name": "description", "isAttr": true, "type": "String" },
+        { "name": "businessObjectType", "isAttr": true, "type": "String" },
+        { "name": "tags", "isAttr": true, "type": "String" },
+        { "name": "slaHours", "isAttr": true, "type": "String" },
+        { "name": "effectiveFrom", "isAttr": true, "type": "String" },
+        { "name": "effectiveTo", "isAttr": true, "type": "String" }
+      ]
     }
   ]
 }
