@@ -7,6 +7,7 @@ import {
   ZeebePropertiesProviderModule,
 } from "bpmn-js-properties-panel";
 import ZeebeModdle from "zeebe-bpmn-moddle/resources/zeebe.json";
+import TlModdle from "./bpmn/tlModdle.json";
 import { saveAs } from "file-saver";
 
 import "bpmn-js/dist/assets/diagram-js.css";
@@ -98,7 +99,7 @@ export default function WorkflowDesignerPage() {
         BpmnPropertiesProviderModule,
         ZeebePropertiesProviderModule,
       ],
-      moddleExtensions: { zeebe: ZeebeModdle },
+      moddleExtensions: { zeebe: ZeebeModdle, tl: TlModdle },
     });
     modelerRef.current = modeler;
 

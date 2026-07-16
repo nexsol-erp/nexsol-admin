@@ -1,0 +1,17 @@
+{
+  "name": "TradeLinkWorkflow",
+  "uri": "https://www.tradelink247.com/schema/workflow",
+  "prefix": "tl",
+  "xml": { "tagAlias": "lowerCase" },
+  "types": [
+    {
+      "name": "FlowConfig",
+      "superClass": ["Element"],
+      "properties": [
+        { "name": "flowCode", "isAttr": true, "type": "String" },
+        { "name": "transitionAction", "isAttr": true, "type": "String" },
+        { "name": "requiredOutcome", "isAttr": true, "type": "String" }
+      ]
+    }
+  ]
+}
