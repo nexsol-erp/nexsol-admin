@@ -79,3 +79,7 @@ export const getInstanceTasks = (instanceId) => {
 export const completeWorkflowTask = (taskId, updates) => {
   return apiClient.post(`/workflow-instances/tasks/${encodeURIComponent(taskId)}/complete`, { updates });
 };
+
+export const getMyTasks = (state, page = 0, size = 20) => {
+  return apiClient.get("/workflow-instances/my-tasks", { params: { state, page, size } });
+};

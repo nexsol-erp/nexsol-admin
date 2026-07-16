@@ -59,6 +59,7 @@ import {
   Build,
   Map,
   LockReset,
+  Assignment,
 } from "@mui/icons-material";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -193,6 +194,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
     { menuKey: "AI Stock Intelligence", label: t("AI Stock Intelligence"), icon: <AutoGraph />, link: "/ai-dashboard", roles: ["admin", "manager"] },
     { menuKey: "AI Report Assistant",  label: t("AI Report Assistant"),  icon: <AutoGraph />, link: "/ai-report",    roles: ["admin", "manager", "user"] },
     { menuKey: "Menu Map", label: t("Menu Map"), icon: <Map />, link: "/menu-map", roles: ["admin", "manager", "user"] },
+    { menuKey: "My Tasks", label: t("My Tasks"), icon: <Assignment />, link: "/my-tasks", roles: ["admin", "manager", "user", "WB"] },
 
     // ── Setup & Administration ────────────────────────────────────────────
     {

@@ -48,6 +48,7 @@ import CreateItemMaster from "./components/CreateItemMaster";
 import SalesSummaryReport from "./components/SalesSummaryReport";
 import WorkflowDesignerPage from "./components/WorkflowDesigner/WorkflowDesignerPage";
 import RequireWorkflowMenuAccess from "./components/WorkflowDesigner/RequireWorkflowMenuAccess";
+import MyTasksPage from "./components/MyTasksPage";
 import StockTurnoverReport from "./components/StockTurnoverReport";
 import ItemSalesReport from "./components/ItemSalesReport";
 import DocumentList from "./components/DocumentList";
@@ -289,6 +290,7 @@ const ROUTE_ORDER = [
   { key: "Upload",                           path: "/uploadpage" },
   { key: "Invoice Designer",                 path: "/invoicedesigner" },
   { key: "Workflow Designer",                path: "/bpmn-editorr" },
+  { key: "My Tasks",                         path: "/my-tasks" },
   { key: "About",                            path: "/about" },
   { key: "Help",                             path: "/help" },
 ];
@@ -468,6 +470,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/tax-update-preview" element={<TaxUpdatePreview />} />
             <Route path="/sales-category-wise-report-all-branch" element={<SalesCategoryWiseReportAllBranch />} />
             <Route path="/bpmn-editorr" element={<RequireWorkflowMenuAccess><WorkflowDesignerPage /></RequireWorkflowMenuAccess>} />
+            <Route path="/my-tasks" element={<RequireWorkflowMenuAccess menuKey="My Tasks"><MyTasksPage /></RequireWorkflowMenuAccess>} />
             <Route path="/stocktransfer-out-report" element={<StockTransferOutReport />} />
             <Route path="/stocktransfer-in-report" element={<StockTransferInReport />} />
             <Route path="/branchassingment" element={<BranchAssignment />} />

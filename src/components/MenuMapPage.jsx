@@ -20,6 +20,7 @@ const SECTIONS = [
       { label: "Dashboard", path: "/dashboard" },
       { label: "AI Stock Intelligence", path: "/ai-dashboard" },
       { label: "Menu Map", path: "/menu-map" },
+      { label: "My Tasks", path: "/my-tasks" },
     ],
   },
   {
