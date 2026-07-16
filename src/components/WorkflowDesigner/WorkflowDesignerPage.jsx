@@ -17,7 +17,10 @@ import customModules from "./bpmn/customModules";
 import {
   listWorkflowDefinitions,
   getWorkflowDefinition,
-  deployWorkflowDefinition,
+  saveWorkflowDraft,
+  listWorkflowVersions,
+  getWorkflowVersion,
+  publishWorkflowVersion,
 } from "../../services/apiservice";
 import "./WorkflowDesigner.css";
 
@@ -60,6 +63,10 @@ export default function WorkflowDesignerPage() {
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
+  const [currentVersion, setCurrentVersion] = useState(null);
+  const [currentStatus, setCurrentStatus] = useState(null);
+  const [historyDialogVisible, setHistoryDialogVisible] = useState(false);
+  const [versionHistory, setVersionHistory] = useState([]);
 
   const refreshRootInfo = useCallback(() => {
     const modeler = modelerRef.current;
@@ -147,6 +154,8 @@ export default function WorkflowDesignerPage() {
       refreshRootInfo();
       setDirty(false);
       setStatusMessage(null);
+      setCurrentVersion(null);
+      setCurrentStatus(null);
     } catch (err) {
       setStatusMessage({ type: "error", text: `Failed to create new workflow: ${err.message}` });
     }
@@ -174,8 +183,10 @@ export default function WorkflowDesignerPage() {
       modelerRef.current.get("canvas").zoom("fit-viewport");
       refreshRootInfo();
       setDirty(false);
+      setCurrentVersion(res.data.version);
+      setCurrentStatus(res.data.status);
       setOpenDialogVisible(false);
-      setStatusMessage({ type: "success", text: `Opened "${id}".` });
+      setStatusMessage({ type: "success", text: `Opened "${id}" (v${res.data.version}, ${res.data.status}).` });
     } catch (err) {
       setStatusMessage({ type: "error", text: `Failed to open workflow: ${err.message}` });
     } finally {
@@ -183,16 +194,83 @@ export default function WorkflowDesignerPage() {
     }
   };
 
+  // Returns the saved version's metadata, or null on failure (status message already set).
+  const saveDraft = async () => {
+    try {
+      const { xml } = await modelerRef.current.saveXML({ format: true });
+      const res = await saveWorkflowDraft(processId, processName, xml);
+      setDirty(false);
+      setCurrentVersion(res.data.version);
+      setCurrentStatus(res.data.status);
+      return res.data;
+    } catch (err) {
+      setStatusMessage({ type: "error", text: `Save failed: ${err.message}` });
+      return null;
+    }
+  };
+
   const handleSaveDraft = async () => {
     setBusy(true);
     setStatusMessage(null);
+    const saved = await saveDraft();
+    if (saved) {
+      setStatusMessage({ type: "success", text: `Saved as draft v${saved.version}.` });
+    }
+    setBusy(false);
+  };
+
+  const handlePublish = async () => {
+    setBusy(true);
+    setStatusMessage(null);
     try {
-      const { xml } = await modelerRef.current.saveXML({ format: true });
-      await deployWorkflowDefinition(xml, `${processId || "workflow"}.bpmn`);
-      setDirty(false);
-      setStatusMessage({ type: "success", text: "Saved." });
+      let versionToPublish = currentVersion;
+      if (dirty || currentStatus !== "DRAFT" || versionToPublish == null) {
+        const saved = await saveDraft();
+        if (!saved) return;
+        versionToPublish = saved.version;
+      }
+      const changeNotes = window.prompt("Change notes for this publish (optional):", "") || "";
+      const res = await publishWorkflowVersion(processId, versionToPublish, changeNotes);
+      setCurrentVersion(res.data.version);
+      setCurrentStatus(res.data.status);
+      setStatusMessage({ type: "success", text: `Published v${res.data.version}.` });
     } catch (err) {
-      setStatusMessage({ type: "error", text: `Save failed: ${err.message}` });
+      const serverMsg = err?.response?.data?.error;
+      setStatusMessage({ type: "error", text: `Publish failed: ${serverMsg || err.message}` });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleShowVersionHistory = async () => {
+    if (!processId) return;
+    setBusy(true);
+    try {
+      const res = await listWorkflowVersions(processId);
+      setVersionHistory(res.data || []);
+      setHistoryDialogVisible(true);
+    } catch (err) {
+      setStatusMessage({ type: "error", text: `Failed to load version history: ${err.message}` });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleOpenVersion = async (version) => {
+    if (!confirmDiscardIfDirty()) return;
+    setBusy(true);
+    try {
+      const res = await getWorkflowVersion(processId, version);
+      await modelerRef.current.importXML(res.data.bpmnXml);
+      modelerRef.current.get("canvas").zoom("fit-viewport");
+      refreshRootInfo();
+      setDirty(false);
+      setCurrentVersion(res.data.version);
+      setCurrentStatus(res.data.status);
+      setHistoryDialogVisible(false);
+      setStatusMessage({ type: "success", text: `Loaded v${res.data.version} (${res.data.status}).` });
+    } catch (err) {
+      setStatusMessage({ type: "error", text: `Failed to load version: ${err.message}` });
     } finally {
       setBusy(false);
     }
@@ -211,6 +289,8 @@ export default function WorkflowDesignerPage() {
       modelerRef.current.get("canvas").zoom("fit-viewport");
       refreshRootInfo();
       setDirty(true);
+      setCurrentVersion(null);
+      setCurrentStatus(null);
       setStatusMessage({ type: "success", text: `Imported "${file.name}". Not yet saved.` });
     } catch (err) {
       setStatusMessage({ type: "error", text: `Failed to import BPMN: ${err.message}` });
@@ -251,8 +331,10 @@ export default function WorkflowDesignerPage() {
           <button onClick={handleNew} disabled={busy}>New</button>
           <button onClick={openDefinitionsList} disabled={busy}>Open</button>
           <button onClick={handleSaveDraft} disabled={busy || !ready}>
-            {busy ? "Saving..." : "Save Draft"}
+            {busy ? "Working..." : "Save Draft"}
           </button>
+          <button onClick={handlePublish} disabled={busy || !ready}>Publish</button>
+          <button onClick={handleShowVersionHistory} disabled={busy || !processId}>Version History</button>
           <button onClick={handleImportClick} disabled={busy}>Import BPMN</button>
           <button onClick={handleExport} disabled={busy || !ready}>Export BPMN</button>
           <input
@@ -275,6 +357,11 @@ export default function WorkflowDesignerPage() {
           <span className="wd-workflow-name">
             {processName} <span className="wd-process-id">({processId})</span>
           </span>
+          {currentStatus && (
+            <span className={`wd-status-badge wd-status-badge-${currentStatus.toLowerCase()}`}>
+              v{currentVersion} · {currentStatus}
+            </span>
+          )}
           <span className={`wd-dirty-indicator ${dirty ? "dirty" : "clean"}`}>
             {dirty ? "Unsaved changes" : "Saved"}
           </span>
@@ -300,12 +387,45 @@ export default function WorkflowDesignerPage() {
               {definitions.map((d) => (
                 <li key={d.processId}>
                   <button onClick={() => handleOpenSelected(d.processId)}>
-                    {d.name} <span className="wd-process-id">({d.processId})</span>
+                    {d.name} <span className="wd-process-id">({d.processId})</span>{" "}
+                    <span className={`wd-status-badge wd-status-badge-${d.status.toLowerCase()}`}>
+                      v{d.version} · {d.status}
+                    </span>
                   </button>
                 </li>
               ))}
             </ul>
             <button onClick={() => setOpenDialogVisible(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {historyDialogVisible && (
+        <div className="wd-modal-backdrop" onClick={() => setHistoryDialogVisible(false)}>
+          <div className="wd-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Version History — {processName}</h3>
+            {versionHistory.length === 0 && <p>No versions yet.</p>}
+            <ul className="wd-definition-list">
+              {versionHistory.map((v) => (
+                <li key={v.version}>
+                  <button onClick={() => handleOpenVersion(v.version)}>
+                    <span className={`wd-status-badge wd-status-badge-${v.status.toLowerCase()}`}>
+                      v{v.version} · {v.status}
+                    </span>
+                    <div className="wd-version-meta">
+                      {v.status === "PUBLISHED" && v.publishedBy && (
+                        <span>Published by {v.publishedBy} on {new Date(v.publishedAt).toLocaleString()}</span>
+                      )}
+                      {v.status !== "PUBLISHED" && v.createdBy && (
+                        <span>Created by {v.createdBy} on {new Date(v.createdAt).toLocaleString()}</span>
+                      )}
+                      {v.changeNotes && <div className="wd-change-notes">{v.changeNotes}</div>}
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button onClick={() => setHistoryDialogVisible(false)}>Close</button>
           </div>
         </div>
       )}

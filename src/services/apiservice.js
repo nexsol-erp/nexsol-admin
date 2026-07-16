@@ -38,10 +38,21 @@ export const getWorkflowDefinition = (processId) => {
   return apiClient.get(`/workflow-definitions/${encodeURIComponent(processId)}`);
 };
 
-export const deployWorkflowDefinition = (bpmnXml, filename) => {
-  const formData = new FormData();
-  formData.append("file", new Blob([bpmnXml], { type: "application/xml" }), filename || "diagram.bpmn");
-  return apiClient.post("/workflow-definitions", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+export const saveWorkflowDraft = (processId, name, bpmnXml) => {
+  return apiClient.post(`/workflow-definitions/${encodeURIComponent(processId)}/draft`, { name, bpmnXml });
+};
+
+export const listWorkflowVersions = (processId) => {
+  return apiClient.get(`/workflow-definitions/${encodeURIComponent(processId)}/versions`);
+};
+
+export const getWorkflowVersion = (processId, version) => {
+  return apiClient.get(`/workflow-definitions/${encodeURIComponent(processId)}/versions/${version}`);
+};
+
+export const publishWorkflowVersion = (processId, version, changeNotes) => {
+  return apiClient.post(
+    `/workflow-definitions/${encodeURIComponent(processId)}/versions/${version}/publish`,
+    { changeNotes }
+  );
 };
