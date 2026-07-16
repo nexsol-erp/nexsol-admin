@@ -60,3 +60,22 @@ export const publishWorkflowVersion = (processId, version, changeNotes) => {
 export const validateWorkflowXml = (bpmnXml) => {
   return apiClient.post("/workflow-definitions/validate", { bpmnXml });
 };
+
+// Running process instances — proxied through this backend to miniflow
+// (see WorkflowInstanceController). No admin gate: starting/advancing an
+// instance is a normal business action, not workflow authoring.
+export const startWorkflowInstance = (processId, variables, businessKey) => {
+  return apiClient.post(`/workflow-instances/${encodeURIComponent(processId)}/start`, { businessKey, variables });
+};
+
+export const getWorkflowInstance = (instanceId) => {
+  return apiClient.get(`/workflow-instances/${encodeURIComponent(instanceId)}`);
+};
+
+export const getInstanceTasks = (instanceId) => {
+  return apiClient.get(`/workflow-instances/${encodeURIComponent(instanceId)}/tasks`);
+};
+
+export const completeWorkflowTask = (taskId, updates) => {
+  return apiClient.post(`/workflow-instances/tasks/${encodeURIComponent(taskId)}/complete`, { updates });
+};

@@ -24,6 +24,7 @@ import {
   getWorkflowVersion,
   publishWorkflowVersion,
   validateWorkflowXml,
+  startWorkflowInstance,
 } from "../../services/apiservice";
 import { canEditWorkflows } from "../../utils/workflowPermissions";
 import "./WorkflowDesigner.css";
@@ -310,6 +311,28 @@ export default function WorkflowDesignerPage() {
     }
   };
 
+  const handleStartInstance = async () => {
+    if (!processId || currentStatus !== "PUBLISHED") return;
+    const businessKey = window.prompt("Business key for this instance (optional):", "") || "";
+    setBusy(true);
+    setStatusMessage(null);
+    try {
+      const res = await startWorkflowInstance(processId, {}, businessKey);
+      const openTask = res.data.completed ? null : res.data.tokenAt;
+      setStatusMessage({
+        type: "success",
+        text: res.data.completed
+          ? `Started instance ${res.data.instanceId} — completed immediately.`
+          : `Started instance ${res.data.instanceId} — now waiting at "${openTask}".`,
+      });
+    } catch (err) {
+      const data = err?.response?.data;
+      setStatusMessage({ type: "error", text: `Start failed: ${data?.error || err.message}` });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleShowVersionHistory = async () => {
     if (!processId) return;
     setBusy(true);
@@ -438,6 +461,7 @@ export default function WorkflowDesignerPage() {
           </button>
           <button onClick={handleValidate} disabled={busy || !ready}>Validate</button>
           <button onClick={handlePublish} disabled={busy || !ready || !canEdit} title={!canEdit ? "Requires admin or system-admin role" : undefined}>Publish</button>
+          <button onClick={handleStartInstance} disabled={busy || currentStatus !== "PUBLISHED"} title={currentStatus !== "PUBLISHED" ? "Publish this workflow before starting an instance" : undefined}>Start Instance</button>
           <button onClick={handleShowVersionHistory} disabled={busy || !processId}>Version History</button>
           <button onClick={handleOpenSettings} disabled={busy || !ready}>Workflow Settings</button>
           <button onClick={handleImportClick} disabled={busy || !canEdit} title={!canEdit ? "Requires admin or system-admin role" : undefined}>Import BPMN</button>
