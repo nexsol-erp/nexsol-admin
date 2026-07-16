@@ -1,5 +1,6 @@
 import CustomPaletteProvider from "./CustomPaletteProvider";
 import CustomContextPadProvider from "./CustomContextPadProvider";
+import ConditionBuilderProvider from "./ConditionBuilderProvider";
 
 // `paletteProvider` is the exact DI name bpmn-js's built-in palette module
 // binds under. Declaring the same name here — loaded as an additionalModule,
@@ -14,8 +15,12 @@ import CustomContextPadProvider from "./CustomContextPadProvider";
 // `contextPadProvider`) at a priority that runs after the built-in one, so
 // it can filter the entries the built-in provider already produced rather
 // than reimplementing the whole context pad from scratch.
+// ConditionBuilderProvider registers itself as an additional properties-panel provider
+// (own DI name, same additive pattern the built-in ZeebePropertiesProvider uses) so its
+// "Condition builder" group appears alongside the stock groups, not instead of them.
 export default {
-  __init__: ["paletteProvider", "customContextPadProvider"],
+  __init__: ["paletteProvider", "customContextPadProvider", "conditionBuilderProvider"],
   paletteProvider: ["type", CustomPaletteProvider],
   customContextPadProvider: ["type", CustomContextPadProvider],
+  conditionBuilderProvider: ["type", ConditionBuilderProvider],
 };
