@@ -1,0 +1,154 @@
+.workflow-designer-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+}
+
+.wd-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #1976d2;
+  color: #fff;
+  border-bottom: 1px solid #0d47a1;
+}
+
+.wd-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wd-toolbar button {
+  padding: 6px 12px;
+  border: 1px solid #90caf9;
+  border-radius: 4px;
+  background-color: #1e88e5;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.wd-toolbar button:hover:not(:disabled) {
+  background-color: #1565c0;
+}
+
+.wd-toolbar button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wd-toolbar-status {
+  gap: 12px;
+}
+
+.wd-workflow-name {
+  font-weight: 600;
+}
+
+.wd-process-id {
+  font-weight: 400;
+  opacity: 0.85;
+  font-size: 12px;
+}
+
+.wd-dirty-indicator {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 10px;
+}
+
+.wd-dirty-indicator.dirty {
+  background-color: #ffca28;
+  color: #212121;
+}
+
+.wd-dirty-indicator.clean {
+  background-color: #43a047;
+  color: #fff;
+}
+
+.wd-status-bar {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.wd-status-success {
+  background-color: #e8f5e9;
+  color: #1b5e20;
+}
+
+.wd-status-error {
+  background-color: #fdecea;
+  color: #b71c1c;
+}
+
+.wd-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.wd-canvas {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  background-color: #fafafa;
+}
+
+.wd-properties {
+  width: 320px;
+  min-width: 280px;
+  max-width: 420px;
+  border-left: 1px solid #ddd;
+  overflow-y: auto;
+  background-color: #fff;
+}
+
+.wd-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.wd-modal {
+  background: #fff;
+  border-radius: 6px;
+  padding: 20px;
+  min-width: 360px;
+  max-width: 520px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.wd-definition-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wd-definition-list li {
+  margin-bottom: 6px;
+}
+
+.wd-definition-list button {
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #f5f5f5;
+  cursor: pointer;
+}
+
+.wd-definition-list button:hover {
+  background: #e3f2fd;
+}

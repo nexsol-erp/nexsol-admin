@@ -27,3 +27,21 @@ export const saveWorkflow = (workflowData) => {
 export const loadWorkflow = (workflowName) => {
   return apiClient.get("/workflow/fetch", { params: { name: workflowName } });
 };
+
+// BPMN workflow designer — proxied through this backend to the miniflow
+// workflow engine (see WorkflowDefinitionController).
+export const listWorkflowDefinitions = () => {
+  return apiClient.get("/workflow-definitions");
+};
+
+export const getWorkflowDefinition = (processId) => {
+  return apiClient.get(`/workflow-definitions/${encodeURIComponent(processId)}`);
+};
+
+export const deployWorkflowDefinition = (bpmnXml, filename) => {
+  const formData = new FormData();
+  formData.append("file", new Blob([bpmnXml], { type: "application/xml" }), filename || "diagram.bpmn");
+  return apiClient.post("/workflow-definitions", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
