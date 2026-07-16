@@ -47,6 +47,7 @@ import Invoicedesigner from "./components/InvoiceDesigner";
 import CreateItemMaster from "./components/CreateItemMaster";
 import SalesSummaryReport from "./components/SalesSummaryReport";
 import WorkflowDesignerPage from "./components/WorkflowDesigner/WorkflowDesignerPage";
+import RequireWorkflowMenuAccess from "./components/WorkflowDesigner/RequireWorkflowMenuAccess";
 import StockTurnoverReport from "./components/StockTurnoverReport";
 import ItemSalesReport from "./components/ItemSalesReport";
 import DocumentList from "./components/DocumentList";
@@ -466,7 +467,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/tax-update-manager" element={<TaxUpdateManager />} />
             <Route path="/tax-update-preview" element={<TaxUpdatePreview />} />
             <Route path="/sales-category-wise-report-all-branch" element={<SalesCategoryWiseReportAllBranch />} />
-            <Route path="/bpmn-editorr" element={<WorkflowDesignerPage />} />
+            <Route path="/bpmn-editorr" element={<RequireWorkflowMenuAccess><WorkflowDesignerPage /></RequireWorkflowMenuAccess>} />
             <Route path="/stocktransfer-out-report" element={<StockTransferOutReport />} />
             <Route path="/stocktransfer-in-report" element={<StockTransferInReport />} />
             <Route path="/branchassingment" element={<BranchAssignment />} />

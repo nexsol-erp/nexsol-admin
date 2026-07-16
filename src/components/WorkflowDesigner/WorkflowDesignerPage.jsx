@@ -23,6 +23,7 @@ import {
   publishWorkflowVersion,
   validateWorkflowXml,
 } from "../../services/apiservice";
+import { canEditWorkflows } from "../../utils/workflowPermissions";
 import "./WorkflowDesigner.css";
 
 function blankDiagram() {
@@ -53,6 +54,7 @@ export default function WorkflowDesignerPage() {
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
+  const [canEdit] = useState(() => canEditWorkflows(JSON.parse(localStorage.getItem("roles") || "[]")));
   const [ready, setReady] = useState(false);
   const [processId, setProcessId] = useState(null);
   const [processName, setProcessName] = useState("New Workflow");
@@ -382,15 +384,15 @@ export default function WorkflowDesignerPage() {
     <div className="workflow-designer-page">
       <div className="wd-toolbar">
         <div className="wd-toolbar-group">
-          <button onClick={handleNew} disabled={busy}>New</button>
+          <button onClick={handleNew} disabled={busy || !canEdit} title={!canEdit ? "Requires admin or system-admin role" : undefined}>New</button>
           <button onClick={openDefinitionsList} disabled={busy}>Open</button>
-          <button onClick={handleSaveDraft} disabled={busy || !ready}>
+          <button onClick={handleSaveDraft} disabled={busy || !ready || !canEdit} title={!canEdit ? "Requires admin or system-admin role" : undefined}>
             {busy ? "Working..." : "Save Draft"}
           </button>
           <button onClick={handleValidate} disabled={busy || !ready}>Validate</button>
-          <button onClick={handlePublish} disabled={busy || !ready}>Publish</button>
+          <button onClick={handlePublish} disabled={busy || !ready || !canEdit} title={!canEdit ? "Requires admin or system-admin role" : undefined}>Publish</button>
           <button onClick={handleShowVersionHistory} disabled={busy || !processId}>Version History</button>
-          <button onClick={handleImportClick} disabled={busy}>Import BPMN</button>
+          <button onClick={handleImportClick} disabled={busy || !canEdit} title={!canEdit ? "Requires admin or system-admin role" : undefined}>Import BPMN</button>
           <button onClick={handleExport} disabled={busy || !ready}>Export BPMN</button>
           <input
             ref={fileInputRef}
@@ -404,10 +406,11 @@ export default function WorkflowDesignerPage() {
           <button onClick={() => handleZoom(1)} disabled={!ready}>Zoom In</button>
           <button onClick={() => handleZoom(-1)} disabled={!ready}>Zoom Out</button>
           <button onClick={handleFit} disabled={!ready}>Fit to Screen</button>
-          <button onClick={handleUndo} disabled={!canUndo}>Undo</button>
-          <button onClick={handleRedo} disabled={!canRedo}>Redo</button>
-          <button onClick={handleDeleteSelected} disabled={!hasSelection}>Delete Selected</button>
+          <button onClick={handleUndo} disabled={!canUndo || !canEdit} title={!canEdit ? "Requires admin or system-admin role" : undefined}>Undo</button>
+          <button onClick={handleRedo} disabled={!canRedo || !canEdit} title={!canEdit ? "Requires admin or system-admin role" : undefined}>Redo</button>
+          <button onClick={handleDeleteSelected} disabled={!hasSelection || !canEdit} title={!canEdit ? "Requires admin or system-admin role" : undefined}>Delete Selected</button>
         </div>
+        {!canEdit && <div className="wd-toolbar-group wd-viewonly-badge">View only</div>}
         <div className="wd-toolbar-group wd-toolbar-status">
           <span className="wd-workflow-name">
             {processName} <span className="wd-process-id">({processId})</span>
