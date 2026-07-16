@@ -21,6 +21,7 @@ import {
   listWorkflowVersions,
   getWorkflowVersion,
   publishWorkflowVersion,
+  validateWorkflowXml,
 } from "../../services/apiservice";
 import "./WorkflowDesigner.css";
 
@@ -67,6 +68,8 @@ export default function WorkflowDesignerPage() {
   const [currentStatus, setCurrentStatus] = useState(null);
   const [historyDialogVisible, setHistoryDialogVisible] = useState(false);
   const [versionHistory, setVersionHistory] = useState([]);
+  const [validationResult, setValidationResult] = useState(null);
+  const [validationPanelVisible, setValidationPanelVisible] = useState(false);
 
   const refreshRootInfo = useCallback(() => {
     const modeler = modelerRef.current;
@@ -219,10 +222,53 @@ export default function WorkflowDesignerPage() {
     setBusy(false);
   };
 
+  // Focuses+selects a canvas element by id, e.g. from a clicked validation issue.
+  const focusElement = (elementId) => {
+    if (!elementId) return;
+    const modeler = modelerRef.current;
+    const element = modeler.get("elementRegistry").get(elementId);
+    if (!element) return;
+    modeler.get("selection").select(element);
+    modeler.get("canvas").scrollToElement(element);
+  };
+
+  const runValidation = async (xml) => {
+    const res = await validateWorkflowXml(xml);
+    setValidationResult(res.data);
+    setValidationPanelVisible(true);
+    return res.data;
+  };
+
+  const handleValidate = async () => {
+    setBusy(true);
+    setStatusMessage(null);
+    try {
+      const { xml } = await modelerRef.current.saveXML({ format: true });
+      const result = await runValidation(xml);
+      setStatusMessage({
+        type: result.valid ? "success" : "error",
+        text: result.valid
+          ? `Valid${result.warnings.length ? ` (${result.warnings.length} warning(s))` : ""}.`
+          : `${result.errors.length} error(s) found.`,
+      });
+    } catch (err) {
+      setStatusMessage({ type: "error", text: `Validation failed: ${err.message}` });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handlePublish = async () => {
     setBusy(true);
     setStatusMessage(null);
     try {
+      const { xml: currentXml } = await modelerRef.current.saveXML({ format: true });
+      const preCheck = await runValidation(currentXml);
+      if (!preCheck.valid) {
+        setStatusMessage({ type: "error", text: `Cannot publish: ${preCheck.errors.length} error(s) found. See validation panel.` });
+        return;
+      }
+
       let versionToPublish = currentVersion;
       if (dirty || currentStatus !== "DRAFT" || versionToPublish == null) {
         const saved = await saveDraft();
@@ -233,10 +279,18 @@ export default function WorkflowDesignerPage() {
       const res = await publishWorkflowVersion(processId, versionToPublish, changeNotes);
       setCurrentVersion(res.data.version);
       setCurrentStatus(res.data.status);
+      setValidationPanelVisible(false);
       setStatusMessage({ type: "success", text: `Published v${res.data.version}.` });
     } catch (err) {
-      const serverMsg = err?.response?.data?.error;
-      setStatusMessage({ type: "error", text: `Publish failed: ${serverMsg || err.message}` });
+      const data = err?.response?.data;
+      if (data && Array.isArray(data.errors)) {
+        // Structured validation failure from the server (e.g. a race with another editor).
+        setValidationResult(data);
+        setValidationPanelVisible(true);
+        setStatusMessage({ type: "error", text: `Publish failed: ${data.errors.length} error(s) found. See validation panel.` });
+      } else {
+        setStatusMessage({ type: "error", text: `Publish failed: ${data?.error || err.message}` });
+      }
     } finally {
       setBusy(false);
     }
@@ -333,6 +387,7 @@ export default function WorkflowDesignerPage() {
           <button onClick={handleSaveDraft} disabled={busy || !ready}>
             {busy ? "Working..." : "Save Draft"}
           </button>
+          <button onClick={handleValidate} disabled={busy || !ready}>Validate</button>
           <button onClick={handlePublish} disabled={busy || !ready}>Publish</button>
           <button onClick={handleShowVersionHistory} disabled={busy || !processId}>Version History</button>
           <button onClick={handleImportClick} disabled={busy}>Import BPMN</button>
@@ -377,6 +432,33 @@ export default function WorkflowDesignerPage() {
         <div className="wd-canvas" ref={canvasRef} />
         <div className="wd-properties" ref={propertiesRef} />
       </div>
+
+      {validationPanelVisible && validationResult && (
+        <div className="wd-validation-panel">
+          <div className="wd-validation-panel-header">
+            <span>
+              {validationResult.valid ? "Valid" : `${validationResult.errors.length} error(s)`}
+              {validationResult.warnings.length > 0 && `, ${validationResult.warnings.length} warning(s)`}
+            </span>
+            <button onClick={() => setValidationPanelVisible(false)}>×</button>
+          </div>
+          <ul className="wd-validation-issue-list">
+            {validationResult.errors.map((issue, i) => (
+              <li key={`err-${i}`} className="wd-validation-issue wd-validation-issue-error" onClick={() => focusElement(issue.elementId)}>
+                <span className="wd-validation-issue-code">{issue.code}</span> {issue.message}
+              </li>
+            ))}
+            {validationResult.warnings.map((issue, i) => (
+              <li key={`warn-${i}`} className="wd-validation-issue wd-validation-issue-warning" onClick={() => focusElement(issue.elementId)}>
+                <span className="wd-validation-issue-code">{issue.code}</span> {issue.message}
+              </li>
+            ))}
+            {validationResult.valid && validationResult.warnings.length === 0 && (
+              <li className="wd-validation-issue">No issues found.</li>
+            )}
+          </ul>
+        </div>
+      )}
 
       {openDialogVisible && (
         <div className="wd-modal-backdrop" onClick={() => setOpenDialogVisible(false)}>

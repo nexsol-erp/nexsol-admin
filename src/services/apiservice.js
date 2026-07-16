@@ -56,3 +56,7 @@ export const publishWorkflowVersion = (processId, version, changeNotes) => {
     { changeNotes }
   );
 };
+
+export const validateWorkflowXml = (bpmnXml) => {
+  return apiClient.post("/workflow-definitions/validate", { bpmnXml });
+};
