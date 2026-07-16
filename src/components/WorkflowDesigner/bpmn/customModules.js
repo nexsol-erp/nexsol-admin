@@ -2,6 +2,7 @@ import CustomPaletteProvider from "./CustomPaletteProvider";
 import CustomContextPadProvider from "./CustomContextPadProvider";
 import ConditionBuilderProvider from "./ConditionBuilderProvider";
 import ApprovalTransitionProvider from "./ApprovalTransitionProvider";
+import ServiceTaskConfigProvider from "./ServiceTaskConfigProvider";
 
 // `paletteProvider` is the exact DI name bpmn-js's built-in palette module
 // binds under. Declaring the same name here — loaded as an additionalModule,
@@ -20,9 +21,16 @@ import ApprovalTransitionProvider from "./ApprovalTransitionProvider";
 // (own DI name, same additive pattern the built-in ZeebePropertiesProvider uses) so its
 // "Condition builder" group appears alongside the stock groups, not instead of them.
 export default {
-  __init__: ["paletteProvider", "customContextPadProvider", "conditionBuilderProvider", "approvalTransitionProvider"],
+  __init__: [
+    "paletteProvider",
+    "customContextPadProvider",
+    "conditionBuilderProvider",
+    "approvalTransitionProvider",
+    "serviceTaskConfigProvider",
+  ],
   paletteProvider: ["type", CustomPaletteProvider],
   customContextPadProvider: ["type", CustomContextPadProvider],
   conditionBuilderProvider: ["type", ConditionBuilderProvider],
   approvalTransitionProvider: ["type", ApprovalTransitionProvider],
+  serviceTaskConfigProvider: ["type", ServiceTaskConfigProvider],
 };

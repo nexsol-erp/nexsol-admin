@@ -12,6 +12,23 @@
         { "name": "transitionAction", "isAttr": true, "type": "String" },
         { "name": "requiredOutcome", "isAttr": true, "type": "String" }
       ]
+    },
+    {
+      "name": "ServiceConfig",
+      "superClass": ["Element"],
+      "properties": [
+        { "name": "serviceType", "isAttr": true, "type": "String" },
+        { "name": "httpUrl", "isAttr": true, "type": "String" },
+        { "name": "httpMethod", "isAttr": true, "type": "String" },
+        { "name": "httpBody", "isAttr": true, "type": "String" },
+        { "name": "retryCount", "isAttr": true, "type": "String" },
+        { "name": "retryDelayMs", "isAttr": true, "type": "String" },
+        { "name": "timeoutMs", "isAttr": true, "type": "String" },
+        { "name": "errorHandling", "isAttr": true, "type": "String" },
+        { "name": "outputVariable", "isAttr": true, "type": "String" },
+        { "name": "kafkaTopic", "isAttr": true, "type": "String" },
+        { "name": "kafkaKey", "isAttr": true, "type": "String" }
+      ]
     }
   ]
 }
