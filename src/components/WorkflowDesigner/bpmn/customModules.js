@@ -3,6 +3,7 @@ import CustomContextPadProvider from "./CustomContextPadProvider";
 import ConditionBuilderProvider from "./ConditionBuilderProvider";
 import ApprovalTransitionProvider from "./ApprovalTransitionProvider";
 import ServiceTaskConfigProvider from "./ServiceTaskConfigProvider";
+import UserTaskConfigProvider from "./UserTaskConfigProvider";
 
 // `paletteProvider` is the exact DI name bpmn-js's built-in palette module
 // binds under. Declaring the same name here — loaded as an additionalModule,
@@ -27,10 +28,12 @@ export default {
     "conditionBuilderProvider",
     "approvalTransitionProvider",
     "serviceTaskConfigProvider",
+    "userTaskConfigProvider",
   ],
   paletteProvider: ["type", CustomPaletteProvider],
   customContextPadProvider: ["type", CustomContextPadProvider],
   conditionBuilderProvider: ["type", ConditionBuilderProvider],
   approvalTransitionProvider: ["type", ApprovalTransitionProvider],
   serviceTaskConfigProvider: ["type", ServiceTaskConfigProvider],
+  userTaskConfigProvider: ["type", UserTaskConfigProvider],
 };

@@ -42,6 +42,26 @@
         { "name": "effectiveFrom", "isAttr": true, "type": "String" },
         { "name": "effectiveTo", "isAttr": true, "type": "String" }
       ]
+    },
+    {
+      "name": "UserTaskConfig",
+      "superClass": ["Element"],
+      "properties": [
+        { "name": "stepName", "isAttr": true, "type": "String" },
+        { "name": "menuName", "isAttr": true, "type": "String" },
+        { "name": "businessObjectType", "isAttr": true, "type": "String" },
+        { "name": "assignmentType", "isAttr": true, "type": "String" },
+        { "name": "assignedUser", "isAttr": true, "type": "String" },
+        { "name": "assignedGroup", "isAttr": true, "type": "String" },
+        { "name": "sla", "isAttr": true, "type": "String" },
+        { "name": "priority", "isAttr": true, "type": "String" },
+        { "name": "dueDays", "isAttr": true, "type": "String" },
+        { "name": "allowClaim", "isAttr": true, "type": "Boolean" },
+        { "name": "allowReassign", "isAttr": true, "type": "Boolean" },
+        { "name": "allowDelegate", "isAttr": true, "type": "Boolean" },
+        { "name": "requireCommentOnComplete", "isAttr": true, "type": "Boolean" },
+        { "name": "requireAttachment", "isAttr": true, "type": "Boolean" }
+      ]
     }
   ]
 }
