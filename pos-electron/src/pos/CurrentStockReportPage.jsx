@@ -2,6 +2,8 @@ import React, { useMemo, useState } from "react";
 import { Button, Input, Space, Table, Typography, message } from "antd";
 import { db } from "../cache/itemCacheDb";
 import { loadAllItemsToCache } from "../cache/itemCache";
+import { getPendingCount, syncPendingSales } from "./offlineQueue";
+import { getPendingStockCount, syncPendingStockTransfers } from "../stock-transfer/offlineStockQueue";
 
 const { Title, Text } = Typography;
 
@@ -90,6 +92,35 @@ export default function CurrentStockReportPage({ selectedBranchCode }) {
     localStorage.getItem("selectedBranchCode") || ""
   ).trim();
 
+  // Any unsynced offline sale or stock transfer means the server's stock figures
+  // don't yet reflect a local change — pulling "live" stock at that point would
+  // silently show a number the server itself considers wrong. So flush both
+  // offline queues first, and refuse to refresh if anything is still stuck pending
+  // (e.g. still offline, or the server rejected it) rather than show a misleading report.
+  const ensureNothingPending = async () => {
+    const [salesBefore, transfersBefore] = await Promise.all([getPendingCount(), getPendingStockCount()]);
+    if (salesBefore === 0 && transfersBefore === 0) return true;
+
+    if (!navigator.onLine) {
+      message.error(
+        `Cannot refresh — ${salesBefore} sale(s) and ${transfersBefore} stock transfer(s) are pending sync and you're offline. Reconnect and sync first.`
+      );
+      return false;
+    }
+
+    message.info("Syncing pending sales/transfers before refreshing stock…");
+    await Promise.all([syncPendingSales(), syncPendingStockTransfers()]);
+
+    const [salesAfter, transfersAfter] = await Promise.all([getPendingCount(), getPendingStockCount()]);
+    if (salesAfter > 0 || transfersAfter > 0) {
+      message.error(
+        `Cannot refresh — ${salesAfter} sale(s) and ${transfersAfter} stock transfer(s) still failed to sync. Resolve them first so stock is accurate.`
+      );
+      return false;
+    }
+    return true;
+  };
+
   // Re-fetches every item's live stock from the server (wiping and reloading the
   // shared item cache, same as the top-bar "Refresh" button) so the report reflects
   // stock at the moment it's generated rather than whatever was last synced.
@@ -97,6 +128,7 @@ export default function CurrentStockReportPage({ selectedBranchCode }) {
     if (!branchCode) { message.error("No branch selected."); return; }
     setLoading(true);
     try {
+      if (!(await ensureNothingPending())) return;
       await loadAllItemsToCache({});
       const items = await db.items.orderBy("itemName").toArray();
       const inStock = items.filter((r) => (Number(r.availableQty) || 0) > 0);
