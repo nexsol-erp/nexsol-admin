@@ -12,6 +12,7 @@ import KOTPage from "./pos/KOTPage";
 import SalesmanReportPage from "./pos/SalesmanReportPage";
 import ItemSalesReportPage from "./pos/ItemSalesReportPage";
 import ItemMovementReportPage from "./pos/ItemMovementReportPage";
+import CurrentStockReportPage from "./pos/CurrentStockReportPage";
 import StockTransferInReportPage from "./pos/StockTransferInReportPage";
 import SalesReturnPage from "./pos/SalesReturnPage";
 import UpdateChecker from "./components/UpdateChecker";
@@ -677,6 +678,7 @@ export default function App() {
                     { key: "item-sales-report",        label: "Item Sales" },
                     { key: "item-movement-report",     label: "Item Movement" },
                     { key: "st-in-report",             label: "Stock Transfer In" },
+                    { key: "current-stock-report",     label: "Current Stock" },
                   ],
                 },
               ]}
@@ -787,6 +789,7 @@ export default function App() {
           {activePage === "item-sales-report" && <ItemSalesReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "item-movement-report" && <ItemMovementReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "st-in-report" && <StockTransferInReportPage selectedBranchCode={selectedBranchCode} />}
+          {activePage === "current-stock-report" && <CurrentStockReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "kot" && <KOTPage selectedBranchCode={selectedBranchCode} />}
         </div>
       )}

@@ -1,0 +1,67 @@
+{
+  "name": "TradeLinkWorkflow",
+  "uri": "https://www.tradelink247.com/schema/workflow",
+  "prefix": "tl",
+  "xml": { "tagAlias": "lowerCase" },
+  "types": [
+    {
+      "name": "FlowConfig",
+      "superClass": ["Element"],
+      "properties": [
+        { "name": "flowCode", "isAttr": true, "type": "String" },
+        { "name": "transitionAction", "isAttr": true, "type": "String" },
+        { "name": "requiredOutcome", "isAttr": true, "type": "String" }
+      ]
+    },
+    {
+      "name": "ServiceConfig",
+      "superClass": ["Element"],
+      "properties": [
+        { "name": "serviceType", "isAttr": true, "type": "String" },
+        { "name": "httpUrl", "isAttr": true, "type": "String" },
+        { "name": "httpMethod", "isAttr": true, "type": "String" },
+        { "name": "httpBody", "isAttr": true, "type": "String" },
+        { "name": "retryCount", "isAttr": true, "type": "String" },
+        { "name": "retryDelayMs", "isAttr": true, "type": "String" },
+        { "name": "timeoutMs", "isAttr": true, "type": "String" },
+        { "name": "errorHandling", "isAttr": true, "type": "String" },
+        { "name": "outputVariable", "isAttr": true, "type": "String" },
+        { "name": "kafkaTopic", "isAttr": true, "type": "String" },
+        { "name": "kafkaKey", "isAttr": true, "type": "String" }
+      ]
+    },
+    {
+      "name": "WorkflowConfig",
+      "superClass": ["Element"],
+      "properties": [
+        { "name": "category", "isAttr": true, "type": "String" },
+        { "name": "description", "isAttr": true, "type": "String" },
+        { "name": "businessObjectType", "isAttr": true, "type": "String" },
+        { "name": "tags", "isAttr": true, "type": "String" },
+        { "name": "slaHours", "isAttr": true, "type": "String" },
+        { "name": "effectiveFrom", "isAttr": true, "type": "String" },
+        { "name": "effectiveTo", "isAttr": true, "type": "String" }
+      ]
+    },
+    {
+      "name": "UserTaskConfig",
+      "superClass": ["Element"],
+      "properties": [
+        { "name": "stepName", "isAttr": true, "type": "String" },
+        { "name": "menuName", "isAttr": true, "type": "String" },
+        { "name": "businessObjectType", "isAttr": true, "type": "String" },
+        { "name": "assignmentType", "isAttr": true, "type": "String" },
+        { "name": "assignedUser", "isAttr": true, "type": "String" },
+        { "name": "assignedGroup", "isAttr": true, "type": "String" },
+        { "name": "sla", "isAttr": true, "type": "String" },
+        { "name": "priority", "isAttr": true, "type": "String" },
+        { "name": "dueDays", "isAttr": true, "type": "String" },
+        { "name": "allowClaim", "isAttr": true, "type": "Boolean" },
+        { "name": "allowReassign", "isAttr": true, "type": "Boolean" },
+        { "name": "allowDelegate", "isAttr": true, "type": "Boolean" },
+        { "name": "requireCommentOnComplete", "isAttr": true, "type": "Boolean" },
+        { "name": "requireAttachment", "isAttr": true, "type": "Boolean" }
+      ]
+    }
+  ]
+}

@@ -59,6 +59,7 @@ import {
   Build,
   Map,
   LockReset,
+  Assignment,
 } from "@mui/icons-material";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -193,6 +194,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
     { menuKey: "AI Stock Intelligence", label: t("AI Stock Intelligence"), icon: <AutoGraph />, link: "/ai-dashboard", roles: ["admin", "manager"] },
     { menuKey: "AI Report Assistant",  label: t("AI Report Assistant"),  icon: <AutoGraph />, link: "/ai-report",    roles: ["admin", "manager", "user"] },
     { menuKey: "Menu Map", label: t("Menu Map"), icon: <Map />, link: "/menu-map", roles: ["admin", "manager", "user"] },
+    { menuKey: "My Tasks", label: t("My Tasks"), icon: <Assignment />, link: "/my-tasks", roles: ["admin", "manager", "user", "WB"] },
 
     // ── Setup & Administration ────────────────────────────────────────────
     {
@@ -412,6 +414,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
       submenu: [
         { menuKey: "Invoice Designer",  label: t("Invoice Designer"),  link: "/invoicedesigner", roles: ["user", "admin", "manager"] },
         { menuKey: "Workflow Designer", label: t("Workflow Designer"), link: "/bpmn-editorr",    roles: ["user", "admin", "manager"] },
+        { menuKey: "Workflow Instances", label: t("Workflow Instances"), link: "/workflow-instances", roles: ["user", "admin", "manager"] },
         { menuKey: "Download",          label: t("Download"),          link: "/download",         roles: ["user", "manager", "admin", "WB"] },
         { menuKey: "Upload",            label: t("Upload"),            link: "/uploadpage",       roles: ["admin"] },
       ],

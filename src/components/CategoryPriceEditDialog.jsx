@@ -193,13 +193,15 @@ export default function CategoryPriceEditorPage() {
       const data = await res.json();
 
       // Expected backend DTO fields:
-      // itemId, itemName, itemCode, globalStandardPrice, discountedPrice, effectivePrice
+      // itemId, itemName, itemCode, globalStandardPrice, discountPercent, discountedPrice, effectivePrice
       const normItems = (data.content || []).map((it) => ({
         itemId: String(it.itemId ?? it.id ?? ""),
         itemName: it.itemName ?? it.item_name ?? "",
         itemCode: it.itemCode ?? it.item_code ?? "",
         globalStandardPrice:
           it.globalStandardPrice ?? it.standardPrice ?? it.standard_price ?? 0,
+        discountPercent:
+          it.discountPercent ?? it.discount_percent ?? null,
         discountedPrice:
           it.discountedPrice ?? it.discounted_price ?? null,
         effectivePrice:
@@ -276,6 +278,14 @@ export default function CategoryPriceEditorPage() {
     return setError("Discounted price must be a number >= 0.");
   }
 
+  // Derive the discount % from the price actually being saved for this row,
+  // rather than reusing the shared bulk "Discount %" box (which may be blank
+  // or hold a value meant for a different item), so it isn't clobbered to 0.
+  const rowDiscountPercent =
+    Number.isFinite(baseStd) && baseStd > 0
+      ? Math.max(0, ((baseStd - price) / baseStd) * 100)
+      : 0;
+
   setSavingRowId(itemId);
   try {
     const res = await fetch(`/api/${tenancyId}/pricing/item-price`, {
@@ -285,7 +295,7 @@ export default function CategoryPriceEditorPage() {
         branchId,
         itemId,
         discountedPrice: price,
-        discountPercent: Number(discountPercent || 0),
+        discountPercent: rowDiscountPercent,
       }),
     });
 
@@ -452,6 +462,7 @@ export default function CategoryPriceEditorPage() {
                   <TableCell>Code</TableCell>
                   <TableCell align="right">Global Std</TableCell>
                   <TableCell align="right">Current (Branch)</TableCell>
+                  <TableCell align="right">Discount %</TableCell>
                   <TableCell align="right">Suggested (by %)</TableCell>
                   <TableCell align="right">Set Discounted Price</TableCell>
                   <TableCell align="center">Save</TableCell>
@@ -461,13 +472,13 @@ export default function CategoryPriceEditorPage() {
               <TableBody>
                 {!branchId || !categoryNameId ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
                       Select Branch and Category to load items.
                     </TableCell>
                   </TableRow>
                 ) : items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
                       No items found.
                     </TableCell>
                   </TableRow>
@@ -487,6 +498,9 @@ export default function CategoryPriceEditorPage() {
                         <TableCell>{it.itemCode || "-"}</TableCell>
                         <TableCell align="right">{money(it.globalStandardPrice)}</TableCell>
                         <TableCell align="right">{money(currentBranchPrice)}</TableCell>
+                        <TableCell align="right">
+                          {it.discountPercent != null ? `${money(it.discountPercent)}%` : "-"}
+                        </TableCell>
                         <TableCell align="right">{suggested}</TableCell>
                         <TableCell align="right" sx={{ width: 220 }}>
                           <TextField

@@ -1,0 +1,302 @@
+.workflow-designer-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+}
+
+.wd-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #1976d2;
+  color: #fff;
+  border-bottom: 1px solid #0d47a1;
+}
+
+.wd-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wd-toolbar button {
+  padding: 6px 12px;
+  border: 1px solid #90caf9;
+  border-radius: 4px;
+  background-color: #1e88e5;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.wd-toolbar button:hover:not(:disabled) {
+  background-color: #1565c0;
+}
+
+.wd-toolbar button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wd-viewonly-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.wd-toolbar-status {
+  gap: 12px;
+}
+
+.wd-workflow-name {
+  font-weight: 600;
+}
+
+.wd-process-id {
+  font-weight: 400;
+  opacity: 0.85;
+  font-size: 12px;
+}
+
+.wd-status-badge {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wd-status-badge-draft {
+  background-color: #fff3e0;
+  color: #e65100;
+}
+
+.wd-status-badge-published {
+  background-color: #e8f5e9;
+  color: #1b5e20;
+}
+
+.wd-status-badge-archived {
+  background-color: #eceff1;
+  color: #455a64;
+}
+
+.wd-version-meta {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.wd-change-notes {
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.wd-dirty-indicator {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 10px;
+}
+
+.wd-dirty-indicator.dirty {
+  background-color: #ffca28;
+  color: #212121;
+}
+
+.wd-dirty-indicator.clean {
+  background-color: #43a047;
+  color: #fff;
+}
+
+.wd-status-bar {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.wd-status-success {
+  background-color: #e8f5e9;
+  color: #1b5e20;
+}
+
+.wd-status-error {
+  background-color: #fdecea;
+  color: #b71c1c;
+}
+
+.wd-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.wd-canvas {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  background-color: #fafafa;
+}
+
+.wd-properties {
+  width: 320px;
+  min-width: 280px;
+  max-width: 420px;
+  border-left: 1px solid #ddd;
+  overflow-y: auto;
+  background-color: #fff;
+}
+
+.wd-validation-panel {
+  border-top: 2px solid #d32f2f;
+  background: #fff;
+  max-height: 220px;
+  display: flex;
+  flex-direction: column;
+}
+
+.wd-validation-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: #fdecea;
+  font-weight: 600;
+  color: #b71c1c;
+}
+
+.wd-validation-panel-header button {
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  color: #b71c1c;
+}
+
+.wd-validation-issue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+}
+
+.wd-validation-issue {
+  padding: 6px 12px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.wd-validation-issue:hover {
+  background: #f5f5f5;
+}
+
+.wd-validation-issue-code {
+  font-family: monospace;
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+.wd-validation-issue-error .wd-validation-issue-code {
+  color: #b71c1c;
+}
+
+.wd-validation-issue-warning .wd-validation-issue-code {
+  color: #e65100;
+}
+
+.wd-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.wd-modal {
+  background: #fff;
+  border-radius: 6px;
+  padding: 20px;
+  min-width: 360px;
+  max-width: 520px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.wd-settings-hint {
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+  margin-top: 0;
+}
+
+.wd-settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wd-settings-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.wd-settings-form input,
+.wd-settings-form textarea {
+  font-weight: 400;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.wd-settings-date-row {
+  display: flex;
+  gap: 12px;
+}
+
+.wd-settings-date-row label {
+  flex: 1;
+}
+
+.wd-settings-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.wd-definition-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wd-definition-list li {
+  margin-bottom: 6px;
+}
+
+.wd-definition-list button {
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #f5f5f5;
+  cursor: pointer;
+}
+
+.wd-definition-list button:hover {
+  background: #e3f2fd;
+}

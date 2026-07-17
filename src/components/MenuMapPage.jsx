@@ -20,6 +20,7 @@ const SECTIONS = [
       { label: "Dashboard", path: "/dashboard" },
       { label: "AI Stock Intelligence", path: "/ai-dashboard" },
       { label: "Menu Map", path: "/menu-map" },
+      { label: "My Tasks", path: "/my-tasks" },
     ],
   },
   {
@@ -260,6 +261,7 @@ const SECTIONS = [
     items: [
       { label: "Invoice Designer", path: "/invoicedesigner" },
       { label: "Workflow Designer", path: "/bpmn-editorr" },
+      { label: "Workflow Instances", path: "/workflow-instances" },
       { label: "Download", path: "/download" },
       { label: "Upload", path: "/uploadpage" },
     ],
