@@ -414,6 +414,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
       submenu: [
         { menuKey: "Invoice Designer",  label: t("Invoice Designer"),  link: "/invoicedesigner", roles: ["user", "admin", "manager"] },
         { menuKey: "Workflow Designer", label: t("Workflow Designer"), link: "/bpmn-editorr",    roles: ["user", "admin", "manager"] },
+        { menuKey: "Workflow Instances", label: t("Workflow Instances"), link: "/workflow-instances", roles: ["user", "admin", "manager"] },
         { menuKey: "Download",          label: t("Download"),          link: "/download",         roles: ["user", "manager", "admin", "WB"] },
         { menuKey: "Upload",            label: t("Upload"),            link: "/uploadpage",       roles: ["admin"] },
       ],

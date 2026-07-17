@@ -83,3 +83,7 @@ export const completeWorkflowTask = (taskId, updates) => {
 export const getMyTasks = (state, page = 0, size = 20) => {
   return apiClient.get("/workflow-instances/my-tasks", { params: { state, page, size } });
 };
+
+export const listWorkflowInstances = (status, page = 0, size = 20) => {
+  return apiClient.get("/workflow-instances", { params: { status, page, size } });
+};

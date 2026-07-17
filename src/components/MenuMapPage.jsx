@@ -261,6 +261,7 @@ const SECTIONS = [
     items: [
       { label: "Invoice Designer", path: "/invoicedesigner" },
       { label: "Workflow Designer", path: "/bpmn-editorr" },
+      { label: "Workflow Instances", path: "/workflow-instances" },
       { label: "Download", path: "/download" },
       { label: "Upload", path: "/uploadpage" },
     ],
