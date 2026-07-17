@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, session, screen } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, session, screen, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
 let QRCode = null;
@@ -363,6 +363,56 @@ ipcMain.handle("print:html", (_evt, { html, silent, deviceName }) => {
 
     printWin.loadFile(tmpFile);
   });
+});
+
+// Renders HTML in a hidden window and saves it as a PDF the user picks a location for —
+// used by report pages (e.g. Current Stock Report) that need a downloadable file rather
+// than a print job. Reuses the same hidden-BrowserWindow + temp-file approach as print:html.
+ipcMain.handle("print:to-pdf", async (_evt, { html, defaultFileName, pdfOptions }) => {
+  const tmpDir  = app.getPath("temp");
+  const tmpFile = path.join(tmpDir, `pos-pdf-${Date.now()}.html`);
+  try {
+    fs.writeFileSync(tmpFile, html, "utf-8");
+  } catch (err) {
+    throw new Error("Failed to write PDF temp file: " + err.message);
+  }
+
+  const pdfWin = new BrowserWindow({
+    width: 900,
+    height: 1200,
+    show: false,
+    webPreferences: { contextIsolation: true },
+  });
+
+  const cleanupTmp = () => { try { fs.unlinkSync(tmpFile); } catch (_) {} };
+
+  try {
+    await new Promise((resolve, reject) => {
+      pdfWin.webContents.once("did-finish-load", resolve);
+      pdfWin.webContents.once("did-fail-load", (_e, code, desc) => reject(new Error(desc || `Load failed (${code})`)));
+      pdfWin.loadFile(tmpFile);
+    });
+
+    const pdfBuffer = await pdfWin.webContents.printToPDF({
+      printBackground: true,
+      pageSize: "A4",
+      margins: { marginType: "default" },
+      ...(pdfOptions || {}),
+    });
+
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: "Save Report as PDF",
+      defaultPath: defaultFileName || "report.pdf",
+      filters: [{ name: "PDF", extensions: ["pdf"] }],
+    });
+    if (canceled || !filePath) return { saved: false };
+
+    fs.writeFileSync(filePath, pdfBuffer);
+    return { saved: true, filePath };
+  } finally {
+    pdfWin.destroy();
+    cleanupTmp();
+  }
 });
 
 ipcMain.handle("window:close", async () => {

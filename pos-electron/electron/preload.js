@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("POS", {
   wsServer:  _wsServer,
   listPrinters: () => ipcRenderer.invoke("printers:list"),
   printHtml: (payload) => ipcRenderer.invoke("print:html", payload),
+  printToPDF: (payload) => ipcRenderer.invoke("print:to-pdf", payload),
   getPrinterPaperSize: (deviceName) => ipcRenderer.invoke("printer:get-paper-size", deviceName),
   savePrinterConfig: (settings) => ipcRenderer.invoke("config:save-printer", settings),
   closeWindow: () => ipcRenderer.invoke("window:close"),
