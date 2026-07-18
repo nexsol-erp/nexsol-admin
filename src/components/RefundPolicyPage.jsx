@@ -225,7 +225,7 @@ const RefundPolicyPage = () => {
             For billing queries, cancellation assistance, or data export help, please contact us:
           </Para>
           <Para>
-            <strong>Platform Owner:</strong> St Marys Weigh Bridge<br />
+            <strong>Platform Owner:</strong> MapleERP (P) Ltd<br />
             <strong>Website:</strong> https://www.tradelink247.com<br />
             <strong>Support hours:</strong> Monday – Friday, 9:00 – 18:00 IST
           </Para>

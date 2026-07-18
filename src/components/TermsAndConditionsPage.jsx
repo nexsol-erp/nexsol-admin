@@ -50,7 +50,7 @@ const TermsAndConditionsPage = () => {
           (hereinafter referred to as "Platform").
         </Para>
         <Para>
-          The Platform is owned and operated by <strong>St Marys Weigh Bridge</strong>, a company
+          The Platform is owned and operated by <strong>MapleERP (P) Ltd</strong>, a company
           incorporated under the Companies Act, 1956, with its registered office at Kottarakkara
           (hereinafter referred to as "Platform Owner", "we", "us", "our").
         </Para>
@@ -239,7 +239,7 @@ const TermsAndConditionsPage = () => {
             the contact information provided on this website.
           </Para>
           <Para>
-            <strong>Platform Owner:</strong> St Marys Weigh Bridge<br />
+            <strong>Platform Owner:</strong>MapleERP (P) Ltd<br />
             <strong>Website:</strong> https://www.tradelink247.com<br />
             <strong>Support hours:</strong> Monday – Friday, 9:00 – 18:00 IST
           </Para>
