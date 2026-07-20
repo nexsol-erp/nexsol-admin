@@ -316,6 +316,7 @@ const handleRowClick = (row) => {
             <TableRow>
               <TableCell>Voucher No</TableCell>
               <TableCell>Voucher Date</TableCell>
+              <TableCell>Source Voucher Date</TableCell>
               <TableCell>From Branch</TableCell>
               <TableCell>To Branch</TableCell>
               <TableCell>Item Name</TableCell>
@@ -334,6 +335,11 @@ const handleRowClick = (row) => {
               >
                 <TableCell>{row.voucherNumber}</TableCell>
                 <TableCell>{row.voucherDate}</TableCell>
+                <TableCell>
+                  {row.sourceVoucherDate
+                    ? dayjs(row.sourceVoucherDate).format("YYYY-MM-DD HH:mm")
+                    : ""}
+                </TableCell>
                 <TableCell>{row.branchCode}</TableCell>
                 <TableCell>{row.toBranchCode}</TableCell>
                 <TableCell>{row.itemName}</TableCell>
@@ -345,7 +351,7 @@ const handleRowClick = (row) => {
 
             {/* Totals row */}
             <TableRow>
-              <TableCell colSpan={5} sx={{ fontWeight: "bold" }}>
+              <TableCell colSpan={6} sx={{ fontWeight: "bold" }}>
                 Total
               </TableCell>
               <TableCell align="right" sx={{ fontWeight: "bold" }}>
