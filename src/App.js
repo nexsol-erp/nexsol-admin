@@ -129,6 +129,7 @@ import StockTransferDiscountPage from "./components/StockTransferDiscountPage";
 import PosMachineApprovalPage from "./components/PosMachineApprovalPage";
 import BranchProfitReport from "./components/BranchProfitReport";
 import ItemCostOverridePage from "./components/ItemCostOverridePage";
+import CostPriceHistoryPage from "./components/CostPriceHistoryPage";
 import PurchaseCorrectionPage from "./components/PurchaseCorrectionPage";
 import PurchaseCorrectionApprovalPage from "./components/PurchaseCorrectionApprovalPage";
 import PurchaseCorrectionHistoryPage from "./components/PurchaseCorrectionHistoryPage";
@@ -258,6 +259,7 @@ const ROUTE_ORDER = [
   { key: "Monthly Branch Profit Report",     path: "/monthly-branch-profit-report" },
   { key: "Expense Head Management",          path: "/expense-head-management" },
   { key: "Item Cost Override",               path: "/item-cost-override" },
+  { key: "Cost Price History",               path: "/cost-price-history" },
   // Franchise
   { key: "Franchise Master",                 path: "/franchise-master" },
   { key: "Event Monitor",                    path: "/event-monitor" },
@@ -517,6 +519,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/monthly-branch-profit-report" element={<MonthlyBranchProfitReport />} />
 <Route path="/expense-head-management" element={<ExpenseHeadManagementPage />} />
 <Route path="/item-cost-override" element={<ItemCostOverridePage />} />
+<Route path="/cost-price-history" element={<CostPriceHistoryPage />} />
 <Route path="/purchase-correction" element={<PurchaseCorrectionPage />} />
 <Route path="/purchase-correction-approval" element={<PurchaseCorrectionApprovalPage />} />
 <Route path="/purchase-correction-history" element={<PurchaseCorrectionHistoryPage />} />

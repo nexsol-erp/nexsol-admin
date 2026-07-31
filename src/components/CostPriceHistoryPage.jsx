@@ -33,10 +33,19 @@ import { useNavigate } from "react-router-dom";
 const EMPTY_FORM = {
   itemId: "", itemName: "", itemCode: "",
   branchCode: "", branchName: "", branchType: "",
-  costRate: "", notes: "",
+  costRate: "", effectiveDate: dayjs().format("YYYY-MM-DD"), notes: "",
 };
 
-const ItemCostOverridePage = () => {
+const SOURCE_COLOR = {
+  PURCHASE:        "primary",
+  STOCK_TRANSFER:  "secondary",
+  PRODUCTION_COST: "default",
+  MANUAL:          "info",
+};
+
+// Lets admins browse and correct the point-in-time cost history that backs the branch
+// profit report — including editing entries for *past* dates, not just today's price.
+const CostPriceHistoryPage = () => {
   const theme    = useTheme();
   const navigate = useNavigate();
   const isDark   = theme.palette.mode === "dark";
@@ -58,14 +67,12 @@ const ItemCostOverridePage = () => {
   const [loading, setLoading] = useState(false);
   const [search,  setSearch]  = useState("");
 
-  // ── Edit / add dialog ──────────────────────────────────────────────────────
-  const [dialogOpen,    setDialogOpen]    = useState(false);
-  const [editingId,     setEditingId]     = useState(null);   // null = new record
-  const [form,          setForm]          = useState(EMPTY_FORM);
-  const [allBranch,     setAllBranch]     = useState(false);
-  const [saving,        setSaving]        = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId,  setEditingId]  = useState(null);
+  const [form,       setForm]       = useState(EMPTY_FORM);
+  const [allBranch,  setAllBranch]  = useState(false);
+  const [saving,     setSaving]     = useState(false);
 
-  // ── Delete confirm ─────────────────────────────────────────────────────────
   const [deleteId,      setDeleteId]      = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting,      setDeleting]      = useState(false);
@@ -73,15 +80,14 @@ const ItemCostOverridePage = () => {
   const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
   const toast = (msg, severity = "success") => setSnack({ open: true, msg, severity });
 
-  // ── Load all overrides ─────────────────────────────────────────────────────
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res  = await fetch(`/api/${tenancyId}/item-cost-override`, { headers: { Authorization: `Bearer ${token}` } });
+      const res  = await fetch(`/api/${tenancyId}/cost-price-history`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setRows(Array.isArray(data) ? data : []);
     } catch (e) {
-      toast("Failed to load overrides: " + e.message, "error");
+      toast("Failed to load cost history: " + e.message, "error");
     } finally {
       setLoading(false);
     }
@@ -89,7 +95,6 @@ const ItemCostOverridePage = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Open dialog ────────────────────────────────────────────────────────────
   const openAdd = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
@@ -100,39 +105,42 @@ const ItemCostOverridePage = () => {
   const openEdit = (row) => {
     setEditingId(row.id);
     setForm({
-      itemId:     row.itemId    || "",
-      itemName:   row.itemName  || "",
-      itemCode:   row.itemCode  || "",
-      branchCode: row.branchCode|| "",
-      branchName: row.branchName|| "",
-      branchType: row.branchType|| "",
-      costRate:   String(row.costRate ?? ""),
-      notes:      row.notes     || "",
+      itemId:        row.itemId        || "",
+      itemName:      row.itemName      || "",
+      itemCode:      row.itemCode      || "",
+      branchCode:    row.branchCode    || "",
+      branchName:    row.branchName    || "",
+      branchType:    row.branchType    || "",
+      costRate:      String(row.costRate ?? ""),
+      effectiveDate: row.effectiveDate || dayjs().format("YYYY-MM-DD"),
+      notes:         row.notes         || "",
     });
     setAllBranch(!row.branchCode);
     setDialogOpen(true);
   };
 
-  // ── Save ───────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     const rate = parseFloat(form.costRate);
-    if (!form.itemId?.trim()) { toast("Item ID is required", "error"); return; }
-    if (isNaN(rate) || rate <= 0) { toast("Cost rate must be > 0", "error"); return; }
+    if (!form.itemId?.trim())          { toast("Item ID is required", "error"); return; }
+    if (isNaN(rate) || rate <= 0)      { toast("Cost rate must be > 0", "error"); return; }
+    if (!form.effectiveDate)           { toast("Effective date is required", "error"); return; }
 
     setSaving(true);
     try {
       const payload = {
         ...form,
+        id:         editingId || undefined,
         costRate:   rate,
         branchCode: allBranch ? null : (form.branchCode || null),
+        source:     "MANUAL",
         updatedBy:  userId,
       };
-      const res  = await fetch(`/api/${tenancyId}/item-cost-override`, {
+      const res  = await fetch(`/api/${tenancyId}/cost-price-history`, {
         method: "POST", headers, body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.success) {
-        toast(editingId ? "Override updated." : "Override added.");
+        toast(editingId ? "Cost price updated." : "Cost price entry added.");
         setDialogOpen(false);
         load();
       } else {
@@ -145,16 +153,15 @@ const ItemCostOverridePage = () => {
     }
   };
 
-  // ── Delete ─────────────────────────────────────────────────────────────────
   const confirmDelete = (id) => { setDeleteId(id); setDeleteConfirm(true); };
 
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await fetch(`/api/${tenancyId}/item-cost-override/${deleteId}`, {
+      await fetch(`/api/${tenancyId}/cost-price-history/${deleteId}`, {
         method: "DELETE", headers: { Authorization: `Bearer ${token}` },
       });
-      toast("Override deleted.");
+      toast("Entry deleted.");
       setDeleteConfirm(false);
       load();
     } catch (e) {
@@ -164,7 +171,6 @@ const ItemCostOverridePage = () => {
     }
   };
 
-  // ── Filtered rows ──────────────────────────────────────────────────────────
   const q = search.trim().toLowerCase();
   const filtered = q
     ? rows.filter(r =>
@@ -187,14 +193,14 @@ const ItemCostOverridePage = () => {
     />
   );
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
         <Box>
-          <Typography variant="h5" fontWeight={700}>Item Cost Overrides</Typography>
+          <Typography variant="h5" fontWeight={700}>Cost Price History</Typography>
           <Typography variant="body2" color="text.secondary">
-            Manual cost rates used as fallback when automatic costing returns no result
+            Point-in-time cost prices used by the branch profit report — add or correct a rate,
+            including for a past date, and every sale on/after that date uses it until the next entry.
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1 }}>
@@ -202,12 +208,11 @@ const ItemCostOverridePage = () => {
             ← Profit Report
           </Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>
-            Add Override
+            Add Entry
           </Button>
         </Box>
       </Box>
 
-      {/* ── Search ── */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <TextField
           label="Search by item name / code / branch"
@@ -218,7 +223,6 @@ const ItemCostOverridePage = () => {
         />
       </Paper>
 
-      {/* ── Table ── */}
       <TableContainer component={Paper}>
         <Table size="small">
           <TableHead>
@@ -226,7 +230,8 @@ const ItemCostOverridePage = () => {
               <TableCell>Item</TableCell>
               <TableCell>Branch</TableCell>
               <TableCell align="right">Cost Rate</TableCell>
-              <TableCell>Scope</TableCell>
+              <TableCell>Effective Date</TableCell>
+              <TableCell>Source</TableCell>
               <TableCell>Notes</TableCell>
               <TableCell>Updated By</TableCell>
               <TableCell>Updated At</TableCell>
@@ -235,14 +240,12 @@ const ItemCostOverridePage = () => {
           </TableHead>
           <TableBody>
             {loading && (
-              <TableRow>
-                <TableCell colSpan={8} align="center">Loading…</TableCell>
-              </TableRow>
+              <TableRow><TableCell colSpan={9} align="center">Loading…</TableCell></TableRow>
             )}
             {!loading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 4, color: "text.secondary" }}>
-                  {q ? "No matching overrides found." : "No overrides yet. Click \"Add Override\" to create one."}
+                <TableCell colSpan={9} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                  {q ? "No matching entries found." : "No cost history yet. Click \"Add Entry\" to create one."}
                 </TableCell>
               </TableRow>
             )}
@@ -259,27 +262,20 @@ const ItemCostOverridePage = () => {
                     : <Chip label="All Branches" size="small" color="info" variant="outlined" />}
                 </TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700 }}>{fmt(row.costRate)}</TableCell>
+                <TableCell sx={{ whiteSpace: "nowrap" }}>{row.effectiveDate}</TableCell>
                 <TableCell>
-                  <Chip
-                    label={row.branchCode ? "Branch-specific" : "Global"}
-                    size="small"
-                    color={row.branchCode ? "default" : "primary"}
-                    variant="outlined"
-                  />
+                  <Chip label={row.source || "MANUAL"} size="small" variant="outlined"
+                    color={SOURCE_COLOR[row.source] || "default"} />
                 </TableCell>
-                <TableCell>
-                  <Typography variant="caption">{row.notes || "—"}</Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="caption">{row.updatedBy || "—"}</Typography>
-                </TableCell>
+                <TableCell><Typography variant="caption">{row.notes || "—"}</Typography></TableCell>
+                <TableCell><Typography variant="caption">{row.updatedBy || "—"}</Typography></TableCell>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>
                   <Typography variant="caption">
                     {row.updatedAt ? dayjs(row.updatedAt).format("DD-MM-YYYY HH:mm") : "—"}
                   </Typography>
                 </TableCell>
                 <TableCell align="center">
-                  <Tooltip title="Edit">
+                  <Tooltip title="Edit (rate, date, or notes)">
                     <IconButton size="small" onClick={() => openEdit(row)}><EditIcon fontSize="small" /></IconButton>
                   </Tooltip>
                   <Tooltip title="Delete">
@@ -295,12 +291,11 @@ const ItemCostOverridePage = () => {
       </TableContainer>
 
       <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-        {rows.length} override{rows.length !== 1 ? "s" : ""} total
+        {rows.length} entr{rows.length !== 1 ? "ies" : "y"} total
       </Typography>
 
-      {/* ── Add / Edit dialog ── */}
       <Dialog open={dialogOpen} onClose={() => !saving && setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingId ? "Edit Cost Override" : "Add Cost Override"}</DialogTitle>
+        <DialogTitle>{editingId ? "Edit Cost Price Entry" : "Add Cost Price Entry"}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           {fld("Item ID *", "itemId", { disabled: !!editingId })}
           {fld("Item Name", "itemName")}
@@ -323,8 +318,13 @@ const ItemCostOverridePage = () => {
             type: "number",
             inputProps: { min: 0, step: "0.01" },
             autoFocus: true,
-            onFocus: (e) => e.target.select(),
-            helperText: editingId ? "This shows the current rate — edit it to change the price." : undefined,
+            onFocus: e => e.target.select(),
+            helperText: editingId ? "Pre-filled with the current rate — edit it to change the price." : undefined,
+          })}
+          {fld("Effective Date *", "effectiveDate", {
+            type: "date",
+            InputLabelProps: { shrink: true },
+            helperText: "Sales on/after this date use this rate, until a later entry supersedes it. Set this to a past date to correct historical cost.",
           })}
           {fld("Notes (optional)", "notes")}
         </DialogContent>
@@ -336,13 +336,12 @@ const ItemCostOverridePage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ── Delete confirm dialog ── */}
       <Dialog open={deleteConfirm} onClose={() => !deleting && setDeleteConfirm(false)} maxWidth="xs">
-        <DialogTitle>Delete Override?</DialogTitle>
+        <DialogTitle>Delete Entry?</DialogTitle>
         <DialogContent>
           <Typography>
-            This will remove the manual cost rate. Affected profit report rows will revert to NOT_FOUND
-            unless the automatic costing source is available.
+            This removes this point-in-time cost entry. Sales in its date range will fall back to
+            the next-older entry (or the automatic purchase/transfer/production cost, or NOT_FOUND).
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -353,7 +352,6 @@ const ItemCostOverridePage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ── Snackbar ── */}
       <Snackbar open={snack.open} autoHideDuration={4000}
         onClose={() => setSnack(s => ({ ...s, open: false }))}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
@@ -365,4 +363,4 @@ const ItemCostOverridePage = () => {
   );
 };
 
-export default ItemCostOverridePage;
+export default CostPriceHistoryPage;

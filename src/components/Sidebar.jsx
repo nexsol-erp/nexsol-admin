@@ -291,6 +291,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
       submenu: [
         { menuKey: "Branch Details",           label: t("Branch Details"),           link: "/branch-update",          roles: ["admin"] },
         { menuKey: "Item Cost Override",       label: t("Item Cost Override"),       link: "/item-cost-override",     roles: ["admin"] },
+        { menuKey: "Cost Price History",       label: t("Cost Price History"),       link: "/cost-price-history",     roles: ["admin"] },
         { menuKey: "Receipt Modes",            label: t("Receipt Modes"),            link: "/receipt-modes",        roles: ["admin"] },
         { menuKey: "Item Search",              label: t("Item Search"),              link: "/itemsearch",           roles: ["admin", "user", "cgn", "franchiseeuser"] },
         { menuKey: "Item Creation",            label: t("Item Creation"),            link: "/createitemmaster",     roles: ["admin", "user"] },
