@@ -144,7 +144,7 @@ const BranchProfitReport = () => {
   };
 
   // ── Fetch report ───────────────────────────────────────────────────────────
-  const fetchReport = async () => {
+  const fetchReport = async (forceRefresh = false) => {
     if (!fromDate || !toDate) { setError("Please select a date range."); return; }
     if (dateRangeDays > MAX_DAYS) {
       setError(`Date range cannot exceed ${MAX_DAYS} days. Current range: ${dateRangeDays} days.`);
@@ -163,6 +163,7 @@ const BranchProfitReport = () => {
       if (branchType && branchType !== "ALL") params.set("branchType", branchType);
       if (itemId)                             params.set("itemId",       itemId.trim());
       if (categoryName)                       params.set("categoryName", categoryName.trim());
+      if (forceRefresh)                       params.set("refresh", "true");
 
       const res = await fetch(`/api/${tenancyId}/reports/branch-profit?${params}`,
         { headers: { Authorization: `Bearer ${token}` } });
@@ -200,18 +201,20 @@ const BranchProfitReport = () => {
       const userId    = localStorage.getItem("userId") || "admin";
 
       const payload = {
-        itemId:     overrideRow.itemId,
-        itemName:   overrideRow.itemName,
-        itemCode:   overrideRow.itemCode,
-        branchCode: overrideAllBranch ? null : overrideRow.branchCode,
-        branchName: overrideRow.branch,
-        branchType: overrideRow.branchType,
-        costRate:   rate,
-        notes:      overrideNotes || null,
-        updatedBy:  userId,
+        itemId:        overrideRow.itemId,
+        itemName:      overrideRow.itemName,
+        itemCode:      overrideRow.itemCode,
+        branchCode:    overrideAllBranch ? null : overrideRow.branchCode,
+        branchName:    overrideRow.branch,
+        branchType:    overrideRow.branchType,
+        costRate:      rate,
+        effectiveDate: overrideRow.billDate ? dayjs(overrideRow.billDate).format("YYYY-MM-DD") : dayjs().format("YYYY-MM-DD"),
+        source:        "MANUAL",
+        notes:         overrideNotes || null,
+        updatedBy:     userId,
       };
 
-      const res = await fetch(`/api/${tenancyId}/item-cost-override`, {
+      const res = await fetch(`/api/${tenancyId}/cost-price-history`, {
         method:  "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body:    JSON.stringify(payload),
@@ -220,7 +223,7 @@ const BranchProfitReport = () => {
       if (data.success) {
         setSnack({ open: true, msg: "Cost rate saved. Refreshing report…", severity: "success" });
         setOverrideOpen(false);
-        fetchReport();          // re-run so MANUAL_OVERRIDE appears immediately
+        fetchReport(true);      // bypass cache so MANUAL_OVERRIDE appears immediately
       } else {
         setSnack({ open: true, msg: data.message || "Save failed", severity: "error" });
       }
@@ -312,9 +315,16 @@ const BranchProfitReport = () => {
           <TextField label="Category (optional)" size="small" value={categoryName}
             onChange={e => setCategoryName(e.target.value)} sx={{ minWidth: 160 }} />
 
-          <Button variant="contained" color="primary" onClick={fetchReport} disabled={loading}>
+          <Button variant="contained" color="primary" onClick={() => fetchReport(false)} disabled={loading}>
             {loading ? "Loading…" : "Search"}
           </Button>
+          {reportData && (
+            <Tooltip title="Bypass the 10-minute cache and recompute from the database now">
+              <Button variant="outlined" onClick={() => fetchReport(true)} disabled={loading}>
+                Force Refresh
+              </Button>
+            </Tooltip>
+          )}
           {rows.length > 0 && (
             <Button variant="outlined" color="success" onClick={() => setExportDialogOpen(true)}>
               Export Excel
@@ -558,9 +568,11 @@ const BranchProfitReport = () => {
             size="small"
             value={overrideCostRate}
             onChange={e => setOverrideCostRate(e.target.value)}
+            onFocus={e => e.target.select()}
             inputProps={{ min: 0, step: "0.01" }}
             sx={{ mb: 2 }}
             autoFocus
+            helperText={!overrideRow?.hasMissingCost ? "This field is pre-filled with the current rate — edit it to change the price." : undefined}
           />
           <TextField
             label="Notes (optional)"
