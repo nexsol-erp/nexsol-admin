@@ -181,7 +181,7 @@ const BranchProfitReport = () => {
   // ── Override dialog ────────────────────────────────────────────────────────
   const openOverrideDialog = (row) => {
     setOverrideRow(row);
-    setOverrideCostRate(row.costSource === "MANUAL_OVERRIDE" ? String(row.costRate) : "");
+    setOverrideCostRate(row.hasMissingCost ? "" : String(row.costRate));
     setOverrideNotes("");
     setOverrideAllBranch(false);
     setOverrideOpen(true);
@@ -269,7 +269,7 @@ const BranchProfitReport = () => {
     return ROW_COLORS.normal;
   };
 
-  const isEditable = (row) => row.hasMissingCost || row.costSource === "MANUAL_OVERRIDE";
+  const isEditable = () => true;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -384,7 +384,7 @@ const BranchProfitReport = () => {
               {rows.map((row, idx) => (
                 <Tooltip
                   key={idx}
-                  title={isEditable(row) ? (row.hasMissingCost ? "Click to set cost rate" : "Click to edit manual cost rate") : ""}
+                  title={row.hasMissingCost ? "Click to set cost rate" : "Click to override cost rate"}
                   placement="left"
                   arrow
                 >
@@ -535,7 +535,7 @@ const BranchProfitReport = () => {
       {/* ── Cost override dialog ── */}
       <Dialog open={overrideOpen} onClose={() => !overrideSaving && setOverrideOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>
-          {overrideRow?.costSource === "MANUAL_OVERRIDE" ? "Edit Manual Cost Rate" : "Set Missing Cost Rate"}
+          {overrideRow?.hasMissingCost ? "Set Missing Cost Rate" : "Override Cost Rate"}
         </DialogTitle>
         <DialogContent>
           {overrideRow && (
@@ -544,6 +544,10 @@ const BranchProfitReport = () => {
               <Typography variant="body2"><b>Branch:</b> {overrideRow.branch} · {overrideRow.branchType}</Typography>
               <Typography variant="body2"><b>Bill:</b> {overrideRow.billNumber} · {overrideRow.billDate?.toString().slice(0,10)}</Typography>
               <Typography variant="body2"><b>Sales Rate:</b> {fmt(overrideRow.salesRate)}</Typography>
+              <Typography variant="body2">
+                <b>Current Cost:</b>{" "}
+                {overrideRow.hasMissingCost ? "— (not found)" : `${fmt(overrideRow.costRate)} (${overrideRow.costSource})`}
+              </Typography>
             </Box>
           )}
 
