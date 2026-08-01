@@ -574,6 +574,45 @@ export default function StockTransferPage({ onClose }) {
     };
 
     lastActivityRef.current = Date.now();
+
+    // Built up front so BOTH the franchise-outbound and normal same-tenant paths
+    // below can update the local stock cache and print, instead of only the latter.
+    const fromBranchObj = allBranches.find(
+      (x) => String(x.branchCode ?? "").toUpperCase() === fromBranch.toUpperCase()
+    ) || {};
+    const printArgs = {
+      printMode,
+      fromBranch,
+      fromBranchName:    String(fromBranchObj.branchName    ?? ""),
+      fromBranchGst:     String(fromBranchObj.branchGst     ?? ""),
+      fromBranchState:   String(fromBranchObj.branchState   ?? ""),
+      fromBranchAddress: [
+        fromBranchObj.branchBuildingAddress,
+        fromBranchObj.branchAddress1,
+        fromBranchObj.branchAddress2,
+      ].filter(Boolean).join(", "),
+      toBranchCode, toBranchName, toBranchState, toBranchGst,
+      deliveryLocation, deliveryAddress1, deliveryAddress2,
+      voucherNumber, voucherDate, reasonCode,
+      items, totalAmount, totalQty,
+    };
+    const cacheLines = items.map((r) => ({
+      itemId:    r.item_id,
+      batchCode: r.batch || "",
+      qty:       Number(r.qty) || 0,
+    }));
+
+    const printAndUpdateCache = async () => {
+      await applySaleToCache(cacheLines);
+      if (window.POS?.printHtml) {
+        await window.POS.printHtml({
+          html:       buildTransferHtml(printArgs),
+          silent:     printMode === "thermal",
+          deviceName: "",
+        }).catch(() => {});
+      }
+    };
+
     try {
       setSaving(true);
 
@@ -607,6 +646,7 @@ export default function StockTransferPage({ onClose }) {
           const errText = await outRes.text().catch(() => "");
           throw new Error(`Franchise outbound failed: ${outRes.status} ${errText}`);
         }
+        await printAndUpdateCache();
         message.success("Stock transfer to central branch submitted successfully.");
         setItems([]);
         setToBranchCode("");
@@ -639,47 +679,12 @@ export default function StockTransferPage({ onClose }) {
         }
       }
 
-      const fromBranchObj = allBranches.find(
-        (x) => String(x.branchCode ?? "").toUpperCase() === fromBranch.toUpperCase()
-      ) || {};
-      const printArgs = {
-        printMode,
-        fromBranch,
-        fromBranchName:    String(fromBranchObj.branchName    ?? ""),
-        fromBranchGst:     String(fromBranchObj.branchGst     ?? ""),
-        fromBranchState:   String(fromBranchObj.branchState   ?? ""),
-        fromBranchAddress: [
-          fromBranchObj.branchBuildingAddress,
-          fromBranchObj.branchAddress1,
-          fromBranchObj.branchAddress2,
-        ].filter(Boolean).join(", "),
-        toBranchCode, toBranchName, toBranchState, toBranchGst,
-        deliveryLocation, deliveryAddress1, deliveryAddress2,
-        voucherNumber, voucherDate, reasonCode,
-        items, totalAmount, totalQty,
-      };
-
-      const cacheLines = items.map((r) => ({
-        itemId:    r.item_id,
-        batchCode: r.batch || "",
-        qty:       Number(r.qty) || 0,
-      }));
-
       if (!result) {
         throw new Error(lastErr || "Server did not confirm the stock transfer. Please check your network and try again.");
       }
 
-      await applySaleToCache(cacheLines);
+      await printAndUpdateCache();
       message.success("Stock Transfer saved");
-
-      if (window.POS?.printHtml) {
-        await window.POS.printHtml({
-          html:       buildTransferHtml(printArgs),
-          silent:     printMode === "thermal",
-          deviceName: "",
-        }).catch(() => {});
-      }
-
       resetForm();
     } catch (e) {
       message.error("Save failed: " + (e.message || "Unknown error"));
