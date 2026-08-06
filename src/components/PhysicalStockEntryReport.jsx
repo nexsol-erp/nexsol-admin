@@ -299,6 +299,33 @@ const fmtDate = (dt) => (dt ? dayjs(dt).format("YYYY-MM-DD") : "-");
 
         </Table>
       </TableContainer>
+
+      {/* Export dialog */}
+      <Dialog open={open} onClose={() => setOpen(false)}>
+        <DialogTitle>Export to Excel</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Please enter the file name for the Excel file.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="File Name"
+            type="text"
+            fullWidth
+            value={fileName}
+            onChange={(e) => setFileName(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleExport} color="primary">
+            Export
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
