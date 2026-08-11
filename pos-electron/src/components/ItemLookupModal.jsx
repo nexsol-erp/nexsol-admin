@@ -4,7 +4,7 @@ import { localSearchItems, loadAllItemsToCache, hasCache } from "../cache/itemCa
 
 const { Text } = Typography;
 
-export default function ItemLookupModal({ open, initialQuery, onClose, onPick, onAfterClose, hideOutOfStock = true }) {
+export default function ItemLookupModal({ open, initialQuery, onClose, onPick, onAfterClose, onQueryChange, hideOutOfStock = true }) {
   const inputRef = useRef(null);
 
   const [q, setQ] = useState(initialQuery || "");
@@ -50,7 +50,12 @@ export default function ItemLookupModal({ open, initialQuery, onClose, onPick, o
     setQ(initialQuery || "");
     setSelectedIndex(0);
     setTimeout(() => inputRef.current?.focus?.(), 50);
-  }, [open, initialQuery]);
+    // Only re-seed on open, not on every initialQuery change — callers (like
+    // stock transfer) live-report the typed text back via onQueryChange so it
+    // can be restored next time, but that shouldn't fight the user's typing
+    // while the modal is still open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (!open || !cacheReady) return;
@@ -137,8 +142,8 @@ export default function ItemLookupModal({ open, initialQuery, onClose, onPick, o
           <Input
             size="small"
             ref={inputRef} 
-            value={q} 
-            onChange={(e) => setQ(e.target.value)} 
+            value={q}
+            onChange={(e) => { setQ(e.target.value); onQueryChange?.(e.target.value); }}
             placeholder="Type name/barcode (Enter to select, Esc to close)"
             disabled={loading}
           />

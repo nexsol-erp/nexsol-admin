@@ -357,7 +357,10 @@ export default function StockTransferPage({ onClose }) {
   );
 
   const openLookup = () => {
-    setLookupQuery(itemQuery || "");
+    // Prefer a freshly scanned/typed barcode; otherwise re-open with whatever
+    // search text was last used, so picking several similar items across
+    // multiple opens doesn't require retyping the filter each time.
+    if (itemQuery) setLookupQuery(itemQuery);
     setLookupOpen(true);
   };
 
@@ -528,7 +531,6 @@ export default function StockTransferPage({ onClose }) {
     }
 
     const headerId     = crypto.randomUUID();
-    const { voucherNumber, numericSeq: numericVoucher } = generateTransferVoucherNumber(fromBranch);
     const voucherDate  = nowIST();
     const body = {
       id:                    headerId,
@@ -536,8 +538,6 @@ export default function StockTransferPage({ onClose }) {
       to_branch_code:        toBranchCode,
       voucher_type:          "STOCK_TRANSFER",
       voucher_prefix:        "ST",
-      voucher_number:        voucherNumber,
-      numeric_voucher_number: numericVoucher,
       voucher_date:          voucherDate,
       description:           "Stock Transfer",
       reason_code:           reasonCode,
@@ -580,7 +580,7 @@ export default function StockTransferPage({ onClose }) {
     const fromBranchObj = allBranches.find(
       (x) => String(x.branchCode ?? "").toUpperCase() === fromBranch.toUpperCase()
     ) || {};
-    const printArgs = {
+    const basePrintArgs = {
       printMode,
       fromBranch,
       fromBranchName:    String(fromBranchObj.branchName    ?? ""),
@@ -593,7 +593,7 @@ export default function StockTransferPage({ onClose }) {
       ].filter(Boolean).join(", "),
       toBranchCode, toBranchName, toBranchState, toBranchGst,
       deliveryLocation, deliveryAddress1, deliveryAddress2,
-      voucherNumber, voucherDate, reasonCode,
+      voucherDate, reasonCode,
       items, totalAmount, totalQty,
     };
     const cacheLines = items.map((r) => ({
@@ -602,14 +602,18 @@ export default function StockTransferPage({ onClose }) {
       qty:       Number(r.qty) || 0,
     }));
 
-    const printAndUpdateCache = async () => {
+    const updateCacheAndPrint = async (voucherNumber) => {
       await applySaleToCache(cacheLines);
       if (window.POS?.printHtml) {
-        await window.POS.printHtml({
-          html:       buildTransferHtml(printArgs),
+        // Fire-and-forget: for non-thermal (a4) mode this opens a native OS print
+        // dialog that blocks until the user interacts with it. The transfer is
+        // already saved at this point, so the Saving state / success message
+        // shouldn't wait on that dialog.
+        window.POS.printHtml({
+          html:       buildTransferHtml({ ...basePrintArgs, voucherNumber }),
           silent:     printMode === "thermal",
           deviceName: "",
-        }).catch(() => {});
+        }).catch((e) => message.error("Print failed: " + (e.message || "Unknown error")));
       }
     };
 
@@ -617,12 +621,15 @@ export default function StockTransferPage({ onClose }) {
       setSaving(true);
 
       // ── Franchise → Central transfer ──────────────────────────────────────
+      // NOTE: this goes through franchise-outbound/transfer, not stock-transfers/out,
+      // so it doesn't get the server-side branch-scoped sequence below — still client-generated.
       if (targetTenantId) {
+        const { voucherNumber: franchiseVoucherNumber } = generateTransferVoucherNumber(fromBranch);
         const outboundBody = {
           targetTenantId,
           targetBranchCode: toBranchCode,
           sourceBranchCode: fromBranch,
-          voucherNumber:    body.voucher_number,
+          voucherNumber:    franchiseVoucherNumber,
           userId:           username,
           items: body.lines.map((l) => ({
             item_id:   l.item_id,
@@ -646,7 +653,7 @@ export default function StockTransferPage({ onClose }) {
           const errText = await outRes.text().catch(() => "");
           throw new Error(`Franchise outbound failed: ${outRes.status} ${errText}`);
         }
-        await printAndUpdateCache();
+        await updateCacheAndPrint(franchiseVoucherNumber);
         message.success("Stock transfer to central branch submitted successfully.");
         setItems([]);
         setToBranchCode("");
@@ -683,8 +690,8 @@ export default function StockTransferPage({ onClose }) {
         throw new Error(lastErr || "Server did not confirm the stock transfer. Please check your network and try again.");
       }
 
-      await printAndUpdateCache();
-      message.success("Stock Transfer saved");
+      await updateCacheAndPrint(result.voucherNumber);
+      message.success(`Stock Transfer saved${result.voucherNumber ? ` (${result.voucherNumber})` : ""}`);
       resetForm();
     } catch (e) {
       message.error("Save failed: " + (e.message || "Unknown error"));
@@ -1111,6 +1118,7 @@ export default function StockTransferPage({ onClose }) {
         initialQuery={lookupQuery}
         onClose={() => setLookupOpen(false)}
         onPick={onPickItem}
+        onQueryChange={setLookupQuery}
         onAfterClose={() => {
           const key = pendingQtyFocusKey.current;
           if (key) {
