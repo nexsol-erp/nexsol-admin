@@ -6,6 +6,8 @@ import DayEndPage from "./dayend/DayEndPage";
 import AcceptStockPage from "./accept-stock/AcceptStockPage";
 import StockTransferPage from "./stock-transfer/StockTransferPage";
 import StockTransferHistoryPage from "./stock-transfer/StockTransferHistoryPage";
+import DailyExpensePage from "./shop-expense/DailyExpensePage";
+import ShopExpenseReportPage from "./shop-expense/ShopExpenseReportPage";
 import WeighBridgePage from "./pos/WeighBridgePage";
 import PhysicalStockPage from "./pos/PhysicalStockPage";
 import KOTPage from "./pos/KOTPage";
@@ -510,7 +512,7 @@ export default function App() {
 
   useEffect(() => {
     if (!window.POS?.onNavigate) return undefined;
-    const allowedPages = ["pos", "kot", "day-end", "accept-stock", "stock-transfer", "st-history"];
+    const allowedPages = ["pos", "kot", "day-end", "accept-stock", "stock-transfer", "st-history", "daily-expense", "expense-report"];
     if (hasWB) allowedPages.push("weigh-bridge");
     if (hasPhysicalStock) allowedPages.push("physical-stock");
     const unsubscribe = window.POS.onNavigate((page) => {
@@ -661,6 +663,8 @@ export default function App() {
                 { key: "kot", label: "KOT" },
                 { key: "stock-transfer", label: "Stock Transfer" },
                 { key: "st-history", label: "ST History" },
+                { key: "daily-expense", label: "Daily Expense" },
+                { key: "expense-report", label: "Expense Report" },
                 { key: "day-end", label: "Day End" },
                 { key: "accept-stock", label: "Accept Stock" },
                 { key: "sales-return", label: "Sales Return" },
@@ -780,6 +784,8 @@ export default function App() {
           {activePage === "pos" && <POSPage selectedBranchCode={selectedBranchCode} onLogout={() => setLoggedIn(false)} />}
           {activePage === "stock-transfer" && <StockTransferPage onClose={() => setActivePage("pos")} />}
           {activePage === "st-history" && <StockTransferHistoryPage onClose={() => setActivePage("pos")} />}
+          {activePage === "daily-expense" && <DailyExpensePage onClose={() => setActivePage("pos")} />}
+          {activePage === "expense-report" && <ShopExpenseReportPage onClose={() => setActivePage("pos")} />}
           {activePage === "day-end" && <DayEndPage pendingDate={dayEndBlock} />}
           {activePage === "accept-stock" && <AcceptStockPage onClose={() => setActivePage("pos")} />}
           {activePage === "sales-return" && <SalesReturnPage selectedBranchCode={selectedBranchCode} onClose={() => setActivePage("pos")} />}

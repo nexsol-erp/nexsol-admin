@@ -136,6 +136,7 @@ import PurchaseCorrectionHistoryPage from "./components/PurchaseCorrectionHistor
 import BranchExpenseEntryPage from "./components/BranchExpenseEntryPage";
 import MonthlyBranchProfitReport from "./components/MonthlyBranchProfitReport";
 import ExpenseHeadManagementPage from "./components/ExpenseHeadManagementPage";
+import ShopExpenseConsolidatedReport from "./components/ShopExpenseConsolidatedReport";
 import FranchiseMasterPage from "./components/FranchiseMasterPage";
 import EventMonitorPage from "./components/EventMonitorPage";
 import MasterSyncPage from "./components/MasterSyncPage";
@@ -518,6 +519,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
 <Route path="/branch-monthly-expense" element={<BranchExpenseEntryPage />} />
 <Route path="/monthly-branch-profit-report" element={<MonthlyBranchProfitReport />} />
 <Route path="/expense-head-management" element={<ExpenseHeadManagementPage />} />
+<Route path="/shop-expense-report" element={<ShopExpenseConsolidatedReport />} />
 <Route path="/item-cost-override" element={<ItemCostOverridePage />} />
 <Route path="/cost-price-history" element={<CostPriceHistoryPage />} />
 <Route path="/purchase-correction" element={<PurchaseCorrectionPage />} />

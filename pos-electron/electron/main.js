@@ -139,6 +139,8 @@ function buildAppMenu() {
         { label: "POS",            click: () => win?.webContents?.send("app:navigate", "pos") },
         { label: "Day End",        click: () => win?.webContents?.send("app:navigate", "day-end") },
         { label: "Stock Transfer", click: () => win?.webContents?.send("app:navigate", "stock-transfer") },
+        { label: "Daily Expense",  click: () => win?.webContents?.send("app:navigate", "daily-expense") },
+        { label: "Expense Report", click: () => win?.webContents?.send("app:navigate", "expense-report") },
         { label: "Accept Stock",   click: () => win?.webContents?.send("app:navigate", "accept-stock") },
         { label: "Weigh Bridge",   click: () => win?.webContents?.send("app:navigate", "weigh-bridge") },
       ],
