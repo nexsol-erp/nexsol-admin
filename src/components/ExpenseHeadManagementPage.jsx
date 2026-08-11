@@ -32,6 +32,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import LinkIcon from "@mui/icons-material/Link";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
+import StoreIcon from "@mui/icons-material/Store";
+import BranchMultiSelect from "./BranchMultiSelect";
 
 const ExpenseHeadManagementPage = () => {
   const theme  = useTheme();
@@ -62,6 +64,16 @@ const ExpenseHeadManagementPage = () => {
   // ── Delete Confirm ─────────────────────────────────────────────────────────
   const [deleteTypeId, setDeleteTypeId] = useState(null);
 
+  // ── Branch assignment (Daily Shop Expense Management) ─────────────────────
+  // branch_expense_type also serves as the POS-facing "Expense Head" master for
+  // daily expense entries (see V034) — each head needs >=1 branch assigned for
+  // the POS to be able to use it. Reuses this same page/table rather than a
+  // separate screen, via the /expense-heads API added alongside /expenses/types.
+  const [expenseHeadDetails, setExpenseHeadDetails] = useState({}); // id -> { branchCodes, description, isActive }
+  const [branchDialogType, setBranchDialogType] = useState(null);
+  const [branchDialogCodes, setBranchDialogCodes] = useState([]);
+  const [branchSaving, setBranchSaving] = useState(false);
+
   // ── Snackbar ───────────────────────────────────────────────────────────────
   const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
   const showSnack = (msg, severity = "success") => setSnack({ open: true, msg, severity });
@@ -70,14 +82,25 @@ const ExpenseHeadManagementPage = () => {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [typesRes, mapsRes, accountsRes] = await Promise.all([
+      const [typesRes, mapsRes, accountsRes, headsRes] = await Promise.all([
         fetch(`/api/${tenancyId}/expenses/types`, { headers }),
         fetch(`/api/${tenancyId}/expenses/type-accounts`, { headers }),
         fetch(`/api/${tenancyId}/ledger-accounts?accountType=EXPENSE`, { headers }),
+        fetch(`/api/${tenancyId}/expense-heads`, { headers }),
       ]);
       setExpenseTypes(typesRes.ok    ? await typesRes.json()    : []);
       setTypeAccountMaps(mapsRes.ok  ? await mapsRes.json()     : []);
       setExpenseAccounts(accountsRes.ok ? await accountsRes.json() : []);
+      if (headsRes.ok) {
+        const heads = await headsRes.json();
+        const index = {};
+        // ExpenseHeadResponse serializes with explicit snake_case @JsonProperty names
+        // (branch_codes, is_active) — read those, not the camelCase field names.
+        heads.forEach((h) => {
+          index[h.id] = { branchCodes: h.branch_codes || [], description: h.description, isActive: h.is_active };
+        });
+        setExpenseHeadDetails(index);
+      }
     } catch (e) {
       showSnack("Failed to load data", "error");
     } finally {
@@ -234,6 +257,46 @@ const ExpenseHeadManagementPage = () => {
     }
   };
 
+  // ── Branch assignment (Daily Shop Expense Management) ─────────────────────
+  const openBranchDialog = (type) => {
+    setBranchDialogType(type);
+    setBranchDialogCodes(expenseHeadDetails[type.id]?.branchCodes || []);
+  };
+
+  const handleSaveBranches = async () => {
+    if (branchDialogCodes.length === 0) {
+      showSnack("At least one branch must be selected — the POS won't be able to use this head otherwise", "warning");
+      return;
+    }
+    setBranchSaving(true);
+    try {
+      const existing = expenseHeadDetails[branchDialogType.id] || {};
+      const res = await fetch(`/api/${tenancyId}/expense-heads/${branchDialogType.id}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({
+          code: branchDialogType.typeCode,
+          name: branchDialogType.typeName,
+          description: existing.description ?? null,
+          is_active: existing.isActive ?? true,
+          branch_codes: branchDialogCodes,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showSnack("Branch assignment saved");
+        setBranchDialogType(null);
+        loadAll();
+      } else {
+        showSnack(data.error || "Save failed", "error");
+      }
+    } catch (e) {
+      showSnack("Network error", "error");
+    } finally {
+      setBranchSaving(false);
+    }
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <Box sx={{ p: 3 }}>
@@ -274,6 +337,7 @@ const ExpenseHeadManagementPage = () => {
               <TableCell><b>Sort</b></TableCell>
               <TableCell><b>Type</b></TableCell>
               <TableCell><b>GL Account (DR)</b></TableCell>
+              <TableCell><b>POS Branches</b></TableCell>
               <TableCell align="center"><b>Actions</b></TableCell>
             </TableRow>
           </TableHead>
@@ -310,8 +374,24 @@ const ExpenseHeadManagementPage = () => {
                       <Typography variant="body2" color="text.disabled">Not linked</Typography>
                     )}
                   </TableCell>
+                  <TableCell>
+                    {(expenseHeadDetails[type.id]?.branchCodes || []).length === 0 ? (
+                      <Typography variant="body2" color="warning.main">None — POS can't use this yet</Typography>
+                    ) : (
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, maxWidth: 220 }}>
+                        {expenseHeadDetails[type.id].branchCodes.map((b) => (
+                          <Chip key={b} label={b} size="small" />
+                        ))}
+                      </Box>
+                    )}
+                  </TableCell>
                   <TableCell align="center">
                     <Box sx={{ display: "flex", gap: 0.5, justifyContent: "center" }}>
+                      <Tooltip title="Assign branches for Daily Expense entry on the POS">
+                        <IconButton size="small" color="secondary" onClick={() => openBranchDialog(type)}>
+                          <StoreIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title={map ? "Change GL Account" : "Link GL Account"}>
                         <IconButton size="small" color="primary" onClick={() => openLinkDialog(type)}>
                           <LinkIcon fontSize="small" />
@@ -403,6 +483,23 @@ const ExpenseHeadManagementPage = () => {
           <Button onClick={() => setLinkDialogOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleSaveLink} disabled={linkSaving}>
             {linkSaving ? "Saving..." : "Link"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Assign POS Branches Dialog */}
+      <Dialog open={!!branchDialogType} onClose={() => setBranchDialogType(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Assign Branches — {branchDialogType?.typeName}</DialogTitle>
+        <DialogContent sx={{ pt: "16px !important" }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            The POS Daily Expense screen only offers active heads assigned to the logged-in branch.
+          </Typography>
+          <BranchMultiSelect label="POS Branches" required value={branchDialogCodes} onChange={setBranchDialogCodes} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBranchDialogType(null)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSaveBranches} disabled={branchSaving}>
+            {branchSaving ? "Saving..." : "Save"}
           </Button>
         </DialogActions>
       </Dialog>

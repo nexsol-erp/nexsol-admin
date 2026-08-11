@@ -372,6 +372,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         { menuKey: "Receipt Entry",          label: t("Receipt Entry"),          link: "/accounting/receipt-entry",       roles: ["admin", "manager"] },
         { menuKey: "Payment Entry",          label: t("Payment Entry"),          link: "/accounting/payment-entry",       roles: ["admin", "manager"] },
         { menuKey: "Branch Monthly Expense", label: t("Branch Monthly Expense"), link: "/branch-monthly-expense",         roles: ["admin", "manager"] },
+        { menuKey: "Shop Expense Report",    label: t("Shop Expense Report"),    link: "/shop-expense-report",            roles: ["admin", "manager"] },
         { menuKey: "Inter-Branch Transfer",  label: t("Inter-Branch Transfer"),  link: "/accounting/inter-branch-transfer", roles: ["admin", "manager"] },
         // Reports
         { menuKey: "Trial Balance",          label: t("Trial Balance"),          link: "/accounting/trial-balance",       roles: ["admin", "manager"] },
