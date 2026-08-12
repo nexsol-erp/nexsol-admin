@@ -357,10 +357,11 @@ export default function StockTransferPage({ onClose }) {
   );
 
   const openLookup = () => {
-    // Prefer a freshly scanned/typed barcode; otherwise re-open with whatever
-    // search text was last used, so picking several similar items across
-    // multiple opens doesn't require retyping the filter each time.
-    if (itemQuery) setLookupQuery(itemQuery);
+    // Prefer a freshly scanned/typed barcode; otherwise open with an empty
+    // box — the modal itself keeps showing the previous filtered results, so
+    // picking several similar items across multiple opens doesn't require
+    // retyping the filter each time, without leaving stale text in the box.
+    setLookupQuery(itemQuery || "");
     setLookupOpen(true);
   };
 

@@ -6,6 +6,10 @@ const { Text } = Typography;
 
 export default function ItemLookupModal({ open, initialQuery, onClose, onPick, onAfterClose, onQueryChange, hideOutOfStock = true }) {
   const inputRef = useRef(null);
+  // When reopening with no fresh query (no scanned barcode carried over), keep
+  // showing the previous search's filtered rows instead of re-running the
+  // search against an empty string — only clear the visible text box.
+  const skipSearchRef = useRef(false);
 
   const [q, setQ] = useState(initialQuery || "");
   const [rows, setRows] = useState([]);
@@ -47,7 +51,11 @@ export default function ItemLookupModal({ open, initialQuery, onClose, onPick, o
 
   useEffect(() => {
     if (!open) return;
-    setQ(initialQuery || "");
+    const iq = initialQuery || "";
+    // No fresh query to seed with, but we already have results on screen from
+    // last time — clear the box without wiping the list.
+    skipSearchRef.current = iq === "" && rows.length > 0;
+    setQ(iq);
     setSelectedIndex(0);
     setTimeout(() => inputRef.current?.focus?.(), 50);
     // Only re-seed on open, not on every initialQuery change — callers (like
@@ -59,6 +67,7 @@ export default function ItemLookupModal({ open, initialQuery, onClose, onPick, o
 
   useEffect(() => {
     if (!open || !cacheReady) return;
+    if (skipSearchRef.current) return;
     let cancelled = false;
 
     const run = async () => {
@@ -143,7 +152,7 @@ export default function ItemLookupModal({ open, initialQuery, onClose, onPick, o
             size="small"
             ref={inputRef} 
             value={q}
-            onChange={(e) => { setQ(e.target.value); onQueryChange?.(e.target.value); }}
+            onChange={(e) => { skipSearchRef.current = false; setQ(e.target.value); onQueryChange?.(e.target.value); }}
             placeholder="Type name/barcode (Enter to select, Esc to close)"
             disabled={loading}
           />
@@ -177,7 +186,7 @@ export default function ItemLookupModal({ open, initialQuery, onClose, onPick, o
                 <Button size="small" onClick={() => setLimit((l) => Math.min(1000, l * 10))}>
                   Show more
                 </Button>
-                <Button size="small" onClick={() => { setLimit(50); setQ(""); inputRef.current?.focus?.(); }}>
+                <Button size="small" onClick={() => { skipSearchRef.current = false; setLimit(50); setQ(""); inputRef.current?.focus?.(); }}>
                   Reset
                 </Button>
               </Space>
