@@ -18,6 +18,7 @@ import CurrentStockReportPage from "./pos/CurrentStockReportPage";
 import StockTransferInReportPage from "./pos/StockTransferInReportPage";
 import SalesReturnPage from "./pos/SalesReturnPage";
 import UpdateChecker from "./components/UpdateChecker";
+import PrintSettingsModal from "./print/PrintSettingsModal";
 import { isLoggedIn, logout, isAdminRole, getBranchLock, clearBranchLock } from "./auth/auth";
 import { clearItemCache, hasCache, loadAllItemsToCache, resyncItemsByCodes, resyncFromVersion } from "./cache/itemCache";
 import { db } from "./cache/itemCacheDb";
@@ -151,6 +152,7 @@ function extractBranchCodes() {
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [activePage, setActivePage] = useState("pos");
+  const [printSettingsOpen, setPrintSettingsOpen] = useState(false);
   const [roles, setRoles] = useState(getRoles);
   const wasEverConnectedRef = useRef(false);
 
@@ -731,6 +733,11 @@ export default function App() {
                   Clear Cache
                 </Button>
               </Popconfirm>
+              <Tooltip title="Choose the font/size used for all POS print output on this terminal">
+                <Button size="small" onClick={() => setPrintSettingsOpen(true)}>
+                  Print Settings
+                </Button>
+              </Tooltip>
               {isAdminRole(roles) && (() => {
                 const lock = getBranchLock();
                 return lock ? (
@@ -797,6 +804,8 @@ export default function App() {
           {activePage === "st-in-report" && <StockTransferInReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "current-stock-report" && <CurrentStockReportPage selectedBranchCode={selectedBranchCode} />}
           {activePage === "kot" && <KOTPage selectedBranchCode={selectedBranchCode} />}
+
+          <PrintSettingsModal open={printSettingsOpen} onClose={() => setPrintSettingsOpen(false)} />
         </div>
       )}
     </div>

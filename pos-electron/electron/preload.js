@@ -5,12 +5,47 @@ const { contextBridge, ipcRenderer } = require("electron");
 const _apiServer = ipcRenderer.sendSync("config:get-api-server");
 const _wsServer  = ipcRenderer.sendSync("config:get-ws-server");
 
+// Applies the user's saved print font/size preference (Settings ▸ Print Settings,
+// src/print/printPrefs.js) to every print job in one place, so none of the ~13
+// individual receipt/voucher/report HTML builders need to know about it. Preload
+// runs in the renderer's window (unlike the main process), so localStorage is
+// readable here — this mirrors src/print/printPrefs.js's format/logic, duplicated
+// rather than imported because this file is loaded as plain CommonJS by Electron,
+// not bundled through Vite like the src/ ES modules are.
+function readPrintPrefs() {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem("pos_print_prefs") || "{}");
+    return {
+      fontFamily: typeof raw.fontFamily === "string" ? raw.fontFamily : "",
+      fontSizePx: Number(raw.fontSizePx) || 0,
+    };
+  } catch (_) {
+    return { fontFamily: "", fontSizePx: 0 };
+  }
+}
+
+function applyPrintPrefs(html) {
+  if (typeof html !== "string" || !html) return html;
+  const { fontFamily, fontSizePx } = readPrintPrefs();
+  if (!fontFamily && !fontSizePx) return html; // "Default" — leave every builder's own styling untouched
+
+  const rules = [];
+  if (fontFamily) rules.push(`*, *::before, *::after { font-family: ${fontFamily} !important; }`);
+  if (fontSizePx) {
+    rules.push(
+      `body, table, tr, td, th, div, span, p, b, strong, small { font-size: ${fontSizePx}px !important; }`
+    );
+  }
+  const styleTag = `<style id="pos-print-override">${rules.join("\n")}</style>`;
+  return html.includes("</head>") ? html.replace("</head>", styleTag + "</head>") : styleTag + html;
+}
+
 contextBridge.exposeInMainWorld("POS", {
   apiServer: _apiServer,
   wsServer:  _wsServer,
   listPrinters: () => ipcRenderer.invoke("printers:list"),
-  printHtml: (payload) => ipcRenderer.invoke("print:html", payload),
-  printToPDF: (payload) => ipcRenderer.invoke("print:to-pdf", payload),
+  printHtml: (payload) => ipcRenderer.invoke("print:html", { ...payload, html: applyPrintPrefs(payload?.html) }),
+  printToPDF: (payload) => ipcRenderer.invoke("print:to-pdf", { ...payload, html: applyPrintPrefs(payload?.html) }),
   getPrinterPaperSize: (deviceName) => ipcRenderer.invoke("printer:get-paper-size", deviceName),
   savePrinterConfig: (settings) => ipcRenderer.invoke("config:save-printer", settings),
   closeWindow: () => ipcRenderer.invoke("window:close"),
