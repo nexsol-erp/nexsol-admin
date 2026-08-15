@@ -1,22 +1,24 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { DatePicker, Select, Input, Table, Button, Tag, message } from "antd";
+import { DatePicker, Select, Input, InputNumber, Table, Button, Tag, Modal, message } from "antd";
 import dayjs from "dayjs";
 import { apiUrl } from "../utils/apiUrl";
 import { buildExpenseVoucherHtml } from "./expensePrint";
 
 const { RangePicker } = DatePicker;
+const { TextArea } = Input;
 
 const PAYMENT_MODES = ["CASH", "CARD", "UPI", "BANK_TRANSFER", "OTHER"];
 const STATUSES = ["ACTIVE", "VOIDED"];
 
-// Branch-locked report — only this terminal's branch, no edit/delete/void
-// actions anywhere in this UI (the backend refuses those for POS users
-// regardless, but they're not even offered here to avoid confusion).
+// Branch-locked report — only this terminal's branch. Edit is allowed only
+// for today's own-branch expenses while day-end hasn't been done for this
+// branch/date (server re-verifies both on save); once either is no longer
+// true, the expense can only be corrected from Web Admin.
 export default function ShopExpenseReportPage({ onClose }) {
   const tenantId = localStorage.getItem("tenancyId") || "";
   const token    = localStorage.getItem("jwtToken") || "";
   const branchCode = String(globalThis.POS_BRANCH_CODE || localStorage.getItem("selectedBranchCode") || "").trim();
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
   const [dateRange, setDateRange] = useState([dayjs().startOf("month"), dayjs()]);
   const [expenseTypeId, setExpenseTypeId] = useState(null);
@@ -29,6 +31,16 @@ export default function ShopExpenseReportPage({ onClose }) {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [branchInfo, setBranchInfo] = useState(null);
+
+  const [editRecord, setEditRecord] = useState(null);
+  const [editChecking, setEditChecking] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editAmount, setEditAmount] = useState(null);
+  const [editExpenseTypeId, setEditExpenseTypeId] = useState(null);
+  const [editPaymentMode, setEditPaymentMode] = useState(null);
+  const [editPayee, setEditPayee] = useState("");
+  const [editReferenceNo, setEditReferenceNo] = useState("");
+  const [editRemarks, setEditRemarks] = useState("");
 
   useEffect(() => {
     if (!tenantId || !branchCode) return;
@@ -80,6 +92,76 @@ export default function ShopExpenseReportPage({ onClose }) {
 
   useEffect(() => { search(); }, [search]);
 
+  // Live server check — the terminal's local day_end_records cache is
+  // per-terminal only, so editability must be re-verified against the
+  // server (day_end_dtl) rather than trusted from local state.
+  const isDayEndDone = async (forDate) => {
+    const res = await fetch(apiUrl(`/api/${tenantId}/day-end/details/${branchCode}/${forDate}`), { headers });
+    if (!res.ok) throw new Error(`Day-end check failed (${res.status})`);
+    const data = await res.json();
+    return Array.isArray(data) && data.length > 0;
+  };
+
+  const openEdit = async (record) => {
+    setEditChecking(true);
+    try {
+      if (await isDayEndDone(record.expense_date)) {
+        message.warning("Day end has already been done for this date — edit this expense from Web Admin instead.");
+        return;
+      }
+      setEditRecord(record);
+      setEditAmount(Number(record.amount));
+      setEditExpenseTypeId(record.expense_type_id);
+      setEditPaymentMode(record.payment_mode);
+      setEditPayee(record.payee || "");
+      setEditReferenceNo(record.reference_no || "");
+      setEditRemarks(record.remarks || "");
+    } catch (e) {
+      message.error(e.message || "Could not check day-end status");
+    } finally {
+      setEditChecking(false);
+    }
+  };
+
+  const closeEdit = () => setEditRecord(null);
+
+  const saveEdit = async () => {
+    if (!editRecord) return;
+    if (!editExpenseTypeId) { message.warning("Select an expense head."); return; }
+    if (!editAmount || Number(editAmount) <= 0) { message.warning("Enter an amount greater than zero."); return; }
+    if (!editPaymentMode) { message.warning("Select a payment mode."); return; }
+
+    setEditSaving(true);
+    try {
+      const res = await fetch(apiUrl(`/api/${tenantId}/shop-expenses/${editRecord.id}/edit`), {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          expense_type_id: editExpenseTypeId,
+          amount: Number(editAmount),
+          payment_mode: editPaymentMode,
+          payee: editPayee || null,
+          reference_no: editReferenceNo || null,
+          remarks: editRemarks || null,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || `Save failed (${res.status})`);
+      }
+      message.success("Expense updated");
+      closeEdit();
+      search();
+    } catch (e) {
+      message.error(e.message || "Failed to update expense");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const today = dayjs().format("YYYY-MM-DD");
+  const canEdit = (record) => record.status !== "VOIDED" && record.expense_date === today;
+
   const reprint = (record) => {
     if (!window.POS?.printHtml) { message.error("Print API not available"); return; }
     const html = buildExpenseVoucherHtml({
@@ -114,8 +196,17 @@ export default function ShopExpenseReportPage({ onClose }) {
       render: (v) => <Tag color={v === "VOIDED" ? "red" : "green"}>{v}</Tag>,
     },
     {
-      title: "Action", width: 100,
-      render: (_, record) => <Button size="small" onClick={() => reprint(record)}>Print</Button>,
+      title: "Action", width: 160,
+      render: (_, record) => (
+        <>
+          <Button size="small" onClick={() => reprint(record)}>Print</Button>
+          {canEdit(record) && (
+            <Button size="small" style={{ marginLeft: 6 }} loading={editChecking} onClick={() => openEdit(record)}>
+              Edit
+            </Button>
+          )}
+        </>
+      ),
     },
   ];
 
@@ -185,6 +276,56 @@ export default function ShopExpenseReportPage({ onClose }) {
           )}
         />
       </div>
+
+      <Modal
+        title={editRecord ? `Edit Expense — ${editRecord.voucher_number}` : "Edit Expense"}
+        open={!!editRecord}
+        onCancel={closeEdit}
+        onOk={saveEdit}
+        confirmLoading={editSaving}
+        okText="Save"
+      >
+        {editRecord && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 2 }}>Expense Head</div>
+              <Select
+                value={editExpenseTypeId}
+                onChange={setEditExpenseTypeId}
+                style={{ width: "100%" }}
+                showSearch
+                optionFilterProp="label"
+                options={heads.map((h) => ({ value: h.id, label: h.name }))}
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 2 }}>Amount</div>
+              <InputNumber min={0.01} precision={2} value={editAmount} onChange={setEditAmount} style={{ width: "100%" }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 2 }}>Payment Mode</div>
+              <Select
+                value={editPaymentMode}
+                onChange={setEditPaymentMode}
+                style={{ width: "100%" }}
+                options={PAYMENT_MODES.map((m) => ({ value: m, label: m }))}
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 2 }}>Paid To / Payee</div>
+              <Input value={editPayee} onChange={(e) => setEditPayee(e.target.value)} />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 2 }}>Bill / Reference No</div>
+              <Input value={editReferenceNo} onChange={(e) => setEditReferenceNo(e.target.value)} />
+            </div>
+            <div style={{ gridColumn: "1 / span 2" }}>
+              <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 2 }}>Remarks</div>
+              <TextArea rows={2} value={editRemarks} onChange={(e) => setEditRemarks(e.target.value)} />
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

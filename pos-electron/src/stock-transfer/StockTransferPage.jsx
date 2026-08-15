@@ -487,7 +487,7 @@ export default function StockTransferPage({ onClose }) {
     }
   };
 
-  const recallSelected = () => {
+  const recallSelected = async () => {
     const row = holdRows.find((x) => x.id === selectedHoldId);
     if (!row) { message.warning("Select a hold record."); return; }
     const p = row.payload || {};
@@ -501,8 +501,35 @@ export default function StockTransferPage({ onClose }) {
     setDeliveryAddress2(String(p.deliveryAddress2 || ""));
     setPrintMode(p.printMode === "thermal" ? "thermal" : "a4");
     setReasonCode(String(p.reasonCode || "NORMAL DC"));
-    // Normalise rows so discount fields always exist (backward compat with old holds)
-    setItems((Array.isArray(p.items) ? p.items : []).map(normaliseRow));
+
+    // Normalise rows so discount fields always exist (backward compat with old holds),
+    // then re-check current stock for each held item — the held snapshot's available_qty
+    // is stale (e.g. an invoice may have sold this item while the DC was on hold), and
+    // saving against it unchecked would push stock negative.
+    const normalised = (Array.isArray(p.items) ? p.items : []).map(normaliseRow);
+    const adjusted = await Promise.all(
+      normalised.map(async (r) => {
+        const cached = await db.items.get(String(r.item_id)).catch(() => null);
+        const currentQty = cached?.availableQty != null ? Number(cached.availableQty) : null;
+        if (currentQty === null) return r; // no stock info locally — leave as-is
+        const cappedQty = Math.min(Number(r.qty) || 0, currentQty);
+        return normaliseRow({ ...r, qty: cappedQty, available_qty: currentQty });
+      })
+    );
+
+    const zeroed = adjusted.filter((r) => Number(r.qty) === 0);
+    const capped = adjusted.filter(
+      (r, i) => Number(r.qty) < Number(normalised[i]?.qty || 0) && Number(r.qty) > 0
+    );
+    if (zeroed.length || capped.length) {
+      const msgs = [];
+      if (capped.length) msgs.push(`Qty reduced (stock changed): ${capped.map((r) => r.item_name).join(", ")}`);
+      if (zeroed.length) msgs.push(`Removed (no stock left): ${zeroed.map((r) => r.item_name).join(", ")}`);
+      message.warning(msgs.join(" | "), 6);
+    }
+
+    setItems(adjusted.filter((r) => Number(r.qty) > 0));
+
     const next = holdRows.filter((x) => x.id !== selectedHoldId);
     setHoldRows(next);
     writeHoldList(next);
@@ -679,8 +706,13 @@ export default function StockTransferPage({ onClose }) {
           });
           if (r.ok) { result = await r.json().catch(() => ({})); break; }
           const t = await r.text().catch(() => "");
-          lastErr = `${r.status} ${t || r.statusText}`;
-          if (r.status >= 500) break;
+          let parsedErr = "";
+          try { parsedErr = JSON.parse(t)?.error || ""; } catch { /* not JSON */ }
+          lastErr = parsedErr || `${r.status} ${t || r.statusText}`;
+          // A real (non-404) response means we hit a live endpoint that rejected the
+          // request on its merits (e.g. insufficient stock) — stop, don't mask it by
+          // falling through to a differently-pathed endpoint.
+          if (r.status !== 404) break;
         } catch (fetchErr) {
           lastErr = fetchErr.message;
           break;
