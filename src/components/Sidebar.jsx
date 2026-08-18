@@ -290,6 +290,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
       roles: ["admin", "user", "cgn", "franchiseeuser"], hasSubmenu: true,
       submenu: [
         { menuKey: "Branch Details",           label: t("Branch Details"),           link: "/branch-update",          roles: ["admin"] },
+        { menuKey: "POS Address Configuration", label: t("POS Address Configuration"), link: "/pos-address-config",   roles: ["admin"] },
         { menuKey: "Item Cost Override",       label: t("Item Cost Override"),       link: "/item-cost-override",     roles: ["admin"] },
         { menuKey: "Cost Price History",       label: t("Cost Price History"),       link: "/cost-price-history",     roles: ["admin"] },
         { menuKey: "Receipt Modes",            label: t("Receipt Modes"),            link: "/receipt-modes",        roles: ["admin"] },

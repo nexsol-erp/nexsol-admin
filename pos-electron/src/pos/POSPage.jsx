@@ -715,6 +715,32 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       .catch((e) => logError("branchInfo fetch error:", e.message));
   }, [selectedBranchCode]);
 
+  // POS receipt header address lines (Web Admin ▸ POS Address Configuration).
+  // Empty here just means "not configured yet" — buildReceiptHtml falls back
+  // to the old fixed-field concatenation (deduplicated) in that case.
+  const [posAddressLines, setPosAddressLines] = useState([]);
+  useEffect(() => {
+    if (!selectedBranchCode) return;
+    const cacheKey = `posAddressLines_${selectedBranchCode}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) setPosAddressLines(JSON.parse(cached));
+    } catch {}
+
+    const tenantId = localStorage.getItem("tenancyId") || "";
+    const token    = localStorage.getItem("jwtToken") || "";
+    fetch(apiUrl(`/api/${tenantId}/branches/${selectedBranchCode}/pos-address-lines`), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        const lines = (Array.isArray(data) ? data : []).map((l) => l.lineText).filter(Boolean);
+        setPosAddressLines(lines);
+        try { localStorage.setItem(cacheKey, JSON.stringify(lines)); } catch {}
+      })
+      .catch(() => {});
+  }, [selectedBranchCode]);
+
   // Printing
   const [printers, setPrinters] = useState([]);
   const [selectedPrinter, setSelectedPrinter] = useState(
@@ -745,7 +771,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       items: snapshot, totalAmount, tendered, balance, receipts,
       itemwiseDiscount: discount,
       roundOff: ro,
-      branchInfo, salesmanName, customerMobile, voucherNumber,
+      branchInfo, posAddressLines, salesmanName, customerMobile, voucherNumber,
     };
     const html = buildReceiptHtml(printData);
     log("doPrint | htmlLen:", html.length, "| snapshotLen:", snapshot?.length);
@@ -788,7 +814,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       items, totalAmount, tendered, balance, receipts,
       itemwiseDiscount,
       roundOff,
-      branchInfo, salesmanName, customerMobile, voucherNumber: "TEST",
+      branchInfo, posAddressLines, salesmanName, customerMobile, voucherNumber: "TEST",
     });
     try {
       await window.POS.printHtml({ html, silent: false, deviceName: selectedPrinter || "" });
@@ -1353,14 +1379,16 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 function round2(v)  { return (Number(v) || 0).toFixed(2); }
 function round2n(v) { return Math.round((Number(v) || 0) * 100) / 100; }
 
-function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, itemwiseDiscount = 0, roundOff = 0, branchInfo, salesmanName, customerMobile, voucherNumber }) {
+function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, itemwiseDiscount = 0, roundOff = 0, branchInfo, posAddressLines, salesmanName, customerMobile, voucherNumber }) {
   const b = branchInfo || {};
-  const addrParts = [
-    b.branchBuildingAddress,
-    b.branchAddress1,
-    b.branchState,
-    b.branchCountry,
-  ].filter(Boolean);
+  // Web Admin ▸ POS Address Configuration lines take priority once set for the
+  // branch; otherwise fall back to the old fixed-field concatenation, deduped
+  // (two of these columns holding identical text used to print the same
+  // address line twice).
+  const configuredLines = Array.isArray(posAddressLines) ? posAddressLines.filter(Boolean) : [];
+  const addrParts = configuredLines.length
+    ? configuredLines
+    : [...new Set([b.branchBuildingAddress, b.branchAddress1, b.branchState, b.branchCountry].filter(Boolean))];
 
   const addrHtml  = addrParts.map((line) => `<div class="addr">${esc(line)}</div>`).join("");
   const phoneHtml = b.branchStreetAddress ? `<div class="addr">Ph: ${esc(b.branchStreetAddress)}</div>` : "";

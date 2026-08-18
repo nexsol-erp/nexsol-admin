@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { DatePicker, Select, Input, InputNumber, Table, Button, Tag, Modal, message } from "antd";
+import { DatePicker, Select, Input, InputNumber, Table, Button, Tag, Modal, Popconfirm, message } from "antd";
 import dayjs from "dayjs";
 import { apiUrl } from "../utils/apiUrl";
 import { buildExpenseVoucherHtml } from "./expensePrint";
@@ -10,10 +10,11 @@ const { TextArea } = Input;
 const PAYMENT_MODES = ["CASH", "CARD", "UPI", "BANK_TRANSFER", "OTHER"];
 const STATUSES = ["ACTIVE", "VOIDED"];
 
-// Branch-locked report — only this terminal's branch. Edit is allowed only
-// for today's own-branch expenses while day-end hasn't been done for this
-// branch/date (server re-verifies both on save); once either is no longer
-// true, the expense can only be corrected from Web Admin.
+// Branch-locked report — only this terminal's branch. Edit and Delete are
+// allowed only for today's own-branch expenses while day-end hasn't been done
+// for this branch/date (server re-verifies both on every save/delete); once
+// either is no longer true, the expense can only be corrected/voided from Web
+// Admin.
 export default function ShopExpenseReportPage({ onClose }) {
   const tenantId = localStorage.getItem("tenancyId") || "";
   const token    = localStorage.getItem("jwtToken") || "";
@@ -41,6 +42,7 @@ export default function ShopExpenseReportPage({ onClose }) {
   const [editPayee, setEditPayee] = useState("");
   const [editReferenceNo, setEditReferenceNo] = useState("");
   const [editRemarks, setEditRemarks] = useState("");
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     if (!tenantId || !branchCode) return;
@@ -159,7 +161,30 @@ export default function ShopExpenseReportPage({ onClose }) {
     }
   };
 
+  const deleteExpense = async (record) => {
+    setDeletingId(record.id);
+    try {
+      const res = await fetch(apiUrl(`/api/${tenantId}/shop-expenses/${record.id}`), {
+        method: "DELETE",
+        headers,
+        body: JSON.stringify({ reason: "Deleted from POS" }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || `Delete failed (${res.status})`);
+      }
+      message.success("Expense deleted");
+      search();
+    } catch (e) {
+      message.error(e.message || "Failed to delete expense");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const today = dayjs().format("YYYY-MM-DD");
+  // Same gating as Edit — same-day, not-yet-voided; the server also re-verifies
+  // day-end-not-done at the moment of delete, since that can change mid-session.
   const canEdit = (record) => record.status !== "VOIDED" && record.expense_date === today;
 
   const reprint = (record) => {
@@ -196,7 +221,7 @@ export default function ShopExpenseReportPage({ onClose }) {
       render: (v) => <Tag color={v === "VOIDED" ? "red" : "green"}>{v}</Tag>,
     },
     {
-      title: "Action", width: 160,
+      title: "Action", width: 220,
       render: (_, record) => (
         <>
           <Button size="small" onClick={() => reprint(record)}>Print</Button>
@@ -204,6 +229,19 @@ export default function ShopExpenseReportPage({ onClose }) {
             <Button size="small" style={{ marginLeft: 6 }} loading={editChecking} onClick={() => openEdit(record)}>
               Edit
             </Button>
+          )}
+          {canEdit(record) && (
+            <Popconfirm
+              title="Delete this expense?"
+              description="This cannot be undone from POS."
+              okText="Delete"
+              okButtonProps={{ danger: true }}
+              onConfirm={() => deleteExpense(record)}
+            >
+              <Button size="small" danger style={{ marginLeft: 6 }} loading={deletingId === record.id}>
+                Delete
+              </Button>
+            </Popconfirm>
           )}
         </>
       ),

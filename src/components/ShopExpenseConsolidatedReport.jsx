@@ -49,6 +49,7 @@ export default function ShopExpenseConsolidatedReport() {
   const [heads, setHeads] = useState([]);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
   const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
 
@@ -102,47 +103,99 @@ export default function ShopExpenseConsolidatedReport() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  const detailRows = report?.detail?.content ?? [];
+  // Groups the on-screen table and the exported sheet by branch (secondary: date,
+  // then voucher no.) — the backend's search() uses a fixed native-SQL ORDER BY
+  // (expense_date/voucher_number) that can't take a dynamic sort field, so this is
+  // done client-side instead.
+  const sortByBranch = (rows) =>
+    [...rows].sort((a, b) => {
+      const byBranch = String(a.branch_code || "").localeCompare(String(b.branch_code || ""));
+      if (byBranch !== 0) return byBranch;
+      const byDate = String(a.expense_date || "").localeCompare(String(b.expense_date || ""));
+      if (byDate !== 0) return byDate;
+      return String(a.voucher_number || "").localeCompare(String(b.voucher_number || ""));
+    });
 
-  const handleExport = () => {
-    if (!detailRows.length) return;
-    const detail = detailRows.map((r) => ({
-      "Voucher No": r.voucher_number,
-      "Date": r.expense_date,
-      "Branch": r.branch_code,
-      "Expense Head": r.expense_type_name,
-      "Amount": r.amount,
-      "Payment Mode": r.payment_mode,
-      "Payee": r.payee,
-      "Reference No": r.reference_no,
-      "Remarks": r.remarks,
-      "Entered By": r.entered_by_username,
-      "Status": r.status,
-    }));
-    const branchSummary = (report.byBranch || []).map((r) => ({
-      "Branch": r.branchCode, "Total": r.total, "Count": r.count,
-    }));
-    const headSummary = (report.byExpenseHead || []).map((r) => ({
-      "Expense Head": r.expenseTypeName, "Total": r.total, "Count": r.count,
-    }));
-    const modeSummary = (report.byPaymentMode || []).map((r) => ({
-      "Payment Mode": r.paymentMode, "Total": r.total, "Count": r.count,
-    }));
+  const detailRows = useMemo(
+    () => sortByBranch(report?.detail?.content ?? []),
+    [report]
+  );
 
-    const wb = XLSX.utils.book_new();
-    const meta = [
-      { Field: "Reporting Period", Value: `${fromDate} to ${toDate}` },
-      { Field: "Branches", Value: branchCodes.join(", ") },
-      { Field: "Overall Total", Value: report.overallTotal },
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(meta), "Summary");
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detail), "Detail");
-    if (branchSummary.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(branchSummary), "Branch Summary");
-    if (headSummary.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(headSummary), "Expense Head Summary");
-    if (modeSummary.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(modeSummary), "Payment Mode Summary");
+  // Export must cover every row matching the current filters, not just the page
+  // currently on screen — re-fetches with the same filters, paging through the
+  // full result set server-side rather than reading the already-loaded page.
+  const fetchAllDetailRows = async () => {
+    const params = new URLSearchParams({ fromDate, toDate, size: "500" });
+    branchCodes.forEach((b) => params.append("branchCodes", b));
+    if (expenseTypeId) params.set("expenseTypeId", expenseTypeId);
+    if (paymentMode) params.set("paymentMode", paymentMode);
+    if (enteredBy) params.set("enteredBy", enteredBy);
+    if (status) params.set("status", status);
+    if (voucherNumber) params.set("voucherNumber", voucherNumber);
 
-    const filename = `expense-report-${fromDate}-to-${toDate}.xlsx`;
-    saveAs(new Blob([XLSX.write(wb, { bookType: "xlsx", type: "array" })], { type: "application/octet-stream" }), filename);
+    let all = [];
+    let pageNum = 0;
+    let totalPages = 1;
+    do {
+      params.set("page", String(pageNum));
+      const res = await fetch(`/api/${tenancyId}/reports/shop-expenses?${params}`, { headers });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Export fetch failed (${res.status})`);
+      all = all.concat(data.detail?.content ?? []);
+      totalPages = data.detail?.totalPages ?? 1;
+      pageNum += 1;
+    } while (pageNum < totalPages);
+    return all;
+  };
+
+  const handleExport = async () => {
+    if (!report) return;
+    setExporting(true);
+    try {
+      const allRows = sortByBranch(await fetchAllDetailRows());
+      const detail = allRows.map((r) => ({
+        "Voucher No": r.voucher_number,
+        "Date": r.expense_date,
+        "Branch": r.branch_code,
+        "Expense Head": r.expense_type_name,
+        "Amount": r.amount,
+        "Payment Mode": r.payment_mode,
+        "Payee": r.payee,
+        "Reference No": r.reference_no,
+        "Remarks": r.remarks,
+        "Entered By": r.entered_by_username,
+        "Status": r.status,
+      }));
+      const branchSummary = (report.byBranch || []).map((r) => ({
+        "Branch": r.branchCode, "Total": r.total, "Count": r.count,
+      }));
+      const headSummary = (report.byExpenseHead || []).map((r) => ({
+        "Expense Head": r.expenseTypeName, "Total": r.total, "Count": r.count,
+      }));
+      const modeSummary = (report.byPaymentMode || []).map((r) => ({
+        "Payment Mode": r.paymentMode, "Total": r.total, "Count": r.count,
+      }));
+
+      const wb = XLSX.utils.book_new();
+      const meta = [
+        { Field: "Reporting Period", Value: `${fromDate} to ${toDate}` },
+        { Field: "Branches", Value: branchCodes.join(", ") },
+        { Field: "Overall Total", Value: report.overallTotal },
+        { Field: "Row Count", Value: allRows.length },
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(meta), "Summary");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detail), "Detail");
+      if (branchSummary.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(branchSummary), "Branch Summary");
+      if (headSummary.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(headSummary), "Expense Head Summary");
+      if (modeSummary.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(modeSummary), "Payment Mode Summary");
+
+      const filename = `expense-report-${fromDate}-to-${toDate}.xlsx`;
+      saveAs(new Blob([XLSX.write(wb, { bookType: "xlsx", type: "array" })], { type: "application/octet-stream" }), filename);
+    } catch (e) {
+      setSnack({ open: true, msg: e.message || "Export failed", severity: "error" });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const openCorrect = (row) => {
@@ -219,7 +272,9 @@ export default function ShopExpenseConsolidatedReport() {
         >
           {loading ? "Loading..." : "Run Report"}
         </Button>
-        <Button variant="outlined" onClick={handleExport} disabled={!detailRows.length}>Export Excel</Button>
+        <Button variant="outlined" onClick={handleExport} disabled={!detailRows.length || exporting}>
+          {exporting ? "Exporting..." : "Export Excel"}
+        </Button>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}

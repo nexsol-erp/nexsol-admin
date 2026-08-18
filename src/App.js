@@ -27,6 +27,7 @@ import WeighBridge from "./components/WeighBridge";
 import HSNSalesDetail from "./components/HSNWiseSalesDetail";
 import BranchCreationPage from "./components/BranchCreationPage";
 import BranchUpdatePage from "./components/BranchUpdatePage";
+import PosAddressConfigPage from "./components/PosAddressConfigPage";
 import BranchDayEndSettingsPage from "./components/BranchDayEndSettingsPage";
 import DayEndClearPage from "./components/DayEndClearPage";
 import UserCreationPage from "./components/UserCreationPage";
@@ -196,6 +197,7 @@ const ROUTE_ORDER = [
   { key: "Weight-Count",                     path: "/bridge-count" },
   { key: "WeighBridge Usage",                path: "/weighbridgeusage" },
   { key: "Branch Details",                   path: "/branch-update" },
+  { key: "POS Address Configuration",        path: "/pos-address-config" },
   { key: "Branch Day End Settings",          path: "/branch-day-end-settings" },
   { key: "Version Management",               path: "/version-management" },
   { key: "Scheme Creation",                  path: "/schemepage" },
@@ -428,6 +430,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/weighbridge" element={<WeighBridge />} />
             <Route path="/branchcreationpage" element={<BranchCreationPage />} />
             <Route path="/branch-update" element={<BranchUpdatePage />} />
+            <Route path="/pos-address-config" element={<PosAddressConfigPage />} />
             <Route path="/branch-day-end-settings" element={<BranchDayEndSettingsPage />} />
             <Route path="/usercreationpage" element={<UserCreationPage />} />
             <Route path="/schemepage" element={<SchemePage />} />
