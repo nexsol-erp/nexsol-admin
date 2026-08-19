@@ -271,6 +271,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         { menuKey: "Weighbridge",       label: t("Weighbridge Entry"),  link: "/weighbridge",     roles: ["WB"] },
         { menuKey: "Weight-Count",      label: t("Weight-Count"),       link: "/bridge-count",    roles: ["WB"] },
         { menuKey: "WeighBridge Usage", label: t("WeighBridge Usage"),  link: "/weighbridgeusage", roles: ["WB"] },
+        { menuKey: "Weighbridge Resync", label: t("Resync Records"),  link: "/weighbridge-resync", roles: ["WB", "admin"] },
       ],
     },
 
