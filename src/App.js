@@ -67,6 +67,7 @@ import StockReportExclusionPage from "./components/StockReportExclusionPage"
 
 import SalesReportAllBranch from "./components/SalesReportAllBranch"
 import WeighBridgeEngageReport from "./components/WeighBridgeEngageReport";
+import WeighBridgeResync from "./components/WeighBridgeResync";
 import WeighbridgeUsageReport from "./components/WeighbridgeUsageReport";
 import BranchRequestList from "./components/BranchRequestList";
 import PosSessionsPage from "./components/PosSessionsPage";
@@ -196,6 +197,7 @@ const ROUTE_ORDER = [
   { key: "Weighbridge",                      path: "/weighbridge" },
   { key: "Weight-Count",                     path: "/bridge-count" },
   { key: "WeighBridge Usage",                path: "/weighbridgeusage" },
+  { key: "Weighbridge Resync",               path: "/weighbridge-resync" },
   { key: "Branch Details",                   path: "/branch-update" },
   { key: "POS Address Configuration",        path: "/pos-address-config" },
   { key: "Branch Day End Settings",          path: "/branch-day-end-settings" },
@@ -468,6 +470,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/sales-report-all-branch" element={<SalesReportAllBranch />} />
             <Route path="/bridge-count" element={<WeighBridgeEngageReport />} />
             <Route path="/weighbridgeusage" element={<WeighbridgeUsageReport />} />
+            <Route path="/weighbridge-resync" element={<WeighBridgeResync />} />
             <Route path="/branch-request-list" element={<BranchRequestList />} />
             <Route path="/pos-sessions" element={<PosSessionsPage />} />
             <Route path="/reprocess-voucher-form" element={<ReprocessVoucherForm />} />
