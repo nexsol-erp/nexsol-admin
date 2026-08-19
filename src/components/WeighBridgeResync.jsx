@@ -54,7 +54,20 @@ const WeighBridgeResync = () => {
         headers: authHeaders(),
       });
       const data = await response.json();
-      setBranches(data.branches || []);
+      // /branches returns objects ({ id, branchCode, branchName }); normalise once
+      // here so the render stays dumb - handing MUI a raw object as a child blanks
+      // the whole page.
+      const list = Array.isArray(data.branches) ? data.branches : [];
+      setBranches(
+        list.map((b) =>
+          typeof b === "string"
+            ? { code: b, label: b }
+            : {
+                code: b.branchCode,
+                label: b.branchName ? `${b.branchCode} - ${b.branchName}` : b.branchCode,
+              }
+        )
+      );
     } catch (error) {
       console.error("Error fetching branches:", error);
     }
@@ -153,8 +166,8 @@ const WeighBridgeResync = () => {
             onChange={(e) => setBranch(e.target.value)}
           >
             {branches.map((b) => (
-              <MenuItem key={b} value={b}>
-                {b}
+              <MenuItem key={b.code} value={b.code}>
+                {b.label}
               </MenuItem>
             ))}
           </Select>
