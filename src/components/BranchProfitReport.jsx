@@ -344,16 +344,29 @@ const BranchProfitReport = () => {
           <SummaryCard label="Profit %"
             value={`${fmt(summary.profitPercentage)} %`}
             color={summary.profitPercentage >= 0 ? "#388e3c" : "#d32f2f"}
-            sub={`${summary.totalRows} rows · ${summary.missingCostRows} missing cost · ${summary.negativeProfitRows} negative profit`} />
+            sub={`${summary.totalRows?.toLocaleString()} lines · ${summary.missingCostRows?.toLocaleString()} missing cost · ${summary.negativeProfitRows?.toLocaleString()} negative profit`} />
         </Box>
       )}
 
-      {/* ── Truncation warning ── */}
+      {/* ── Sales we counted but could not cost ── */}
+      {summary?.uncostedSalesAmount > 0 && (
+        <Alert severity="info" sx={{ mb: 1 }}>
+          <strong>{fmt(summary.uncostedSalesAmount)}</strong> of the{" "}
+          <strong>{fmt(summary.totalSalesAmount)}</strong> total sales has no cost price
+          ({summary.missingCostRows?.toLocaleString()} lines). Those sales are included in
+          Total Sales but excluded from Cost, Profit and Profit % — so Profit % is measured
+          against the {fmt(summary.costedSalesAmount)} that could be costed.
+          Set the missing rates in Cost Price History to bring them in.
+        </Alert>
+      )}
+
+      {/* ── Truncation warning — detail table only ── */}
       {reportData?.summary?.truncated && (
         <Alert severity="warning" sx={{ mb: 1 }}>
-          Results are limited to {reportData.summary.maxRows?.toLocaleString()} rows.
-          Narrow the date range or add filters (branch / item / category) to see complete data.
-          Use Excel export to download the full visible set.
+          The table below shows the first {reportData.summary.maxRows?.toLocaleString()} of{" "}
+          {reportData.summary.totalRows?.toLocaleString()} lines. The summary cards and the
+          branch / item totals above cover the full date range and are not truncated.
+          Narrow the range or add filters to see every line.
         </Alert>
       )}
 
