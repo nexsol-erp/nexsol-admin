@@ -32,6 +32,7 @@ const WeighBridge = () => {
     dayjs().subtract(30, "day").format("YYYY-MM-DDTHH:mm")
   );
   const [toDate, setToDate] = useState(dayjs().format("YYYY-MM-DDTHH:mm"));
+  const [vehicleNumber, setVehicleNumber] = useState("");
   const [weighbridgeData, setWeighbridgeData] = useState([]);
   const [open, setOpen] = useState(false);
   const [fileName, setFileName] = useState("WeighbridgeData.xlsx");
@@ -54,13 +55,19 @@ const WeighBridge = () => {
     }
   };
 
+  // Branch is optional: leaving it on "All Branches" and typing a vehicle number
+  // pulls that vehicle's weighings from every branch for the chosen period.
   const fetchWeighBridgeData = async () => {
-    if (branch && fromDate && toDate) {
+    if (fromDate && toDate) {
       try {
         const token = localStorage.getItem("jwtToken");
         const tenancyId = localStorage.getItem("tenancyId");
+        const params = new URLSearchParams({ fromDate, toDate });
+        if (branch) params.append("branch", branch);
+        if (vehicleNumber.trim())
+          params.append("vehicleNumber", vehicleNumber.trim());
         const response = await fetch(
-          `/api/${tenancyId}/weighbridge?branch=${branch}&fromDate=${fromDate}&toDate=${toDate}`,
+          `/api/${tenancyId}/weighbridge?${params.toString()}`,
           {
             method: "GET",
             headers: {
@@ -70,7 +77,7 @@ const WeighBridge = () => {
           }
         );
         const data = await response.json();
-        setWeighbridgeData(data.data);
+        setWeighbridgeData(Array.isArray(data.data) ? data.data : []);
       } catch (error) {
         console.error("Error fetching Wb data:", error);
       }
@@ -128,9 +135,12 @@ const WeighBridge = () => {
         <InputLabel id="branch-label">Branch</InputLabel>
         <Select
           labelId="branch-label"
+          label="Branch"
           value={branch}
           onChange={handleBranchChange}
+          displayEmpty
         >
+          <MenuItem value="">All Branches</MenuItem>
           {branches.map((branch) => (
             <MenuItem key={branch.id} value={branch.branchCode}>
               {branch.branchCode}
@@ -161,6 +171,19 @@ const WeighBridge = () => {
           sx={{ flex: 1 }}
         />
       </Box>
+
+      <TextField
+        label="Vehicle Number"
+        placeholder="e.g. KL07AB1234 - leave blank for all vehicles"
+        value={vehicleNumber}
+        onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") fetchWeighBridgeData();
+        }}
+        InputLabelProps={{ shrink: true }}
+        fullWidth
+        sx={{ mb: 3 }}
+      />
 
       <Button
         variant="contained"
@@ -210,6 +233,7 @@ const WeighBridge = () => {
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell>Branch</TableCell>
               <TableCell>Voucher Number</TableCell>
               <TableCell>Voucher Date</TableCell>
               <TableCell>Vehicle Number</TableCell>
@@ -223,6 +247,7 @@ const WeighBridge = () => {
           <TableBody>
             {weighbridgeData.map((row, index) => (
               <TableRow key={index}>
+                <TableCell>{row.branch_code}</TableCell>
                 <TableCell>{row.voucher_number}</TableCell>
                 <TableCell>{row.voucher_date}</TableCell>
                 <TableCell>{row.vehicle_number}</TableCell>
@@ -234,8 +259,8 @@ const WeighBridge = () => {
               </TableRow>
             ))}
             <TableRow>
-              <TableCell colSpan={6} sx={{ fontWeight: "bold" }}>
-                Total
+              <TableCell colSpan={7} sx={{ fontWeight: "bold" }}>
+                Total ({weighbridgeData.length} records)
               </TableCell>
               <TableCell align="right" sx={{ fontWeight: "bold" }}>
                 {totalAmount.toFixed(2)}
