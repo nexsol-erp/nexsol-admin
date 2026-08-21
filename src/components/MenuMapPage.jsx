@@ -116,6 +116,7 @@ const SECTIONS = [
     items: [
       { label: "Branch Details", path: "/branch-update" },
       { label: "Item Cost Override", path: "/item-cost-override" },
+      { label: "Cost & Profit Stamping", path: "/cost-stamping" },
       { label: "Receipt Modes", path: "/receipt-modes" },
       { label: "Item Search", path: "/itemsearch" },
       { label: "Item Creation", path: "/createitemmaster" },

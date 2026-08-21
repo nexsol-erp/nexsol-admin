@@ -263,6 +263,7 @@ const BranchProfitReport = () => {
   const rows     = reportData?.rows          ?? [];
   const bSum     = reportData?.branchSummary ?? [];
   const iSum     = reportData?.itemSummary   ?? [];
+  const cSrc     = reportData?.costSources   ?? [];
   const fmt      = n => (n ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const rowBg = (row) => {
@@ -357,6 +358,38 @@ const BranchProfitReport = () => {
           Total Sales but excluded from Cost, Profit and Profit % — so Profit % is measured
           against the {fmt(summary.costedSalesAmount)} that could be costed.
           Set the missing rates in Cost Price History to bring them in.
+        </Alert>
+      )}
+
+      {/* ── Where the cost came from ── */}
+      {cSrc.length > 0 && (
+        <Paper sx={{ mb: 1, p: 1.25 }}>
+          <Typography variant="caption" fontWeight={700} color="text.secondary">
+            COST SOURCE
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 0.75 }}>
+            {cSrc.map((c, i) => (
+              <Box key={i} sx={{
+                px: 1.25, py: 0.5, borderRadius: 1, border: "1px solid",
+                borderColor: c.costSource === "NOT_FOUND" ? "warning.main" : "divider",
+              }}>
+                <Typography variant="caption" fontWeight={700}>{c.costSource}</Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 0.75 }}>
+                  {c.lines?.toLocaleString()} lines · sales {fmt(c.salesAmount)}
+                  {c.costSource !== "NOT_FOUND" && ` · profit ${fmt(c.profitAmount)}`}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Paper>
+      )}
+
+      {/* ── Lines the nightly cost job has not stamped yet ── */}
+      {summary?.liveLines > 0 && (
+        <Alert severity="info" sx={{ mb: 1 }}>
+          {summary.liveLines.toLocaleString()} line(s) in this range have not been costed by
+          the nightly job yet and were priced live just now. They are included in every
+          figure above. The nightly run stamps them permanently.
         </Alert>
       )}
 
@@ -485,6 +518,7 @@ const BranchProfitReport = () => {
                   <TableRow sx={{ "& th": { fontWeight: 700, bgcolor: headerBg, color: "text.primary" } }}>
                     <TableCell>Branch</TableCell>
                     <TableCell align="right">Sales Amount</TableCell>
+                    <TableCell align="right">Uncosted Sales</TableCell>
                     <TableCell align="right">Cost Amount</TableCell>
                     <TableCell align="right">Profit Amount</TableCell>
                     <TableCell align="right">Profit %</TableCell>
@@ -498,6 +532,10 @@ const BranchProfitReport = () => {
                         <Typography variant="caption" color="text.secondary" display="block">{b.branchName}</Typography>
                       </TableCell>
                       <TableCell align="right">{fmt(b.salesAmount)}</TableCell>
+                      <TableCell align="right"
+                        sx={{ color: b.uncostedSalesAmount > 0 ? "warning.main" : "text.disabled" }}>
+                        {fmt(b.uncostedSalesAmount)}
+                      </TableCell>
                       <TableCell align="right">{fmt(b.costAmount)}</TableCell>
                       <TableCell align="right"
                         sx={{ color: b.profitAmount < 0 ? "error.main" : "success.main", fontWeight: 600 }}>
@@ -528,6 +566,7 @@ const BranchProfitReport = () => {
                   <TableRow sx={{ "& th": { fontWeight: 700, bgcolor: headerBg, color: "text.primary" } }}>
                     <TableCell>Item Code</TableCell>
                     <TableCell>Item Name</TableCell>
+                    <TableCell align="right">Qty Sold</TableCell>
                     <TableCell align="right">Sales Amount</TableCell>
                     <TableCell align="right">Cost Amount</TableCell>
                     <TableCell align="right">Profit Amount</TableCell>
@@ -539,6 +578,7 @@ const BranchProfitReport = () => {
                     <TableRow key={i}>
                       <TableCell>{item.itemCode}</TableCell>
                       <TableCell>{item.itemName}</TableCell>
+                      <TableCell align="right">{fmt(item.quantitySold)}</TableCell>
                       <TableCell align="right">{fmt(item.salesAmount)}</TableCell>
                       <TableCell align="right">{fmt(item.costAmount)}</TableCell>
                       <TableCell align="right"
