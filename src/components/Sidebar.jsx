@@ -216,6 +216,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
         { menuKey: "POS Machine Approval",          label: t("POS Machine Approval"),           link: "/pos-machine-approval",          roles: ["admin", "MACHINE_ADMIN"] },
         { menuKey: "Connected POS Terminals",       label: t("Connected POS Terminals"),        link: "/pos-sessions",                 roles: ["admin"] },
         { menuKey: "UPI Payment Setup",              label: t("UPI Payment Setup"),               link: "/upi-config",                     roles: ["admin"] },
+        { menuKey: "Cost Stamping",                 label: t("Cost & Profit Stamping"),         link: "/cost-stamping",                roles: ["admin"] },
       ],
     },
 
