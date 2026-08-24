@@ -26,9 +26,12 @@ function getLogStream() {
     const logDir = path.join(app.getPath("userData"), "logs");
     fs.mkdirSync(logDir, { recursive: true });
     const logFile = path.join(logDir, "pos.log");
-    // Keep last 500 KB — rotate if larger
+    // Rotate at 8 MB, not 512 KB. Cart audit lines ([CART] ADD/QTY/RECALL/...) are the
+    // record used to answer a disputed bill, and at 512 KB a busy terminal rolled them
+    // away within hours — which is why invoice N/2627/M01/044221 could not be explained.
+    // 8 MB holds several weeks of trading.
     try {
-      if (fs.statSync(logFile).size > 512 * 1024) {
+      if (fs.statSync(logFile).size > 8 * 1024 * 1024) {
         fs.renameSync(logFile, logFile + ".old");
       }
     } catch (_) { /* file doesn't exist yet */ }
