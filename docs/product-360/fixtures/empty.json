@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "1.0",
+  "viewType": "PRODUCT_360",
+  "product": {
+    "id": "ITM-9001",
+    "code": "SEAS-XMAS-PLM",
+    "name": "Christmas Plum Cake 500g",
+    "category": "Bakery / Seasonal",
+    "baseUom": "NOS",
+    "active": true
+  },
+  "period": {
+    "from": "2026-08-01",
+    "to": "2026-08-30",
+    "timezone": "UTC",
+    "basis": "UTC_CALENDAR",
+    "baseline": { "from": "2026-07-02", "to": "2026-07-31", "label": "Previous 30 days" }
+  },
+  "scope": {
+    "branchCodes": ["BR001", "BR002", "BR003"],
+    "resolvedBy": "AUTHORISED_SET"
+  },
+  "summary": {
+    "metrics": [
+      {
+        "key": "qty_on_hand",
+        "label": "Quantity on hand",
+        "value": 0.0,
+        "unit": "NOS",
+        "currency": null,
+        "scale": 0,
+        "formatted": "0 NOS",
+        "severity": "OK",
+        "baseline": null
+      },
+      {
+        "key": "sales_amount",
+        "label": "Sales amount",
+        "value": 0.0,
+        "unit": null,
+        "currency": "INR",
+        "scale": 2,
+        "formatted": "₹0.00",
+        "severity": "OK",
+        "baseline": null
+      }
+    ]
+  },
+  "sections": {
+    "stock":      { "status": "OK", "reason": null, "dataThrough": "2026-08-30T02:00:00Z" },
+    "sales":      { "status": "OK", "reason": null, "dataThrough": "2026-08-30T02:00:00Z" },
+    "profit":     { "status": "UNAVAILABLE", "reason": "NO_DATA_IN_PERIOD", "dataThrough": null },
+    "cost":       { "status": "UNAVAILABLE", "reason": "NO_DATA_IN_PERIOD", "dataThrough": null },
+    "supply":     { "status": "UNAVAILABLE", "reason": "NO_DATA_IN_PERIOD", "dataThrough": null },
+    "production": { "status": "UNAVAILABLE", "reason": "NO_BOM_CONFIGURED", "dataThrough": null },
+    "insights":   { "status": "UNAVAILABLE", "reason": "NO_PERSISTED_INSIGHTS", "dataThrough": null },
+    "tasks":      { "status": "UNAVAILABLE", "reason": "NO_PRODUCT_LINK", "dataThrough": null }
+  },
+  "nodes": [
+    {
+      "id": "PRODUCT:ITM-9001",
+      "type": "PRODUCT",
+      "label": "Christmas Plum Cake 500g",
+      "subtitle": "SEAS-XMAS-PLM",
+      "severity": "INFO",
+      "metrics": [],
+      "evidence": [],
+      "navigationTargets": [],
+      "expandable": false,
+      "expansionKey": null,
+      "metadata": { "itemId": "ITM-9001", "uom": "NOS" }
+    }
+  ],
+  "edges": [],
+  "dataThrough": "2026-08-30T02:00:00Z",
+  "warnings": [
+    {
+      "code": "PARTIAL_PERIOD",
+      "severity": "INFO",
+      "message": "This product had no stock movement and no sales in the selected period. This is a valid result, not an error.",
+      "branchCodes": [],
+      "metric": null
+    },
+    {
+      "code": "PERIOD_BASIS_FALLBACK",
+      "severity": "INFO",
+      "message": "Periods are resolved on UTC calendar dates. No branch day-end cutoff is configured.",
+      "branchCodes": [],
+      "metric": null
+    }
+  ]
+}

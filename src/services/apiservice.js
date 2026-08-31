@@ -20,14 +20,6 @@ export const saveSalesTransaction = (salesTransaction) => {
   return apiClient.post("/sales", salesTransaction);
 };
 
-export const saveWorkflow = (workflowData) => {
-  return apiClient.post("/workflow", workflowData);
-};
-
-export const loadWorkflow = (workflowName) => {
-  return apiClient.get("/workflow/fetch", { params: { name: workflowName } });
-};
-
 // BPMN workflow designer — proxied through this backend to the miniflow
 // workflow engine (see WorkflowDefinitionController).
 export const listWorkflowDefinitions = () => {

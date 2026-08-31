@@ -1,0 +1,457 @@
+{
+  "schemaVersion": "1.0",
+  "viewType": "PRODUCT_360",
+  "product": {
+    "id": "ITM-1042",
+    "code": "BRD-WHT-400",
+    "name": "White Bread 400g",
+    "category": "Bakery / Breads",
+    "baseUom": "NOS",
+    "active": true
+  },
+  "period": {
+    "from": "2026-08-01",
+    "to": "2026-08-30",
+    "timezone": "UTC",
+    "basis": "UTC_CALENDAR",
+    "baseline": { "from": "2026-07-02", "to": "2026-07-31", "label": "Previous 30 days" }
+  },
+  "scope": {
+    "branchCodes": [
+      "BR001", "BR002", "BR003", "BR004", "BR005", "BR006", "BR007",
+      "BR008", "BR009", "BR010", "BR011", "BR012", "BR013", "BR014"
+    ],
+    "resolvedBy": "AUTHORISED_SET"
+  },
+  "summary": {
+    "metrics": [
+      {
+        "key": "qty_on_hand",
+        "label": "Quantity on hand",
+        "value": 1240.0,
+        "unit": "NOS",
+        "currency": null,
+        "scale": 0,
+        "formatted": "1,240 NOS",
+        "severity": "OK",
+        "baseline": { "value": 1610.0, "formatted": "1,610 NOS", "deltaPct": -22.98, "direction": "DOWN", "label": "Previous 30 days" }
+      },
+      {
+        "key": "sales_amount",
+        "label": "Sales amount",
+        "value": 486320.5,
+        "unit": null,
+        "currency": "INR",
+        "scale": 2,
+        "formatted": "₹4,86,320.50",
+        "severity": "OK",
+        "baseline": { "value": 452118.0, "formatted": "₹4,52,118.00", "deltaPct": 7.57, "direction": "UP", "label": "Previous 30 days" }
+      },
+      {
+        "key": "gross_profit",
+        "label": "Gross profit",
+        "value": 68084.87,
+        "unit": null,
+        "currency": "INR",
+        "scale": 2,
+        "formatted": "₹68,084.87",
+        "severity": "WARNING",
+        "baseline": { "value": 99465.96, "formatted": "₹99,465.96", "deltaPct": -31.55, "direction": "DOWN", "label": "Previous 30 days" }
+      },
+      {
+        "key": "margin_pct",
+        "label": "Gross margin",
+        "value": 14.0,
+        "unit": "%",
+        "currency": null,
+        "scale": 1,
+        "formatted": "14.0%",
+        "severity": "WARNING",
+        "baseline": { "value": 22.0, "formatted": "22.0%", "deltaPct": -36.36, "direction": "DOWN", "label": "Previous 30 days" }
+      },
+      {
+        "key": "branches_carrying",
+        "label": "Branches carrying",
+        "value": 14.0,
+        "unit": null,
+        "currency": null,
+        "scale": 0,
+        "formatted": "14",
+        "severity": "OK",
+        "baseline": null
+      }
+    ]
+  },
+  "sections": {
+    "stock":      { "status": "OK", "reason": null, "dataThrough": "2026-08-30T02:00:00Z" },
+    "sales":      { "status": "OK", "reason": null, "dataThrough": "2026-08-30T02:00:00Z" },
+    "profit":     { "status": "OK", "reason": null, "dataThrough": "2026-08-30T02:00:00Z" },
+    "cost":       { "status": "OK", "reason": null, "dataThrough": "2026-08-30T02:00:00Z" },
+    "supply":     { "status": "OK", "reason": null, "dataThrough": "2026-08-29T18:30:00Z" },
+    "production": { "status": "OK", "reason": null, "dataThrough": "2026-08-30T02:00:00Z" },
+    "insights":   { "status": "UNAVAILABLE", "reason": "NO_PERSISTED_INSIGHTS", "dataThrough": null },
+    "tasks":      { "status": "UNAVAILABLE", "reason": "NO_PRODUCT_LINK", "dataThrough": null }
+  },
+  "nodes": [
+    {
+      "id": "PRODUCT:ITM-1042",
+      "type": "PRODUCT",
+      "label": "White Bread 400g",
+      "subtitle": "BRD-WHT-400",
+      "severity": "WARNING",
+      "metrics": [],
+      "evidence": [],
+      "navigationTargets": [],
+      "expandable": false,
+      "expansionKey": null,
+      "metadata": { "itemId": "ITM-1042", "uom": "NOS" }
+    },
+    {
+      "id": "CATEGORY:CAT-11",
+      "type": "CATEGORY",
+      "label": "Bakery / Breads",
+      "subtitle": null,
+      "severity": "OK",
+      "metrics": [],
+      "evidence": [],
+      "navigationTargets": [],
+      "expandable": false,
+      "expansionKey": null,
+      "metadata": { "categoryId": "CAT-11" }
+    },
+    {
+      "id": "BRANCH_STOCK:BR007:ITM-1042",
+      "type": "BRANCH_STOCK",
+      "label": "BR007 - Kollam Main",
+      "subtitle": "Stock-out risk in 3 days",
+      "severity": "CRITICAL",
+      "metrics": [
+        {
+          "key": "qty_on_hand",
+          "label": "Quantity on hand",
+          "value": 18.0,
+          "unit": "NOS",
+          "currency": null,
+          "scale": 0,
+          "formatted": "18 NOS",
+          "severity": "CRITICAL",
+          "baseline": { "value": 210.0, "formatted": "210 NOS", "deltaPct": -91.43, "direction": "DOWN", "label": "Previous 30 days" }
+        },
+        {
+          "key": "days_cover",
+          "label": "Days of cover",
+          "value": 2.6,
+          "unit": "days",
+          "currency": null,
+          "scale": 1,
+          "formatted": "2.6 days",
+          "severity": "CRITICAL",
+          "baseline": null
+        }
+      ],
+      "evidence": [
+        { "label": "Branch Stock Report", "routeKey": "BRANCH_STOCK_VIEW", "sourceService": "StockReportService" }
+      ],
+      "navigationTargets": [
+        {
+          "routeKey": "BRANCH_STOCK_VIEW",
+          "parameters": { "productId": "ITM-1042", "branchCode": "BR007", "fromDate": "2026-08-01", "toDate": "2026-08-30" },
+          "returnContext": "p360:ITM-1042:BR007:20260801-20260830"
+        }
+      ],
+      "expandable": false,
+      "expansionKey": null,
+      "metadata": { "branchCode": "BR007", "branchName": "Kollam Main", "uom": "NOS" }
+    },
+    {
+      "id": "BRANCH_STOCK:BR002:ITM-1042",
+      "type": "BRANCH_STOCK",
+      "label": "BR002 - Kochi Central",
+      "subtitle": "Excess stock",
+      "severity": "WARNING",
+      "metrics": [
+        {
+          "key": "qty_on_hand",
+          "label": "Quantity on hand",
+          "value": 640.0,
+          "unit": "NOS",
+          "currency": null,
+          "scale": 0,
+          "formatted": "640 NOS",
+          "severity": "WARNING",
+          "baseline": { "value": 380.0, "formatted": "380 NOS", "deltaPct": 68.42, "direction": "UP", "label": "Previous 30 days" }
+        }
+      ],
+      "evidence": [
+        { "label": "Branch Stock Report", "routeKey": "BRANCH_STOCK_VIEW", "sourceService": "StockReportService" }
+      ],
+      "navigationTargets": [
+        {
+          "routeKey": "BRANCH_STOCK_VIEW",
+          "parameters": { "productId": "ITM-1042", "branchCode": "BR002", "fromDate": "2026-08-01", "toDate": "2026-08-30" },
+          "returnContext": "p360:ITM-1042:BR002:20260801-20260830"
+        }
+      ],
+      "expandable": false,
+      "expansionKey": null,
+      "metadata": { "branchCode": "BR002", "branchName": "Kochi Central", "uom": "NOS" }
+    },
+    {
+      "id": "BRANCH_GROUP:REMAINDER:ITM-1042",
+      "type": "BRANCH_GROUP",
+      "label": "12 further branches",
+      "subtitle": "All within thresholds",
+      "severity": "OK",
+      "metrics": [
+        {
+          "key": "qty_on_hand",
+          "label": "Quantity on hand",
+          "value": 582.0,
+          "unit": "NOS",
+          "currency": null,
+          "scale": 0,
+          "formatted": "582 NOS",
+          "severity": "OK",
+          "baseline": null
+        }
+      ],
+      "evidence": [
+        { "label": "All Branch Stock Report", "routeKey": "ITEM_STOCK_REPORT", "sourceService": "StockReportService" }
+      ],
+      "navigationTargets": [
+        {
+          "routeKey": "ITEM_STOCK_REPORT",
+          "parameters": { "productId": "ITM-1042", "fromDate": "2026-08-01", "toDate": "2026-08-30" },
+          "returnContext": "p360:ITM-1042:ALL:20260801-20260830"
+        }
+      ],
+      "expandable": true,
+      "expansionKey": "BRANCH_MEMBERS",
+      "metadata": { "memberCount": 12 }
+    },
+    {
+      "id": "SALES:ITM-1042",
+      "type": "SALES",
+      "label": "Sales",
+      "subtitle": "30 days",
+      "severity": "OK",
+      "metrics": [
+        {
+          "key": "sales_qty",
+          "label": "Quantity sold",
+          "value": 9840.0,
+          "unit": "NOS",
+          "currency": null,
+          "scale": 0,
+          "formatted": "9,840 NOS",
+          "severity": "OK",
+          "baseline": { "value": 9120.0, "formatted": "9,120 NOS", "deltaPct": 7.89, "direction": "UP", "label": "Previous 30 days" }
+        },
+        {
+          "key": "sales_amount",
+          "label": "Sales amount",
+          "value": 486320.5,
+          "unit": null,
+          "currency": "INR",
+          "scale": 2,
+          "formatted": "₹4,86,320.50",
+          "severity": "OK",
+          "baseline": { "value": 452118.0, "formatted": "₹4,52,118.00", "deltaPct": 7.57, "direction": "UP", "label": "Previous 30 days" }
+        }
+      ],
+      "evidence": [
+        { "label": "Sales Report", "routeKey": "SALES_REPORT", "sourceService": "SalesReportService" }
+      ],
+      "navigationTargets": [
+        {
+          "routeKey": "SALES_REPORT",
+          "parameters": { "productId": "ITM-1042", "fromDate": "2026-08-01", "toDate": "2026-08-30" },
+          "returnContext": "p360:ITM-1042:ALL:20260801-20260830"
+        }
+      ],
+      "expandable": false,
+      "expansionKey": null,
+      "metadata": { "itemId": "ITM-1042" }
+    },
+    {
+      "id": "PROFIT:ITM-1042",
+      "type": "PROFIT",
+      "label": "Profit",
+      "subtitle": "Margin fell 8 points",
+      "severity": "WARNING",
+      "metrics": [
+        {
+          "key": "gross_profit",
+          "label": "Gross profit",
+          "value": 68084.87,
+          "unit": null,
+          "currency": "INR",
+          "scale": 2,
+          "formatted": "₹68,084.87",
+          "severity": "WARNING",
+          "baseline": { "value": 99465.96, "formatted": "₹99,465.96", "deltaPct": -31.55, "direction": "DOWN", "label": "Previous 30 days" }
+        },
+        {
+          "key": "margin_pct",
+          "label": "Gross margin",
+          "value": 14.0,
+          "unit": "%",
+          "currency": null,
+          "scale": 1,
+          "formatted": "14.0%",
+          "severity": "WARNING",
+          "baseline": { "value": 22.0, "formatted": "22.0%", "deltaPct": -36.36, "direction": "DOWN", "label": "Previous 30 days" }
+        }
+      ],
+      "evidence": [
+        { "label": "Branch Profit Report", "routeKey": "BRANCH_PROFIT_REPORT", "sourceService": "BranchProfitReportService" }
+      ],
+      "navigationTargets": [
+        {
+          "routeKey": "BRANCH_PROFIT_REPORT",
+          "parameters": { "productId": "ITM-1042", "fromDate": "2026-08-01", "toDate": "2026-08-30" },
+          "returnContext": "p360:ITM-1042:ALL:20260801-20260830"
+        }
+      ],
+      "expandable": false,
+      "expansionKey": null,
+      "metadata": { "itemId": "ITM-1042" }
+    },
+    {
+      "id": "COST:ITM-1042",
+      "type": "COST",
+      "label": "Cost",
+      "subtitle": "Latest purchase rate",
+      "severity": "INFO",
+      "metrics": [
+        {
+          "key": "cost_rate",
+          "label": "Cost rate",
+          "value": 42.5,
+          "unit": null,
+          "currency": "INR",
+          "scale": 2,
+          "formatted": "₹42.50",
+          "severity": "INFO",
+          "baseline": { "value": 35.8, "formatted": "₹35.80", "deltaPct": 18.72, "direction": "UP", "label": "Previous 30 days" }
+        }
+      ],
+      "evidence": [
+        { "label": "Cost Price History", "routeKey": "COST_PRICE_HISTORY", "sourceService": "ItemCostPriceHistoryService" }
+      ],
+      "navigationTargets": [
+        {
+          "routeKey": "COST_PRICE_HISTORY",
+          "parameters": { "productId": "ITM-1042", "fromDate": "2026-08-01", "toDate": "2026-08-30" },
+          "returnContext": "p360:ITM-1042:ALL:20260801-20260830"
+        }
+      ],
+      "expandable": false,
+      "expansionKey": null,
+      "metadata": { "itemId": "ITM-1042", "costSource": "PURCHASE" }
+    },
+    {
+      "id": "VENDOR:V-77:ITM-1042",
+      "type": "VENDOR",
+      "label": "Kerala Flour Mills",
+      "subtitle": "Rate up 18.7%",
+      "severity": "WARNING",
+      "metrics": [
+        {
+          "key": "last_purchase_rate",
+          "label": "Last purchase rate",
+          "value": 42.5,
+          "unit": null,
+          "currency": "INR",
+          "scale": 2,
+          "formatted": "₹42.50",
+          "severity": "WARNING",
+          "baseline": { "value": 35.8, "formatted": "₹35.80", "deltaPct": 18.72, "direction": "UP", "label": "Previous purchase" }
+        }
+      ],
+      "evidence": [
+        { "label": "Purchase Report", "routeKey": "PURCHASE_REPORT", "sourceService": "PurchaseService" }
+      ],
+      "navigationTargets": [
+        {
+          "routeKey": "PURCHASE_REPORT",
+          "parameters": { "productId": "ITM-1042", "vendorCode": "V-77", "fromDate": "2026-08-01", "toDate": "2026-08-30" },
+          "returnContext": "p360:ITM-1042:ALL:20260801-20260830"
+        }
+      ],
+      "expandable": true,
+      "expansionKey": "PURCHASE_HISTORY",
+      "metadata": { "vendorCode": "V-77", "itemId": "ITM-1042" }
+    },
+    {
+      "id": "PRODUCTION:ITM-1042",
+      "type": "PRODUCTION",
+      "label": "Production",
+      "subtitle": "3 raw materials",
+      "severity": "OK",
+      "metrics": [],
+      "evidence": [
+        { "label": "Production Execution Report", "routeKey": "PRODUCTION_EXECUTION_REPORT", "sourceService": "ProductionExecutionMst" }
+      ],
+      "navigationTargets": [
+        {
+          "routeKey": "PRODUCTION_EXECUTION_REPORT",
+          "parameters": { "productId": "ITM-1042", "fromDate": "2026-08-01", "toDate": "2026-08-30" },
+          "returnContext": "p360:ITM-1042:ALL:20260801-20260830"
+        }
+      ],
+      "expandable": true,
+      "expansionKey": "BOM_INGREDIENTS",
+      "metadata": { "itemId": "ITM-1042" }
+    },
+    {
+      "id": "INGREDIENT:ITM-3301:ITM-1042",
+      "type": "INGREDIENT",
+      "label": "Refined Wheat Flour",
+      "subtitle": "0.320 KG per unit",
+      "severity": "OK",
+      "metrics": [
+        {
+          "key": "bom_qty",
+          "label": "Quantity per unit",
+          "value": 0.32,
+          "unit": "KG",
+          "currency": null,
+          "scale": 3,
+          "formatted": "0.320 KG",
+          "severity": "OK",
+          "baseline": null
+        }
+      ],
+      "evidence": [
+        { "label": "Production Execution Report", "routeKey": "PRODUCTION_EXECUTION_REPORT", "sourceService": "ProductionExecutionMst" }
+      ],
+      "navigationTargets": [],
+      "expandable": false,
+      "expansionKey": null,
+      "metadata": { "itemId": "ITM-3301", "uom": "KG" }
+    }
+  ],
+  "edges": [
+    { "source": "PRODUCT:ITM-1042", "target": "CATEGORY:CAT-11", "type": "GROUPED_INTO", "label": null, "severity": "OK" },
+    { "source": "PRODUCT:ITM-1042", "target": "BRANCH_STOCK:BR007:ITM-1042", "type": "STOCKED_AT", "label": "18 NOS", "severity": "CRITICAL" },
+    { "source": "PRODUCT:ITM-1042", "target": "BRANCH_STOCK:BR002:ITM-1042", "type": "STOCKED_AT", "label": "640 NOS", "severity": "WARNING" },
+    { "source": "PRODUCT:ITM-1042", "target": "BRANCH_GROUP:REMAINDER:ITM-1042", "type": "STOCKED_AT", "label": "582 NOS", "severity": "OK" },
+    { "source": "PRODUCT:ITM-1042", "target": "SALES:ITM-1042", "type": "SOLD_AT", "label": null, "severity": "OK" },
+    { "source": "SALES:ITM-1042", "target": "PROFIT:ITM-1042", "type": "HAS_PROFIT", "label": "14.0%", "severity": "WARNING" },
+    { "source": "PROFIT:ITM-1042", "target": "COST:ITM-1042", "type": "USES_COST", "label": "PURCHASE", "severity": "INFO" },
+    { "source": "COST:ITM-1042", "target": "VENDOR:V-77:ITM-1042", "type": "SUPPLIED_BY", "label": null, "severity": "WARNING" },
+    { "source": "PRODUCT:ITM-1042", "target": "PRODUCTION:ITM-1042", "type": "PRODUCED_FROM", "label": null, "severity": "OK" },
+    { "source": "PRODUCTION:ITM-1042", "target": "INGREDIENT:ITM-3301:ITM-1042", "type": "PRODUCED_FROM", "label": "0.320 KG", "severity": "OK" }
+  ],
+  "dataThrough": "2026-08-29T18:30:00Z",
+  "warnings": [
+    {
+      "code": "PERIOD_BASIS_FALLBACK",
+      "severity": "INFO",
+      "message": "Periods are resolved on UTC calendar dates. No branch day-end cutoff is configured.",
+      "branchCodes": [],
+      "metric": null
+    }
+  ]
+}
