@@ -180,6 +180,7 @@ import { BranchProvider } from "./components/BranchContext";
 // never opens the page would otherwise pay for it on first load, and the main bundle is
 // already over CRA's warning threshold.
 const Product360Page = React.lazy(() => import("./features/product360/Product360Page"));
+const InsightsPage = React.lazy(() => import("./features/insights/InsightsPage"));
 
 // ========================
 // ORDERED MENU ROUTE MAP  (mirrors Sidebar menuItems order)
@@ -502,6 +503,16 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/sales-category-wise-report-all-branch" element={<SalesCategoryWiseReportAllBranch />} />
             <Route path="/bpmn-editorr" element={<RequireWorkflowMenuAccess><WorkflowDesignerPage /></RequireWorkflowMenuAccess>} />
             <Route path="/my-tasks" element={<RequireWorkflowMenuAccess menuKey="My Tasks"><MyTasksPage /></RequireWorkflowMenuAccess>} />
+            <Route
+              path="/insights"
+              element={
+                <RequireWorkflowMenuAccess menuKey="Insights">
+                  <React.Suspense fallback={<Box sx={{ p: 3 }}><CircularProgress size={24} /></Box>}>
+                    <InsightsPage />
+                  </React.Suspense>
+                </RequireWorkflowMenuAccess>
+              }
+            />
             <Route
               path="/product-360/:productId?"
               element={

@@ -37,6 +37,7 @@ export const MENU_TREE = [
   { menuKey: "AI Report Assistant",   label: "AI Report Assistant",   icon: AutoGraph,  color: "#1565C0", link: "/ai-report",    roles: ["admin", "manager", "user"] },
   { menuKey: "My Tasks",              label: "My Tasks",              icon: Assignment, color: "#1565C0", link: "/my-tasks",     roles: ["admin", "manager", "user", "WB"] },
   { menuKey: "Product 360",           label: "Product 360",           icon: Insights,   color: "#1565C0", link: "/product-360",  roles: ["admin", "manager", "user"] },
+  { menuKey: "Insights",             label: "Insights",              icon: Insights,   color: "#00796B", link: "/insights",     roles: ["admin", "manager", "user"] },
 
   // -- Setup & Administration -----------------------------------------------
   {
