@@ -1,0 +1,355 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradelink247.com/schema/product-360.v1.schema.json",
+  "title": "Product 360 Graph",
+  "description": "Read-only product intelligence graph. Source of truth for the Java DTOs, the TypeScript declarations and the Pydantic models. Every financial value is computed server-side; the client renders `formatted` and never performs money arithmetic.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "viewType",
+    "product",
+    "period",
+    "scope",
+    "summary",
+    "sections",
+    "nodes",
+    "edges",
+    "dataThrough",
+    "warnings"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "description": "Major bump invalidates saved layouts (D8).",
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "viewType": { "const": "PRODUCT_360" },
+    "product": { "$ref": "#/$defs/product" },
+    "period": { "$ref": "#/$defs/period" },
+    "scope": { "$ref": "#/$defs/scope" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metrics"],
+      "properties": {
+        "metrics": { "type": "array", "items": { "$ref": "#/$defs/metric" } }
+      }
+    },
+    "sections": {
+      "description": "Per-section status. A failing section degrades itself only (D12).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stock", "sales", "profit", "cost", "supply", "production", "insights", "tasks"],
+      "properties": {
+        "stock": { "$ref": "#/$defs/sectionStatus" },
+        "sales": { "$ref": "#/$defs/sectionStatus" },
+        "profit": { "$ref": "#/$defs/sectionStatus" },
+        "cost": { "$ref": "#/$defs/sectionStatus" },
+        "supply": { "$ref": "#/$defs/sectionStatus" },
+        "production": { "$ref": "#/$defs/sectionStatus" },
+        "insights": { "$ref": "#/$defs/sectionStatus" },
+        "tasks": { "$ref": "#/$defs/sectionStatus" }
+      }
+    },
+    "nodes": { "type": "array", "items": { "$ref": "#/$defs/node" } },
+    "edges": { "type": "array", "items": { "$ref": "#/$defs/edge" } },
+    "dataThrough": {
+      "description": "Minimum dataThrough across all sections — the OLDEST synced branch, never now() (D10).",
+      "type": "string",
+      "format": "date-time"
+    },
+    "warnings": { "type": "array", "items": { "$ref": "#/$defs/warning" } }
+  },
+
+  "$defs": {
+    "product": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "code", "name", "baseUom", "active"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "code": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": ["string", "null"] },
+        "baseUom": {
+          "description": "Unit every quantity metric is expressed in unless the metric overrides it (D9).",
+          "type": "string"
+        },
+        "active": { "type": "boolean" }
+      }
+    },
+
+    "period": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "timezone", "basis"],
+      "properties": {
+        "from": { "type": "string", "format": "date" },
+        "to": { "type": "string", "format": "date" },
+        "timezone": { "type": "string" },
+        "basis": {
+          "description": "UTC_CALENDAR is the v1 value: no per-branch timezone or day-end cutoff exists (D11 revised, FINDINGS Q4). BRANCH_DAY_END is reserved for when one does.",
+          "enum": ["UTC_CALENDAR", "BRANCH_DAY_END"]
+        },
+        "baseline": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["from", "to", "label"],
+          "properties": {
+            "from": { "type": "string", "format": "date" },
+            "to": { "type": "string", "format": "date" },
+            "label": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["branchCodes", "resolvedBy"],
+      "properties": {
+        "branchCodes": {
+          "description": "Server-resolved authorised branches. Never taken from the client (D15).",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "resolvedBy": { "enum": ["AUTHORISED_SET", "EXPLICIT_FILTER"] }
+      }
+    },
+
+    "sectionStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["OK", "DEGRADED", "UNAVAILABLE"] },
+        "reason": {
+          "description": "Required whenever status is not OK. A code, never prose.",
+          "type": ["string", "null"],
+          "enum": [
+            null,
+            "NO_DATA_IN_PERIOD",
+            "NO_BOM_CONFIGURED",
+            "NO_PERSISTED_INSIGHTS",
+            "NO_PRODUCT_LINK",
+            "UPSTREAM_TIMEOUT",
+            "UPSTREAM_ERROR",
+            "NOT_LICENSED",
+            "COST_UNRESOLVED",
+            "PARTIAL_BRANCH_COVERAGE"
+          ]
+        },
+        "dataThrough": { "type": ["string", "null"], "format": "date-time" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "OK" } } },
+          "then": { "required": ["dataThrough"] },
+          "else": { "required": ["reason"] }
+        }
+      ]
+    },
+
+    "metric": {
+      "description": "Every quantity carries a unit; every amount carries a currency; both carry a server-formatted string (D9). Clients display `formatted` and never compute (D41).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "value", "scale", "formatted"],
+      "properties": {
+        "key": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "label": {
+          "description": "Translation key, passed through t() client-side (D21).",
+          "type": "string"
+        },
+        "value": {
+          "description": "For sorting and charting only. Null when the value is genuinely unavailable — never 0 as a stand-in (D9).",
+          "type": ["number", "null"]
+        },
+        "unit": { "type": ["string", "null"] },
+        "currency": {
+          "description": "ISO 4217. Required for every monetary metric.",
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{3}$"
+        },
+        "scale": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "formatted": {
+          "description": "The only representation the UI may display.",
+          "type": "string"
+        },
+        "severity": { "$ref": "#/$defs/severity" },
+        "baseline": {
+          "description": "Prior-period comparison (D19). A level is not a decision input; a change is.",
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["value", "formatted", "direction"],
+          "properties": {
+            "value": { "type": ["number", "null"] },
+            "formatted": { "type": "string" },
+            "deltaPct": { "type": ["number", "null"] },
+            "direction": { "enum": ["UP", "DOWN", "FLAT", "UNKNOWN"] },
+            "label": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+
+    "severity": { "enum": ["OK", "INFO", "WARNING", "CRITICAL", "UNKNOWN"] },
+
+    "nodeType": {
+      "enum": [
+        "PRODUCT", "CATEGORY", "BRANCH_STOCK", "BRANCH_GROUP", "SALES", "PROFIT",
+        "COST", "VENDOR", "PURCHASE", "STOCK_TRANSFER", "PRODUCTION", "INGREDIENT",
+        "AI_INSIGHT", "WORKFLOW_TASK", "DATA_WARNING"
+      ]
+    },
+
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "label", "severity", "metrics", "evidence", "navigationTargets", "expandable"],
+      "properties": {
+        "id": {
+          "description": "Deterministic: {TYPE}:{scope}[:{entityId}] (D8). Contains no value, date or PII, so saved layouts survive a refresh.",
+          "type": "string",
+          "pattern": "^[A-Z_]+:[A-Za-z0-9._-]+(:[A-Za-z0-9._-]+)?$"
+        },
+        "type": { "$ref": "#/$defs/nodeType" },
+        "label": { "type": "string" },
+        "subtitle": { "type": ["string", "null"] },
+        "severity": { "$ref": "#/$defs/severity" },
+        "metrics": { "type": "array", "items": { "$ref": "#/$defs/metric" } },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+        "navigationTargets": { "type": "array", "items": { "$ref": "#/$defs/navigationTarget" } },
+        "expandable": { "type": "boolean" },
+        "expansionKey": {
+          "type": ["string", "null"],
+          "enum": [null, "VENDOR_HISTORY", "PURCHASE_HISTORY", "TRANSFER_HISTORY", "BOM_INGREDIENTS", "BRANCH_MEMBERS"]
+        },
+        "metadata": { "$ref": "#/$defs/nodeMetadata" }
+      }
+    },
+
+    "nodeMetadata": {
+      "description": "Allow-listed keys only. Never free-form: no PII, no markup, no URL, no raw schema names.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "branchCode": { "type": "string" },
+        "branchName": { "type": "string" },
+        "vendorCode": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "itemId": { "type": "string" },
+        "uom": { "type": "string" },
+        "costSource": {
+          "description": "Five values resolved by v_sales_line_cost (V043, D44). NOT_FOUND means cost is unavailable, never zero.",
+          "enum": ["MANUAL", "PURCHASE", "STOCK_TRANSFER", "PRODUCTION_COST", "NOT_FOUND"]
+        },
+        "memberCount": { "type": "integer", "minimum": 0 },
+        "workflowInstanceId": { "type": "string" },
+        "workflowTaskId": { "type": "string" },
+        "insightId": { "type": "string" }
+      }
+    },
+
+    "evidence": {
+      "description": "What makes a number checkable. A node asserting a business fact without evidence must not be rendered.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "routeKey"],
+      "properties": {
+        "label": { "type": "string" },
+        "routeKey": { "$ref": "#/$defs/routeKey" },
+        "sourceService": { "type": ["string", "null"] }
+      }
+    },
+
+    "routeKey": {
+      "description": "Closed enum. Each value was verified against a route in src/App.js AND a menuKey in src/menuCatalog.js on 2026-08-30. A URL never crosses the wire.",
+      "enum": [
+        "BRANCH_PROFIT_REPORT",
+        "SALES_REPORT",
+        "ITEM_SALES_REPORT",
+        "ITEM_STOCK_REPORT",
+        "BRANCH_STOCK_VIEW",
+        "BRANCH_INVENTORY_LEDGER",
+        "PURCHASE_REPORT",
+        "ITEM_MOVEMENT_REPORT",
+        "STOCK_TRANSFER_IN_REPORT",
+        "STOCK_TRANSFER_OUT_REPORT",
+        "COST_PRICE_HISTORY",
+        "PRODUCTION_EXECUTION_REPORT",
+        "WORKFLOW_TASK_DETAIL"
+      ]
+    },
+
+    "navigationTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["routeKey", "parameters"],
+      "properties": {
+        "routeKey": { "$ref": "#/$defs/routeKey" },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "productId": { "type": "string" },
+            "branchCode": { "type": "string" },
+            "branchCodes": { "type": "array", "items": { "type": "string" } },
+            "vendorCode": { "type": "string" },
+            "categoryId": { "type": "string" },
+            "fromDate": { "type": "string", "format": "date" },
+            "toDate": { "type": "string", "format": "date" },
+            "taskId": { "type": "string" }
+          }
+        },
+        "returnContext": {
+          "description": "Restores product, filters and layout on the way back.",
+          "type": ["string", "null"]
+        }
+      }
+    },
+
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "target", "type"],
+      "properties": {
+        "source": { "type": "string" },
+        "target": { "type": "string" },
+        "type": {
+          "enum": [
+            "STOCKED_AT", "SOLD_AT", "HAS_PROFIT", "USES_COST", "SUPPLIED_BY",
+            "PURCHASED_FROM", "TRANSFERRED_TO", "PRODUCED_FROM", "HAS_INSIGHT",
+            "HAS_TASK", "GROUPED_INTO"
+          ]
+        },
+        "label": { "type": ["string", "null"] },
+        "severity": { "$ref": "#/$defs/severity" }
+      }
+    },
+
+    "warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "message"],
+      "properties": {
+        "code": {
+          "enum": [
+            "BRANCH_SYNC_LAG",
+            "COST_UNAVAILABLE",
+            "PARTIAL_PERIOD",
+            "BRANCH_SCOPE_TRUNCATED",
+            "SECTION_DEGRADED",
+            "PERIOD_BASIS_FALLBACK"
+          ]
+        },
+        "severity": { "$ref": "#/$defs/severity" },
+        "message": { "type": "string" },
+        "branchCodes": { "type": "array", "items": { "type": "string" } },
+        "metric": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

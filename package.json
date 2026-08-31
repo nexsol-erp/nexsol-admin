@@ -35,7 +35,6 @@
     "jspdf": "^2.5.1",
     "lucide-react": "^0.541.0",
     "moment-timezone": "^0.5.45",
-    "neo4j-driver": "^5.24.1",
     "rc-progress": "^4.0.0",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.2.0",
@@ -54,7 +53,9 @@
     "web-vitals": "^2.1.4",
     "xlsx": "^0.18.5",
     "yup": "^1.4.0",
-    "zeebe-bpmn-moddle": "^1.16.0"
+    "zeebe-bpmn-moddle": "^1.16.0",
+    "@tradelink247/mindmap-renderer": "file:vendor/tradelink247-mindmap-renderer-0.1.0.tgz",
+    "@xyflow/react": "^12.3.6"
   },
   "scripts": {
     "start": "react-scripts start",

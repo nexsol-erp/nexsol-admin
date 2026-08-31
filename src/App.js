@@ -20,6 +20,8 @@ import PurchaseDetail from "./components/PurchaseDetail";
 import About from "./components/About";
 import Settings from "./components/Settings";
 import Sidebar from "./components/Sidebar";
+import GlobalMenuSearch from "./components/GlobalMenuSearch";
+import { MenuAccessProvider } from "./components/MenuAccessContext";
 import { WebSocketProvider } from "./components/WebSocketContext";
 import DownloadPage from "./components/DownloadPage";
 import HelpPage from "./components/HelpPage";
@@ -49,6 +51,7 @@ import CreateItemMaster from "./components/CreateItemMaster";
 import SalesSummaryReport from "./components/SalesSummaryReport";
 import WorkflowDesignerPage from "./components/WorkflowDesigner/WorkflowDesignerPage";
 import RequireWorkflowMenuAccess from "./components/WorkflowDesigner/RequireWorkflowMenuAccess";
+
 import MyTasksPage from "./components/MyTasksPage";
 import WorkflowInstancesPage from "./components/WorkflowInstancesPage";
 import StockTurnoverReport from "./components/StockTurnoverReport";
@@ -173,6 +176,12 @@ import LedgerAccountsPage from "./components/accounting/LedgerAccountsPage";
 import { UnitProvider } from "./components/UnitContext";
 import { BranchProvider } from "./components/BranchContext";
 
+// Lazily loaded: Product 360 pulls in React Flow v12 and the shared renderer. Everyone who
+// never opens the page would otherwise pay for it on first load, and the main bundle is
+// already over CRA's warning threshold.
+const Product360Page = React.lazy(() => import("./features/product360/Product360Page"));
+const InsightsPage = React.lazy(() => import("./features/insights/InsightsPage"));
+
 // ========================
 // ORDERED MENU ROUTE MAP  (mirrors Sidebar menuItems order)
 // ========================
@@ -180,7 +189,6 @@ const ROUTE_ORDER = [
   { key: "Dashboard",                        path: "/dashboard" },
   { key: "AI Stock Intelligence",            path: "/ai-dashboard" },
   { key: "AI Report Assistant",             path: "/ai-report" },
-  { key: "Menu Map",                         path: "/menu-map" },
   { key: "Admin Page",                       path: "/branch-request-list" },
   { key: "Connected POS Terminals",          path: "/pos-sessions" },
   { key: "Reprocess Voucher",               path: "/reprocess-voucher-form" },
@@ -394,28 +402,39 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
   }
 
   return (
-    <>
-      {/* Mobile-only top app bar */}
+    <MenuAccessProvider roles={roles}>
+      {/* Top app bar - carries the global menu search (AWS-console style) */}
       <AppBar
         position="fixed"
         elevation={2}
         sx={{
-          display: { xs: "flex", sm: "none" },
           bgcolor: "#141a2e",
           zIndex: (theme) => theme.zIndex.drawer + 1,
+          width: { xs: "100%", sm: "calc(100% - 240px)" },
+          ml: { xs: 0, sm: "240px" },
         }}
       >
-        <Toolbar variant="dense" sx={{ minHeight: 48 }}>
+        <Toolbar variant="dense" sx={{ minHeight: { xs: 48, sm: 64 } }}>
           <IconButton
             edge="start"
             onClick={() => setMobileOpen(true)}
-            sx={{ mr: 1, color: "#ffe3a3" }}
+            sx={{ mr: 1, color: "#ffe3a3", display: { xs: "inline-flex", sm: "none" } }}
           >
             <MenuIcon />
           </IconButton>
-          <Typography sx={{ fontWeight: 700, fontSize: 15, color: "#ffe3a3", letterSpacing: "0.3px" }}>
+          <Typography
+            sx={{
+              fontWeight: 700,
+              fontSize: 15,
+              color: "#ffe3a3",
+              letterSpacing: "0.3px",
+              display: { xs: "block", sm: "none" },
+              flexShrink: 0,
+            }}
+          >
             TradeLink 247
           </Typography>
+          <GlobalMenuSearch />
         </Toolbar>
       </AppBar>
 
@@ -484,6 +503,26 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
             <Route path="/sales-category-wise-report-all-branch" element={<SalesCategoryWiseReportAllBranch />} />
             <Route path="/bpmn-editorr" element={<RequireWorkflowMenuAccess><WorkflowDesignerPage /></RequireWorkflowMenuAccess>} />
             <Route path="/my-tasks" element={<RequireWorkflowMenuAccess menuKey="My Tasks"><MyTasksPage /></RequireWorkflowMenuAccess>} />
+            <Route
+              path="/insights"
+              element={
+                <RequireWorkflowMenuAccess menuKey="Insights">
+                  <React.Suspense fallback={<Box sx={{ p: 3 }}><CircularProgress size={24} /></Box>}>
+                    <InsightsPage />
+                  </React.Suspense>
+                </RequireWorkflowMenuAccess>
+              }
+            />
+            <Route
+              path="/product-360/:productId?"
+              element={
+                <RequireWorkflowMenuAccess menuKey="Product 360">
+                  <React.Suspense fallback={<Box sx={{ p: 3 }}><CircularProgress size={24} /></Box>}>
+                    <Product360Page />
+                  </React.Suspense>
+                </RequireWorkflowMenuAccess>
+              }
+            />
             <Route path="/workflow-instances" element={<RequireWorkflowMenuAccess menuKey="Workflow Instances"><WorkflowInstancesPage /></RequireWorkflowMenuAccess>} />
             <Route path="/stocktransfer-out-report" element={<StockTransferOutReport />} />
             <Route path="/stocktransfer-in-report" element={<StockTransferInReport />} />
@@ -581,7 +620,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
       </Box>
       </UnitProvider>
       </BranchProvider>
-    </>
+    </MenuAccessProvider>
   );
 };
 

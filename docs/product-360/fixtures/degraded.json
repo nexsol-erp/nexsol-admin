@@ -1,0 +1,219 @@
+{
+  "schemaVersion": "1.0",
+  "viewType": "PRODUCT_360",
+  "product": {
+    "id": "ITM-2087",
+    "code": "CAKE-CHO-1KG",
+    "name": "Chocolate Truffle Cake 1kg",
+    "category": "Bakery / Cakes",
+    "baseUom": "NOS",
+    "active": true
+  },
+  "period": {
+    "from": "2026-08-01",
+    "to": "2026-08-30",
+    "timezone": "UTC",
+    "basis": "UTC_CALENDAR",
+    "baseline": { "from": "2026-07-02", "to": "2026-07-31", "label": "Previous 30 days" }
+  },
+  "scope": {
+    "branchCodes": ["BR001", "BR003", "BR007"],
+    "resolvedBy": "AUTHORISED_SET"
+  },
+  "summary": {
+    "metrics": [
+      {
+        "key": "qty_on_hand",
+        "label": "Quantity on hand",
+        "value": 46.0,
+        "unit": "NOS",
+        "currency": null,
+        "scale": 0,
+        "formatted": "46 NOS",
+        "severity": "OK",
+        "baseline": null
+      },
+      {
+        "key": "sales_amount",
+        "label": "Sales amount",
+        "value": 128400.0,
+        "unit": null,
+        "currency": "INR",
+        "scale": 2,
+        "formatted": "₹1,28,400.00",
+        "severity": "OK",
+        "baseline": { "value": 119250.0, "formatted": "₹1,19,250.00", "deltaPct": 7.67, "direction": "UP", "label": "Previous 30 days" }
+      },
+      {
+        "key": "gross_profit",
+        "label": "Gross profit",
+        "value": null,
+        "unit": null,
+        "currency": "INR",
+        "scale": 2,
+        "formatted": "Unavailable",
+        "severity": "UNKNOWN",
+        "baseline": null
+      },
+      {
+        "key": "margin_pct",
+        "label": "Gross margin",
+        "value": null,
+        "unit": "%",
+        "currency": null,
+        "scale": 1,
+        "formatted": "Unavailable",
+        "severity": "UNKNOWN",
+        "baseline": null
+      }
+    ]
+  },
+  "sections": {
+    "stock":      { "status": "OK", "reason": null, "dataThrough": "2026-08-30T02:00:00Z" },
+    "sales":      { "status": "DEGRADED", "reason": "PARTIAL_BRANCH_COVERAGE", "dataThrough": "2026-08-27T01:15:00Z" },
+    "profit":     { "status": "UNAVAILABLE", "reason": "COST_UNRESOLVED", "dataThrough": null },
+    "cost":       { "status": "UNAVAILABLE", "reason": "COST_UNRESOLVED", "dataThrough": null },
+    "supply":     { "status": "DEGRADED", "reason": "UPSTREAM_TIMEOUT", "dataThrough": "2026-08-25T09:00:00Z" },
+    "production": { "status": "UNAVAILABLE", "reason": "NO_BOM_CONFIGURED", "dataThrough": null },
+    "insights":   { "status": "UNAVAILABLE", "reason": "NO_PERSISTED_INSIGHTS", "dataThrough": null },
+    "tasks":      { "status": "UNAVAILABLE", "reason": "NO_PRODUCT_LINK", "dataThrough": null }
+  },
+  "nodes": [
+    {
+      "id": "PRODUCT:ITM-2087",
+      "type": "PRODUCT",
+      "label": "Chocolate Truffle Cake 1kg",
+      "subtitle": "CAKE-CHO-1KG",
+      "severity": "WARNING",
+      "metrics": [],
+      "evidence": [],
+      "navigationTargets": [],
+      "expandable": false,
+      "expansionKey": null,
+      "metadata": { "itemId": "ITM-2087", "uom": "NOS" }
+    },
+    {
+      "id": "BRANCH_STOCK:BR007:ITM-2087",
+      "type": "BRANCH_STOCK",
+      "label": "BR007 - Kollam Main",
+      "subtitle": "Not synced since 27 Aug",
+      "severity": "WARNING",
+      "metrics": [
+        {
+          "key": "qty_on_hand",
+          "label": "Quantity on hand",
+          "value": 12.0,
+          "unit": "NOS",
+          "currency": null,
+          "scale": 0,
+          "formatted": "12 NOS",
+          "severity": "WARNING",
+          "baseline": null
+        }
+      ],
+      "evidence": [
+        { "label": "Branch Stock Report", "routeKey": "BRANCH_STOCK_VIEW", "sourceService": "StockReportService" }
+      ],
+      "navigationTargets": [
+        {
+          "routeKey": "BRANCH_STOCK_VIEW",
+          "parameters": { "productId": "ITM-2087", "branchCode": "BR007", "fromDate": "2026-08-01", "toDate": "2026-08-30" },
+          "returnContext": "p360:ITM-2087:BR007:20260801-20260830"
+        }
+      ],
+      "expandable": false,
+      "expansionKey": null,
+      "metadata": { "branchCode": "BR007", "branchName": "Kollam Main", "uom": "NOS" }
+    },
+    {
+      "id": "COST:ITM-2087",
+      "type": "COST",
+      "label": "Cost",
+      "subtitle": "No resolvable cost",
+      "severity": "CRITICAL",
+      "metrics": [
+        {
+          "key": "cost_rate",
+          "label": "Cost rate",
+          "value": null,
+          "unit": null,
+          "currency": "INR",
+          "scale": 2,
+          "formatted": "Unavailable",
+          "severity": "UNKNOWN",
+          "baseline": null
+        }
+      ],
+      "evidence": [
+        { "label": "Cost Price History", "routeKey": "COST_PRICE_HISTORY", "sourceService": "ItemCostPriceHistoryService" }
+      ],
+      "navigationTargets": [
+        {
+          "routeKey": "COST_PRICE_HISTORY",
+          "parameters": { "productId": "ITM-2087", "fromDate": "2026-08-01", "toDate": "2026-08-30" },
+          "returnContext": "p360:ITM-2087:ALL:20260801-20260830"
+        }
+      ],
+      "expandable": false,
+      "expansionKey": null,
+      "metadata": { "itemId": "ITM-2087", "costSource": "NOT_FOUND" }
+    },
+    {
+      "id": "DATA_WARNING:COST_UNAVAILABLE:ITM-2087",
+      "type": "DATA_WARNING",
+      "label": "Profit cannot be calculated",
+      "subtitle": "No manual, purchase, transfer or production cost found",
+      "severity": "CRITICAL",
+      "metrics": [],
+      "evidence": [
+        { "label": "Cost Price History", "routeKey": "COST_PRICE_HISTORY", "sourceService": "ItemCostPriceHistoryService" }
+      ],
+      "navigationTargets": [
+        {
+          "routeKey": "COST_PRICE_HISTORY",
+          "parameters": { "productId": "ITM-2087" },
+          "returnContext": "p360:ITM-2087:ALL:20260801-20260830"
+        }
+      ],
+      "expandable": false,
+      "expansionKey": null,
+      "metadata": { "itemId": "ITM-2087", "costSource": "NOT_FOUND" }
+    }
+  ],
+  "edges": [
+    { "source": "PRODUCT:ITM-2087", "target": "BRANCH_STOCK:BR007:ITM-2087", "type": "STOCKED_AT", "label": "12 NOS", "severity": "WARNING" },
+    { "source": "PRODUCT:ITM-2087", "target": "COST:ITM-2087", "type": "USES_COST", "label": "NOT_FOUND", "severity": "CRITICAL" },
+    { "source": "COST:ITM-2087", "target": "DATA_WARNING:COST_UNAVAILABLE:ITM-2087", "type": "HAS_INSIGHT", "label": null, "severity": "CRITICAL" }
+  ],
+  "dataThrough": "2026-08-25T09:00:00Z",
+  "warnings": [
+    {
+      "code": "COST_UNAVAILABLE",
+      "severity": "CRITICAL",
+      "message": "No manual, purchase, stock-transfer or production cost was found for this item. Profit and margin are unavailable and must not be read as zero.",
+      "branchCodes": [],
+      "metric": "cost_rate"
+    },
+    {
+      "code": "BRANCH_SYNC_LAG",
+      "severity": "WARNING",
+      "message": "BR007 has not synced since 27 Aug 2026. Sales figures for that branch are incomplete.",
+      "branchCodes": ["BR007"],
+      "metric": null
+    },
+    {
+      "code": "SECTION_DEGRADED",
+      "severity": "WARNING",
+      "message": "Vendor and purchase history timed out and is not shown.",
+      "branchCodes": [],
+      "metric": null
+    },
+    {
+      "code": "PERIOD_BASIS_FALLBACK",
+      "severity": "INFO",
+      "message": "Periods are resolved on UTC calendar dates. No branch day-end cutoff is configured.",
+      "branchCodes": [],
+      "metric": null
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import { applySaleToCache, findItemByName, loadReceiptModesFromCache, saveReceip
 import ShortcutManageModal from "./ShortcutManageModal";
 import { evaluateSchemes, buildOfferRows } from "./schemeEngine";
 import { log, warn, error as logError } from "../utils/logger";
+import { auditCart, summariseItems } from "./cartAudit";
 import { apiUrl } from "../utils/apiUrl";
 import { queueSale, getPendingCount, syncPendingSales } from "./offlineQueue";
 import { generateVoucherNumber } from "../utils/posDevice";
@@ -300,6 +301,11 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   };
 
   const updateItem = (key, patch) => {
+    // Logged here rather than inside the updater: React may invoke an updater twice.
+    if (Object.hasOwn(patch, "qty")) {
+      const row = items.find((r) => r.key === key);
+      if (row) auditCart("QTY", { item: row.item_name, from: row.qty, to: patch.qty });
+    }
     setItems((prev) =>
       prev.map((r) => {
         if (r.key !== key) return r;
@@ -316,10 +322,16 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     );
   };
 
-  const deleteItem = (key) => setItems((p) => p.filter((r) => r.key !== key));
+  const deleteItem = (key) => {
+    const row = items.find((r) => r.key === key);
+    auditCart("REMOVE", { item: row?.item_name, qty: row?.qty, amount: row?.amount });
+    setItems((p) => p.filter((r) => r.key !== key));
+  };
 
   const addItemToBillRef = useRef(null);
   const addItemToBill = (itm, { closeModal = false } = {}) => {
+    auditCart("ADD", { item: itm.itemName, itemId: itm.itemId,
+                       rate: itm.standardPrice ?? itm.rate, batch: itm.batchCode });
     const batch     = itm.batchCode || "";
     const available = Number.isFinite(Number(itm.availableQty)) ? Number(itm.availableQty) : null;
 
@@ -412,6 +424,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   const clearForm = () => {
     savingRef.current = false;
+    if (items.length) auditCart("CLEAR", summariseItems(items));
     setItems([]); setTendered(0);
     setReceipts((prev) => prev.map((r) => ({ ...r, amount: 0 })));
     setCustomerMobile("");
@@ -437,6 +450,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   const onHold = async () => {
     if (!items.length) return;
+    auditCart("HOLD", summariseItems(items));
     await db.pos_holds.add({
       heldAt:         nowIST(),
       branchCode:     selectedBranchCode,
@@ -487,6 +501,15 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
     const finalItems = adjustedItems.filter((r) => r.qty > 0 || isItemDynamic(r.item_id));
 
+    // The event most likely to explain a disputed bill: several items enter the cart
+    // in one click. Both sets are recorded — what was held, and what actually landed
+    // after the stock re-check trimmed quantities.
+    auditCart("RECALL", {
+      heldAt: hold.heldAt,
+      holdId: hold.id,
+      ...summariseItems(finalItems),
+      heldLines: (hold.items || []).length,
+    });
     setItems(finalItems);
     setCustomerMobile(hold.customerMobile || "");
     setSalesmanCode(hold.salesmanCode || "");
@@ -509,6 +532,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   const onSave = async () => {
     log("onSave called | canSave:", canSave, "| items:", items.length, "| branch:", selectedBranchCode);
+    auditCart("SAVE", { branch: selectedBranchCode, ...summariseItems(items) });
     if (savingRef.current) { warn("onSave blocked: already saving"); return; }
     if (dayEndDone) { message.error("Day End is already completed for today. Billing is not allowed."); return; }
     if (!canSave) { warn("onSave blocked: canSave=false"); return; }
