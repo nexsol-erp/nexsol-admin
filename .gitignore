@@ -7,3 +7,8 @@ pos-electron/node_modules
 pos-electron/dist
 pos-electron/release
 pos-electron/.electron-cache
+
+# Database dumps. These are production tenant data - never commit them, and note that
+# 9446968394a.dump is ~645MB, which git would carry forever even after a later delete.
+*.dump
+*.dump.gz
