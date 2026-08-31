@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  Autocomplete,
   Box,
   Button,
   Chip,
@@ -22,7 +23,13 @@ import {
   Typography,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { getMyTasks, getAllTasks, completeWorkflowTask } from "../services/apiservice";
+import {
+  getMyTasks,
+  getAllTasks,
+  completeWorkflowTask,
+  assignTask,
+  getTenantUsers,
+} from "../services/apiservice";
 import { useNavigate } from "react-router-dom";
 import { taskActionLink, taskActionLabel } from "./taskActionLink";
 
@@ -69,6 +76,12 @@ export default function MyTasksPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [completeDialogTask, setCompleteDialogTask] = useState(null);
+  const [assignDialogTask, setAssignDialogTask] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [usersLoaded, setUsersLoaded] = useState(false);
+  const [assignee, setAssignee] = useState(null);
+  const [assigning, setAssigning] = useState(false);
+  const [assignError, setAssignError] = useState(null);
   const [variablesJson, setVariablesJson] = useState("{}");
   const [completeError, setCompleteError] = useState(null);
   const [completing, setCompleting] = useState(false);
@@ -92,6 +105,61 @@ export default function MyTasksPage() {
   useEffect(() => {
     loadTasks();
   }, [loadTasks]);
+
+  /**
+   * Loads the tenant's users once, the first time the picker is opened.
+   *
+   * Lazily rather than on mount: most visits to this page never assign anything, and
+   * the list is only needed when the dialog appears.
+   */
+  const openAssignDialog = async (task) => {
+    setAssignDialogTask(task);
+    setAssignee(task.assignee || null);
+    setAssignError(null);
+
+    if (usersLoaded) return;
+    try {
+      const res = await getTenantUsers();
+      const names = (res.data || [])
+        .map((u) => u.username)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+      setUsers(names);
+      setUsersLoaded(true);
+    } catch (err) {
+      // The dialog stays usable: the field accepts a typed username, so a failed
+      // lookup degrades to manual entry rather than blocking the assignment.
+      setAssignError(
+        "Could not load the user list - you can still type a username. " +
+          (err?.response?.data?.error || err.message)
+      );
+    }
+  };
+
+  const closeAssignDialog = () => {
+    setAssignDialogTask(null);
+    setAssignError(null);
+  };
+
+  const handleAssign = async () => {
+    const target = (assignee || "").trim();
+    if (!target) {
+      setAssignError("Choose who this task belongs to");
+      return;
+    }
+    setAssigning(true);
+    setAssignError(null);
+    try {
+      await assignTask(assignDialogTask.taskId, target);
+      setAssignDialogTask(null);
+      loadTasks();
+    } catch (err) {
+      // Keep the dialog open so the choice is not lost.
+      setAssignError(err?.response?.data?.error || err.message);
+    } finally {
+      setAssigning(false);
+    }
+  };
 
   const openCompleteDialog = (task) => {
     setCompleteDialogTask(task);
@@ -219,6 +287,16 @@ export default function MyTasksPage() {
                         you act. Completing is what you do afterwards. It is hidden rather than
                         disabled when the target cannot be resolved - a permanently dead button
                         teaches people to ignore the column. */}
+                    {isAdmin && (
+                      <Button
+                        size="small"
+                        variant="text"
+                        disabled={t.state !== "OPEN" && t.state !== "ASSIGNED"}
+                        onClick={() => openAssignDialog(t)}
+                      >
+                        Assign
+                      </Button>
+                    )}
                     {taskActionLink(t) && (
                       <Button
                         size="small"
@@ -244,6 +322,38 @@ export default function MyTasksPage() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Dialog open={Boolean(assignDialogTask)} onClose={closeAssignDialog} fullWidth maxWidth="xs">
+        <DialogTitle>Assign task</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {assignDialogTask?.stepName}
+          </Typography>
+          {/* freeSolo so a username can still be typed when the list fails to load, or when
+              the person is not in it. */}
+          <Autocomplete
+            freeSolo
+            options={users}
+            value={assignee}
+            onChange={(e, val) => setAssignee(val)}
+            onInputChange={(e, val) => setAssignee(val)}
+            renderInput={(params) => (
+              <TextField {...params} label="Assign to" size="small" autoFocus fullWidth />
+            )}
+          />
+          {assignError && (
+            <Typography color="error" variant="body2" sx={{ mt: 2 }}>
+              {assignError}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeAssignDialog} disabled={assigning}>Cancel</Button>
+          <Button variant="contained" onClick={handleAssign} disabled={assigning}>
+            {assigning ? "Assigning..." : "Assign"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={!!completeDialogTask} onClose={closeCompleteDialog} maxWidth="sm" fullWidth>
         <DialogTitle>Complete Task — {completeDialogTask?.stepName}</DialogTitle>
