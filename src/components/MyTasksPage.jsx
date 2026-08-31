@@ -23,6 +23,8 @@ import {
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { getMyTasks, getAllTasks, completeWorkflowTask } from "../services/apiservice";
+import { useNavigate } from "react-router-dom";
+import { taskActionLink, taskActionLabel } from "./taskActionLink";
 
 const STATE_OPTIONS = [
   { value: "OPEN", label: "Open" },
@@ -59,6 +61,7 @@ function currentUserIsAdmin() {
 }
 
 export default function MyTasksPage() {
+  const navigate = useNavigate();
   const isAdmin = currentUserIsAdmin();
   const [scope, setScope] = useState("MINE"); // MINE | ALL - administrators only
   const [tasks, setTasks] = useState([]);
@@ -211,14 +214,30 @@ export default function MyTasksPage() {
                   />
                 </TableCell>
                 <TableCell>
-                  <Button
-                    size="small"
-                    variant="contained"
-                    disabled={t.state !== "OPEN" && t.state !== "ASSIGNED"}
-                    onClick={() => openCompleteDialog(t)}
-                  >
-                    Complete
-                  </Button>
+                  <Stack direction="row" spacing={1}>
+                    {/* "Open" comes first because it is what the task is for: the screen that lets
+                        you act. Completing is what you do afterwards. It is hidden rather than
+                        disabled when the target cannot be resolved - a permanently dead button
+                        teaches people to ignore the column. */}
+                    {taskActionLink(t) && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        title={`Open ${taskActionLabel(t)}`}
+                        onClick={() => navigate(taskActionLink(t))}
+                      >
+                        Open
+                      </Button>
+                    )}
+                    <Button
+                      size="small"
+                      variant="contained"
+                      disabled={t.state !== "OPEN" && t.state !== "ASSIGNED"}
+                      onClick={() => openCompleteDialog(t)}
+                    >
+                      Complete
+                    </Button>
+                  </Stack>
                 </TableCell>
               </TableRow>
             ))}

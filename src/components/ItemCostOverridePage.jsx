@@ -28,7 +28,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon   from "@mui/icons-material/Edit";
 import AddIcon    from "@mui/icons-material/Add";
 import dayjs      from "dayjs";
-import { useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 const EMPTY_FORM = {
   itemId: "", itemName: "", itemCode: "",
@@ -71,6 +71,8 @@ const ItemCostOverridePage = () => {
   const [deleting,      setDeleting]      = useState(false);
 
   const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
+
+  const [searchParams] = useSearchParams();
   const toast = (msg, severity = "success") => setSnack({ open: true, msg, severity });
 
   // ── Load all overrides ─────────────────────────────────────────────────────
@@ -88,6 +90,47 @@ const ItemCostOverridePage = () => {
   }, [tenancyId, token]);
 
   useEffect(() => { load(); }, [load]);
+
+  /**
+   * Arriving from a task ("Set a cost for MOOSAMBI JUICE ...").
+   *
+   * The task carries the item, so the screen should open on that item rather than on a list
+   * the user has to search. Two cases, and they need different handling:
+   *
+   *  - an override already exists -> filter the list to it, so it can be edited
+   *  - no override exists -> open the create dialog prefilled
+   *
+   * The second is the common one: a task about an item with no resolvable cost is precisely
+   * a task about an item with no override row. Filtering alone would land on an empty table,
+   * which reads as "nothing here" rather than "nothing yet".
+   *
+   * Waits for `loading` to finish, otherwise `rows` is still empty and every arrival looks
+   * like the create case.
+   */
+  const [linkHandled, setLinkHandled] = useState(false);
+  useEffect(() => {
+    if (linkHandled || loading) return;
+    const itemId   = searchParams.get("itemId")   || "";
+    const itemCode = searchParams.get("itemCode") || "";
+    const itemName = searchParams.get("itemName") || "";
+    if (!itemId && !itemCode) return;
+
+    setLinkHandled(true);
+    setSearch(itemCode || itemId);
+
+    const existing = rows.find(
+      (r) => (itemId && r.itemId === itemId) || (itemCode && r.itemCode === itemCode)
+    );
+    if (existing) {
+      openEdit(existing);
+    } else {
+      setEditingId(null);
+      setForm({ ...EMPTY_FORM, itemId, itemCode, itemName });
+      setAllBranch(false);
+      setDialogOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, rows, linkHandled, searchParams]);
 
   // ── Open dialog ────────────────────────────────────────────────────────────
   const openAdd = () => {
