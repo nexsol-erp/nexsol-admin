@@ -218,9 +218,66 @@ is already being paid and is easy to demonstrate.
 | W10 | Expense over budget | Budget vs Actual | Owner (ROLE) | Approved or corrective action | `branch:{c}\|period:{m}` |
 | W11 | Stock anomaly | `StockAnomalyReportService` | Branch manager → owner | Explained or correction posted | `branch:{c}\|item:{i}` |
 
-**W5 is probably the highest operational value for the bakery tenants** — but confirm how
-consistently `expiry_date` is actually populated before building it. A near-expiry workflow driven
-by mostly-null expiry dates produces silence, which reads as "the workflow is broken".
+### Validated against tenant `9446968394a` — 2026-08-31
+
+Every predicate above was run against real data before writing a detector. Three of the nine
+do not survive it.
+
+| # | Verdict | Evidence |
+|---|---|---|
+| W3 | plausible | stock and sales both present; velocity needs its own validation |
+| W4 | plausible | same |
+| **W5** | **impossible** | `item_batch_mst.expiry` populated on **0 of 1,705,361 rows (0.0%)**; `item_batch_dtl` is empty |
+| W6 | viable | `physical_stock_mst` = 22,574 rows |
+| **W7** | **viable, with a window** | see below |
+| W8 | viable, rewritten | `purchase_rate` at 5.4% — use the derived `amount / qty` instead |
+| W9 | blocked locally | `sales_dtl_cost` absent until V032–V043 are applied |
+| **W10** | **impossible** | `budget_header` = 0 rows, `budget_line` = 0 rows |
+| W11 | plausible | no table; `StockAnomalyReportService` computes it |
+
+**W5 was this document's own top recommendation, and it cannot be built.** Not "mostly null" —
+entirely null, across 1.7 million rows. A near-expiry workflow here would produce perfect
+silence, which reads as a broken feature. The warning above was right; the answer was simply
+worse than expected.
+
+**W10 has no budgets to compare against.** Both budget tables are empty.
+
+Neither should be built until someone starts capturing that data. Both stay documented so the
+gap is visible rather than mysteriously absent.
+
+### W7 needs a recent window, or it buries the one real task
+
+The naive predicate — *a branch-day with sales and no day-end* — raises **4,795 tasks**.
+
+Day-end capture did not exist for most of the history. Coverage by month:
+
+| month | branch-days sold | with a day-end |
+|---|---|---|
+| 2026-07 | 181 | **98%** |
+| 2026-06 | 457 | 50% |
+| 2026-05 and earlier | ~450/month | **0%** |
+
+Anchoring on each branch's first-ever day-end barely helps (4,795 → 4,244), because day-end was
+used briefly in mid-2025, abandoned, then re-adopted in June 2026.
+
+The fix is not a better anchor but a **recent window**, because *a missed day-end from last year
+cannot be actioned by anyone*. Task volume must be bounded by what somebody can actually do:
+
+| window | tasks | branches |
+|---|---|---|
+| 7 days | **1** | 1 |
+| 14 days | **1** | 1 |
+| 30 days | **1** | 1 |
+| 60 days | 20 | 9 |
+| 90 days | 436 | 16 |
+
+**Build W7 with a 30-day window.** One genuine, closeable task today. The naive version would
+have buried it under 4,794 that nobody can close — the same failure as W2's 51,272 false
+positives, caught this time before any code was written.
+
+The window is measured from the **data's own latest date**, not `CURRENT_DATE`, for the reason
+in `PHASE-2.0-DETECTION-PROGRAMME.md` §2: on a restored or lagging database a clock-based window
+silently raises nothing, and silence is indistinguishable from health.
 
 ---
 
