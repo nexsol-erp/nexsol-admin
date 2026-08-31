@@ -115,9 +115,9 @@ This is exactly why the detector must not diagnose: the same query, read without
 
 ### What the detectors do with it
 
-- **`BAKERY_BO`, control and null-typed branches** → never raise dead stock. Stock accumulating
-  where nothing is stocked is a **posting** finding (W13), routed to whoever owns purchase
-  configuration, and it says so.
+- **`BAKERY_BO`, control and null-typed branches** → never raise dead stock. Stock accruing
+  where nothing is stocked means a purchase bypassed goods receipt (W13), routed to whoever
+  owns the purchase-mode rollout, and it says so.
 - **`BAKERY_CGN`** → dead stock means *bought and never distributed*. Owner-level. This is the
   condition originally described; it is simply not firing today.
 - **`BAKERY_OUTLET`** → dead stock means *bought or transferred in and never sold*. Branch
@@ -129,6 +129,48 @@ sales and zero transfers. They are dormant, and a detector that treats them as t
 will raise tasks nobody owns. Either they need a `DORMANT` type, or detectors must require
 recent activity before raising anything. **The second is cheaper and needs no data cleanup** —
 prefer it.
+
+### The new purchase mode explains it
+
+Confirmed by the owner: **under the new purchase mode, stock accumulates at the Goods Receipt,
+not at the branch where accounting is done.** The data agrees exactly.
+
+The new mode began **2026-06-25**, and goods receipts land where they should:
+
+| branch | GRNs | |
+|---|---|---|
+| `CGN` | **43 of 52** | the central godown |
+| `VDMK`, `RMSTORE` | 2 each | |
+| five outlets | 1 each | |
+
+`CGN`'s `item_batch_mst` rows begin **2026-06-24** — the same window. All 52 GRNs link back to a
+`purchase_hdr`.
+
+So the two mechanisms are now clear, and they explain the whole finding:
+
+- **Old mode** — the purchase is booked against `ACCOUNTS`, and stock notionally lands there.
+  That is where the ₹17m sits. It is an accounting position, not a warehouse.
+- **New mode** — the goods receipt puts stock at the receiving branch, overwhelmingly `CGN`.
+  Correct, and working.
+
+**Adoption is still early: 52 GRNs against 370 purchase headers since the new mode began, about
+14%.** So the `ACCOUNTS` balance is still growing under the old mode, and will keep growing
+until the new mode is used everywhere.
+
+That reshapes W13 substantially. The finding is not "someone posted to the wrong branch" — it is
+**"this purchase did not go through goods receipt"**, which is a migration-progress question
+with an obvious owner and an obvious remedy. It also gives the detector a far better predicate
+than branch type alone: *a purchase after 2026-06-25 with no linked GRN.*
+
+And it means the ₹17m splits in two:
+
+- the **legacy balance** accumulated before the new mode — a one-off restatement question,
+  bigger than this programme and needing a decision rather than a task;
+- the **ongoing accrual** from purchases still bypassing goods receipt — which W13 should catch
+  daily, while the number is small enough to matter.
+
+**Only the second is a workflow.** Raising a task for the historic balance every night would be
+noise about a decision nobody can take at branch level.
 
 ### A separate defect, still standing
 
@@ -167,7 +209,7 @@ The headline finding, and the reason this plan exists.
 | | |
 |---|---|
 | **W12** | Stock received and never distributed → branch manager, escalating to owner |
-| **W13** | Purchases booked to a non-stocking branch (`BAKERY_BO`, control, null type) → owner |
+| **W13** | Purchase after 2026-06-25 with **no linked goods receipt** → owner. Ongoing accrual only, never the legacy balance |
 | **Rule** | `DeadStockRule` → `INVENTORY_RISK`, materiality = qty × derived rate |
 | **Gate** | Ranked list matches the SQL in §2 within rounding; every row priced or excluded, never assumed zero |
 
@@ -255,10 +297,10 @@ Pick from the pilot's answer to: *which of these did you actually want to be tol
    follows.
 2. **Then Phase A**, reading `branch_type` — W13 for the ₹17m posting question at `ACCOUNTS`,
    W12 for roughly ₹600,000 of genuine dead stock across eight outlets.
-3. **Decide whether the `ACCOUNTS` posting is intended.** If purchases are meant to be booked
-   to a back office and issued to outlets later, the design is fine and W13 should be tuned to
-   the backlog rather than the practice. If not, every stock figure derived from `ACCOUNTS` is
-   wrong and needs restating — which is a bigger job than this programme.
+3. **Separate the legacy balance from the ongoing accrual.** W13 watches only purchases made
+   after 2026-06-25 that skipped goods receipt — a live, shrinking number with a clear owner.
+   What to do about the ₹17m accumulated under the old mode is a restatement decision, not a
+   nightly task, and it is bigger than this programme.
 
 Phases B–E follow the pilot's evidence rather than this document's ordering. The point of
 Phase A is to find out whether anyone acts on a task when they get one — and if they do not,
