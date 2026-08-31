@@ -22,7 +22,7 @@ import {
   Typography,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { getMyTasks, completeWorkflowTask } from "../services/apiservice";
+import { getMyTasks, getAllTasks, completeWorkflowTask } from "../services/apiservice";
 
 const STATE_OPTIONS = [
   { value: "OPEN", label: "Open" },
@@ -35,7 +35,32 @@ function formatDate(value) {
   return new Date(value).toLocaleString();
 }
 
+/**
+ * Administrators see everyone's tasks, with the assignee on each row.
+ *
+ * Role naming is inconsistent in the database - 'admin', 'Admin', 'system-admin' and
+ * 'System_Admin' all exist as distinct rows - so this normalises rather than matching
+ * literals, the same way AdminRoles.isAdmin does on the server.
+ *
+ * This only decides whether to OFFER the wider view. The backend refuses /all-tasks with a
+ * 403 for non-administrators whatever the browser asks for.
+ */
+function currentUserIsAdmin() {
+  try {
+    const roles = JSON.parse(localStorage.getItem("roles") || "[]");
+    return roles.some((r) =>
+      ["ADMIN", "OWNER", "FRANCHISE_OWNER", "SYSTEM_ADMIN"].includes(
+        String(r).toUpperCase().replace(/-/g, "_")
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
 export default function MyTasksPage() {
+  const isAdmin = currentUserIsAdmin();
+  const [scope, setScope] = useState("MINE"); // MINE | ALL - administrators only
   const [tasks, setTasks] = useState([]);
   const [state, setState] = useState("OPEN");
   const [loading, setLoading] = useState(false);
@@ -49,14 +74,17 @@ export default function MyTasksPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await getMyTasks(state || undefined, 0, 50);
+      const showAll = isAdmin && scope === "ALL";
+      const res = showAll
+        ? await getAllTasks(state || undefined, 0, 50)
+        : await getMyTasks(state || undefined, 0, 50);
       setTasks(res.data.content || []);
     } catch (err) {
       setError(err?.response?.data?.error || err.message);
     } finally {
       setLoading(false);
     }
-  }, [state]);
+  }, [state, scope, isAdmin]);
 
   useEffect(() => {
     loadTasks();
@@ -97,8 +125,21 @@ export default function MyTasksPage() {
   return (
     <Box p={3}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h5">My Tasks</Typography>
+        <Typography variant="h5">
+          {isAdmin && scope === "ALL" ? "All Tasks" : "My Tasks"}
+        </Typography>
         <Stack direction="row" spacing={2} alignItems="center">
+          {isAdmin && (
+            <ToggleButtonGroup
+              size="small"
+              value={scope}
+              exclusive
+              onChange={(e, val) => val !== null && setScope(val)}
+            >
+              <ToggleButton value="MINE">Mine</ToggleButton>
+              <ToggleButton value="ALL">Everyone</ToggleButton>
+            </ToggleButtonGroup>
+          )}
           <ToggleButtonGroup
             size="small"
             value={state}
@@ -130,6 +171,9 @@ export default function MyTasksPage() {
               <TableCell sx={{ color: "#fff", fontWeight: 700 }}>Process</TableCell>
               <TableCell sx={{ color: "#fff", fontWeight: 700 }}>Step</TableCell>
               <TableCell sx={{ color: "#fff", fontWeight: 700 }}>Business Key</TableCell>
+              {isAdmin && scope === "ALL" && (
+                <TableCell sx={{ color: "#fff", fontWeight: 700 }}>Assigned To</TableCell>
+              )}
               <TableCell sx={{ color: "#fff", fontWeight: 700 }}>Created</TableCell>
               <TableCell sx={{ color: "#fff", fontWeight: 700 }}>Due</TableCell>
               <TableCell sx={{ color: "#fff", fontWeight: 700 }}>State</TableCell>
@@ -139,7 +183,7 @@ export default function MyTasksPage() {
           <TableBody>
             {tasks.length === 0 && !loading && (
               <TableRow>
-                <TableCell colSpan={7}>
+                <TableCell colSpan={isAdmin && scope === "ALL" ? 8 : 7}>
                   <Typography color="text.secondary">No tasks found.</Typography>
                 </TableCell>
               </TableRow>
@@ -151,6 +195,12 @@ export default function MyTasksPage() {
                 </TableCell>
                 <TableCell>{t.stepName}</TableCell>
                 <TableCell>{t.businessKey || "—"}</TableCell>
+                {isAdmin && scope === "ALL" && (
+                  // "Unassigned" rather than a blank cell: a task nobody owns is
+                  // precisely the one that sits untouched, so it should read as a
+                  // state rather than a gap.
+                  <TableCell>{t.assignee || "Unassigned"}</TableCell>
+                )}
                 <TableCell>{formatDate(t.createdAt)}</TableCell>
                 <TableCell>{formatDate(t.dueDateTime)}</TableCell>
                 <TableCell>

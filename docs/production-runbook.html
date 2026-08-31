@@ -1,0 +1,1208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexsol Production Runbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;600&display=swap">
+<style>
+  /* Reset the artifact host supplies at publish time. Inlined so this file also
+     renders correctly when opened straight from disk. */
+  html { color-scheme: light dark; }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+<style>
+  /* ── Tokens: complete light palette on bare :root ───────────────────────── */
+  :root {
+    --paper:      #eceff3;
+    --card:       #f7f9fb;
+    --card-2:     #e3e8ee;
+    --ink:        #131b24;
+    --ink-2:      #3d4b5a;
+    --ink-3:      #64748690;
+    --muted:      #5c6b7a;
+    --rule:       #c9d2dc;
+    --rule-soft:  #d8dfe7;
+
+    --accent:     #0d6473;
+    --accent-2:   #0a4d59;
+    --accent-bg:  #d7e6e9;
+
+    --ok:         #1f6b45;
+    --ok-bg:      #d5e7dc;
+    --warn:       #8a5a0c;
+    --warn-bg:    #f0e3c9;
+    --crit:       #9c2f27;
+    --crit-bg:    #f2d9d6;
+
+    --term-bg:    #16202a;
+    --term-ink:   #dbe4ec;
+    --term-dim:   #7b8b9c;
+    --term-accent:#6fc3d2;
+
+    --shadow: 0 1px 2px rgba(19,27,36,.06), 0 4px 14px rgba(19,27,36,.05);
+  }
+
+  /* System-dark (un-stamped) — an explicit light choice must still win */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #0f151c;
+      --card:       #172029;
+      --card-2:     #1f2a35;
+      --ink:        #e6edf4;
+      --ink-2:      #b3c1cf;
+      --ink-3:      #7e8e9e90;
+      --muted:      #93a3b3;
+      --rule:       #2c3945;
+      --rule-soft:  #232f3a;
+
+      --accent:     #5fb6c6;
+      --accent-2:   #8ed2df;
+      --accent-bg:  #16323a;
+
+      --ok:         #6bbf90;
+      --ok-bg:      #16302300;
+      --warn:       #d7a75a;
+      --warn-bg:    #33280f00;
+      --crit:       #e08b82;
+      --crit-bg:    #38201d00;
+
+      --term-bg:    #0b1219;
+      --term-ink:   #d3dde7;
+      --term-dim:   #6b7c8d;
+      --term-accent:#6fc3d2;
+
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+    }
+  }
+
+  /* Explicit dark choice */
+  :root[data-theme="dark"] {
+    --paper:      #0f151c;
+    --card:       #172029;
+    --card-2:     #1f2a35;
+    --ink:        #e6edf4;
+    --ink-2:      #b3c1cf;
+    --ink-3:      #7e8e9e90;
+    --muted:      #93a3b3;
+    --rule:       #2c3945;
+    --rule-soft:  #232f3a;
+
+    --accent:     #5fb6c6;
+    --accent-2:   #8ed2df;
+    --accent-bg:  #16323a;
+
+    --ok:         #6bbf90;
+    --ok-bg:      #16302300;
+    --warn:       #d7a75a;
+    --warn-bg:    #33280f00;
+    --crit:       #e08b82;
+    --crit-bg:    #38201d00;
+
+    --term-bg:    #0b1219;
+    --term-ink:   #d3dde7;
+    --term-dim:   #6b7c8d;
+    --term-accent:#6fc3d2;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 24px 96px;
+    display: grid;
+    grid-template-columns: 208px minmax(0, 1fr);
+    gap: 48px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .wrap { grid-template-columns: minmax(0,1fr); gap: 0; }
+    .rail { display: none; }
+  }
+
+  /* ── Masthead ───────────────────────────────────────────────────────────── */
+  header.masthead {
+    grid-column: 1 / -1;
+    border-bottom: 1px solid var(--rule);
+    padding: 44px 0 26px;
+    margin-bottom: 36px;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  h1 {
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: clamp(28px, 4.4vw, 40px);
+    font-weight: 600;
+    letter-spacing: -.02em;
+    line-height: 1.1;
+    margin: 12px 0 14px;
+    text-wrap: balance;
+  }
+  .standfirst {
+    color: var(--ink-2);
+    max-width: 64ch;
+    font-size: 16px;
+    margin: 0;
+  }
+  .hostline {
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    align-items: center;
+  }
+
+  /* ── Chips ──────────────────────────────────────────────────────────────── */
+  .chip {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 3px;
+    border: 1px solid var(--rule);
+    background: var(--card);
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+  .chip.port   { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
+  .chip.ok     { color: var(--ok);   border-color: var(--ok);   background: var(--ok-bg); }
+  .chip.warn   { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
+  .chip.crit   { color: var(--crit); border-color: var(--crit); background: var(--crit-bg); }
+
+  /* ── Rail ───────────────────────────────────────────────────────────────── */
+  .rail {
+    position: sticky;
+    top: 24px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+  }
+  .rail h2 {
+    font-size: 11px;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    margin: 0 0 10px;
+  }
+  .rail a {
+    display: block;
+    padding: 5px 0 5px 11px;
+    color: var(--ink-2);
+    text-decoration: none;
+    border-left: 2px solid var(--rule-soft);
+  }
+  .rail a:hover, .rail a:focus-visible {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    outline: none;
+  }
+  .rail .gap { height: 14px; }
+
+  /* ── Sections ───────────────────────────────────────────────────────────── */
+  section { margin-bottom: 52px; scroll-margin-top: 20px; }
+  h2.sec {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    margin: 0 0 6px;
+    padding-bottom: 9px;
+    border-bottom: 2px solid var(--ink);
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  h2.sec .n {
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .sec-intro {
+    color: var(--muted);
+    max-width: 68ch;
+    margin: 10px 0 22px;
+  }
+
+  /* ── At-a-glance table ──────────────────────────────────────────────────── */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 5px; background: var(--card); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 620px; }
+  th {
+    background: #1976d2;
+    color: #fff;
+    text-align: left;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    padding: 9px 13px;
+  }
+  td {
+    padding: 9px 13px;
+    border-top: 1px solid var(--rule-soft);
+    color: var(--ink-2);
+    vertical-align: top;
+  }
+  td.mono, td .mono {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+  tbody tr:hover td { background: var(--card-2); }
+
+  /* ── Service cards ──────────────────────────────────────────────────────── */
+  .svc {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--card);
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .svc > header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 18px;
+    background: var(--card-2);
+    border-bottom: 1px solid var(--rule);
+  }
+  .svc h3 {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--ink);
+  }
+  .svc .role { color: var(--muted); font-size: 13.5px; margin-right: auto; }
+  .svc .body { padding: 16px 18px 18px; }
+  .svc dl {
+    display: grid;
+    grid-template-columns: max-content minmax(0,1fr);
+    gap: 5px 16px;
+    margin: 0 0 14px;
+    font-size: 13.5px;
+  }
+  .svc dt {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-top: 3px;
+  }
+  .svc dd {
+    margin: 0;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    color: var(--ink);
+    word-break: break-all;
+  }
+
+  /* ── Terminal blocks ────────────────────────────────────────────────────── */
+  pre {
+    background: var(--term-bg);
+    color: var(--term-ink);
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.8px;
+    line-height: 1.65;
+    padding: 13px 16px;
+    border-radius: 5px;
+    overflow-x: auto;
+    margin: 0 0 12px;
+    border: 1px solid var(--rule);
+  }
+  pre:last-child { margin-bottom: 0; }
+  pre .c { color: var(--term-dim); }
+  pre .p { color: var(--term-accent); }
+  code.inl {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .88em;
+    background: var(--card-2);
+    border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    padding: 1px 5px;
+    color: var(--ink);
+    word-break: break-word;
+  }
+  .lbl {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 14px 0 6px;
+  }
+  .lbl:first-child { margin-top: 0; }
+
+  /* ── Boot sequence (genuinely ordered) ──────────────────────────────────── */
+  ol.boot { list-style: none; counter-reset: step; padding: 0; margin: 0; }
+  ol.boot > li {
+    counter-increment: step;
+    position: relative;
+    padding: 0 0 22px 46px;
+    border-left: 2px solid var(--rule);
+    margin-left: 14px;
+  }
+  ol.boot > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.boot > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -15px;
+    top: -2px;
+    width: 28px; height: 28px;
+    display: grid; place-items: center;
+    background: var(--accent);
+    color: var(--paper);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: 50%;
+  }
+  ol.boot h4 {
+    margin: 2px 0 4px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  ol.boot p { margin: 0 0 9px; color: var(--muted); font-size: 13.5px; max-width: 62ch; }
+
+  /* ── Traps ──────────────────────────────────────────────────────────────── */
+  .trap {
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--warn);
+    border-radius: 0 5px 5px 0;
+    background: var(--card);
+    padding: 14px 17px;
+    margin-bottom: 13px;
+  }
+  .trap.crit { border-left-color: var(--crit); }
+  .trap h4 {
+    margin: 0 0 5px;
+    font-size: 14.5px;
+    font-weight: 600;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    letter-spacing: -.01em;
+  }
+  .trap p { margin: 0 0 8px; color: var(--ink-2); font-size: 13.8px; max-width: 70ch; }
+  .trap p:last-child { margin-bottom: 0; }
+
+  .note {
+    background: var(--accent-bg);
+    border: 1px solid var(--accent);
+    border-radius: 5px;
+    padding: 13px 16px;
+    color: var(--ink);
+    font-size: 13.8px;
+    margin-bottom: 18px;
+  }
+  .note strong { color: var(--accent-2); }
+
+  footer.end {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--rule);
+    padding-top: 18px;
+    color: var(--muted);
+    font-size: 12.5px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+  }
+
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Production Runbook</div>
+    <h1>Nexsol Production Runbook</h1>
+    <p class="standfirst">
+      Every service on the ERP box: what it is, which port it holds, how to start and stop it,
+      and how to tell it actually came up. Verified against the running server, not from config
+      files alone.
+    </p>
+    <div class="hostline">
+      <span class="chip">68.183.81.220</span>
+      <span class="chip">ssh mpark-vm</span>
+      <span class="chip">Ubuntu 20.04.6 LTS</span>
+      <span class="chip">Java 17</span>
+      <span class="chip">PostgreSQL 12.22</span>
+    </div>
+  </header>
+
+  <nav class="rail" aria-label="Contents">
+    <h2>Production</h2>
+    <a href="#glance">At a glance</a>
+    <a href="#boot">Cold start order</a>
+    <a href="#nginx">nginx</a>
+    <a href="#postgres">PostgreSQL</a>
+    <a href="#kafka">Kafka &amp; ZooKeeper</a>
+    <a href="#nxserver">nxserver</a>
+    <a href="#nxconnect">nxconnect</a>
+    <a href="#nexsol-ai">nexsol-ai</a>
+    <a href="#nxworkflow">nxworkflow</a>
+    <a href="#keycloak">Keycloak</a>
+    <a href="#verify">Verify everything</a>
+    <a href="#cron">Cron jobs</a>
+    <a href="#traps">Traps</a>
+    <div class="gap"></div>
+    <h2>Local</h2>
+    <a href="#local">Development</a>
+  </nav>
+
+  <main>
+
+    <!-- ══ AT A GLANCE ══ -->
+    <section id="glance">
+      <h2 class="sec">At a glance</h2>
+      <p class="sec-intro">
+        Everything below runs on one box. All systemd units are <code class="inl">enabled</code>,
+        so a reboot brings them back without help — the order in the next section matters only
+        when you are recovering by hand.
+      </p>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>Service</th><th>Unit / container</th><th>Port</th><th>Directory</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Public web server</td><td class="mono">nginx.service</td><td class="mono">80, 443</td><td class="mono">/etc/nginx</td></tr>
+            <tr><td>Database</td><td class="mono">postgresql@12-main.service</td><td class="mono">127.0.0.1:5432</td><td class="mono">—</td></tr>
+            <tr><td>ZooKeeper</td><td class="mono">zookeeper.service</td><td class="mono">2181</td><td class="mono">—</td></tr>
+            <tr><td>Kafka</td><td class="mono">kafka.service</td><td class="mono">9092</td><td class="mono">—</td></tr>
+            <tr><td>ERP backend</td><td class="mono">nxserver.service</td><td class="mono">8082</td><td class="mono">/home/deploy/server</td></tr>
+            <tr><td>WebSocket relay</td><td class="mono">nxconnect.service</td><td class="mono">8081</td><td class="mono">/home/deploy/connect</td></tr>
+            <tr><td>AI service</td><td class="mono">nexsol-ai.service</td><td class="mono">8001</td><td class="mono">/home/deploy/nexsol-ai-service</td></tr>
+            <tr><td>Workflow engine</td><td class="mono">nxworkflow.service</td><td class="mono">8085</td><td class="mono">/home/deploy/workflow</td></tr>
+            <tr><td>Keycloak</td><td class="mono">docker · keycloak, keycloak-db</td><td class="mono">127.0.0.1:9081</td><td class="mono">/opt/apps/keycloak</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="lbl">How nginx routes the public site</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Request</th><th>Goes to</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">tradelink247.com/</td><td class="mono">/var/www/html &nbsp;<span style="font-family:inherit;color:var(--muted)">(admin SPA build)</span></td></tr>
+            <tr><td class="mono">/api/</td><td class="mono">localhost:8082 &nbsp;<span style="font-family:inherit;color:var(--muted)">(nxserver)</span></td></tr>
+            <tr><td class="mono">/ws</td><td class="mono">localhost:8081 &nbsp;<span style="font-family:inherit;color:var(--muted)">(nxconnect)</span></td></tr>
+            <tr><td class="mono">/ai-service/</td><td class="mono">127.0.0.1:8001 &nbsp;<span style="font-family:inherit;color:var(--muted)">(nexsol-ai)</span></td></tr>
+            <tr><td class="mono">key.tradelink247.com</td><td class="mono">127.0.0.1:9081 &nbsp;<span style="font-family:inherit;color:var(--muted)">(Keycloak)</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══ BOOT ORDER ══ -->
+    <section id="boot">
+      <h2 class="sec">Cold start order</h2>
+      <p class="sec-intro">
+        These are numbered because the order is real: each step depends on the one before it.
+        Start a Spring service before PostgreSQL is accepting connections and it will fail its
+        migrations and crash-loop rather than wait.
+      </p>
+
+      <ol class="boot">
+        <li>
+          <h4>PostgreSQL</h4>
+          <p>Everything with a database behind it waits on this — nxserver, nxworkflow, and Keycloak's own container database.</p>
+          <pre><span class="p">systemctl</span> start postgresql@12-main.service</pre>
+        </li>
+        <li>
+          <h4>ZooKeeper, then Kafka</h4>
+          <p>Kafka registers itself with ZooKeeper at startup and will not come up without it.</p>
+          <pre><span class="p">systemctl</span> start zookeeper.service
+<span class="p">systemctl</span> start kafka.service</pre>
+        </li>
+        <li>
+          <h4>Keycloak</h4>
+          <p>Its containers carry their own Postgres and a health gate, so <code class="inl">up -d</code> waits for the database to be ready before starting Keycloak itself.</p>
+          <pre><span class="p">cd</span> /opt/apps/keycloak
+<span class="p">docker-compose</span> --env-file keycloak.env up -d</pre>
+        </li>
+        <li>
+          <h4>The four application services</h4>
+          <p>Independent of each other — order among them does not matter.</p>
+          <pre><span class="p">systemctl</span> start nxserver.service nxconnect.service nexsol-ai.service nxworkflow.service</pre>
+        </li>
+        <li>
+          <h4>nginx</h4>
+          <p>Last, so the site does not serve 502s while the backends are still coming up.</p>
+          <pre><span class="p">systemctl</span> start nginx.service</pre>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ══ NGINX ══ -->
+    <section id="nginx">
+      <h2 class="sec">nginx</h2>
+
+      <div class="svc">
+        <header>
+          <h3>nginx.service</h3>
+          <span class="role">Public entry point and TLS</span>
+          <span class="chip port">80</span><span class="chip port">443</span>
+        </header>
+        <div class="body">
+          <dl>
+            <dt>Sites</dt><dd>/etc/nginx/sites-enabled/{default, keycloak}</dd>
+            <dt>Web root</dt><dd>/var/www/html</dd>
+            <dt>Certificates</dt><dd>/etc/letsencrypt/live/{tradelink247.com, key.tradelink247.com}</dd>
+          </dl>
+
+          <p class="lbl">Reload after a config change</p>
+          <pre><span class="c"># Always test first. A bad config takes the whole site down, not just</span>
+<span class="c"># the vhost you edited — nginx refuses to load any of it.</span>
+<span class="p">nginx</span> -t &amp;&amp; <span class="p">systemctl</span> reload nginx</pre>
+
+          <p class="lbl">Restart / check</p>
+          <pre><span class="p">systemctl</span> restart nginx.service
+<span class="p">curl</span> -s -o /dev/null -w '%{http_code}\n' https://tradelink247.com/   <span class="c"># 200</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ POSTGRES ══ -->
+    <section id="postgres">
+      <h2 class="sec">PostgreSQL</h2>
+
+      <div class="svc">
+        <header>
+          <h3>postgresql@12-main.service</h3>
+          <span class="role">All tenant databases, plus miniflow</span>
+          <span class="chip port">127.0.0.1:5432</span>
+          <span class="chip warn">v12</span>
+        </header>
+        <div class="body">
+          <dl>
+            <dt>Databases</dt><dd>nexsoldb, per-tenant DBs, miniflow</dd>
+            <dt>Credentials</dt><dd>/home/deploy/server/application.properties</dd>
+            <dt>Auth</dt><dd>local socket is md5 — <code class="inl">sudo -u postgres psql</code> still prompts</dd>
+          </dl>
+
+          <p class="lbl">Restart</p>
+          <pre><span class="p">systemctl</span> restart postgresql@12-main.service</pre>
+
+          <p class="lbl">Connect</p>
+          <pre><span class="c"># Read the password in place rather than typing it out.</span>
+<span class="p">export</span> PGPASSWORD=$(grep -m1 '^spring.datasource.password=' \
+  /home/deploy/server/application.properties | cut -d= -f2-)
+<span class="p">psql</span> -h 127.0.0.1 -U postgres -l</pre>
+
+          <div class="note" style="margin-top:14px">
+            <strong>This is PostgreSQL 12.</strong> <code class="inl">gen_random_uuid()</code> only
+            became core in 13, so any new database needs
+            <code class="inl">CREATE EXTENSION pgcrypto</code> — and the extension is
+            <em>per-database</em>, never cluster-wide. See Traps.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ KAFKA ══ -->
+    <section id="kafka">
+      <h2 class="sec">Kafka &amp; ZooKeeper</h2>
+
+      <div class="svc">
+        <header>
+          <h3>kafka.service · zookeeper.service</h3>
+          <span class="role">Event bus</span>
+          <span class="chip port">9092</span><span class="chip port">2181</span>
+        </header>
+        <div class="body">
+          <p class="lbl">Restart (order matters)</p>
+          <pre><span class="p">systemctl</span> restart zookeeper.service
+<span class="p">systemctl</span> restart kafka.service</pre>
+
+          <p class="lbl">Check</p>
+          <pre><span class="p">ss</span> -lnt | grep -E ':(9092|2181)'</pre>
+
+          <div class="note" style="margin-top:14px">
+            <strong>There is no Schema Registry on this server.</strong> Port 8081 belongs to
+            nxconnect. Anything configured to reach a registry at
+            <code class="inl">localhost:8081</code> is pointed at the WebSocket relay. See Traps.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ NXSERVER ══ -->
+    <section id="nxserver">
+      <h2 class="sec">nxserver <span class="n">ERP backend</span></h2>
+
+      <div class="svc">
+        <header>
+          <h3>nxserver.service</h3>
+          <span class="role">Spring Boot — the main ERP API</span>
+          <span class="chip port">8082</span>
+        </header>
+        <div class="body">
+          <dl>
+            <dt>Jar</dt><dd>/home/deploy/server/nexsol-server-0.0.1.jar</dd>
+            <dt>Config</dt><dd>/home/deploy/server/application.properties</dd>
+            <dt>Runs as</dt><dd>deploy</dd>
+            <dt>Logs</dt><dd>journalctl, plus /home/deploy/server/logs</dd>
+          </dl>
+
+          <p class="lbl">Restart</p>
+          <pre><span class="p">systemctl</span> restart nxserver.service</pre>
+
+          <p class="lbl">Did it actually come up?</p>
+          <pre><span class="c"># systemctl restart returns as soon as the process spawns — with Type=simple</span>
+<span class="c"># that says nothing about whether the app is serving. Ask the app.</span>
+<span class="p">curl</span> -s -o /dev/null -w '%{http_code}\n' http://localhost:8082/actuator/health
+
+<span class="c"># 403 = UP. The endpoint is secured, so a refusal proves it is answering.</span>
+<span class="c"># 000 = not listening yet; give it ~20s, then read the log.</span></pre>
+
+          <p class="lbl">Logs</p>
+          <pre><span class="p">journalctl</span> -u nxserver.service -f
+<span class="p">journalctl</span> -u nxserver.service -n 80 --no-pager</pre>
+
+          <div class="note" style="margin-top:14px">
+            <strong>Config lives only on the server.</strong> That
+            <code class="inl">application.properties</code> sits next to the jar, and an external
+            file in the working directory outranks the one packaged inside it. It is not in git —
+            back it up before editing, and expect no code review to catch a mistake in it.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ NXCONNECT ══ -->
+    <section id="nxconnect">
+      <h2 class="sec">nxconnect <span class="n">WebSocket relay</span></h2>
+
+      <div class="svc">
+        <header>
+          <h3>nxconnect.service</h3>
+          <span class="role">POS terminal sessions — nginx /ws routes here</span>
+          <span class="chip port">8081</span>
+        </header>
+        <div class="body">
+          <dl>
+            <dt>Jar</dt><dd>/home/deploy/connect/nexsol-connect-0.0.1-SNAPSHOT.jar</dd>
+            <dt>Config</dt><dd>/home/deploy/connect/application.properties</dd>
+          </dl>
+
+          <p class="lbl">Restart and check</p>
+          <pre><span class="p">systemctl</span> restart nxconnect.service
+<span class="p">ss</span> -lnt | grep ':8081'</pre>
+
+          <p class="lbl">Logs</p>
+          <pre><span class="p">journalctl</span> -u nxconnect.service -n 60 --no-pager</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ NEXSOL-AI ══ -->
+    <section id="nexsol-ai">
+      <h2 class="sec">nexsol-ai <span class="n">report AI</span></h2>
+
+      <div class="svc">
+        <header>
+          <h3>nexsol-ai.service</h3>
+          <span class="role">FastAPI / uvicorn — AI report SQL</span>
+          <span class="chip port">8001</span>
+        </header>
+        <div class="body">
+          <dl>
+            <dt>Command</dt><dd>.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8001 --workers 1</dd>
+            <dt>Directory</dt><dd>/home/deploy/nexsol-ai-service</dd>
+            <dt>Config</dt><dd>/home/deploy/nexsol-ai-service/.env <span style="color:var(--muted)">(holds the API key)</span></dd>
+          </dl>
+
+          <p class="lbl">Restart and check</p>
+          <pre><span class="p">systemctl</span> restart nexsol-ai.service
+<span class="p">curl</span> -s -o /dev/null -w '%{http_code}\n' http://localhost:8001/docs</pre>
+
+          <p class="lbl">Logs</p>
+          <pre><span class="p">journalctl</span> -u nexsol-ai.service -n 60 --no-pager</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ NXWORKFLOW ══ -->
+    <section id="nxworkflow">
+      <h2 class="sec">nxworkflow <span class="n">miniflow BPMN engine</span></h2>
+
+      <div class="svc">
+        <header>
+          <h3>nxworkflow.service</h3>
+          <span class="role">Task workflows — shared with the hospital platform</span>
+          <span class="chip port">8085</span>
+        </header>
+        <div class="body">
+          <dl>
+            <dt>Jar</dt><dd>/home/deploy/workflow/miniflow.jar</dd>
+            <dt>Rollback</dt><dd>/home/deploy/workflow/miniflow.jar.previous</dd>
+            <dt>Config</dt><dd>/home/deploy/workflow/workflow.env <span style="color:var(--muted)">(0600, EnvironmentFile)</span></dd>
+            <dt>Database</dt><dd>miniflow</dd>
+            <dt>Definitions</dt><dd>/home/deploy/workflow/bpmn/</dd>
+          </dl>
+
+          <p class="lbl">Restart</p>
+          <pre><span class="p">systemctl</span> restart nxworkflow.service</pre>
+
+          <p class="lbl">Health, and proof it is enforcing auth</p>
+          <pre><span class="p">curl</span> -s http://localhost:8085/actuator/health
+<span class="c"># {"status":"UP","groups":["liveness","readiness"]}</span>
+
+<span class="p">curl</span> -s -o /dev/null -w '%{http_code}\n' http://localhost:8085/api/workflow-definitions
+<span class="c"># 401 expected. A 200 means it is validating nothing, which is worse</span>
+<span class="c"># than being down.</span></pre>
+
+          <p class="lbl">Roll back a bad deploy</p>
+          <pre><span class="p">cd</span> /home/deploy/workflow
+<span class="p">cp</span> miniflow.jar.previous miniflow.jar
+<span class="p">systemctl</span> restart nxworkflow.service</pre>
+
+          <p class="lbl">Config changes take effect on restart</p>
+          <pre><span class="c"># workflow.env is an EnvironmentFile — systemd reads it at start, so an</span>
+<span class="c"># edit does nothing until the unit is restarted.</span>
+<span class="p">systemctl</span> restart nxworkflow.service</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ KEYCLOAK ══ -->
+    <section id="keycloak">
+      <h2 class="sec">Keycloak</h2>
+
+      <div class="svc">
+        <header>
+          <h3>keycloak · keycloak-db</h3>
+          <span class="role">Docker Compose — identity provider</span>
+          <span class="chip port">127.0.0.1:9081</span>
+          <span class="chip">key.tradelink247.com</span>
+        </header>
+        <div class="body">
+          <dl>
+            <dt>Directory</dt><dd>/opt/apps/keycloak</dd>
+            <dt>Config</dt><dd>/opt/apps/keycloak/keycloak.env <span style="color:var(--muted)">(0600 — two passwords)</span></dd>
+            <dt>Data</dt><dd>docker volume keycloak_keycloak_db</dd>
+            <dt>Realm</dt><dd>miniflow</dd>
+          </dl>
+
+          <div class="note">
+            <strong>The command is <code class="inl">docker-compose</code>, hyphenated.</strong>
+            Only the standalone v2.24.2 binary is installed here — <code class="inl">docker compose</code>
+            with a space fails with <em>"'compose' is not a docker command"</em>.
+          </div>
+
+          <p class="lbl">Start / stop / restart</p>
+          <pre><span class="p">cd</span> /opt/apps/keycloak
+<span class="p">docker-compose</span> --env-file keycloak.env up -d      <span class="c"># start</span>
+<span class="p">docker-compose</span> restart keycloak                   <span class="c"># restart just Keycloak</span>
+<span class="p">docker-compose</span> down                               <span class="c"># stop (data survives)</span></pre>
+
+          <p class="lbl">Check</p>
+          <pre><span class="p">docker</span> ps --format '{{.Names}}  {{.Status}}'
+<span class="p">curl</span> -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:9081/realms/master   <span class="c"># 200</span>
+<span class="p">curl</span> -s https://key.tradelink247.com/realms/miniflow/.well-known/openid-configuration</pre>
+
+          <p class="lbl">Logs</p>
+          <pre><span class="p">docker-compose</span> logs -f keycloak
+<span class="p">docker</span> logs keycloak --tail 60</pre>
+
+          <p class="lbl">Admin console</p>
+          <pre><span class="c"># https://key.tradelink247.com/admin</span>
+<span class="p">grep</span> KC_ADMIN_PASSWORD /opt/apps/keycloak/keycloak.env</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ VERIFY ══ -->
+    <section id="verify">
+      <h2 class="sec">Verify everything</h2>
+      <p class="sec-intro">
+        One block that answers "is the platform healthy?" — paste it on the server after any
+        restart or reboot.
+      </p>
+      <pre><span class="c"># ── units ──</span>
+<span class="p">for</span> s in nginx postgresql@12-main zookeeper kafka nxserver nxconnect nexsol-ai nxworkflow; <span class="p">do</span>
+  printf '  %-24s %s\n' "$s" "$(systemctl is-active $s.service)"
+<span class="p">done</span>
+
+<span class="c"># ── containers ──</span>
+<span class="p">docker</span> ps --format '  {{.Names}}  {{.Status}}'
+
+<span class="c"># ── does each one answer? ──</span>
+printf '  nxserver   %s  (403 = up, secured)\n' \
+  "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8082/actuator/health)"
+printf '  nxworkflow %s\n' \
+  "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8085/actuator/health)"
+printf '  nexsol-ai  %s\n' \
+  "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8001/docs)"
+printf '  keycloak   %s\n' \
+  "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:9081/realms/master)"
+printf '  public     %s\n' \
+  "$(curl -s -o /dev/null -w '%{http_code}' https://tradelink247.com/)"
+printf '  keycloak   %s\n' \
+  "$(curl -s -o /dev/null -w '%{http_code}' https://key.tradelink247.com/realms/miniflow)"</pre>
+    </section>
+
+
+    <!-- ══ CRON ══ -->
+    <section id="cron">
+      <h2 class="sec">Cron jobs</h2>
+      <p class="sec-intro">
+        Nothing schedules these from the operating system — there is no application entry in any
+        crontab or <code class="inl">/etc/cron.d</code>. Every job below is a Spring
+        <code class="inl">@Scheduled</code> method inside <strong>nxserver</strong>, so they exist
+        only while that service is running and they restart with it.
+      </p>
+
+      <div class="note">
+        <strong>The server clock is UTC.</strong> Every time in this section is UTC, so the
+        "2:45&nbsp;AM" sweep actually runs at <strong>08:15 IST</strong> — insights land mid-morning,
+        not overnight. To have them ready before the working day in India, shift the cron back by
+        5½ hours (<code class="inl">0 45 20 * * *</code> = 02:15 IST).
+      </div>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>UTC</th><th>IST</th><th>Job</th><th>Property</th><th>State in production</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono">01:30</td><td class="mono">07:00</td>
+              <td>Sales cost stamping<div style="color:var(--muted);font-size:12.5px">item-wise cost and profit, every tenant</div></td>
+              <td class="mono">sales.cost.stamp.cron</td>
+              <td><span class="chip ok">on</span> <span style="color:var(--muted);font-size:12.5px">enabled defaults to true</span></td>
+            </tr>
+            <tr>
+              <td class="mono">02:05</td><td class="mono">07:35</td>
+              <td>AI model training<div style="color:var(--muted);font-size:12.5px">calls the AI service per tenant</div></td>
+              <td class="mono">— <span style="font-family:inherit;color:var(--muted)">hardcoded</span></td>
+              <td><span class="chip warn">always on</span> <span style="color:var(--muted);font-size:12.5px">see below</span></td>
+            </tr>
+            <tr>
+              <td class="mono">02:15</td><td class="mono">07:45</td>
+              <td>Task workflow detection<div style="color:var(--muted);font-size:12.5px">raises tasks a human must action</div></td>
+              <td class="mono">task-workflow.cron</td>
+              <td><span class="chip">off</span> <span style="color:var(--muted);font-size:12.5px">task-workflow.enabled unset</span></td>
+            </tr>
+            <tr>
+              <td class="mono">02:45</td><td class="mono">08:15</td>
+              <td>Insight sweep<div style="color:var(--muted);font-size:12.5px">writes what the Insights screen reads</div></td>
+              <td class="mono">ai-branch-manager.cron</td>
+              <td><span class="chip ok">on</span> <span class="mono" style="font-size:12px">tenant 9446968394a</span></td>
+            </tr>
+            <tr>
+              <td class="mono">every 2s</td><td class="mono">—</td>
+              <td>Outbox publisher<div style="color:var(--muted);font-size:12.5px">event_outbox → Kafka; discovers tenants hourly</div></td>
+              <td class="mono">event.outbox.poll-interval-ms</td>
+              <td><span class="chip ok">on</span> <span style="color:var(--muted);font-size:12.5px">2000 ms</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="lbl">Cron format — six fields, not five</p>
+      <pre>0     45    2     *     *     *
+<span class="c">sec   min   hour  dom   mon   dow      -> 02:45:00 UTC every day</span></pre>
+
+      <p class="lbl">Changing one</p>
+      <pre><span class="c"># All of these live in /home/deploy/server/application.properties,</span>
+<span class="c"># then: systemctl restart nxserver.service</span>
+
+ai-branch-manager.cron=0 45 2 * * *     <span class="c"># the nightly default</span>
+ai-branch-manager.cron=0 */10 * * * *   <span class="c"># every 10 min — TESTING ONLY</span></pre>
+
+      <div class="trap" style="margin-top:16px">
+        <h4>Deleting the property does not switch the job off</h4>
+        <p>
+          Each cron is written <code class="inl">${ai-branch-manager.cron:0 45 2 * * *}</code> — the
+          part after the colon is a built-in default. Remove the line and the job still runs, on that
+          default. To actually stop one:
+        </p>
+        <pre><span class="p">ai-branch-manager.enabled</span>=false   <span class="c"># job fires, returns immediately — the real off switch</span>
+<span class="p">ai-branch-manager.cron</span>=-          <span class="c"># Spring registers no trigger at all</span></pre>
+      </div>
+
+      <div class="trap crit">
+        <h4>AI training runs nightly against a tenant that is not on this server</h4>
+        <p>
+          <code class="inl">AiTrainingScheduler</code> holds its tenant list in code —
+          <code class="inl">List.of("7559004113a")</code> — and that database does not exist here.
+          It has no enable flag and no cron property either, so it cannot be switched off or
+          retargeted from configuration; it will fail every night at 02:05 and only shows up in the
+          log. Worth fixing in code rather than leaving as recurring noise.
+        </p>
+      </div>
+
+      <div class="trap">
+        <h4>Insights can create real work on this tenant</h4>
+        <p>
+          <code class="inl">ai-branch-manager.workflow-creation-enabled=true</code> is set in
+          production, so the 02:45 sweep does not merely report — it can raise workflow tasks for
+          tenant <code class="inl">9446968394a</code>. Re-running the sweep is safe regardless:
+          <code class="inl">ux_ai_insight_open</code> is a partial unique index on
+          <code class="inl">dedup_key WHERE status='OPEN'</code>, so a repeat cannot duplicate an
+          open insight.
+        </p>
+      </div>
+
+      <p class="lbl">System timers (not ours, but they matter)</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Timer</th><th>Schedule</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="mono">snap.certbot.renew.timer</td>
+              <td class="mono">twice daily</td>
+              <td>Renews both TLS certificates. Renewal configs live in
+                  <code class="inl">/etc/letsencrypt/renewal/</code>.</td>
+            </tr>
+            <tr>
+              <td class="mono">apt-daily · logrotate · man-db</td>
+              <td class="mono">daily</td>
+              <td>OS housekeeping, stock Ubuntu.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="lbl">Check certificate expiry</p>
+      <pre><span class="p">certbot</span> certificates | grep -E 'Certificate Name|Expiry'
+<span class="p">systemctl</span> list-timers snap.certbot.renew.timer --no-pager</pre>
+
+      <p class="lbl">Did last night's jobs run?</p>
+      <pre><span class="c"># The schedulers log under these prefixes.</span>
+<span class="p">journalctl</span> -u nxserver.service --since yesterday | grep -E '\[AiInsight\]|\[TaskWorkflow\]|\[SalesCost\]'</pre>
+    </section>
+
+    <!-- ══ TRAPS ══ -->
+    <section id="traps">
+      <h2 class="sec">Traps</h2>
+      <p class="sec-intro">
+        Each of these cost real debugging time on this server. They are here so they cost it once.
+      </p>
+
+      <div class="trap crit">
+        <h4>A green systemctl means nothing</h4>
+        <p>
+          Every unit here is <code class="inl">Type=simple</code>, so
+          <code class="inl">systemctl restart</code> succeeds the moment the process spawns — before
+          Spring has read a property, let alone bound a port. A service that boots and immediately
+          crashes restarts green. Always follow a restart with the health check for that service.
+        </p>
+      </div>
+
+      <div class="trap crit">
+        <h4>PostgreSQL 12 has no gen_random_uuid()</h4>
+        <p>
+          It became core in 13. Any migration calling it fails here unless
+          <code class="inl">pgcrypto</code> is installed <em>in that database</em> — the extension is
+          per-database, never cluster-wide. This is why the same SQL can work on one tenant and fail
+          on another, and it crash-looped nxworkflow on its first start.
+        </p>
+        <pre><span class="p">psql</span> -h 127.0.0.1 -U postgres -d &lt;database&gt; -c 'CREATE EXTENSION IF NOT EXISTS pgcrypto;'</pre>
+        <p>
+          It fails even when the statement would touch no rows: the function is resolved when the
+          statement is parsed, not when a row is produced.
+        </p>
+      </div>
+
+      <div class="trap">
+        <h4>Port 8081 is nxconnect, not a Schema Registry</h4>
+        <p>
+          No Schema Registry runs on this server. <code class="inl">SCHEMA_REGISTRY_HOST=localhost</code>
+          in <code class="inl">workflow.env</code> resolves to <code class="inl">localhost:8081</code>,
+          which is the WebSocket relay. Nothing currently exercises that path, so it is latent rather
+          than broken — but it will not behave as anyone reading the config would expect.
+        </p>
+      </div>
+
+      <div class="trap">
+        <h4>KEYCLOAK_HOST does not control token validation</h4>
+        <p>
+          It feeds <code class="inl">spring.security.oauth2…issuer-uri</code>, which is never read —
+          <code class="inl">SecurityConfig</code> declares its own <code class="inl">JwtDecoder</code>,
+          so Boot's auto-configuration backs off. The effective settings are
+          <code class="inl">MINIFLOW_OAUTH2_ISSUER_URI</code> and
+          <code class="inl">MINIFLOW_OAUTH2_JWK_SET_URI</code>; both are set in
+          <code class="inl">workflow.env</code>. Getting the issuer wrong is silent until the first
+          login, then rejects every token.
+        </p>
+      </div>
+
+      <div class="trap">
+        <h4>docker compose is not a command here</h4>
+        <p>
+          Only the standalone <code class="inl">docker-compose</code> v2.24.2 binary is installed.
+          The space-separated plugin form fails.
+        </p>
+      </div>
+
+      <div class="trap">
+        <h4>The deploy user needs a sudoers rule for CI</h4>
+        <p>
+          <code class="inl">deploy</code> owns <code class="inl">/home/deploy/workflow</code>, so the
+          deploy's file steps need no elevation — but the restart does, and CI cannot answer a
+          password prompt. The rule lives at
+          <code class="inl">/etc/sudoers.d/nxworkflow-deploy</code> and is deliberately limited to
+          this one unit; NOPASSWD on <code class="inl">cp</code>/<code class="inl">mv</code> would be
+          root access for anyone who can push to the repository.
+        </p>
+      </div>
+
+      <div class="trap">
+        <h4>nxserver's config exists nowhere but the server</h4>
+        <p>
+          <code class="inl">/home/deploy/server/application.properties</code> is not in git and is not
+          replaced by deploys. Copy it before editing. Nothing else holds these values.
+        </p>
+      </div>
+    </section>
+
+    <!-- ══ LOCAL ══ -->
+    <section id="local">
+      <h2 class="sec">Local development</h2>
+      <p class="sec-intro">
+        Different ports from production — the ERP backend is 8084 locally and 8082 on the server, so
+        commands do not carry across. Needs Java 17, Node, and a local PostgreSQL.
+      </p>
+
+      <div class="svc">
+        <header>
+          <h3>ERP backend</h3>
+          <span class="role">nexsol-server-postgress</span>
+          <span class="chip port">8084</span>
+        </header>
+        <div class="body">
+          <pre><span class="p">cd</span> c:\Users\Dell\nexsol-server-postgress
+<span class="p">mvn</span> spring-boot:run</pre>
+          <p class="lbl">Config</p>
+          <pre><span class="c"># The application.properties in the PROJECT ROOT — not the one under</span>
+<span class="c"># src/main/resources. An external file in the working directory wins.</span>
+c:\Users\Dell\nexsol-server-postgress\application.properties</pre>
+        </div>
+      </div>
+
+      <div class="svc">
+        <header>
+          <h3>Admin UI</h3>
+          <span class="role">nexsol-admin · React</span>
+          <span class="chip port">3000</span>
+        </header>
+        <div class="body">
+          <pre><span class="p">cd</span> e:\nexsol-admin
+<span class="p">npm</span> start</pre>
+          <p class="lbl">Dev proxy (src/setupProxy.js)</p>
+          <pre>/api         -&gt; http://localhost:8084   <span class="c"># ERP backend</span>
+/ai-service  -&gt; http://localhost:8001   <span class="c"># AI service</span></pre>
+        </div>
+      </div>
+
+      <div class="svc">
+        <header>
+          <h3>Workflow engine</h3>
+          <span class="role">miniflow</span>
+          <span class="chip port">8085</span>
+        </header>
+        <div class="body">
+          <pre><span class="p">cd</span> e:\workflow
+<span class="p">mvn</span> spring-boot:run -Dspring-boot.run.profiles=local</pre>
+          <p class="lbl">Needs a local database</p>
+          <pre><span class="p">createdb</span> -U postgres miniflow
+<span class="c"># On local PostgreSQL 12 or older, also:</span>
+<span class="p">psql</span> -U postgres -d miniflow -c 'CREATE EXTENSION IF NOT EXISTS pgcrypto;'
+<span class="c"># Leave it empty — Flyway applies V1-V10 on first boot.</span></pre>
+          <p class="lbl">Shared secret</p>
+          <pre><span class="c"># application-local.yml and the ERP's root application.properties both</span>
+<span class="c"># default to local-dev-only-not-a-real-secret. They must match.</span></pre>
+        </div>
+      </div>
+
+      <div class="svc">
+        <header>
+          <h3>AI service</h3>
+          <span class="role">nexsol-ai-service · FastAPI</span>
+          <span class="chip port">8001</span>
+        </header>
+        <div class="body">
+          <pre><span class="p">cd</span> e:\nexsol-ai-service
+<span class="p">uvicorn</span> main:app --host 0.0.0.0 --port 8001 --reload</pre>
+          <div class="note" style="margin-top:12px">
+            <strong>Port disagreement worth settling.</strong> The React proxy and production both use
+            <code class="inl">8001</code>, but the ERP's local
+            <code class="inl">ai.service.url</code> points at <code class="inl">8000</code>. Reports
+            driven through the backend will not reach the service until those agree.
+          </div>
+        </div>
+      </div>
+
+      <div class="svc">
+        <header>
+          <h3>WebSocket relay</h3>
+          <span class="role">nexsol-connect</span>
+          <span class="chip port">8083</span>
+        </header>
+        <div class="body">
+          <pre><span class="p">cd</span> c:\Users\Dell\nexsol-connect
+<span class="p">mvn</span> spring-boot:run</pre>
+          <p class="lbl">Note</p>
+          <pre><span class="c"># 8083 locally, 8081 in production.</span></pre>
+        </div>
+      </div>
+
+      <div class="svc">
+        <header>
+          <h3>POS terminal</h3>
+          <span class="role">pos-electron · Vite + Electron</span>
+          <span class="chip port">5173</span>
+        </header>
+        <div class="body">
+          <pre><span class="p">cd</span> e:\nexsol-admin\pos-electron
+<span class="p">npm</span> run dev        <span class="c"># Vite on 5173, then launches Electron</span></pre>
+        </div>
+      </div>
+
+      <p class="lbl">Typical order</p>
+      <pre><span class="c"># 1. PostgreSQL running</span>
+<span class="c"># 2. ERP backend        -> 8084</span>
+<span class="c"># 3. miniflow           -> 8085   (only for workflow/task work)</span>
+<span class="c"># 4. AI service         -> 8001   (only for AI reports)</span>
+<span class="c"># 5. Admin UI           -> 3000</span></pre>
+    </section>
+
+  </main>
+
+  <footer class="end">
+    Verified against the running server. Ports, unit names and paths read from systemd and
+    <code class="inl">ss</code>, not from documentation.
+  </footer>
+
+</div>
+</body>
+</html>

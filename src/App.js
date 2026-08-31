@@ -8,7 +8,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { CssBaseline, Box, CircularProgress, AppBar, Toolbar, IconButton, Typography } from "@mui/material";
+import { CssBaseline, Box, CircularProgress, AppBar, Toolbar, IconButton, Typography, Slide, useScrollTrigger } from "@mui/material";
 import { Menu as MenuIcon } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 
@@ -401,9 +401,55 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
     );
   }
 
+/**
+ * Slides the top bar out of the way while reading down a page.
+ *
+ * The bar is position="fixed", so it costs 64px of viewport height on every screen
+ * regardless of where you are on the page - that is the height complained about. Hiding it
+ * on scroll-down returns those pixels to the content and brings the bar straight back on
+ * scroll-up, so nothing has to be clicked to get it either way.
+ *
+ * Deliberately does NOT animate the content's margin-top. That margin only positions
+ * content below the bar at scroll offset 0; shrinking it while scrolled would shift the
+ * document under the user and change the scroll position, which can feed back into the
+ * trigger and leave the bar flickering.
+ */
+function HideOnScroll({ children }) {
+  // 80px rather than 0: below that, a trackpad's inertia or the browser's scroll
+  // restoration can toggle the bar on a scroll the user did not intend to make.
+  const scrolledDown = useScrollTrigger({ threshold: 80 });
+  const [summoned, setSummoned] = useState(false);
+
+  useEffect(() => {
+    // GlobalMenuSearch binds Ctrl/Cmd+K to focus the search from anywhere. If the bar is
+    // hidden when that fires, focus lands on an input translated off-screen - visibly
+    // nothing happens. So the same shortcut has to bring the bar back first.
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") setSummoned(true);
+      if (e.key === "Escape") setSummoned(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    // Once scrolled back up the bar is visible on its own, so drop the override - otherwise
+    // one Ctrl+K would pin it open for the rest of the session.
+    if (!scrolledDown) setSummoned(false);
+  }, [scrolledDown]);
+
+  return (
+    <Slide appear={false} direction="down" in={!scrolledDown || summoned}>
+      {children}
+    </Slide>
+  );
+}
+
   return (
     <MenuAccessProvider roles={roles}>
-      {/* Top app bar - carries the global menu search (AWS-console style) */}
+      {/* Top app bar - carries the global menu search (AWS-console style).
+          Hides on scroll-down, returns on scroll-up or Ctrl/Cmd+K. */}
+      <HideOnScroll>
       <AppBar
         position="fixed"
         elevation={2}
@@ -437,6 +483,7 @@ const AuthenticatedApp = ({ mode, setMode, roles, setRoles }) => {
           <GlobalMenuSearch />
         </Toolbar>
       </AppBar>
+      </HideOnScroll>
 
       <BranchProvider>
       <UnitProvider>

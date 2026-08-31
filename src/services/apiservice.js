@@ -76,6 +76,13 @@ export const getMyTasks = (state, page = 0, size = 20) => {
   return apiClient.get("/workflow-instances/my-tasks", { params: { state, page, size } });
 };
 
+// Every task in the tenant, with the assignee on each row. The backend refuses this with a
+// 403 for anyone who is not an administrator, so the UI hiding it is a convenience, not the
+// control.
+export const getAllTasks = (state, page = 0, size = 50) => {
+  return apiClient.get("/workflow-instances/all-tasks", { params: { state, page, size } });
+};
+
 export const listWorkflowInstances = (status, page = 0, size = 20) => {
   return apiClient.get("/workflow-instances", { params: { status, page, size } });
 };

@@ -10,6 +10,7 @@ import {
   Mic as MicIcon,
   MicOff as MicOffIcon,
   Download as DownloadIcon,
+  ThumbUpAltOutlined as ThumbUpIcon,
   SmartToy as BotIcon,
   Person as UserIcon,
   ContentCopy as CopyIcon,
@@ -124,6 +125,19 @@ export default function AIReportChatbot() {
     rec.start();
     setListening(true);
   }, [listening]);
+
+  // ── Mark a generated report as correct ──────────────────────────────────────
+  // Only an explicit click gets stored as a training example. A query that merely ran
+  // is no evidence it answered the right question, and a wrong example teaches every
+  // future question that resembles it.
+  const markCorrect = useCallback(async (question, data) => {
+    await api.post("/ai-report/feedback", {
+      sessionId,
+      message:     question,
+      sql:         data.generatedSql,
+      reportTitle: data.reportName,
+    });
+  }, [sessionId]);
 
   // ── Excel export ────────────────────────────────────────────────────────────
   const exportExcel = useCallback(async (message) => {
@@ -241,6 +255,10 @@ export default function AIReportChatbot() {
                       // find the preceding user message
                       messages.slice(0, idx).reverse().find(m => m.role === "user")?.content || ""
                     )}
+                    onMarkCorrect={() => markCorrect(
+                      messages.slice(0, idx).reverse().find(m => m.role === "user")?.content || "",
+                      msg.data
+                    )}
                   />
               }
             </Box>
@@ -326,7 +344,17 @@ function UserBubble({ text }) {
   );
 }
 
-function AssistantBubble({ data, onExport }) {
+function AssistantBubble({ data, onExport, onMarkCorrect }) {
+  const [marked, setMarked] = React.useState(false);
+  const [marking, setMarking] = React.useState(false);
+
+  const handleMark = async () => {
+    setMarking(true);
+    try { await onMarkCorrect(); setMarked(true); }
+    catch { /* the report is fine either way — never interrupt the user for this */ }
+    finally { setMarking(false); }
+  };
+
   if (!data) return null;
 
   // ── Error ──────────────────────────────────────────────────────────────────
@@ -381,6 +409,19 @@ function AssistantBubble({ data, onExport }) {
               <IconButton size="small" onClick={onExport} color="primary">
                 <DownloadIcon fontSize="small" />
               </IconButton>
+            </Tooltip>
+          )}
+          {data.responseType === "GENERATED_REPORT" && data.generatedSql && (
+            <Tooltip title={marked
+              ? "Saved — the assistant will follow this next time"
+              : "This answer is correct. Teaches the assistant for similar questions."}>
+              <span>
+                <IconButton size="small" onClick={handleMark}
+                  disabled={marked || marking}
+                  color={marked ? "success" : "default"}>
+                  <ThumbUpIcon fontSize="small" />
+                </IconButton>
+              </span>
             </Tooltip>
           )}
         </Box>
