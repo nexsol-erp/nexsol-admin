@@ -123,12 +123,56 @@ This is exactly why the detector must not diagnose: the same query, read without
 - **`BAKERY_OUTLET`** → dead stock means *bought or transferred in and never sold*. Branch
   manager, escalating on age and value.
 
-One more gap worth recording: `branch_type` is not perfectly maintained. `CANTEEN`,
-`SAVOURIES`, `SWEETS` and `PHANDB` are typed `BAKERY_OUTLET` but have zero purchases, zero
-sales and zero transfers. They are dormant, and a detector that treats them as trading outlets
-will raise tasks nobody owns. Either they need a `DORMANT` type, or detectors must require
-recent activity before raising anything. **The second is cheaper and needs no data cleanup** —
-prefer it.
+### The activity gate — decided
+
+`branch_type` is not perfectly maintained. `CANTEEN`, `SAVOURIES`, `SWEETS` and `PHANDB` are
+typed `BAKERY_OUTLET` but have never traded. A detector treating them as outlets raises tasks
+nobody owns.
+
+**Decision: detectors require recent activity. No `DORMANT` branch type.** It needs no data
+cleanup, it degrades safely as branches open and close, and it keeps a detector's correctness
+independent of whether master data was kept tidy.
+
+The obvious cases need no threshold at all. Last movement of *any* kind — sale, stock row,
+transfer-out or purchase — separates them cleanly:
+
+| | branches | last movement |
+|---|---|---|
+| never traded | `ALL-BRANCH`, `SWEETS`, `CANTEEN`, `SAVOURIES`, `PHANDB` | **never** |
+| trading | the other 22 | 2026-06-22 … 2026-08-15 |
+
+Five branches have no activity of any kind, ever. There is nothing to tune.
+
+#### Measure the window against the data, not the clock
+
+A threshold of "active in the last 30 days" **would have silenced the detector for 24 of 27
+branches** on this database — not because those branches are quiet, but because this is a copy
+whose newest row is 2026-08-15 while today is 2026-08-31. A restored backup, a staging refresh
+or a slow sync would do the same thing in production, and the failure is silent: a detector
+that raises nothing looks identical to a business with no problems.
+
+So the window is measured **relative to the tenant's own most recent activity**, never against
+`CURRENT_DATE`:
+
+```sql
+-- active if the branch moved within N days of the newest movement anywhere in the tenant
+WHERE branch_last_activity >= (SELECT MAX(activity_date) FROM <all branches>) - INTERVAL 'N days'
+```
+
+This is the same discipline the Product 360 sections follow for freshness — report what the
+data says, never what the clock says. A section that claimed to be current because the code
+had just run was a bug there; a detector that goes quiet because the data is stale is the same
+bug wearing different clothes.
+
+**N = 90 days**, which on this tenant admits all 22 trading branches and excludes the 5 that
+have never traded.
+
+#### And say when the whole tenant has gone quiet
+
+If the tenant's newest activity is itself far behind the clock, that is worth one
+`DATA_QUALITY` insight — *"no movement recorded anywhere since 2026-08-15"* — rather than
+silence. On this database that condition is true today, and it is the more useful thing to
+report.
 
 ### The new purchase mode explains it
 
@@ -282,7 +326,8 @@ Pick from the pilot's answer to: *which of these did you actually want to be tol
 | # | Risk | Mitigation |
 |---|---|---|
 | 1 | Dead stock at a back office sends people hunting goods that do not exist | **Resolved by `branch_type`.** `BAKERY_BO` routes to W13, never W12. Report the condition, never the diagnosis |
-| 1b | Dormant branches typed as outlets raise tasks nobody owns | Require recent activity before raising, rather than waiting for `branch_type` cleanup |
+| 1b | Dormant branches typed as outlets raise tasks nobody owns | Activity gate, decided in §2. Five branches have never traded and are excluded without a threshold |
+| 1c | A stale database silences every detector, and silence looks like health | Measure the activity window against the tenant's own newest movement, never `CURRENT_DATE`. Raise a `DATA_QUALITY` insight when the tenant itself has gone quiet |
 | 2 | `CGN`'s corrupt quantities poison any valuation | `DataQualityRule` first; exclude implausible magnitudes from money figures rather than publishing them |
 | 3 | Too many tasks at once — nine new detectors could raise thousands | Phase A alone is 299 items at `ACCOUNTS`. **Cap tasks per sweep per branch**, rank by materiality, and let the rest wait |
 | 4 | A detector fires on a predicate nobody validated | Every detector ships with the real-data count it produces, in its commit message. W2's 51,272 false positives are the standing reminder |
