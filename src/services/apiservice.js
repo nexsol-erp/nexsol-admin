@@ -83,6 +83,19 @@ export const getAllTasks = (state, page = 0, size = 50) => {
   return apiClient.get("/workflow-instances/all-tasks", { params: { state, page, size } });
 };
 
+// Reassign a task. Administrator-only - the backend returns 403 otherwise.
+export const assignTask = (taskId, assignee) => {
+  return apiClient.post(
+    `/workflow-instances/tasks/${encodeURIComponent(taskId)}/assign`,
+    { assignee }
+  );
+};
+
+// Everyone in the tenant, for the assignee picker.
+export const getTenantUsers = () => {
+  return apiClient.get("/users");
+};
+
 export const listWorkflowInstances = (status, page = 0, size = 20) => {
   return apiClient.get("/workflow-instances", { params: { status, page, size } });
 };
