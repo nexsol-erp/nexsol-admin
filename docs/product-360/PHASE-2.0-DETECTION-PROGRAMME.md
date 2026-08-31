@@ -27,7 +27,9 @@ The volume is not.** That is what this programme adds.
 ## 2. The new one: stock that arrives and never leaves
 
 Raised by the owner: *items are purchased into a central godown and stay there as dead stock,
-never distributed.* Checked against tenant `9446968394a`, and it is worse than described.
+never distributed.* Checked against tenant `9446968394a`. The raw numbers look alarming; the
+branch classification then reframes them, so read to the end of this section before acting on
+any figure in it.
 
 ### What the data shows
 
@@ -63,39 +65,78 @@ the supply section), restricted to items untouched for over 90 days:
 | `FGS` | 51 | ₹298,480 | 41 of 51 |
 | `PZHA` | 32 | ₹263,068 | 26 of 32 |
 
-**₹17 million sitting in one branch, on items that have not moved in over three months, with
-every one of them priceable.** That is the single largest actionable number this programme has
-found.
+₹17 million in one branch, untouched for over three months, every item priceable. Taken at
+face value that is the largest number this programme has found — which is precisely why it
+needs the next section before anyone acts on it.
 
-### The caveat that decides the design
+### `branch_type` already exists, and it answers the question
 
-`ACCOUNTS` and `ADMIN` are almost certainly **not physical locations**. A branch named
-"ACCOUNTS" receiving 88% of purchases looks like purchases being booked against an accounting
-branch rather than a stocking one. If so, the stock never physically sat there, and the
-"dead stock" is a **booking misconfiguration**, not a warehouse full of goods.
+The owner proposed adding a branch type to mark non-physical branches. **It is already in
+`branch_mst`, already populated, and it settles this:**
 
-**Both readings are problems, and they need different tasks:**
+| `branch_type` | branches | meaning |
+|---|---|---|
+| `BAKERY_BO` | `ACCOUNTS` | **back office** — not a stocking location |
+| `BAKERY_CGN` | `CGN` | **central godown** |
+| `BAKERY_OUTLET` | 24 | retail outlets |
+| *(null)* | `ALL-BRANCH`, `WEB-9446968394a` | virtual |
 
-- *Real stock* → distribute it, mark it down, or write it off.
-- *Misbooked* → fix where purchases are posted, then every stock figure derived from
-  `ACCOUNTS` is wrong and needs restating.
+`is_control_branch = 'Y'` marks `ADMIN`, and nothing else.
 
-The detector cannot tell these apart from data alone, and **must not guess.** It reports the
-condition and names both readings; a human decides which. Getting this wrong in either
-direction is expensive — chasing a warehouse that does not exist, or ignoring ₹17m that does.
+So no migration is needed. The detectors read a column the tenant already maintains.
 
-> **First task for the owner, before any code:** is `ACCOUNTS` a physical location? One
-> answer removes half this design.
+### What that means — and a correction
 
-### A second finding, separate and also real
+Grouping the dead stock by that existing type changes the conclusion:
+
+| `branch_type` | branch | dead items | value |
+|---|---|---|---|
+| `BAKERY_BO` | `ACCOUNTS` | 299 | ₹16,994,589 |
+| `BAKERY_OUTLET` | `FGS` | 51 | ₹298,480 |
+| `BAKERY_OUTLET` | `PZHA` | 32 | ₹263,068 |
+| `BAKERY_OUTLET` | `PTPURAM` | 23 | ₹20,083 |
+| *(five more outlets)* | | ~75 | ~₹38,000 |
+
+**The ₹17m is at a back office.** `ACCOUNTS` is typed `BAKERY_BO` by the tenant itself, so it
+is not a warehouse and that stock is almost certainly a **posting artefact**, not goods on a
+shelf. An earlier draft of this plan called that figure "the strongest case this programme
+has". That was wrong, and the tenant's own configuration says so.
+
+**And the central godown is healthy.** `CGN` — the one branch actually typed as a godown —
+does not appear in the dead-stock list at all: 2,996 of its 3,548 item-rows have moved out,
+and it raised 2,604 transfer-outs. The originally reported concern, *items purchased into a
+central godown that are never distributed*, **is not happening at `CGN` in this tenant.**
+
+Real dead stock at genuine outlets totals roughly **₹600,000** across eight branches. Still
+worth a task. Not ₹17m.
+
+This is exactly why the detector must not diagnose: the same query, read without
+`branch_type`, would have sent someone hunting a warehouse that does not exist.
+
+### What the detectors do with it
+
+- **`BAKERY_BO`, control and null-typed branches** → never raise dead stock. Stock accumulating
+  where nothing is stocked is a **posting** finding (W13), routed to whoever owns purchase
+  configuration, and it says so.
+- **`BAKERY_CGN`** → dead stock means *bought and never distributed*. Owner-level. This is the
+  condition originally described; it is simply not firing today.
+- **`BAKERY_OUTLET`** → dead stock means *bought or transferred in and never sold*. Branch
+  manager, escalating on age and value.
+
+One more gap worth recording: `branch_type` is not perfectly maintained. `CANTEEN`,
+`SAVOURIES`, `SWEETS` and `PHANDB` are typed `BAKERY_OUTLET` but have zero purchases, zero
+sales and zero transfers. They are dormant, and a detector that treats them as trading outlets
+will raise tasks nobody owns. Either they need a `DORMANT` type, or detectors must require
+recent activity before raising anything. **The second is cheaper and needs no data cleanup** —
+prefer it.
+
+### A separate defect, still standing
 
 `CGN` has `SUM(qty_in) = 17,802,554,921,434` — 17.8 **trillion** units — with a median row of
-`0.00` and a single row at 8.9 trillion. That is not stock; it is a barcode or identifier
-written into a quantity column. Any valuation touching `CGN` is currently meaningless. This is
-a `DATA_QUALITY` insight in its own right, and it should be raised **before** anyone trusts a
-dead-stock number for that branch.
-
----
+`0.00` and a single row at 8.9 trillion. That is an identifier written into a quantity column.
+It did not affect the dead-stock finding above, which counts item-rows rather than magnitudes,
+but any **valuation** touching `CGN` is meaningless until it is fixed. `DataQualityRule` should
+raise it before anyone trusts a money figure for that branch.
 
 ## 3. Principles carried forward
 
@@ -126,15 +167,15 @@ The headline finding, and the reason this plan exists.
 | | |
 |---|---|
 | **W12** | Stock received and never distributed → branch manager, escalating to owner |
-| **W13** | Purchases booked to a non-stocking branch → owner *(only if `ACCOUNTS` is not physical)* |
+| **W13** | Purchases booked to a non-stocking branch (`BAKERY_BO`, control, null type) → owner |
 | **Rule** | `DeadStockRule` → `INVENTORY_RISK`, materiality = qty × derived rate |
 | **Gate** | Ranked list matches the SQL in §2 within rounding; every row priced or excluded, never assumed zero |
 
 Also ship `DataQualityRule` for the `CGN` magnitude problem — cheap, and it protects every
 number above it.
 
-**Depends on the owner answering the `ACCOUNTS` question.** If physical: W12 alone. If not:
-W13 leads and W12 applies only to real branches.
+**No longer blocked.** `branch_type` answers it: `ACCOUNTS` is `BAKERY_BO`, so W13 leads for
+that branch and W12 applies to `BAKERY_CGN` and `BAKERY_OUTLET` only.
 
 ### Phase B — The rules that already have data
 
@@ -198,7 +239,8 @@ Pick from the pilot's answer to: *which of these did you actually want to be tol
 
 | # | Risk | Mitigation |
 |---|---|---|
-| 1 | `ACCOUNTS` dead stock is a booking artefact, and W12 sends people to look for goods that do not exist | Answer the question in §2 **before** Phase A. Report the condition, never the diagnosis |
+| 1 | Dead stock at a back office sends people hunting goods that do not exist | **Resolved by `branch_type`.** `BAKERY_BO` routes to W13, never W12. Report the condition, never the diagnosis |
+| 1b | Dormant branches typed as outlets raise tasks nobody owns | Require recent activity before raising, rather than waiting for `branch_type` cleanup |
 | 2 | `CGN`'s corrupt quantities poison any valuation | `DataQualityRule` first; exclude implausible magnitudes from money figures rather than publishing them |
 | 3 | Too many tasks at once — nine new detectors could raise thousands | Phase A alone is 299 items at `ACCOUNTS`. **Cap tasks per sweep per branch**, rank by materiality, and let the rest wait |
 | 4 | A detector fires on a predicate nobody validated | Every detector ships with the real-data count it produces, in its commit message. W2's 51,272 false positives are the standing reminder |
@@ -209,10 +251,14 @@ Pick from the pilot's answer to: *which of these did you actually want to be tol
 
 ## 6. What to do first
 
-1. **Ask whether `ACCOUNTS` is a physical branch.** It decides Phase A's shape and costs nothing.
-2. **Ship `DataQualityRule` for `CGN`.** Small, and it protects every figure that follows.
-3. **Then Phase A.** ₹17m of untouched stock, every item priced, is the strongest case this
-   programme has for existing at all.
+1. **Ship `DataQualityRule` for `CGN`.** Small, and it protects every money figure that
+   follows.
+2. **Then Phase A**, reading `branch_type` — W13 for the ₹17m posting question at `ACCOUNTS`,
+   W12 for roughly ₹600,000 of genuine dead stock across eight outlets.
+3. **Decide whether the `ACCOUNTS` posting is intended.** If purchases are meant to be booked
+   to a back office and issued to outlets later, the design is fine and W13 should be tuned to
+   the backlog rather than the practice. If not, every stock figure derived from `ACCOUNTS` is
+   wrong and needs restating — which is a bigger job than this programme.
 
 Phases B–E follow the pilot's evidence rather than this document's ordering. The point of
 Phase A is to find out whether anyone acts on a task when they get one — and if they do not,
