@@ -48,9 +48,9 @@ rather than on effort.
 
 | # | Item | State |
 |---|---|---|
-| F1 | **Detection Phase C** — schedule `InsightSweep`, insight API, a screen | **Recommended next.** `InsightSweep` has no `@Scheduled` and no controller, so every insight rule written today writes to tables nobody reads and nothing runs. |
-| F2 | **Detection Phase B** — `MarginDecline`, `SalesDecline`, `PurchaseRateJump` (W8) | Blocked behind F1 in usefulness, not in code. W8 is nearly free now the `amount / qty` derivation exists. |
-| F3 | **Detection Phase D** — the real `AnthropicAiProvider` | Only `MockAiProvider` exists; nothing has ever called an API. Needs prompt-injection tests with hostile item names. |
+| F1 | ~~Detection Phase C~~ | **Done.** `InsightSweepScheduler` runs at 02:45, `InsightController` serves list/detail/dismiss, `InsightsPage` displays them. |
+| F2 | Detection Phase B — insight rules | **Partly done.** `SalesDeclineRule` and `PurchaseRateJumpRule` built. `MarginDeclineRule` is **blocked**: it needs `sales_dtl_cost`, which no local tenant has because V032–V043 were never applied here. Writing it blind against a table nobody can query is how the 51,272 and 4,795 false-positive predicates got written. |
+| F3 | ~~Detection Phase D~~ | **Done.** `AnthropicAiProvider` exists, off unless three switches are on, with injection and failure tests. No API call has ever been made. |
 | F4 | **Wire Product 360 layouts to the UI** | Phase 5 and 6 built the layout service and delegation token; the admin still holds layout in `useState`, so a dragged layout does not survive a reload. |
 | F5 | **Vendor 360** | Plan written (`docs/vendor-360/`). Four phases. Blocked on D5 for scope. |
 | F6 | **W3, W4, W6, W9, W11** | Validated as plausible; each needs its own predicate check before building. |
@@ -64,6 +64,19 @@ rather than on effort.
 
 ## 5. What I would do next
 
-**F1, Detection Phase C.** Everything in Phase A now produces tasks that reach people, because the task pipeline runs nightly. The insight pipeline does not run at all. Writing more rules before anything displays them repeats exactly the mistake that produced the current state: excellent plumbing, one rule, nothing visible.
+**Nothing, until the seven insights on the local screen have been read by somebody.**
+
+Phases A through D all landed in one session, and enabling the result exposed four defects that
+every test had passed: the sweep failed for every tenant, the summaries were identical, the
+identifying half was truncated away, and the rows were invisible because an `IN` list never
+matches `NULL`. Each was found by running it and looking, not by testing it.
+
+The question that decides everything after this is whether **COOKING GAS +49% (₹134,031)** and
+**EGG +31% (₹132,480)** are conversations worth raising. If the answer is "we knew already", the
+fix is a threshold rather than another rule — and building F6 first would be the wrong response,
+exactly as this document already says about Phase A.
+
+**Also outstanding: 23 commits are unpushed** across the admin and server repos. Nobody but the
+author has seen any of it.
 
 **I1 is shelved** at the owner's request and is not on the critical path.
