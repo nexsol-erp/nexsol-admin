@@ -25,7 +25,7 @@ rather than on effort.
 
 | # | Item | Who decides | Notes |
 |---|---|---|---|
-| I1 | **`aws-infra` is not a git repository** | Platform | It defines the VPC, RDS, CloudFront and security groups, and it has no history and no backup. The edits made for Product 360 are the only copy on disk. This is the highest-risk item on this page and the cheapest to fix. |
+| I1 | **`aws-infra` is not a git repository** | Platform | **Shelved by the owner on 2026-08-31 — do not raise again until they ask.** For the record: it defines the VPC, RDS, CloudFront and security groups, has no history and no backup, and the Product 360 edits are the only copy on disk. |
 | I2 | **Terraform and CI describe different production** | Platform | `aws-infra/*.tf` says S3 + CloudFront; `deploy.yml` scps the build to `/var/www/html` and reloads nginx, and never touches S3. One of them is not what runs. `DEPLOYMENT.md` now documents nginx as the real topology (D111) with the discrepancy recorded (D112). |
 | I3 | **Both `main` branches are dead** | Repo owner | 506 commits behind. Both deploy workflows trigger on push to `main`, so **as written they would never fire**. Raised three times, still unanswered. |
 | I4 | **`deploy_server.yml` builds with `-DskipTests`** | Engineering | 224 passing tests do not gate a deploy. The new `deploy_mindmap.yml` deliberately does run them. |
@@ -66,4 +66,4 @@ rather than on effort.
 
 **F1, Detection Phase C.** Everything in Phase A now produces tasks that reach people, because the task pipeline runs nightly. The insight pipeline does not run at all. Writing more rules before anything displays them repeats exactly the mistake that produced the current state: excellent plumbing, one rule, nothing visible.
 
-**And I1, today.** Putting `aws-infra` under version control takes minutes and removes the only single-point-of-failure on this page.
+**I1 is shelved** at the owner's request and is not on the critical path.
