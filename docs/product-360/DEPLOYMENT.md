@@ -1,29 +1,41 @@
 # Deploying Product 360
 
-The production topology is **CloudFront + S3 + EC2 + RDS**, not Docker Compose — see
-`aws-infra/DEPLOYMENT-NOTES.md`. Compose is used for local and integration work only.
+The production topology is **nginx on the deploy host** — the SPA served from
+`/var/www/html`, the Spring Boot JAR run under systemd, both put there over SSH by the
+workflows in `.github/workflows/`. Product 360 adds a third service the same way.
 
-That matters for the single-origin requirement, because the single origin already exists.
-CloudFront fronts three origins today:
+> **A discrepancy worth knowing about.** `aws-infra/*.tf` describes a different setup —
+> CloudFront with an S3 origin for the SPA and EC2 origins for the APIs — and
+> `aws-infra/DEPLOYMENT-NOTES.md` documents it as *the* architecture. But no workflow
+> touches S3 or CloudFront: `deploy.yml` scps the React build to `/var/www/html` and
+> reloads nginx. **The Terraform is not what ships.** The `/mindmap-api/*` CloudFront
+> behaviour added under `enable_product360` is therefore for an environment that may not
+> exist; it is left in place, gated off, but the nginx route below is the real one.
+> Someone should reconcile the two — that is a decision about your infrastructure, not
+> about this feature.
+
+The single origin is the deploy host's nginx. Everything arrives on one hostname:
 
 ```
-/           → S3            (React SPA)
-/api/*      → EC2:8080      (Spring Boot)
-/ai/*       → EC2:8001      (AI forecasting)
+/                → /var/www/html          (React SPA)
+/api/            → 127.0.0.1:8080         (Spring Boot)
+/mindmap-api/    → 127.0.0.1:8000         (layout and note API)  ← added
 ```
 
-Product 360 adds a fourth rather than a second hostname:
+Same-origin is what makes the layout call simple: no preflight, no CORS policy to get
+wrong, and the `Authorization` header travels without special handling. A second hostname
+would mean configuring CORS correctly forever; this removes the class of mistake instead.
 
-```
-/mindmap-api/*  → EC2:8000  (layout and note API)
-```
+The service binds `127.0.0.1`, so it is reachable only through nginx. Binding `0.0.0.0` on
+a public-subnet host would put the layout API straight onto the internet with the
+delegation token as the only thing in front of it.
 
-A fourth behaviour on the same distribution is what makes the layout call same-origin: no
-preflight, no CORS policy to get wrong, and the `Authorization` header travels without special
-handling. A second hostname would mean configuring CORS correctly forever; this removes the
-class of mistake instead.
+Host setup, installed once and not by CI — a deploy that could rewrite its own unit file
+could change how the service runs without anyone reviewing it:
 
----
+- `mind-map/deploy/mindmap-api.service` → `/etc/systemd/system/`
+- `mind-map/deploy/nginx-mindmap-api.conf` → included in the existing server block
+- `/etc/mindmap/mindmap.env`, root-owned, mode 600, holding the settings in §3
 
 ## 1. Build order
 
@@ -37,7 +49,10 @@ Bottom-up, because each step's output is the next step's input:
 4. **ERP backend** — `JAVA_HOME=<jdk-17> mvn clean package`. **`clean` is not optional**: a stale
    `target/` produces `BUILD SUCCESS` while running zero tests, and JDK 21 fails Lombok outright
    with `NoSuchFieldError: JCTree$JCImport.qualid`. Read the test count, not the banner.
-5. **Mind-map API** — build the image or update the EC2 checkout.
+5. **Mind-map API** — pushed by `.github/workflows/deploy_mindmap.yml`, which installs into a
+   venv on the host, runs `alembic upgrade head`, restarts `mindmap-api.service` and then polls
+   `/api/health` until it answers. `systemctl restart` succeeds when the unit starts, not when the
+   app is serving, so without that poll a service that boots and immediately crashes deploys green.
 
 ---
 
@@ -167,7 +182,7 @@ it an ambient credential it must not have.
 2. Deploy the mind-map API in `AUTH_MODE=delegated` with the public key.
 3. Deploy the ERP backend with `product360.enabled=false` — the code present, the feature off.
 4. Deploy the admin build.
-5. Apply the Terraform with `enable_product360 = true` and confirm `/mindmap-api/` routes.
+5. Add the nginx `location` block and reload; confirm `/mindmap-api/` routes.
 6. Run the interop check against the deployed pair.
 7. **Only then** enable the tenant flag and grant the menu entry — `PILOT.md`.
 

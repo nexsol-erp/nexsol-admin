@@ -216,7 +216,7 @@ interoperate (D103).
 
 | ID | Decision | Status | Rationale | Date |
 |---|---|---|---|---|
-| **D101** | Production single origin is a **fourth CloudFront behaviour**, not an nginx gateway | LOCKED | CloudFront already fronts three origins. A fourth behaviour makes the layout call same-origin — no preflight, no CORS policy to get wrong. The nginx gateway exists for local and staging only | 2026-08-31 |
+| **D101** | Production single origin is a **new `location` in the deploy host's nginx** | **SUPERSEDED → D111** | Originally recorded as a fourth CloudFront behaviour, from reading `aws-infra/*.tf`. Corrected once the CI workflows were read: they scp to a host and reload nginx, and never touch S3 or CloudFront | 2026-08-31 |
 | **D102** | The delegation endpoint derives `tenant` and `sub` from the **caller's own session**, never from parameters | LOCKED | Accepting them as parameters makes it an endpoint that mints a token for anybody you can name, which is the whole attack it exists to avoid | 2026-08-31 |
 | **D103** | Cross-language interop is **proved by a script**, not inferred from unit tests | LOCKED | Each side's tests prove that side self-consistent. RS256 padding, audience-as-array and the `exp`/`iat` window are all places two JWT libraries differ while each is internally correct. `scripts/verify-delegation-interop.sh` mints in JJWT and verifies in PyJWT | 2026-08-31 |
 | **D104** | A valid token for **another tenant** returns 200 with an empty layout, not 403 | LOCKED | It is a legitimate caller from another company, not a forgery. Rejecting it would be wrong; what matters is it sees nothing of anyone else's, which is enforced by `(tenant, user)` ownership and was verified at the row level | 2026-08-31 |
@@ -227,7 +227,10 @@ interoperate (D103).
 | **D109** | The navigation audit endpoint **validates the route key against the allow-list** and stores nothing | LOCKED | A log line is read later by someone deciding whether something is wrong; a log an attacker can write is a log that can mislead them. Nothing is stored because this is an audit record, not analytics | 2026-08-31 |
 | **D110** | Rollback step 4 carries an **ordering rule**: stop new → downgrade → start old | LOCKED | Exposed by rehearsal. Downgrading under a running new release corrupts nothing but 503s every request, because the new `User` model maps a column the downgrade removed. The previous release on the downgraded schema was verified serving real data | 2026-08-31 |
 
-**Regression gate held:** 131 Java tests and 115 Python tests pass; admin lint unchanged at 142
+| **D111** | The mind-map service deploys **like the Spring Boot service** — scp, systemd, nginx — and its workflow **runs tests**, unlike `deploy_server.yml` | LOCKED | Matching the existing pattern beats introducing a second deployment style. Tests gate the deploy because the service holds one tenant's data behind a token check, and a deploy that cannot fail will eventually ship a broken one | 2026-08-31 |
+| **D112** | `aws-infra` describes a topology **nothing deploys to**, and this is reported rather than resolved | OPEN | Terraform says S3 + CloudFront; CI says `/var/www/html` + nginx. Reconciling them is a decision about the infrastructure, not about this feature. The CloudFront behaviour stays, gated off | 2026-08-31 |
+
+**Regression gate held:** 141 Java tests and 115 Python tests pass; admin lint unchanged at 142
 warnings. Rollback step 4 rehearsed twice against a database holding real standalone content.
 
 **Not done, and why:** the ERP services have no Dockerfile in either repo — they deploy to S3 and
