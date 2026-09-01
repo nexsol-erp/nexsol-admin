@@ -8,8 +8,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;600&display=swap">
 <style>
-  /* Reset the artifact host supplies at publish time. Inlined so this file also
-     renders correctly when opened straight from disk. */
   html { color-scheme: light dark; }
   body { margin: 0; }
   img { max-width: 100%; }
@@ -953,10 +951,12 @@ ai-branch-manager.cron=0 */10 * * * *   <span class="c"># every 10 min — TESTI
         <h4>AI training runs nightly against a tenant that is not on this server</h4>
         <p>
           <code class="inl">AiTrainingScheduler</code> holds its tenant list in code —
-          <code class="inl">List.of("7559004113a")</code> — and that database does not exist here.
-          It has no enable flag and no cron property either, so it cannot be switched off or
-          retargeted from configuration; it will fail every night at 02:05 and only shows up in the
-          log. Worth fixing in code rather than leaving as recurring noise.
+          <code class="inl">List.of("7559004113a")</code>. That database does exist, but it holds
+          <strong>zero items and zero sales</strong> — it is one of roughly twenty abandoned or
+          half-provisioned tenants on this server, against a single live one. So the job runs every
+          night at 02:05 and trains on nothing. It has no enable flag and no cron property either,
+          so it cannot be switched off or retargeted from configuration. Worth fixing in code
+          rather than leaving as recurring noise.
         </p>
       </div>
 
