@@ -55,6 +55,7 @@ rather than on effort.
 | F4 | **Wire Product 360 layouts to the UI** | Phase 5 and 6 built the layout service and delegation token; the admin still holds layout in `useState`, so a dragged layout does not survive a reload. |
 | F5 | **Vendor 360** | Plan written (`docs/vendor-360/`). Four phases. Blocked on D5 for scope. |
 | F6 | **W3, W4, W6, W9, W11** | Validated as plausible; each needs its own predicate check before building. |
+| F7 | **Daily Juice Sales and Cost Insight Report** | Ops first, then Engineering | Per branch/date/juice: quantity sold, revenue, expected raw-material consumption from the BOM, material cost at weighted-average of transfer and purchase rates, cost per juice, margin, expected yield vs actual, and the unexplained difference. Plan in `docs/juice-cost/PLAN.md`. **Blocked on data, not effort:** only 2 of 12 selling juice items have a recipe — FRESH LIME JUICE and SHARJA SHAKE do, while PINEAPPLE (₹2.19m), WATERMELON (₹1.19m), ORANGE, MOOSAMBI and five others do not, so expected consumption cannot be computed for them. Also: wastage is captured nowhere in the schema, so the residual can only be reported as an unexplained difference; and no juice has ever been recorded through production_execution (1,769 runs, none a juice), so actual consumption is never known and the report is a reconciliation against stock movement rather than against production. |
 
 **Not building, and why:**
 
