@@ -18,6 +18,7 @@ rather than on effort.
 | D4 | **The ₹17m at `ACCOUNTS`** | Owner + Finance | Accumulated under the old purchase mode, where stock notionally lands at the accounting branch. Not a warehouse, so not dead stock — but every stock figure derived from `ACCOUNTS` is wrong until it is restated. A one-off decision, deliberately not a nightly task. |
 | D5 | **Supplier Aging shows nothing** | Owner | `AgingAnalysisService` reads `payment_allocation`, which has **0 rows**, and no ledger account carries a `supplier_id`. Either payments are recorded somewhere else, or the payables module is unused. This also decides whether Vendor 360 can ever answer "what do we owe them". |
 | D6 | **V043 grosses up nothing for tax** | Finance | Now confirmed with arithmetic, not suspicion: where `purchase_rate` exists, `amount = qty × purchase_rate × (1 + tax_rate/100)` on **every** row. So `purchase_rate` is pre-tax while sales are tax-inclusive, and comparing them understates cost. |
+| D7 | **The franchise stock round-trip does not close** | Owner + Engineering | `FranchiseStockReceiptConsumer` listens for a franchise confirming receipt and updates `franchise_stock_transfer.status`. That table has **0 rows** on the pilot tenant: transfers to `PTHR`, `PTPURAM` and `MLSR` are written to `stock_trans_out_hdr` like any other branch, and nothing populates the franchise table. So the consumer updates rows that do not exist. Consequence: a franchise acceptance never sets `is_processed` on the outbound header, so the parent still shows the transfer as outstanding and its W2 task never closes — the acceptance is invisible to the side that sent the stock. Decide whether that Kafka path is meant to be live; until then W2 resolution works for company branches only. |
 
 ---
 
@@ -28,7 +29,7 @@ rather than on effort.
 | I1 | **`aws-infra` is not a git repository** | Platform | **Shelved by the owner on 2026-08-31 — do not raise again until they ask.** For the record: it defines the VPC, RDS, CloudFront and security groups, has no history and no backup, and the Product 360 edits are the only copy on disk. |
 | I2 | **Terraform and CI describe different production** | Platform | `aws-infra/*.tf` says S3 + CloudFront; `deploy.yml` scps the build to `/var/www/html` and reloads nginx, and never touches S3. One of them is not what runs. `DEPLOYMENT.md` now documents nginx as the real topology (D111) with the discrepancy recorded (D112). |
 | I3 | **Both `main` branches are dead** | Repo owner | 506 commits behind. Both deploy workflows trigger on push to `main`, so **as written they would never fire**. Raised three times, still unanswered. |
-| I4 | **`deploy_server.yml` builds with `-DskipTests`** | Engineering | 224 passing tests do not gate a deploy. The new `deploy_mindmap.yml` deliberately does run them. |
+| I4 | **`deploy_server.yml` builds with `-DskipTests`** | Engineering | 273 passing tests do not gate a deploy. The new `deploy_mindmap.yml` deliberately does run them. **No longer hypothetical:** on 2026-09-01 a change to `SalesDeclineRule` left 9 tests failing with an NPE on `main`, and the deploy went green and shipped it. Found only by running the suite by hand. |
 | I5 | **`p360_verify` does not self-heal** | Engineering | An interrupted test run leaves `ai_insight` and `task_workflow_launch` rows behind, and two unrelated tests then fail confusingly. Cost real time once already. |
 
 ---
@@ -64,19 +65,23 @@ rather than on effort.
 
 ## 5. What I would do next
 
-**Nothing, until the seven insights on the local screen have been read by somebody.**
+**Read the 77 open tasks before building anything else.**
 
-Phases A through D all landed in one session, and enabling the result exposed four defects that
-every test had passed: the sweep failed for every tenant, the summaries were identical, the
-identifying half was truncated away, and the rows were invisible because an `IN` list never
-matches `NULL`. Each was found by running it and looking, not by testing it.
+Insights and task workflows are both live on the pilot tenant now. The sweep produces 68
+insights (14 CRITICAL), and all five detectors launch: W1 12, W2 44, W12 14, W13 7, capped
+per branch and deduplicated through the ledger. Getting there exposed a run of defects that
+every test had passed - the assignee resolver never resolved anybody, the engine never
+interpolated task names so 110 tasks read literally `${title}`, and a `BPMNEdge`-less diagram
+made someone redraw connectors that already existed and broke W2 outright. Each was found by
+running it and looking.
 
-The question that decides everything after this is whether **COOKING GAS +49% (₹134,031)** and
-**EGG +31% (₹132,480)** are conversations worth raising. If the answer is "we knew already", the
-fix is a threshold rather than another rule — and building F6 first would be the wrong response,
-exactly as this document already says about Phase A.
+So the question is no longer whether the machinery works. It is whether the work it creates
+is worth someone's morning. 44 of the 77 are W2 "confirm receipt of transfer", and three of
+those belong to franchise branches that cannot act on them here (D7). If the answer is
+"these are not our priority", the fix is thresholds and exclusions, not more detectors.
 
-**Also outstanding: 23 commits are unpushed** across the admin and server repos. Nobody but the
-author has seen any of it.
+**Two things are unfinished rather than undecided:** `task-workflow.cron` is still on a
+5-minute test schedule and should return to `0 15 2 * * *`, and detectors do not yet exclude
+franchise branches the way the insight rules now do.
 
 **I1 is shelved** at the owner's request and is not on the critical path.
