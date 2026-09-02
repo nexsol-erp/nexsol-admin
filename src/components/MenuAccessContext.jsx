@@ -26,7 +26,15 @@ export const MenuAccessProvider = ({ roles = [], children }) => {
   const [fetchTrigger, setFetchTrigger] = useState(0);
 
   useEffect(() => {
-    if (!roles || roles.length === 0) return;
+    // Resolve to "no assignments" rather than leaving the state null. Consumers read null
+    // as "not answered yet", and RequireWorkflowMenuAccess holds the frame while it is null;
+    // bailing out early here would hold that frame forever. The visible outcome is unchanged
+    // either way - with no roles, usingAssignments is false in both cases and the fallback
+    // role check denies every entry.
+    if (!roles || roles.length === 0) {
+      setAllowedMenuNames(new Set());
+      return;
+    }
     const tenancyId = localStorage.getItem("tenancyId");
     const token = localStorage.getItem("jwtToken");
     fetch(`/api/${tenancyId}/role-menus/accessible-menus`, {
