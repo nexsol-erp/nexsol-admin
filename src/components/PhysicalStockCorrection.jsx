@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { checkQuantity, firstQuantityError } from "../utils/quantityCheck";
 import {
   Box,
   Button,
@@ -182,6 +183,15 @@ const PhysicalStockCorrection = () => {
       return;
     }
 
+    // Stop a scanned barcode reaching the database. V047's CHECK constraint catches it too,
+    // but only after the whole form is filled in and only as a raw constraint violation -
+    // which is how seven unrecoverable rows got into physical_stock_mst in the first place.
+    const bad = firstQuantityError(validRows, (r) => r.actualQty);
+    if (bad) {
+      setMessage({ text: `Row ${bad.index + 1}: ${bad.error}`, severity: "error" });
+      return;
+    }
+
     setLoading(true);
     try {
       const requests = validRows.map(row => {
@@ -270,7 +280,23 @@ const PhysicalStockCorrection = () => {
                   </TableCell>
                   <TableCell align="right">{row.systemQty.toFixed(3)}</TableCell>
                   <TableCell align="right">
-                    <TextField type="number" size="small" value={row.actualQty} onChange={(e) => handleActualQtyChange(row.id, e.target.value)} sx={{ width: 100 }} />
+                    {(() => {
+                      // Say it while the cursor is still in the field. The database
+                      // constraint would catch a barcode too, but only on save and only as
+                      // a raw violation nobody can act on.
+                      const q = row.actualQty === "" ? null : checkQuantity(row.actualQty);
+                      return (
+                        <TextField
+                          type="number"
+                          size="small"
+                          value={row.actualQty}
+                          onChange={(e) => handleActualQtyChange(row.id, e.target.value)}
+                          error={Boolean(q && !q.ok)}
+                          helperText={q ? q.error || q.warning || "" : ""}
+                          sx={{ width: q && (q.error || q.warning) ? 220 : 100 }}
+                        />
+                      );
+                    })()}
                   </TableCell>
                   <TableCell align="right">{row.difference.toFixed(3)}</TableCell>
                   <TableCell align="center">
