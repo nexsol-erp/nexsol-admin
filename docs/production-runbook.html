@@ -948,15 +948,24 @@ ai-branch-manager.cron=0 */10 * * * *   <span class="c"># every 10 min — TESTI
       </div>
 
       <div class="trap crit">
-        <h4>AI training runs nightly against a tenant that is not on this server</h4>
+        <h4>AI training runs nightly against a weighbridge database, not an ERP tenant</h4>
         <p>
           <code class="inl">AiTrainingScheduler</code> holds its tenant list in code —
-          <code class="inl">List.of("7559004113a")</code>. That database does exist, but it holds
-          <strong>zero items and zero sales</strong> — it is one of roughly twenty abandoned or
-          half-provisioned tenants on this server, against a single live one. So the job runs every
-          night at 02:05 and trains on nothing. It has no enable flag and no cron property either,
-          so it cannot be switched off or retargeted from configuration. Worth fixing in code
-          rather than leaving as recurring noise.
+          <code class="inl">List.of("7559004113a")</code>. That database exists and is actively in
+          use, but it is a <strong>weighbridge database, not an ERP tenant</strong>. Its payload
+          lives in <code class="inl">wb_weights</code>, <code class="inl">wb_engage</code> and four
+          other <code class="inl">wb_*</code> tables — around 39,500 rows, still growing daily.
+        </p>
+        <p>
+          It also carries a full but empty ERP skeleton, so <code class="inl">item_mst</code> and
+          <code class="inl">sales_trans_hdr</code> are both zero. The job therefore runs every night
+          at 02:05 and trains on nothing. This is not an abandoned tenant that needs data — it is
+          the wrong system, and the fix is to repoint the scheduler at a real ERP tenant. It has no
+          enable flag and no cron property, so neither can be done from configuration.
+        </p>
+        <p>
+          <strong>Do not treat this database as disposable.</strong> Its emptiness is confined to
+          the ERP tables; the weighbridge tables hold live data.
         </p>
       </div>
 
