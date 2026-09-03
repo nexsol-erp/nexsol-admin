@@ -97,6 +97,8 @@ import VersionManagementPage from "./components/VersionManagementPage";
 import DayEndReport from "./components/DayEndReport";
 import BranchPricePage from "./components/BranchPricePage";
 import PhysicalStockCorrection from "./components/PhysicalStockCorrection";
+import WastageEntry from "./components/WastageEntry";
+import WastageReport from "./components/WastageReport";
 import ProductionDefPage from "./components/ProductionDefPage";
 import ProductionPlanningPage from "./components/ProductionPlanningPage";
 import ProductionExecutionPage from "./components/ProductionExecutionPage";
@@ -235,6 +237,8 @@ const ROUTE_ORDER = [
   { key: "Tax Update Manager",               path: "/tax-update-manager" },
   { key: "Tax Update Preview",               path: "/tax-update-preview" },
   { key: "Physical Stock Correction",        path: "/physical-stock-correction" },
+  { key: "Wastage Entry",                    path: "/wastage-entry" },
+  { key: "Wastage Report",                   path: "/wastage-report" },
   { key: "Sales Re Print",                   path: "/salessummaryreport" },
   { key: "Sales Report",                     path: "/sales" },
   { key: "Sales Tax Summary",                path: "/salestaxsummary" },
@@ -594,6 +598,14 @@ function HideOnScroll({ children }) {
 <Route
   path="/physical-stock-correction"
   element={<PhysicalStockCorrection />}
+/>
+<Route
+  path="/wastage-entry"
+  element={<RequireWorkflowMenuAccess menuKey="Wastage Entry"><WastageEntry /></RequireWorkflowMenuAccess>}
+/>
+<Route
+  path="/wastage-report"
+  element={<RequireWorkflowMenuAccess menuKey="Wastage Report"><WastageReport /></RequireWorkflowMenuAccess>}
 />
 <Route path="/production-def" element={<ProductionDefPage />} />
 <Route path="/production-planning" element={<ProductionPlanningPage />} />
