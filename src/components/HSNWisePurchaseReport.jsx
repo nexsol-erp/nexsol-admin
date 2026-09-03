@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TextField, Button,
+  FormControl, InputLabel, Select, MenuItem, Alert,
 } from '@mui/material';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -15,6 +16,17 @@ const HSNWisePurchaseReport = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  /**
+   * Which date the range filters on.
+   *
+   * VOUCHER is when the purchase was entered in the ERP. SUPPLIER_INVOICE is the date on the
+   * supplier's own invoice, which is the basis a GST return is filed on. They are not
+   * interchangeable: on this tenant 9,202 of 10,729 purchases carry different dates, and for
+   * August 2026 the two bases differ by about 17 lakh.
+   */
+  const [dateBasis, setDateBasis] = useState('VOUCHER');
+  const [excluded, setExcluded] = useState(0);
+
   const fetchReportData = async () => {
     setLoading(true);
     setError(null);
@@ -23,16 +35,20 @@ const HSNWisePurchaseReport = () => {
     const tenancyId = localStorage.getItem('tenancyId');
 
     try {
-      const response = await fetch(`/api/${tenancyId}/reports/purchase/hsn?fromDate=${fromDate}&toDate=${toDate}`, {
-        headers: {
-          Authorization: `Bearer ${jwtToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await fetch(
+        `/api/${tenancyId}/reports/purchase/hsn?fromDate=${fromDate}&toDate=${toDate}&dateBasis=${dateBasis}`, {
+          headers: {
+            Authorization: `Bearer ${jwtToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
       if (!response.ok) throw new Error('Failed to fetch report data');
 
       const data = await response.json();
-      setReportData(data);
+      // The endpoint returns { rows, dateBasis, excludedMissingSupplierDate }. The array
+      // fallback keeps this working against an older server that still returns a bare list.
+      setReportData(Array.isArray(data) ? data : (data.rows || []));
+      setExcluded(Array.isArray(data) ? 0 : (data.excludedMissingSupplierDate || 0));
     } catch (error) {
       setError(error.message);
     } finally {
@@ -51,7 +67,8 @@ const HSNWisePurchaseReport = () => {
 
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
-    saveAs(blob, `HSN_Purchase_Report_${fromDate}_to_${toDate}.xlsx`);
+    const basisTag = dateBasis === 'SUPPLIER_INVOICE' ? 'SupplierInvoiceDate' : 'VoucherDate';
+    saveAs(blob, `HSN_Purchase_Report_${basisTag}_${fromDate}_to_${toDate}.xlsx`);
   };
 
   // Calculate the total amount
@@ -75,6 +92,18 @@ const HSNWisePurchaseReport = () => {
         InputLabelProps={{ shrink: true }}
         sx={{ marginRight: 2 }}
       />
+      <FormControl sx={{ marginRight: 2, minWidth: 220 }}>
+        <InputLabel id="hsn-date-basis-label">Date Basis</InputLabel>
+        <Select
+          labelId="hsn-date-basis-label"
+          label="Date Basis"
+          value={dateBasis}
+          onChange={(e) => setDateBasis(e.target.value)}
+        >
+          <MenuItem value="VOUCHER">Voucher Date</MenuItem>
+          <MenuItem value="SUPPLIER_INVOICE">Supplier Invoice Date</MenuItem>
+        </Select>
+      </FormControl>
       <Button variant="contained" color="primary" onClick={fetchReportData} sx={{ mr: 2 }}>
         Fetch Report
       </Button>
@@ -84,6 +113,17 @@ const HSNWisePurchaseReport = () => {
 
       {loading && <p>Loading...</p>}
       {error && <p style={{ color: 'red' }}>{error}</p>}
+
+      {/* Said plainly rather than left as a quietly smaller total. A purchase with no
+          supplier invoice date cannot be placed on that basis, and falling back to the
+          voucher date would produce a figure that is neither basis. */}
+      {excluded > 0 && dateBasis === 'SUPPLIER_INVOICE' && (
+        <Alert severity="warning" sx={{ marginTop: 2 }}>
+          {excluded} purchase{excluded === 1 ? '' : 's'} in this range {excluded === 1 ? 'has' : 'have'} no
+          supplier invoice date and {excluded === 1 ? 'is' : 'are'} not included. Switch to Voucher Date to see
+          {excluded === 1 ? ' it' : ' them'}.
+        </Alert>
+      )}
 
       {reportData.length > 0 && (
         <TableContainer component={Paper} sx={{ marginTop: 3 }}>
