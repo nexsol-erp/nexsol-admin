@@ -26,7 +26,6 @@ import {
   Chip,
 } from "@mui/material";
 import { Delete as DeleteIcon, Add as AddIcon } from "@mui/icons-material";
-import { hasCache, loadAllItemsToCache, getItemsFromCache } from "./itemCache";
 
 /**
  * Wastage entry - backlog #46 / #48.
@@ -69,7 +68,9 @@ const WastageEntry = () => {
   const [saving, setSaving] = useState(false);
   const [voucher, setVoucher] = useState(null);
   const [message, setMessage] = useState({ text: "", severity: "info" });
-  const [cacheStatus, setCacheStatus] = useState({ loaded: false, loading: false });
+  const [itemQuery, setItemQuery] = useState("");
+  const [itemLoading, setItemLoading] = useState(false);
+  const [itemError, setItemError] = useState("");
 
   /**
    * One id per voucher being entered, held for the whole of that voucher's life and only
@@ -139,23 +140,38 @@ const WastageEntry = () => {
     };
   }, [tenancyId, auth, allowedBranches, t]);
 
+  /**
+   * Items are searched on the server as the user types, rather than loaded wholesale into a
+   * localStorage cache.
+   *
+   * The first version used the shared POS item cache. It shipped with an empty picker,
+   * because that cache is a single localStorage key holding the entire catalogue - thousands
+   * of items - and every way it can fail (quota exceeded, never populated, cleared) surfaced
+   * here as a silent empty list with no error and no way to retry.
+   *
+   * /items/search pages on the server, so the picker cannot be defeated by catalogue size and
+   * always reflects the current catalogue. A failure is shown rather than swallowed.
+   */
   useEffect(() => {
-    (async () => {
-      if (await hasCache()) {
-        setItems((await getItemsFromCache()) || []);
-        setCacheStatus({ loaded: true, loading: false });
-      } else {
-        setCacheStatus({ loaded: false, loading: true });
-        try {
-          await loadAllItemsToCache({});
-          setItems((await getItemsFromCache()) || []);
-          setCacheStatus({ loaded: true, loading: false });
-        } catch {
-          setCacheStatus({ loaded: false, loading: false });
-        }
+    const q = itemQuery.trim();
+    const timer = setTimeout(async () => {
+      setItemLoading(true);
+      setItemError("");
+      try {
+        const res = await axios.get(`/api/${tenancyId}/items/search`, {
+          ...auth,
+          params: { q, page: 0, size: 25 },
+        });
+        setItems(res.data?.content || []);
+      } catch (err) {
+        setItems([]);
+        setItemError(t("Could not search items."));
+      } finally {
+        setItemLoading(false);
       }
-    })();
-  }, []);
+    }, 300); // debounce: one request per pause, not per keystroke
+    return () => clearTimeout(timer);
+  }, [itemQuery, tenancyId, auth, t]);
 
   const selectedReason = useMemo(
     () => reasons.find((r) => r.code === reasonCode),
@@ -374,15 +390,39 @@ const WastageEntry = () => {
                       size="small"
                       options={items}
                       value={row.selectedItem}
+                      loading={itemLoading}
                       onChange={(_, v) => setRow(row.key, { selectedItem: v })}
+                      onInputChange={(_, v, why) => {
+                        // Only a typed query drives a search. "reset" fires when a value is
+                        // picked, and re-searching on it would replace the option list with
+                        // results for the item just chosen.
+                        if (why === "input") setItemQuery(v);
+                      }}
+                      // The server has already filtered; filtering again on the client would
+                      // hide results whose match is in a field the label does not show.
+                      filterOptions={(x) => x}
+                      noOptionsText={
+                        itemError || (itemQuery ? t("No items match") : t("Type to search items"))
+                      }
                       getOptionLabel={(o) =>
-                        o ? `${o.itemName || o.item_name || ""} (${o.itemCode || o.item_code || ""})` : ""
+                        o ? `${o.itemName || ""}${o.itemCode ? ` (${o.itemCode})` : ""}` : ""
                       }
-                      isOptionEqualToValue={(o, v) =>
-                        (o.itemId || o.item_id) === (v?.itemId || v?.item_id)
-                      }
+                      isOptionEqualToValue={(o, v) => o.itemId === v?.itemId}
                       renderInput={(params) => (
-                        <TextField {...params} placeholder={t("Search item")} />
+                        <TextField
+                          {...params}
+                          placeholder={t("Search item")}
+                          error={Boolean(itemError)}
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {itemLoading ? <CircularProgress size={16} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
                       )}
                     />
                   </TableCell>
@@ -472,9 +512,9 @@ const WastageEntry = () => {
             {voucher.voucher_number} — {voucher.status}
           </Typography>
         )}
-        {cacheStatus.loading && (
-          <Typography variant="body2" color="text.secondary">
-            {t("Loading items…")}
+        {itemError && (
+          <Typography variant="body2" color="error">
+            {itemError}
           </Typography>
         )}
       </Stack>
