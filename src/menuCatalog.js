@@ -104,6 +104,8 @@ export const MENU_TREE = [
     roles: ["admin", "manager"], hasSubmenu: true,
     submenu: [
       { menuKey: "Physical Stock Correction", label: "Physical Stock Correction", link: "/physical-stock-correction", roles: ["admin", "manager"] },
+      { menuKey: "Wastage Entry", label: "Wastage Entry", link: "/wastage-entry", roles: ["admin", "manager", "user"] },
+      { menuKey: "Wastage Report", label: "Wastage Report", link: "/wastage-report", roles: ["admin", "manager"] },
     ],
   },
 
