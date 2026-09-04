@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Alert,
   Autocomplete,
@@ -10,6 +10,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   FormControl,
   FormControlLabel,
   Grid,
@@ -24,12 +25,14 @@ import {
   Select,
   Snackbar,
   Stack,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  Tabs,
   TextField,
   Tooltip,
   Typography,
@@ -49,6 +52,32 @@ import { useSearchParams } from "react-router-dom";
 function fmtDate(dt) {
   if (!dt) return "";
   return new Date(dt).toLocaleDateString();
+}
+
+/**
+ * One label/value pair in the collapsed invoice strip.
+ *
+ * A missing required value reads as "Not set" in warning colour rather than as an empty gap.
+ * The whole point of collapsing the header is that you stop looking at it, so the one job
+ * left to the strip is to say when something still needs filling in.
+ */
+function SummaryItem({ label, value, missing, accent }) {
+  return (
+    <Stack spacing={0} sx={{ minWidth: 0 }}>
+      <Typography variant="caption" color="text.secondary" lineHeight={1.2}>
+        {label}
+      </Typography>
+      <Typography
+        variant="body2"
+        fontWeight={500}
+        lineHeight={1.3}
+        noWrap
+        color={missing ? "warning.main" : accent ? "primary.main" : "text.primary"}
+      >
+        {value || (missing ? "Not set" : "\u2014")}
+      </Typography>
+    </Stack>
+  );
 }
 
 const DRAFT_KEY = "purchase_drafts";
@@ -201,6 +230,18 @@ export default function PurchaseEntryForm() {
 
   const [searchParams] = useSearchParams();
   const deepLinkApplied = useRef(false);
+
+  // "items" | "invoice". Items is the default because it is where the work is: the invoice
+  // fields are filled once per bill, the item loop runs a few dozen times.
+  const [tab, setTab] = useState("items");
+
+  // Branch code first, then the name. Names are not unique across branches on production,
+  // so the code is the part that identifies one.
+  const branchLabel = useMemo(() => {
+    const b = branches.find((x) => x.branchCode === selectedBranch);
+    if (!b) return selectedBranch || "";
+    return b.branchName ? `${b.branchCode} \u2014 ${b.branchName}` : b.branchCode;
+  }, [branches, selectedBranch]);
 
   // Edit mode
   const [editingId, setEditingId] = useState(null);
@@ -592,10 +633,14 @@ export default function PurchaseEntryForm() {
       supplierInvNo: !supplierInvNo.trim(),
     };
     if (!selectedBranch) {
+      // Without this the message names a field that is not on screen, because the field
+      // moved to the other tab. Switching first is what keeps the error actionable.
+      setTab("invoice");
       notify("Please select a branch before saving", "error");
       return;
     }
     if (errs.supplier || errs.supplierInvNo) {
+      setTab("invoice");
       setFieldErrors(errs);
       notify(
         errs.supplier ? "Supplier is required" : "Supplier Invoice No is required",
@@ -726,7 +771,64 @@ export default function PurchaseEntryForm() {
         </Stack>
       </Stack>
 
+      {/* ── Invoice summary ──
+          The five header fields are entered once per bill and referred to constantly after
+          that, so they collapse to one line and the fields themselves move behind a tab.
+          This strip is what stops that becoming hidden state: it stays on screen for the
+          whole of the item loop, and Edit is the same gesture as opening the tab. */}
+      {tab === "items" && (
+        <Paper
+          variant="outlined"
+          sx={{
+            px: 1.5, py: 0.75, mb: 1, bgcolor: "action.hover",
+            display: "flex", alignItems: "center", gap: 2,
+          }}
+        >
+          <Stack
+            direction="row"
+            spacing={2.5}
+            alignItems="center"
+            divider={<Divider orientation="vertical" flexItem />}
+            sx={{ flexGrow: 1, minWidth: 0, overflow: "hidden" }}
+          >
+            <SummaryItem label="Branch" value={branchLabel} missing={!selectedBranch} />
+            <SummaryItem label="Supplier" value={supplierName} missing={!supplierName.trim()} />
+            <SummaryItem
+              label="Supplier Invoice"
+              value={
+                supplierInvNo
+                  ? `${supplierInvNo}${supplierInvDate ? `  \u00b7  ${fmtDate(supplierInvDate)}` : ""}`
+                  : ""
+              }
+              missing={!supplierInvNo.trim()}
+            />
+            <SummaryItem
+              label="Next purchase"
+              value={nextPurchaseDate ? fmtDate(nextPurchaseDate) : ""}
+              accent
+            />
+          </Stack>
+          <Button size="small" onClick={() => setTab("invoice")}>
+            Edit
+          </Button>
+        </Paper>
+      )}
+
+      <Tabs
+        value={tab}
+        onChange={(_, v) => setTab(v)}
+        sx={{ borderBottom: 1, borderColor: "divider", minHeight: 40, mb: 1.5 }}
+      >
+        <Tab
+          value="items"
+          label={rows.length ? `Items \u00b7 ${rows.length}` : "Items"}
+          sx={{ minHeight: 40 }}
+        />
+        <Tab value="invoice" label="Invoice details" sx={{ minHeight: 40 }} />
+      </Tabs>
+
       {/* ── Header fields ── */}
+      {tab === "invoice" && (
       <Paper sx={{ p: 2, mb: 2 }}>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={3}>
@@ -820,7 +922,10 @@ export default function PurchaseEntryForm() {
           </Grid>
         </Grid>
       </Paper>
+      )}
 
+      {tab === "items" && (
+      <>
       {/* ── Item entry bar ── */}
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
         <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -1191,23 +1296,35 @@ export default function PurchaseEntryForm() {
           </Table>
         </TableContainer>
       </Paper>
+      </>
+      )}
 
-      {/* ── Bill Total / Round Off ── */}
-      {rows.length > 0 && (
-        <Paper variant="outlined" sx={{ mb: 2, p: 2 }}>
-          <Stack alignItems="flex-end" spacing={1}>
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 110, textAlign: "right" }}>
-                Items Total
-              </Typography>
-              <Typography fontWeight={600} sx={{ minWidth: 120, textAlign: "right", fontFamily: "monospace" }}>
+      {/* ── Action bar ──
+          Totals and saving live outside the tabs and stick to the bottom of the viewport.
+          Saving is the one control on this screen that must never be hunted for, and both
+          of the ways it used to be hard to reach are gone: it can no longer be scrolled
+          past below a long item list, and it is not hidden on whichever tab you are not
+          looking at. */}
+      <Paper
+        elevation={3}
+        square
+        sx={{
+          position: "sticky", bottom: 0, zIndex: 2,
+          mt: 2, mx: -2, px: 2, py: 1.25,
+          borderTop: 1, borderColor: "divider",
+          display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap",
+        }}
+      >
+        {rows.length > 0 && (
+          <>
+            <Stack direction="row" spacing={1} alignItems="baseline">
+              <Typography variant="caption" color="text.secondary">Items Total</Typography>
+              <Typography fontWeight={600} sx={{ fontFamily: "monospace" }}>
                 {grandTotal.toFixed(2)}
               </Typography>
             </Stack>
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 110, textAlign: "right" }}>
-                Bill Total
-              </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="caption" color="text.secondary">Bill Total</Typography>
               <TextField
                 size="small"
                 type="number"
@@ -1219,26 +1336,34 @@ export default function PurchaseEntryForm() {
                 sx={{ width: 120 }}
               />
             </Stack>
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 110, textAlign: "right" }}>
-                Round Off
-              </Typography>
+            <Stack direction="row" spacing={1} alignItems="baseline">
+              <Typography variant="caption" color="text.secondary">Round Off</Typography>
               <Typography
                 fontWeight={600}
                 sx={{
-                  minWidth: 120, textAlign: "right", fontFamily: "monospace",
+                  fontFamily: "monospace",
                   color: roundOff > 0 ? "success.main" : roundOff < 0 ? "error.main" : "text.secondary",
                 }}
               >
                 {roundOff.toFixed(2)}
               </Typography>
             </Stack>
-          </Stack>
-        </Paper>
-      )}
+          </>
+        )}
 
-      {/* ── Save buttons ── */}
-      <Stack direction="row" spacing={2} alignItems="center">
+        <Box sx={{ flexGrow: 1 }} />
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              size="small"
+              checked={printAfterSave}
+              onChange={(e) => setPrintAfterSave(e.target.checked)}
+            />
+          }
+          label="Print after save"
+          sx={{ userSelect: "none", mr: 0 }}
+        />
         {!editingId && (
           <Button variant="outlined" onClick={() => handleSave("partial")}>
             Partial Save
@@ -1252,19 +1377,7 @@ export default function PurchaseEntryForm() {
         >
           {editingId ? "Update Purchase" : "Final Save"}
         </Button>
-        <FormControlLabel
-          control={
-            <Checkbox
-              size="small"
-              checked={printAfterSave}
-              onChange={(e) => setPrintAfterSave(e.target.checked)}
-            />
-          }
-          label="Print after save"
-          sx={{ ml: 1, userSelect: "none" }}
-        />
-      </Stack>
-
+      </Paper>
 
       {/* ── Invoice Reader dialog ── */}
       <InvoiceReaderDialog
