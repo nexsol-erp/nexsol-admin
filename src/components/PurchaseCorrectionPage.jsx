@@ -115,8 +115,33 @@ export default function PurchaseCorrectionPage() {
     const { base, headers } = API();
     setLoading(true);
     try {
-      const res = await fetch(`${base}/purchase/${purchaseId}`, { headers });
-      const data = await res.json();
+      // The id goes into a path segment, so it is encoded rather than interpolated raw. A
+      // legacy purchase id carrying a '/' — POS-synced rows keep the id they arrived with —
+      // would otherwise split into extra path segments and match no route at all.
+      const res = await fetch(`${base}/purchase/${encodeURIComponent(purchaseId)}`, { headers });
+
+      // Spring answers a missing purchase with an empty 404, which Tomcat renders as its HTML
+      // error page. Reading that as JSON produced "Unexpected token '<'", which says nothing
+      // about which purchase failed or why. Say both.
+      if (!res.ok) {
+        throw new Error(
+          res.status === 404
+            ? `purchase ${purchaseId} was not found (404)`
+            : `the server returned ${res.status} for purchase ${purchaseId}`
+        );
+      }
+
+      const body = await res.text();
+      let data;
+      try {
+        data = JSON.parse(body);
+      } catch {
+        throw new Error(
+          `the server did not return a purchase for ${purchaseId} — it sent ${body
+            .slice(0, 60)
+            .replace(/\s+/g, " ")}…`
+        );
+      }
       setPurchase(data);
       setEditHdr({
         supplierId: data.supplierId || "",
