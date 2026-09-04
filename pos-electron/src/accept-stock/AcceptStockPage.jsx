@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Table, message } from "antd";
 import { apiUrl } from "../utils/apiUrl";
 import { applyStockReceiptToCache } from "../cache/itemCache";
@@ -45,6 +45,48 @@ function normalizeDetail(x, parentId) {
   };
 }
 
+/**
+ * Does this row match what was typed?
+ *
+ * Every searchable field, lowercased, joined and searched for each whitespace-separated
+ * term. Typing "ktym 0068" finds the transfer from KTYM whose voucher ends 0068 - which is
+ * how somebody with the paper docket in their hand actually searches, rather than knowing
+ * which single column to look in.
+ */
+function matchesFilter(fields, filter) {
+  const terms = filter.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+  const haystack = fields.filter(Boolean).join(" ").toLowerCase();
+  return terms.every((t) => haystack.includes(t));
+}
+
+/**
+ * The height available to a table body, measured rather than guessed.
+ *
+ * Both tables had no vertical scroll inside panels that clip their overflow, so a page of 20
+ * transfers showed however many happened to fit and silently hid the rest. A calc() off the
+ * viewport would work until a toolbar wraps to a second line; measuring the panel does not
+ * care how tall anything above it turns out to be.
+ *
+ * @param chrome pixels the table spends on its own header, plus any footer under the table.
+ */
+function useBodyHeight(chrome) {
+  const ref = useRef(null);
+  const [height, setHeight] = useState(240);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(() => {
+      setHeight(Math.max(120, el.clientHeight - chrome));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [chrome]);
+
+  return [ref, height];
+}
+
 export default function AcceptStockPage({ onClose }) {
   const [headers, setHeaders] = useState([]);
   const [detailRows, setDetailRows] = useState([]);
@@ -53,6 +95,16 @@ export default function AcceptStockPage({ onClose }) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [acceptingAll, setAcceptingAll] = useState(false);
+
+  /**
+   * Filters the page that is loaded, not the server.
+   *
+   * The endpoint pages by branch and takes no search term, so this narrows what is in front
+   * of you rather than searching everything pending. The counts say "of N on this page" so
+   * that is not mistaken for a search of the whole queue.
+   */
+  const [headerFilter, setHeaderFilter] = useState("");
+  const [lineFilter, setLineFilter] = useState("");
 
   const PAGE_SIZE = 20;
   const [currentPage, setCurrentPage] = useState(0);
@@ -71,6 +123,37 @@ export default function AcceptStockPage({ onClose }) {
     () => detailRows.reduce((s, r) => s + toNum(r.amount), 0),
     [detailRows]
   );
+
+  const filteredHeaders = useMemo(
+    () => headers.filter((h) => matchesFilter(
+      [h.from_branch_code, h.voucher_number, h.source_voucher_number,
+       h.source_voucher_date, h.voucher_date],
+      headerFilter)),
+    [headers, headerFilter]
+  );
+
+  const filteredDetailRows = useMemo(
+    () => detailRows.filter((r) => matchesFilter(
+      [r.item_name, r.barcode, r.batch, r.unit, r.description],
+      lineFilter)),
+    [detailRows, lineFilter]
+  );
+
+  // 30px is the table's own header plus its borders. The totals strip under the lines table
+  // is a sibling of the measured element, so flex has already taken it out of the height.
+  const [headerPanelRef, headerTableHeight] = useBodyHeight(30);
+  const [linePanelRef, lineTableHeight] = useBodyHeight(30);
+
+  /**
+   * A selection the filter has hidden is a selection nobody can see they still have, and
+   * Accept would act on it. Dropped as soon as it stops being listed.
+   */
+  useEffect(() => {
+    if (selectedHeaderId && !filteredHeaders.some((h) => h.id === selectedHeaderId)) {
+      setSelectedHeaderId("");
+      setDetailRows([]);
+    }
+  }, [filteredHeaders, selectedHeaderId]);
 
   const fetchPage = async (page) => {
     if (!tenantId || !token) { message.error("Missing login session. Please login again."); return; }
@@ -97,6 +180,9 @@ export default function AcceptStockPage({ onClose }) {
       setTotalElements(result?.totalElements ?? mapped.length);
       setSelectedHeaderId("");
       setDetailRows([]);
+      // A filter left over from the previous page would hide the new one before it is read.
+      setHeaderFilter("");
+      setLineFilter("");
       message.success(`Page ${page + 1}: ${mapped.length} transfer(s) (${result?.totalElements ?? mapped.length} total)`);
     } catch (e) {
       message.error("Fetch failed: " + (e.message || "Unknown error"));
@@ -224,16 +310,22 @@ export default function AcceptStockPage({ onClose }) {
   };
 
   // ── Accept All (with confirmation) ──────────────────────────────────────────
+  // Acts on what is listed, not on everything loaded. With a filter typed, "Accept All (3)"
+  // must mean those three: accepting seventeen unseen transfers because they were on the same
+  // page is not undoable, and the button would have said 3 while doing 20.
   const acceptAll = () => {
-    if (!headers.length) { message.warning("No pending transfers to accept."); return; }
+    if (!filteredHeaders.length) { message.warning("No pending transfers to accept."); return; }
     if (!tenantId || !token) { message.error("Missing login session. Please login again."); return; }
+
+    const hidden = headers.length - filteredHeaders.length;
 
     Modal.confirm({
       title: "Accept ALL Pending Stock Transfers",
       content: (
         <div style={{ lineHeight: 1.7 }}>
           <p>
-            You are about to accept <strong>all {headers.length} pending stock transfer(s)</strong>{" "}
+            You are about to accept{" "}
+            <strong>all {filteredHeaders.length} stock transfer(s) listed</strong>{" "}
             for branch <strong>{branchCode}</strong>.
           </p>
           <p>
@@ -241,24 +333,30 @@ export default function AcceptStockPage({ onClose }) {
             in each transfer will be added to <strong>{branchCode}</strong>'s inventory.
           </p>
           <ul style={{ margin: "6px 0 6px 18px", padding: 0 }}>
-            {headers.slice(0, 5).map((h) => (
+            {filteredHeaders.slice(0, 5).map((h) => (
               <li key={h.id} style={{ fontSize: 12 }}>
                 {h.voucher_number || h.id} — from {h.from_branch_code}
               </li>
             ))}
-            {headers.length > 5 && (
+            {filteredHeaders.length > 5 && (
               <li style={{ fontSize: 12, color: "#555" }}>
-                … and {headers.length - 5} more
+                … and {filteredHeaders.length - 5} more
               </li>
             )}
           </ul>
+          {hidden > 0 && (
+            <p style={{ fontSize: 12, marginBottom: 6 }}>
+              {hidden} transfer(s) on this page are hidden by the filter and will
+              <strong> not</strong> be accepted.
+            </p>
+          )}
           <p style={{ color: "#b71c1c", marginBottom: 0 }}>
-            ⚠ This action cannot be undone. All {headers.length} transfer(s) will be
+            ⚠ This action cannot be undone. All {filteredHeaders.length} transfer(s) will be
             permanently accepted.
           </p>
         </div>
       ),
-      okText: `Accept All ${headers.length} Transfer(s)`,
+      okText: `Accept All ${filteredHeaders.length} Transfer(s)`,
       okType: "danger",
       cancelText: "Cancel",
       width: 480,
@@ -266,7 +364,7 @@ export default function AcceptStockPage({ onClose }) {
         setAcceptingAll(true);
         let succeeded = 0;
         let failed = 0;
-        const toProcess = [...headers];
+        const toProcess = [...filteredHeaders];
 
         for (const header of toProcess) {
           try {
@@ -328,6 +426,11 @@ export default function AcceptStockPage({ onClose }) {
     padding: "0 12px",
   };
 
+  const inputBase = {
+    height: 28, fontSize: 12, padding: "0 8px", width: 220,
+    border: "2px inset #9c4dcc", background: "#fff", color: "#000",
+  };
+
   return (
     <div className="pos-container">
 
@@ -371,15 +474,40 @@ export default function AcceptStockPage({ onClose }) {
         </button>
         <button
           onClick={acceptAll}
-          disabled={saving || acceptingAll || !headers.length}
+          disabled={saving || acceptingAll || !filteredHeaders.length}
           style={{
             ...btnBase,
-            background: saving || acceptingAll || !headers.length ? "#c4b8d0" : "#fff3cd",
-            cursor: saving || acceptingAll || !headers.length ? "not-allowed" : "pointer",
+            background: saving || acceptingAll || !filteredHeaders.length ? "#c4b8d0" : "#fff3cd",
+            cursor: saving || acceptingAll || !filteredHeaders.length ? "not-allowed" : "pointer",
           }}
         >
-          {acceptingAll ? "Accepting All…" : `Accept All (${headers.length})`}
+          {acceptingAll ? "Accepting All…" : `Accept All (${filteredHeaders.length})`}
         </button>
+
+        <div style={{ flex: 1 }} />
+
+        {/* Filters. Two, because the two panels answer different questions: which docket is
+            this, and does it contain the item I am holding. */}
+        <input
+          value={headerFilter}
+          onChange={(e) => setHeaderFilter(e.target.value)}
+          placeholder="Filter transfers — branch, voucher, date"
+          style={inputBase}
+        />
+        <input
+          value={lineFilter}
+          onChange={(e) => setLineFilter(e.target.value)}
+          placeholder="Filter lines — item, barcode, batch"
+          style={inputBase}
+        />
+        {(headerFilter || lineFilter) && (
+          <button
+            onClick={() => { setHeaderFilter(""); setLineFilter(""); }}
+            style={{ ...btnBase, background: "#e1bee7" }}
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       {/* ── Main body ── */}
@@ -389,8 +517,10 @@ export default function AcceptStockPage({ onClose }) {
       }}>
 
         {/* Pending transfers panel */}
+        {/* minHeight: 0 so the panel may actually shrink; without it a flex child refuses to
+            go below its content height and the table has nowhere to scroll. */}
         <div style={{
-          flex: 1, display: "flex", flexDirection: "column",
+          flex: 1, display: "flex", flexDirection: "column", minHeight: 0,
           border: "1px solid #9c4dcc", background: "#c8b8d8",
         }}>
           <div style={{
@@ -398,7 +528,10 @@ export default function AcceptStockPage({ onClose }) {
             padding: "3px 8px", borderBottom: "1px solid #9c4dcc",
             display: "flex", alignItems: "center", justifyContent: "space-between",
           }}>
-            <span>Pending Transfers ({totalElements > 0 ? `${totalElements} total` : headers.length})</span>
+            <span>
+              Pending Transfers ({totalElements > 0 ? `${totalElements} total` : headers.length})
+              {headerFilter && ` — showing ${filteredHeaders.length} of ${headers.length} on this page`}
+            </span>
             {totalPages > 1 && (
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <button
@@ -431,15 +564,15 @@ export default function AcceptStockPage({ onClose }) {
               </span>
             )}
           </div>
-          <div style={{ flex: 1, overflow: "hidden" }}>
+          <div ref={headerPanelRef} style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
             <Table
               className="qt-as-table"
               size="small"
-              dataSource={headers}
+              dataSource={filteredHeaders}
               columns={hdrColumns}
               pagination={false}
               rowKey="id"
-              scroll={{ x: 680 }}
+              scroll={{ x: 680, y: headerTableHeight }}
               rowClassName={(r) => r.id === selectedHeaderId ? "as-row-selected" : ""}
               onRow={(record) => ({
                 onClick: () => selectHeader(record),
@@ -451,7 +584,7 @@ export default function AcceptStockPage({ onClose }) {
 
         {/* Lines panel */}
         <div style={{
-          flex: 1.5, display: "flex", flexDirection: "column",
+          flex: 1.5, display: "flex", flexDirection: "column", minHeight: 0,
           border: "1px solid #9c4dcc", background: "#c8b8d8",
         }}>
           <div style={{
@@ -460,18 +593,19 @@ export default function AcceptStockPage({ onClose }) {
           }}>
             {selectedHeader
               ? `Lines — ${selectedHeader.voucher_number}  (from ${selectedHeader.from_branch_code})`
+                + (lineFilter ? `  —  showing ${filteredDetailRows.length} of ${detailRows.length}` : "")
               : "Lines — select a transfer"}
           </div>
-          <div style={{ flex: 1, overflow: "hidden" }}>
+          <div ref={linePanelRef} style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
             <Table
               className="qt-as-table"
               size="small"
-              dataSource={detailRows}
+              dataSource={filteredDetailRows}
               columns={dtlColumns}
               loading={detailLoading}
               pagination={false}
               rowKey="key"
-              scroll={{ x: 970, y: "calc(100vh - 200px)" }}
+              scroll={{ x: 970, y: lineTableHeight }}
             />
           </div>
           {selectedHeader && (
@@ -481,8 +615,16 @@ export default function AcceptStockPage({ onClose }) {
               padding: "4px 12px", fontSize: 12, fontWeight: "bold",
               borderTop: "1px solid #9c4dcc",
             }}>
+              {/* Every line, filtered or not: accepting takes the whole transfer, so a total
+                  that moved with the filter would misdescribe what the button does. */}
               <span>Total Qty: {totalQty.toFixed(2)}</span>
               <span>Total Amount: {totalAmount.toFixed(2)}</span>
+              {lineFilter && (
+                <span style={{ fontWeight: "normal", fontSize: 11 }}>
+                  (all {detailRows.length} lines — the filter hides rows, it does not change
+                  what is accepted)
+                </span>
+              )}
             </div>
           )}
         </div>
