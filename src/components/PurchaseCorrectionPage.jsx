@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Box, Paper, Typography, TextField, Button, CircularProgress,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
@@ -15,7 +15,7 @@ import {
   ExpandMore as ExpandIcon,
   ExpandLess as CollapseIcon,
 } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
 
 const API = () => {
@@ -34,6 +34,7 @@ const round2 = (v) => Math.round((v || 0) * 100) / 100;
 export default function PurchaseCorrectionPage() {
   const theme = useTheme();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isDark = theme.palette.mode === "dark";
   const headerBg = isDark ? "#1e2a3a" : "#e3f2fd";
 
@@ -147,6 +148,18 @@ export default function PurchaseCorrectionPage() {
       setLoading(false);
     }
   }, []);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Arrived here from somewhere that already knows which purchase is wrong
+  // ─────────────────────────────────────────────────────────────────────────
+  // The insights screen lists the purchases behind a data-quality finding and links each one
+  // here. Without this the link would land on an empty search form, and the search defaults to
+  // the last 30 days of the user's own branch — which is precisely where a purchase carrying a
+  // year-old supplier invoice date will not be found.
+  useEffect(() => {
+    const purchaseId = searchParams.get("purchaseId");
+    if (purchaseId) loadPurchase(purchaseId);
+  }, [searchParams, loadPurchase]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Preview

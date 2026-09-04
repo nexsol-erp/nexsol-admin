@@ -124,3 +124,42 @@ export const dismissInsight = async (tenancyId, insightId, reason) => {
   }
   return { ok: false, error: message };
 };
+
+/**
+ * The individual rows behind one insight's count.
+ *
+ * Fetched on demand rather than with the list. Most insights are read and never opened, and
+ * the ones that are opened are opened one at a time — loading 96 purchases for every row of a
+ * table nobody has clicked would pay the cost for all of them to help one.
+ *
+ * A rule with nothing to list answers `supported: false` rather than failing, so "this kind of
+ * insight has no rows behind it" and "the insight is gone" stay tellable apart.
+ */
+export const fetchInsightRows = async (tenancyId, insightId) => {
+  try {
+    const response = await fetch(
+      `/api/${tenancyId}/insights/${encodeURIComponent(insightId)}/rows`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("jwtToken")}`,
+          "X-Tenant-ID": tenancyId,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        error:
+          response.status === 404
+            ? "This insight is no longer available."
+            : "The rows behind this insight could not be loaded.",
+      };
+    }
+
+    const body = await response.json();
+    return { ok: true, ...body };
+  } catch (e) {
+    return { ok: false, error: "The rows behind this insight could not be loaded." };
+  }
+};
