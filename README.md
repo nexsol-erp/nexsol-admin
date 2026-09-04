@@ -77,6 +77,25 @@ Update C:/pos-updates/latest.txt to contain just 1.0.1
 Restart the server (or it picks up latest.txt on each request since it reads the file live)
 
 
+## In Production:
+How to restart
+
+
+ssh mpark-vm
+
+sudo systemctl restart nxserver.service        # the ERP backend (port 8082)
+sudo systemctl restart nxworkflow.service      # miniflow, the workflow engine
+
+systemctl status nxserver.service --no-pager
+journalctl -u nxserver.service -n 80 --no-pager
+The admin UI has nothing to restart — nginx serves a static build from /var/www/html:
+
+
+sudo systemctl reload nginx.service
+curl -s -o /dev/null -w '%{http_code}\n' https://tradelink247.com/    # 200
+
+
+
 How the update flow works
   → GET /api/{tenantId}/versioncheck/1.0.0
   ← "version=1.0.1\nurl=http://server:8084/api/updates/download/latest"
