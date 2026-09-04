@@ -25,7 +25,8 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { useInsights, dismissInsight } from "./useInsights";
+import { useNavigate } from "react-router-dom";
+import { useInsights, dismissInsight, fetchInsightRows } from "./useInsights";
 
 const SEVERITY_COLOUR = {
   CRITICAL: "error",
@@ -57,6 +58,38 @@ const money = (amount, currency) => {
 const shortDate = (value) => (value ? String(value).slice(0, 10) : "—");
 
 /**
+ * What is at stake, in the unit the rule actually measured.
+ *
+ * A data-quality rule has no money to report — the amounts on those purchases are right, it is
+ * the dates that are wrong — so its materiality is a row count. Rendering that through the
+ * money formatter produced "INR 96" against a finding about 96 mistyped dates, which reads as
+ * a trivial sum and is the fastest way to have a CRITICAL ignored.
+ */
+const atStake = (row) =>
+  row.insight_type === "DATA_QUALITY"
+    ? `${Number(row.materiality_amount || 0).toLocaleString()} rows`
+    : money(row.materiality_amount, row.currency);
+
+/**
+ * One cell of a drill-down row.
+ *
+ * The server says how each column should read — text, date, money, number — because it is the
+ * rule that knows whether a figure is a count or a value, and a screen guessing from the
+ * column name is how a quantity ends up rendered as rupees.
+ */
+const cell = (value, type, currency) => {
+  if (value === null || value === undefined || value === "") return "—";
+  if (type === "date") return shortDate(value);
+  if (type === "money") return money(value, currency);
+  if (type === "number") return Number(value).toLocaleString();
+  return String(value);
+};
+
+/** Fills {column} placeholders in a route the server supplied, e.g. /x?id={id}. */
+const hrefFor = (template, row) =>
+  template.replace(/\{(\w+)\}/g, (_, key) => encodeURIComponent(row[key] ?? ""));
+
+/**
  * What the nightly sweep found.
  *
  * Two things this screen deliberately does:
@@ -83,10 +116,35 @@ export default function InsightsPage() {
     severity,
   });
 
+  const navigate = useNavigate();
+
+  // The insight whose rows are being read, and what came back. Held separately from the list
+  // so closing the dialog cannot disturb the table underneath it.
+  const [openRowsFor, setOpenRowsFor] = useState(null);
+  const [rowsState, setRowsState] = useState("idle"); // idle | loading | ready | error
+  const [rowsBody, setRowsBody] = useState(null);
+  const [rowsError, setRowsError] = useState(null);
+
   const [dismissing, setDismissing] = useState(null); // the insight being dismissed
   const [reason, setReason] = useState("");
   const [dismissError, setDismissError] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  const showRows = async (insight) => {
+    setOpenRowsFor(insight);
+    setRowsBody(null);
+    setRowsError(null);
+    setRowsState("loading");
+
+    const result = await fetchInsightRows(tenancyId, insight.id);
+    if (!result.ok) {
+      setRowsError(result.error);
+      setRowsState("error");
+      return;
+    }
+    setRowsBody(result);
+    setRowsState("ready");
+  };
 
   const openDismiss = (insight) => {
     setDismissing(insight);
@@ -110,9 +168,12 @@ export default function InsightsPage() {
     reload();
   };
 
+  // Money only. A row count summed into a currency total is not a smaller error than showing
+  // it in the column — it is the same error, spread across every other insight on the screen.
   const totalAtStake = useMemo(
     () =>
       insights.reduce((sum, row) => {
+        if (row.insight_type === "DATA_QUALITY") return sum;
         const value = Number(row.materiality_amount);
         return Number.isNaN(value) ? sum : sum + value;
       }, 0),
@@ -239,9 +300,7 @@ export default function InsightsPage() {
                       </Tooltip>
                     )}
                   </TableCell>
-                  <TableCell align="right">
-                    {money(row.materiality_amount, row.currency)}
-                  </TableCell>
+                  <TableCell align="right">{atStake(row)}</TableCell>
                   {/* The age of the data, never the age of the insight. A claim drawn from
                       figures that stopped updating a week ago is a different claim. */}
                   <TableCell>{shortDate(row.data_through)}</TableCell>
@@ -254,6 +313,12 @@ export default function InsightsPage() {
                     )}
                   </TableCell>
                   <TableCell align="right">
+                    {/* Before Dismiss, deliberately: the rows are what tell somebody whether
+                        the finding is worth acting on, and putting the only cheap answer
+                        second invites the expensive one. */}
+                    <Button size="small" onClick={() => showRows(row)}>
+                      Rows
+                    </Button>
                     {row.status === "OPEN" && (
                       <Button size="small" onClick={() => openDismiss(row)}>
                         Dismiss
@@ -266,6 +331,116 @@ export default function InsightsPage() {
           </Table>
         </TableContainer>
       )}
+
+      {/* The rows behind the count.
+
+          An insight groups on purpose — 96 bad purchases are one item of work, not 96 — and
+          that is the right unit for deciding whether to act and the wrong one for acting.
+          This is the way through to the documents, and the Correct link is the way to fix
+          one without hunting for it in a date-range search. */}
+      <Dialog
+        open={Boolean(openRowsFor)}
+        onClose={() => setOpenRowsFor(null)}
+        fullWidth
+        maxWidth="lg"
+      >
+        <DialogTitle>{rowsBody?.title || openRowsFor?.summary || "Rows"}</DialogTitle>
+        <DialogContent>
+          {rowsState === "loading" && <LinearProgress sx={{ my: 2 }} />}
+
+          {rowsState === "error" && (
+            <Alert severity="error" sx={{ my: 1 }}>
+              {rowsError}
+            </Alert>
+          )}
+
+          {rowsState === "ready" && !rowsBody.supported && (
+            <Alert severity="info" sx={{ my: 1 }}>
+              This kind of insight is a total rather than a list, so there are no individual
+              rows behind it. The evidence is in the summary.
+            </Alert>
+          )}
+
+          {rowsState === "ready" && rowsBody.supported && rowsBody.rows.length === 0 && (
+            <Alert severity="success" sx={{ my: 1 }}>
+              Nothing left to fix — every row behind this insight has since been corrected. It
+              will close on the next sweep.
+            </Alert>
+          )}
+
+          {rowsState === "ready" && rowsBody.supported && rowsBody.rows.length > 0 && (
+            <>
+              {rowsBody.truncated && (
+                <Alert severity="warning" sx={{ mb: 1 }}>
+                  Showing the first {rowsBody.rows.length}. There are more — clear these and
+                  reopen for the rest.
+                </Alert>
+              )}
+              <TableContainer component={Paper} sx={{ maxHeight: 460 }}>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow
+                      sx={{ "& th": { fontWeight: 700, bgcolor: "#1976d2", color: "#fff" } }}
+                    >
+                      {rowsBody.columns.map((column) => (
+                        <TableCell
+                          key={column.key}
+                          align={
+                            column.type === "money" || column.type === "number"
+                              ? "right"
+                              : "left"
+                          }
+                        >
+                          {column.label}
+                        </TableCell>
+                      ))}
+                      {rowsBody.actionHref && <TableCell align="right">Fix</TableCell>}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {rowsBody.rows.map((row, index) => (
+                      <TableRow key={row.id || index} hover>
+                        {rowsBody.columns.map((column) => (
+                          <TableCell
+                            key={column.key}
+                            align={
+                              column.type === "money" || column.type === "number"
+                                ? "right"
+                                : "left"
+                            }
+                            sx={
+                              column.key === "voucher_number"
+                                ? { fontFamily: "monospace", whiteSpace: "nowrap" }
+                                : undefined
+                            }
+                          >
+                            {cell(row[column.key], column.type, openRowsFor?.currency)}
+                          </TableCell>
+                        ))}
+                        {rowsBody.actionHref && (
+                          <TableCell align="right">
+                            <Button
+                              size="small"
+                              onClick={() =>
+                                navigate(hrefFor(rowsBody.actionHref, row))
+                              }
+                            >
+                              {rowsBody.actionLabel || "Open"}
+                            </Button>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenRowsFor(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={Boolean(dismissing)} onClose={() => setDismissing(null)} fullWidth maxWidth="sm">
         <DialogTitle>Dismiss this insight</DialogTitle>
