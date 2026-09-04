@@ -44,6 +44,7 @@ import { getItems } from "../services/apiservice";
 import InvoiceReaderDialog from "./InvoiceReaderDialog";
 import UnitSelect from "./UnitSelect";
 import { useBranch } from "./BranchContext";
+import { useSearchParams } from "react-router-dom";
 
 function fmtDate(dt) {
   if (!dt) return "";
@@ -167,6 +168,9 @@ export default function PurchaseEntryForm() {
   const [supplierInvDate, setSupplierInvDate] = useState(
     () => new Date().toISOString().split("T")[0]
   );
+  // Optional, and empty by default. A date defaulted to "today plus a week" would be a
+  // reminder the system invented, and W14 would then raise a task nobody asked for.
+  const [nextPurchaseDate, setNextPurchaseDate] = useState("");
 
   const [itemList, setItemList] = useState([]);
   const [rows, setRows] = useState([]);
@@ -194,6 +198,9 @@ export default function PurchaseEntryForm() {
   const [fieldErrors, setFieldErrors] = useState({ supplier: false, supplierInvNo: false });
 
   const { branch: selectedBranch, setBranch: setSelectedBranch, branches } = useBranch();
+
+  const [searchParams] = useSearchParams();
+  const deepLinkApplied = useRef(false);
 
   // Edit mode
   const [editingId, setEditingId] = useState(null);
@@ -226,6 +233,42 @@ export default function PurchaseEntryForm() {
   }, []);
 
   useEffect(() => { pendingQtyRef.current = pendingQty; }, [pendingQty]);
+
+  /**
+   * Arriving from a next-purchase reminder in My Tasks.
+   *
+   * The task already knows the supplier and the branch - "Purchase from ABC FOODS for CGN is
+   * due on 2026-09-12" - so the screen opens on both rather than making the buyer find them
+   * again, which is most of the work the reminder was supposed to save.
+   *
+   * It waits for the supplier list, because the id is what the save actually uses and only
+   * the list can turn the name on the task into one. And it applies once: without the guard a
+   * later render would put the supplier back after the buyer had changed it.
+   */
+  useEffect(() => {
+    if (deepLinkApplied.current) return;
+
+    const branchParam = searchParams.get("branchCode");
+    const id = searchParams.get("supplierId");
+    const name = searchParams.get("supplierName");
+    if (!branchParam && !id && !name) return;
+    if ((id || name) && suppliers.length === 0) return;
+
+    deepLinkApplied.current = true;
+    if (branchParam) setSelectedBranch(branchParam);
+
+    // Prefer the id: supplier names are not unique, and the save resolves by name only when
+    // it has no id to work with.
+    const match = suppliers.find(
+      (sup) => (id && String(sup.id) === id) || (name && sup.supplierName === name)
+    );
+    if (match) {
+      setSupplierName(match.supplierName || "");
+      setSupplierId(match.id || "");
+    } else if (name) {
+      setSupplierName(name);
+    }
+  }, [searchParams, suppliers, setSelectedBranch]);
 
   const fetchLastRate = useCallback(async (itemId) => {
     const tenancyId = localStorage.getItem("tenancyId");
@@ -433,6 +476,9 @@ export default function PurchaseEntryForm() {
     supplierId,
     branchCode: localStorage.getItem("branchCode") || "",
     roundOff,
+    // Sent on a draft too: the buyer set the date while entering this purchase, and losing it
+    // because they saved partially would mean typing it again.
+    nextPurchaseDate: nextPurchaseDate || null,
     ...(variant === "final"
       ? {
           supplierVoucherNumber: supplierInvNo,
@@ -453,6 +499,7 @@ export default function PurchaseEntryForm() {
       supplierName,
       supplierInvNo,
       supplierInvDate,
+      nextPurchaseDate,
       rows,
     };
     const next = [draft, ...drafts].slice(0, 50);
@@ -464,6 +511,7 @@ export default function PurchaseEntryForm() {
     setSupplierName(draft.supplierName || "");
     setSupplierInvNo(draft.supplierInvNo || "");
     setSupplierInvDate(draft.supplierInvDate || new Date().toISOString().split("T")[0]);
+    setNextPurchaseDate(draft.nextPurchaseDate || "");
     setRows(draft.rows || []);
     setActiveDraftId(draft.id);
     setRecallOpen(false);
@@ -506,6 +554,9 @@ export default function PurchaseEntryForm() {
           data.supplierVoucherDate
             ? new Date(data.supplierVoucherDate).toISOString().split("T")[0]
             : new Date().toISOString().split("T")[0]
+        );
+        setNextPurchaseDate(
+          data.nextPurchaseDate ? String(data.nextPurchaseDate).slice(0, 10) : ""
         );
         setRows(
           (data.items || []).map((it) => ({
@@ -570,6 +621,7 @@ export default function PurchaseEntryForm() {
           setRows([]);
           setSupplierName(""); setSupplierId("");
           setSupplierInvNo("");
+          setNextPurchaseDate("");
           setBillTotal("");
           setFieldErrors({ supplier: false, supplierInvNo: false });
         } else if (res.status === 409) {
@@ -610,6 +662,7 @@ export default function PurchaseEntryForm() {
         setRows([]);
         setSupplierName(""); setSupplierId("");
         setSupplierInvNo("");
+        setNextPurchaseDate("");
         setBillTotal("");
         setFieldErrors({ supplier: false, supplierInvNo: false });
       } else {
@@ -750,6 +803,19 @@ export default function PurchaseEntryForm() {
               InputLabelProps={{ shrink: true }}
               value={supplierInvDate}
               onChange={(e) => setSupplierInvDate(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} sm={3}>
+            <TextField
+              label="Next Purchase Date"
+              type="date"
+              size="small"
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              value={nextPurchaseDate}
+              onChange={(e) => setNextPurchaseDate(e.target.value)}
+              inputProps={{ min: new Date().toISOString().split("T")[0] }}
+              helperText="Optional - you get a task the day before"
             />
           </Grid>
         </Grid>

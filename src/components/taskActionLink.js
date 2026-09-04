@@ -44,6 +44,12 @@ const SCREEN_PARAMS = {
   "Branch Stock Report":      ["branchCode"],
   // PurchaseWithoutGrnDetector - no voucher on the condition, it is a period summary
   "Goods Receipt":            ["branchCode"],
+  // NextPurchaseDueDetector. supplierId AND supplierName, because the screen resolves the
+  // supplier from its own list: the id is what the save uses, the name is what it can fall
+  // back to when the list has moved on. voucherNumber is deliberately not passed - it names
+  // the purchase that SET the reminder, and opening the screen on it would look like an
+  // instruction to edit that purchase rather than make a new one.
+  "Purchase Entry":           ["branchCode", "supplierId", "supplierName"],
   // TransferNotReceivedDetector
   "Stock Transfer In Report": ["branchCode", "voucherNumber", "fromBranch"],
   // MissingDayEndDetector
