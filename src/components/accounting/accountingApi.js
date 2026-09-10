@@ -71,6 +71,33 @@ export const unmatchReconciliation = (statementId) =>
 export const getBankReconciliationSummary = (accountId, asOfDate) =>
   api.get(`/bank-reconciliation/${accountId}/summary`, { asOfDate });
 
+// ── Bank Statement Import (backlog #33/#36) ───────────────────
+export const importBankStatement = (ledgerAccountId, file) => {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("ledgerAccountId", ledgerAccountId);
+  return fetch(`${base()}/bank-statements/import`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken")}` },
+    body: form,
+  }).then(async (r) => {
+    const data = await r.json();
+    if (!r.ok) throw new Error(data?.error || "Import failed.");
+    return data;
+  });
+};
+export const getBankStatementImports = (ledgerAccountId) =>
+  api.get("/bank-statements/imports", { ledgerAccountId });
+export const deleteBankStatementImport = (importId, ledgerAccountId) =>
+  fetch(`${base()}/bank-statements/imports/${importId}?ledgerAccountId=${encodeURIComponent(ledgerAccountId)}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  }).then(async (r) => {
+    if (r.status === 204) return true;
+    const data = await r.json().catch(() => ({}));
+    throw new Error(data?.error || "Delete failed.");
+  });
+
 // ── Phase 5: Inventory ────────────────────────────────────────
 export const getInventoryLedger = (itemId, branchCode, from, to) =>
   api.get("/inventory/ledger", { itemId, branchCode, from, to });
