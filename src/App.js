@@ -165,6 +165,7 @@ import ProfitLoss from "./components/accounting/ProfitLoss";
 import BalanceSheet from "./components/accounting/BalanceSheet";
 import CashFlow from "./components/accounting/CashFlow";
 import BankReconciliation from "./components/accounting/BankReconciliation";
+import BankStatementImport from "./components/accounting/BankStatementImport";
 import InventoryLedger from "./components/accounting/InventoryLedger";
 import StockValuation from "./components/accounting/StockValuation";
 import CustomerAging from "./components/accounting/CustomerAging";
@@ -300,6 +301,7 @@ const ROUTE_ORDER = [
   { key: "Balance Sheet",                   path: "/accounting/balance-sheet" },
   { key: "Cash Flow",                       path: "/accounting/cash-flow" },
   { key: "Bank Reconciliation",             path: "/accounting/bank-reconciliation" },
+  { key: "Bank Statements",                 path: "/accounting/bank-statement-import" },
   { key: "Inventory Ledger",                path: "/accounting/inventory-ledger" },
   { key: "Stock Valuation",                 path: "/accounting/stock-valuation" },
   { key: "Customer Aging",                  path: "/accounting/customer-aging" },
@@ -656,6 +658,7 @@ function HideOnScroll({ children }) {
             <Route path="/accounting/balance-sheet" element={<BalanceSheet />} />
             <Route path="/accounting/cash-flow" element={<CashFlow />} />
             <Route path="/accounting/bank-reconciliation" element={<BankReconciliation />} />
+            <Route path="/accounting/bank-statement-import" element={<BankStatementImport />} />
             <Route path="/accounting/inventory-ledger" element={<InventoryLedger />} />
             <Route path="/accounting/stock-valuation" element={<StockValuation />} />
             <Route path="/accounting/customer-aging" element={<CustomerAging />} />

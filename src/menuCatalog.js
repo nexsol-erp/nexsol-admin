@@ -233,6 +233,7 @@ export const MENU_TREE = [
       { menuKey: "Customer Aging",          label: "Customer Aging",          link: "/accounting/customer-aging",        roles: ["admin", "manager"] },
       { menuKey: "Supplier Aging",          label: "Supplier Aging",          link: "/accounting/supplier-aging",        roles: ["admin", "manager"] },
       { menuKey: "Bank Reconciliation",     label: "Bank Reconciliation",     link: "/accounting/bank-reconciliation",   roles: ["admin", "manager"] },
+      { menuKey: "Bank Statements",         label: "Bank Statements",         link: "/accounting/bank-statement-import", roles: ["admin", "manager"] },
       { menuKey: "Inventory Ledger",        label: "Inventory Ledger",        link: "/accounting/inventory-ledger",      roles: ["admin", "manager"] },
       { menuKey: "Stock Valuation",         label: "Stock Valuation",         link: "/accounting/stock-valuation",       roles: ["admin", "manager"] },
       // Operations
