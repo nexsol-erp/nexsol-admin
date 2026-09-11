@@ -14,6 +14,8 @@ const api = {
   },
   post: (path, body) =>
     fetch(`${base()}${path}`, { method: "POST", headers: getHeaders(), body: JSON.stringify(body) }).then((r) => r.json()),
+  put: (path, body) =>
+    fetch(`${base()}${path}`, { method: "PUT", headers: getHeaders(), body: JSON.stringify(body) }).then((r) => r.json()),
   del: (path) =>
     fetch(`${base()}${path}`, { method: "DELETE", headers: getHeaders() }),
 };
@@ -97,6 +99,25 @@ export const deleteBankStatementImport = (importId, ledgerAccountId) =>
     const data = await r.json().catch(() => ({}));
     throw new Error(data?.error || "Delete failed.");
   });
+
+// ── Bank Narration Rules / Counterparty Resolution (backlog #37) ─────
+export const getBankNarrationRules = () => api.get("/bank-narration-rules");
+export const createBankNarrationRule = (dto) => api.post("/bank-narration-rules", dto);
+export const updateBankNarrationRule = (id, dto) => api.put(`/bank-narration-rules/${id}`, dto);
+export const deleteBankNarrationRule = (id) => api.del(`/bank-narration-rules/${id}`);
+
+export const resolveCounterparties = () => api.post("/bank-statements/resolve-counterparties", {});
+export const getUnresolvedStatements = (ledgerAccountId) =>
+  api.get("/bank-statements/unresolved", { ledgerAccountId });
+export const resolveCounterpartyManually = (statementId, dto) =>
+  api.put(`/bank-statements/${statementId}/counterparty`, dto);
+export const getKnownCounterparties = () => api.get("/bank-statements/counterparties");
+
+/** Fixed categories from V053's own schema comment - a known, bounded set. */
+export const TXN_CATEGORIES = [
+  "POS", "SELF_TRANSFER", "BANK_CHARGES", "BANK_GST",
+  "NEFT", "RTGS", "IMPS", "CASH_DEPOSIT", "OTHER",
+];
 
 // ── Phase 5: Inventory ────────────────────────────────────────
 export const getInventoryLedger = (itemId, branchCode, from, to) =>
