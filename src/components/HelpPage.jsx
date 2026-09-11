@@ -362,6 +362,12 @@ const HelpPage = () => (
           <MenuRow name="Purchase Report" desc="All purchase invoices for a date range." />
           <MenuRow name="HSN wise Purchase" desc="Purchase grouped by HSN code for input tax credit reconciliation." />
         </SubSection>
+        <SubSection title="Bank Statements & Reconciliation">
+          <MenuRow name="Bank Statements" desc="Upload an ICICI or Axis statement PDF — the account's configured bank decides which parser runs. Also generates the daily transaction Excel report." />
+          <MenuRow name="Bank Narration Rules" desc="Set up rules that auto-resolve the counterparty/category on imported statement lines by narration pattern." />
+          <MenuRow name="Bank Statement Review" desc="Fix lines resolution couldn't place, optionally saving the fix as a new rule." />
+          <MenuRow name="Bank Reconciliation" desc="Match statement lines to GL entries. See the note under Tips — the balance-comparison figure needs the bank account's opening balance set correctly first." />
+        </SubSection>
       </Section>
 
       {/* 9. Tips */}
@@ -377,6 +383,7 @@ const HelpPage = () => (
           "Schemes are evaluated in real time during POS billing. Publish a scheme via Manage Scheme before billing starts.",
           "For GST returns: use HSN wise Sales and Sales Tax Summary reports — they give CGST + SGST split per rate.",
           "Reprocess Voucher can fix sales that failed to sync to the server due to temporary errors.",
+          "Bank Reconciliation's balance-comparison figure will show a large, misleading \"difference\" even for a fully-matched account until the bank ledger account's Opening Balance (Dr/Cr) is set to its real-world balance as of when statement tracking began. Imported statement lines carry no opening balance of their own — only the GL side does — so the two won't line up until that's configured.",
         ]} />
       </Section>
 
