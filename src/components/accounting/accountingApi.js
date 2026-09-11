@@ -119,6 +119,27 @@ export const TXN_CATEGORIES = [
   "NEFT", "RTGS", "IMPS", "CASH_DEPOSIT", "OTHER",
 ];
 
+// ── Daily Transaction Excel Report (backlog #38) ──────────────
+export const downloadBankStatementDailyReport = async (from, to) => {
+  const qs = [];
+  if (from) qs.push(`from=${from}`);
+  if (to) qs.push(`to=${to}`);
+  const res = await fetch(`${base()}/bank-statements/daily-report${qs.length ? "?" + qs.join("&") : ""}`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken")}` },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.error || "Report generation failed.");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `bank-transactions-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
 // ── Phase 5: Inventory ────────────────────────────────────────
 export const getInventoryLedger = (itemId, branchCode, from, to) =>
   api.get("/inventory/ledger", { itemId, branchCode, from, to });

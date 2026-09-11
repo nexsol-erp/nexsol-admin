@@ -4,15 +4,16 @@ import {
   Table, TableHead, TableRow, TableCell, TableBody, Chip, CircularProgress, IconButton,
 } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import DownloadIcon from "@mui/icons-material/Download";
 import {
   getLedgerAccounts, importBankStatement, getBankStatementImports, deleteBankStatementImport,
+  downloadBankStatementDailyReport,
 } from "./accountingApi";
 
 /**
- * Upload an ICICI/Axis statement PDF and see whether it was accepted - backlog #33/#36.
- *
- * Deliberately minimal: counterparty resolution (#37) and the daily Excel report (#38) are
- * separate tickets. This exists to drive the parser end-to-end, not to be the final screen.
+ * Upload an ICICI/Axis statement PDF and see whether it was accepted - backlog #33/#36 - plus
+ * the daily transaction Excel report (#38), which is deliberately just a download button here
+ * rather than its own screen - the ticket frames it as a query and a writer, not a new page.
  */
 const money = (n) => (n == null ? "—" : Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2 }));
 
@@ -25,6 +26,9 @@ export default function BankStatementImport() {
   const [error, setError] = useState("");
   const [imports, setImports] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
+  const [reportFrom, setReportFrom] = useState("");
+  const [reportTo, setReportTo] = useState("");
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     getLedgerAccounts().then((d) => setAccounts((Array.isArray(d) ? d : []).filter((a) => a.bank)));
@@ -65,6 +69,18 @@ export default function BankStatementImport() {
       setError(e.message || "Delete failed.");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    setDownloading(true);
+    setError("");
+    try {
+      await downloadBankStatementDailyReport(reportFrom || undefined, reportTo || undefined);
+    } catch (e) {
+      setError(e.message || "Report generation failed.");
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -113,6 +129,30 @@ export default function BankStatementImport() {
             : `Rejected: ${result.failureReason}`}
         </Alert>
       )}
+
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>Daily Transaction Report</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          One tab per date, both banks combined - Type, Bank, Amount, Party / Comment. Leave the
+          dates blank to include everything imported.
+        </Typography>
+        <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
+          <TextField
+            size="small" type="date" label="From" value={reportFrom}
+            onChange={(e) => setReportFrom(e.target.value)}
+            InputLabelProps={{ shrink: true }} sx={{ minWidth: 160 }}
+          />
+          <TextField
+            size="small" type="date" label="To" value={reportTo}
+            onChange={(e) => setReportTo(e.target.value)}
+            InputLabelProps={{ shrink: true }} sx={{ minWidth: 160 }}
+          />
+          <Button variant="outlined" startIcon={downloading ? undefined : <DownloadIcon />}
+                  onClick={handleDownloadReport} disabled={downloading}>
+            {downloading ? <CircularProgress size={22} /> : "Download Excel"}
+          </Button>
+        </Box>
+      </Paper>
 
       <Paper sx={{ p: 1 }}>
         <Typography variant="subtitle2" sx={{ p: 1 }}>Recent imports for this account</Typography>
