@@ -22,7 +22,18 @@ import {
   DialogTitle,
 } from "@mui/material";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
 import "dayjs/locale/en";
+
+dayjs.extend(utc);
+
+// Accept Stock always stamps voucher_date with the backend JVM's LocalDateTime.now(),
+// with no timezone applied anywhere in the stack - on a UTC-defaulted server that value
+// is UTC wall-clock text with no offset marker. Source Voucher Date is already shifted to
+// IST client-side (see pos-electron's nowIST()) before it's sent, so treating the accept
+// date as UTC and converting to IST here is what makes the two columns comparable.
+const formatAcceptDateIST = (value) =>
+  value ? dayjs.utc(value).utcOffset(330).format("YYYY-MM-DD HH:mm:ss") : "";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { useNavigate } from "react-router-dom";
@@ -315,8 +326,8 @@ const handleRowClick = (row) => {
           <TableHead>
             <TableRow>
               <TableCell>Voucher No</TableCell>
-              <TableCell>Voucher Date</TableCell>
-              <TableCell>Source Voucher Date</TableCell>
+              <TableCell>Accept Voucher Date (IST)</TableCell>
+              <TableCell>Source Voucher Date (IST)</TableCell>
               <TableCell>From Branch</TableCell>
               <TableCell>To Branch</TableCell>
               <TableCell>Item Name</TableCell>
@@ -334,7 +345,7 @@ const handleRowClick = (row) => {
                 onClick={() => handleRowClick(row)}
               >
                 <TableCell>{row.voucherNumber}</TableCell>
-                <TableCell>{row.voucherDate}</TableCell>
+                <TableCell>{formatAcceptDateIST(row.voucherDate)}</TableCell>
                 <TableCell>
                   {row.sourceVoucherDate
                     ? dayjs(row.sourceVoucherDate).format("YYYY-MM-DD HH:mm")
