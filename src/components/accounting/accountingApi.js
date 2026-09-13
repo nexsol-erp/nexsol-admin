@@ -68,6 +68,7 @@ export const getUnmatchedStatements = (accountId, from, to) =>
 export const getUnmatchedGlEntries = (accountId, from, to) =>
   api.get(`/bank-reconciliation/${accountId}/unmatched-gl`, { from, to });
 export const matchReconciliation = (dto) => api.post("/bank-reconciliation/match", dto);
+export const postBankStatementLineToLedger = (dto) => api.post("/bank-reconciliation/post-journal", dto);
 export const unmatchReconciliation = (statementId) =>
   api.del(`/bank-reconciliation/unmatch/${statementId}`);
 export const getBankReconciliationSummary = (accountId, asOfDate) =>

@@ -45,9 +45,16 @@ const ExpenseHeadManagementPage = () => {
 
   // ── Data ───────────────────────────────────────────────────────────────────
   const [expenseTypes,    setExpenseTypes]    = useState([]);
-  const [typeAccountMaps, setTypeAccountMaps] = useState([]); // { expenseTypeId, drLedgerAccountId }
+  const [typeAccountMaps, setTypeAccountMaps] = useState([]); // { expenseTypeId, drLedgerAccountId, postingBehavior }
   const [expenseAccounts, setExpenseAccounts] = useState([]); // ledger accounts of type EXPENSE
+  const [liabilityAccounts, setLiabilityAccounts] = useState([]); // ledger accounts of type LIABILITY
   const [loading,         setLoading]         = useState(false);
+
+  const POSTING_BEHAVIORS = [
+    { value: "EXPENSE_OUTFLOW", label: "Expense (cash/bank goes out)" },
+    { value: "ADVANCE_RECEIVED", label: "Advance Received (cash/bank comes in)" },
+    { value: "ADVANCE_ADJUSTED", label: "Advance Adjusted (applied against a sale, no cash movement)" },
+  ];
 
   // ── Add/Edit Expense Type Dialog ───────────────────────────────────────────
   const [typeDialogOpen, setTypeDialogOpen] = useState(false);
@@ -59,6 +66,7 @@ const ExpenseHeadManagementPage = () => {
   const [linkDialogOpen,     setLinkDialogOpen]     = useState(false);
   const [linkingType,        setLinkingType]        = useState(null);
   const [selectedAccountId,  setSelectedAccountId]  = useState("");
+  const [selectedBehavior,   setSelectedBehavior]   = useState("EXPENSE_OUTFLOW");
   const [linkSaving,         setLinkSaving]         = useState(false);
 
   // ── Delete Confirm ─────────────────────────────────────────────────────────
@@ -82,15 +90,17 @@ const ExpenseHeadManagementPage = () => {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [typesRes, mapsRes, accountsRes, headsRes] = await Promise.all([
+      const [typesRes, mapsRes, accountsRes, liabilityRes, headsRes] = await Promise.all([
         fetch(`/api/${tenancyId}/expenses/types`, { headers }),
         fetch(`/api/${tenancyId}/expenses/type-accounts`, { headers }),
         fetch(`/api/${tenancyId}/ledger-accounts?accountType=EXPENSE`, { headers }),
+        fetch(`/api/${tenancyId}/ledger-accounts?accountType=LIABILITY`, { headers }),
         fetch(`/api/${tenancyId}/expense-heads`, { headers }),
       ]);
       setExpenseTypes(typesRes.ok    ? await typesRes.json()    : []);
       setTypeAccountMaps(mapsRes.ok  ? await mapsRes.json()     : []);
       setExpenseAccounts(accountsRes.ok ? await accountsRes.json() : []);
+      setLiabilityAccounts(liabilityRes.ok ? await liabilityRes.json() : []);
       if (headsRes.ok) {
         const heads = await headsRes.json();
         const index = {};
@@ -115,9 +125,12 @@ const ExpenseHeadManagementPage = () => {
     typeAccountMaps.find((m) => m.expenseTypeId === typeId);
 
   const accountName = (accountId) => {
-    const a = expenseAccounts.find((a) => a.id === accountId);
+    const a = [...expenseAccounts, ...liabilityAccounts].find((a) => a.id === accountId);
     return a ? `${a.accountCode} - ${a.accountName}` : accountId;
   };
+
+  const behaviorLabel = (value) =>
+    POSTING_BEHAVIORS.find((b) => b.value === value)?.label.split(" (")[0] || "Expense";
 
   // ── Init Accounting ────────────────────────────────────────────────────────
   const handleInitAccounting = async () => {
@@ -214,6 +227,7 @@ const ExpenseHeadManagementPage = () => {
     setLinkingType(type);
     const existing = mapForType(type.id);
     setSelectedAccountId(existing ? existing.drLedgerAccountId : "");
+    setSelectedBehavior(existing?.postingBehavior || "EXPENSE_OUTFLOW");
     setLinkDialogOpen(true);
   };
 
@@ -224,7 +238,11 @@ const ExpenseHeadManagementPage = () => {
       const res = await fetch(`/api/${tenancyId}/expenses/type-accounts`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ expenseTypeId: linkingType.id, drLedgerAccountId: selectedAccountId }),
+        body: JSON.stringify({
+          expenseTypeId: linkingType.id,
+          drLedgerAccountId: selectedAccountId,
+          postingBehavior: selectedBehavior,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -336,7 +354,7 @@ const ExpenseHeadManagementPage = () => {
               <TableCell><b>Name</b></TableCell>
               <TableCell><b>Sort</b></TableCell>
               <TableCell><b>Type</b></TableCell>
-              <TableCell><b>GL Account (DR)</b></TableCell>
+              <TableCell><b>GL Account</b></TableCell>
               <TableCell><b>POS Branches</b></TableCell>
               <TableCell align="center"><b>Actions</b></TableCell>
             </TableRow>
@@ -367,9 +385,14 @@ const ExpenseHeadManagementPage = () => {
                   </TableCell>
                   <TableCell>
                     {map ? (
-                      <Typography variant="body2" color="success.main">
-                        {accountName(map.drLedgerAccountId)}
-                      </Typography>
+                      <Box>
+                        <Typography variant="body2" color="success.main">
+                          {accountName(map.drLedgerAccountId)}
+                        </Typography>
+                        {map.postingBehavior && map.postingBehavior !== "EXPENSE_OUTFLOW" && (
+                          <Chip size="small" label={behaviorLabel(map.postingBehavior)} sx={{ mt: 0.5 }} />
+                        )}
+                      </Box>
                     ) : (
                       <Typography variant="body2" color="text.disabled">Not linked</Typography>
                     )}
@@ -463,21 +486,42 @@ const ExpenseHeadManagementPage = () => {
       {/* Link GL Account Dialog */}
       <Dialog open={linkDialogOpen} onClose={() => setLinkDialogOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Link GL Account — {linkingType?.typeName}</DialogTitle>
-        <DialogContent sx={{ pt: "16px !important" }}>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "16px !important" }}>
           <FormControl fullWidth>
-            <InputLabel>Expense Ledger Account (DR)</InputLabel>
+            <InputLabel>Posting Behavior</InputLabel>
+            <Select
+              value={selectedBehavior}
+              label="Posting Behavior"
+              onChange={(e) => { setSelectedBehavior(e.target.value); setSelectedAccountId(""); }}
+            >
+              {POSTING_BEHAVIORS.map((b) => (
+                <MenuItem key={b.value} value={b.value}>{b.label}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel>
+              {selectedBehavior === "EXPENSE_OUTFLOW" ? "Expense Ledger Account (DR)" : "Liability Ledger Account"}
+            </InputLabel>
             <Select
               value={selectedAccountId}
-              label="Expense Ledger Account (DR)"
+              label={selectedBehavior === "EXPENSE_OUTFLOW" ? "Expense Ledger Account (DR)" : "Liability Ledger Account"}
               onChange={(e) => setSelectedAccountId(e.target.value)}
             >
-              {expenseAccounts.map((a) => (
+              {(selectedBehavior === "EXPENSE_OUTFLOW" ? expenseAccounts : liabilityAccounts).map((a) => (
                 <MenuItem key={a.id} value={a.id}>
                   {a.accountCode} — {a.accountName}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
+          {selectedBehavior !== "EXPENSE_OUTFLOW" && (
+            <Typography variant="caption" color="text.secondary">
+              {selectedBehavior === "ADVANCE_RECEIVED"
+                ? "Posts DR cash/bank (by payment mode) / CR this liability account."
+                : "Posts DR this liability account / CR 1100 Accounts Receivable — no cash movement."}
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setLinkDialogOpen(false)}>Cancel</Button>
