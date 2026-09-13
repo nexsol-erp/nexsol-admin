@@ -34,6 +34,10 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
   const [itemQuery, setItemQuery] = useState("");
   const [items, setItems] = useState([]);
   const [lookupOpen, setLookupOpen] = useState(false);
+  // Bumped every time a sale updates the item cache, so ItemLookupModal knows
+  // its last-shown rows (kept on-screen across closes to avoid an empty-list
+  // flash) are stale and must be re-fetched rather than reused as-is.
+  const [itemCacheVersion, setItemCacheVersion] = useState(0);
   const [lookupQuery, setLookupQuery] = useState("");
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
@@ -656,6 +660,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       await applySaleToCache(finalItems.map((item) => ({
         itemId: item.item_id, batchCode: item.batch || "", qty: Number(item.qty) || 0,
       })));
+      setItemCacheVersion((v) => v + 1);
       message.success("Sales saved successfully");
       persistSalesmanCode(salesmanCode);
       doPrint({ snapshot: [...finalItems], voucherNumber, itemwiseDiscount: itemwiseDiscountAmount, roundOff });
@@ -674,6 +679,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
           await applySaleToCache(finalItems.map((item) => ({
             itemId: item.item_id, batchCode: item.batch || "", qty: Number(item.qty) || 0,
           })));
+          setItemCacheVersion((v) => v + 1);
           message.warning(isNetworkError
             ? "No network — sale saved offline, will sync automatically when connected"
             : `Server error (${e.httpStatus}) — sale saved offline, will retry when server recovers`);
@@ -1384,6 +1390,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
       <ItemLookupModal
         open={lookupOpen}
+        cacheVersion={itemCacheVersion}
         initialQuery={lookupQuery}
         onClose={closeLookup}
         onAfterClose={() => {
