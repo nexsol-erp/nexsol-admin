@@ -29,6 +29,7 @@ import {
   Build,
   Assignment,
   Storage,
+  AdminPanelSettings,
 } from "@mui/icons-material";
 
 export const MENU_TREE = [
@@ -40,10 +41,12 @@ export const MENU_TREE = [
   { menuKey: "Product 360",           label: "Product 360",           icon: Insights,   color: "#1565C0", link: "/product-360",  roles: ["admin", "manager", "user"] },
   { menuKey: "Insights",             label: "Insights",              icon: Insights,   color: "#00796B", link: "/insights",     roles: ["admin", "manager", "user"] },
 
-  // -- Setup & Administration -----------------------------------------------
+  // -- Setup & Administration -------------------------------------------------
+  // Trimmed to the numbered onboarding wizard only (1-7). Ongoing admin tools
+  // that used to be bolted on after step 7 now live in System Administration.
   {
     menuKey: "Initial Setup", label: "Setup & Administration", icon: PlaylistAddCheck, color: "#4A148C", link: "",
-    roles: ["admin", "WB"], hasSubmenu: true,
+    roles: ["admin"], hasSubmenu: true,
     submenu: [
       { menuKey: "Menu Master",                 label: "1. Create Menus",                link: "/menu-master",                roles: ["admin"] },
       { menuKey: "Role Management",             label: "2. Create Roles",                link: "/role-management",            roles: ["admin"] },
@@ -52,43 +55,50 @@ export const MENU_TREE = [
       { menuKey: "User Creation",               label: "5. Create Users",                link: "/usercreationpage",           roles: ["admin"] },
       { menuKey: "Branch Assignment",           label: "6. Assign Branches & Roles",     link: "/branchassingment",           roles: ["admin"] },
       { menuKey: "Transfer Branch Permissions", label: "7. Transfer Branch Permissions", link: "/branch-transfer-assignment", roles: ["admin"] },
-      { menuKey: "Branch Day End Settings",     label: "Branch Day End Settings",        link: "/branch-day-end-settings",    roles: ["admin"] },
-      { menuKey: "Clear Day End",               label: "Clear Day End",                  link: "/day-end-clear",              roles: ["admin"] },
-      { menuKey: "Version Management",          label: "Version Management",             link: "/version-management",         roles: ["admin"] },
-      { menuKey: "Admin Page",                  label: "Admin Page",                     link: "/branch-request-list",        roles: ["admin", "WB"] },
-      { menuKey: "Reprocess Voucher",           label: "Reprocess Voucher",              link: "/reprocess-voucher-form",     roles: ["admin", "WB"] },
-      { menuKey: "POS Machine Approval",        label: "POS Machine Approval",           link: "/pos-machine-approval",       roles: ["admin", "MACHINE_ADMIN"] },
-      { menuKey: "Connected POS Terminals",     label: "Connected POS Terminals",        link: "/pos-sessions",               roles: ["admin"] },
-      { menuKey: "UPI Payment Setup",           label: "UPI Payment Setup",              link: "/upi-config",                 roles: ["admin"] },
-      { menuKey: "Cost Stamping",               label: "Cost & Profit Stamping",         link: "/cost-stamping",              roles: ["admin"] },
     ],
   },
 
-  // -- Sales ----------------------------------------------------------------
+  // -- Sales ------------------------------------------------------------------
+  // Entry screens plus the sales-report cluster that used to sit in the
+  // catch-all Reports group.
   {
     menuKey: "Sales", label: "Sales", icon: Receipt, color: "#C62828", link: "",
-    roles: ["admin", "user"], hasSubmenu: true,
+    roles: ["admin", "user", "manager", "franchiseeuser"], hasSubmenu: true,
     submenu: [
       { menuKey: "POS",         label: "POS",         link: "/pos",            roles: ["admin", "user"] },
       { menuKey: "KOT",         label: "KOT",         link: "/kot",            roles: ["admin", "user"] },
       { menuKey: "Sales Entry", label: "Sales Entry", link: "/salesentryform", roles: ["admin"] },
+      { menuKey: "Sales Report",                         label: "Sales Report",                         link: "/sales",                                 roles: ["admin", "user", "manager", "franchiseeuser"] },
+      { menuKey: "Sales Re Print",                       label: "Sales Re Print",                       link: "/salessummaryreport",                    roles: ["admin", "user", "manager", "franchiseeuser"] },
+      { menuKey: "Sales Tax Summary",                    label: "Sales Tax Summary",                    link: "/salestaxsummary",                       roles: ["admin", "user", "manager", "franchiseeuser"] },
+      { menuKey: "HSN wise Sales",                       label: "HSN wise Sales",                       link: "/hsnsales",                              roles: ["admin", "franchiseeuser", "user"] },
+      { menuKey: "HSN Sales Summary",                    label: "HSN Sales Summary",                    link: "/hsn-sales-summary",                     roles: ["admin", "franchiseeuser", "user"] },
+      { menuKey: "All Branch Sales Report",              label: "All Branch Sales Report",              link: "/sales-report-all-branch",               roles: ["admin", "user", "manager"] },
+      { menuKey: "All Branch Categorywise Sales Report", label: "All Branch Categorywise Sales Report", link: "/sales-category-wise-report-all-branch", roles: ["admin", "user", "manager"] },
+      { menuKey: "Season Sales Report",                  label: "Season Sales Report",                  link: "/seasonalreport",                        roles: ["admin"] },
+      { menuKey: "Salesman Report",                      label: "Salesman Report",                      link: "/salesman-report",                       roles: ["admin", "manager", "user"] },
+      { menuKey: "Bill Series Report",                   label: "Bill Series Report",                   link: "/billseriesreport",                      roles: ["admin", "user", "manager"] },
     ],
   },
 
-  // -- Purchase -------------------------------------------------------------
+  // -- Purchase -----------------------------------------------------------------
+  // Entry/correction screens plus the purchase-report cluster from Reports.
   {
     menuKey: "Purchase", label: "Purchase", icon: ShoppingCart, color: "#BF360C", link: "",
-    roles: ["admin", "manager", "user"], hasSubmenu: true,
+    roles: ["admin", "manager", "user", "franchiseeuser"], hasSubmenu: true,
     submenu: [
       { menuKey: "Purchase Entry",               label: "Purchase Entry",               link: "/purchaseentry",                roles: ["user", "manager", "admin"] },
       { menuKey: "Goods Receipt",                label: "Goods Receipt",                link: "/goodsreceipt",                 roles: ["user", "manager", "admin"] },
       { menuKey: "Purchase Correction",          label: "Purchase Correction",          link: "/purchase-correction",          roles: ["admin", "manager"] },
       { menuKey: "Purchase Correction Approval", label: "Purchase Correction Approval", link: "/purchase-correction-approval", roles: ["admin", "manager"] },
       { menuKey: "Purchase Correction History",  label: "Purchase Correction History",  link: "/purchase-correction-history",  roles: ["admin", "manager", "user"] },
+      { menuKey: "Purchase Report",              label: "Purchase Report",              link: "/purchasereport",               roles: ["admin", "user", "manager", "franchiseeuser"] },
+      { menuKey: "HSN wise Purchase",            label: "HSN wise Purchase",            link: "/hsnwise-purchase-report",      roles: ["admin", "user"] },
     ],
   },
 
   // -- Production -----------------------------------------------------------
+  // Def/Planning/Execution plus their two reports, previously stranded in Reports.
   {
     menuKey: "Production", label: "Production", icon: Category, color: "#1B5E20", link: "",
     roles: ["admin", "manager", "user"], hasSubmenu: true,
@@ -96,17 +106,38 @@ export const MENU_TREE = [
       { menuKey: "Production Def",       label: "Production Def",       link: "/production-def",       roles: ["admin", "manager", "user"] },
       { menuKey: "Production Planning",  label: "Production Planning",  link: "/production-planning",  roles: ["admin", "manager", "user"] },
       { menuKey: "Production Execution", label: "Production Execution", link: "/production-execution", roles: ["admin", "manager", "user"] },
+      { menuKey: "Production Planning Report",  label: "Production Planning Report",  link: "/production-planning-report",  roles: ["admin", "manager", "user"] },
+      { menuKey: "Production Execution Report", label: "Production Execution Report", link: "/production-execution-report", roles: ["admin", "manager", "user"] },
     ],
   },
 
-  // -- Stock Operations -----------------------------------------------------
+  // -- Stock & Inventory ------------------------------------------------------
+  // Was "Stock Operations" (3 items) - absorbs every stock-level and
+  // item-analysis report that used to live in the catch-all Reports group.
   {
-    menuKey: "Stock Operations", label: "Stock Operations", icon: AddBusiness, color: "#006064", link: "",
-    roles: ["admin", "manager"], hasSubmenu: true,
+    menuKey: "Stock Operations", label: "Stock & Inventory", icon: AddBusiness, color: "#006064", link: "",
+    roles: ["admin", "manager", "user", "cgn", "franchiseeuser"], hasSubmenu: true,
     submenu: [
       { menuKey: "Physical Stock Correction", label: "Physical Stock Correction", link: "/physical-stock-correction", roles: ["admin", "manager"] },
-      { menuKey: "Wastage Entry", label: "Wastage Entry", link: "/wastage-entry", roles: ["admin", "manager", "user"] },
-      { menuKey: "Wastage Report", label: "Wastage Report", link: "/wastage-report", roles: ["admin", "manager"] },
+      { menuKey: "Wastage Entry",             label: "Wastage Entry",             link: "/wastage-entry",             roles: ["admin", "manager", "user"] },
+      { menuKey: "Wastage Report",            label: "Wastage Report",            link: "/wastage-report",            roles: ["admin", "manager"] },
+      { menuKey: "Item Stock Report",         label: "Item Stock Report",         link: "/item-stock-report",         roles: ["admin", "user", "manager", "cgn"] },
+      { menuKey: "All Branch Stock Report",   label: "All Branch Stock Report",   link: "/stock-report-all-branch",   roles: ["admin", "user", "manager", "cgn", "franchiseeuser"] },
+      { menuKey: "Branch Stock Report",       label: "Branch Stock Report",       link: "/branch-stock-view",         roles: ["admin", "manager", "user", "franchiseeuser"] },
+      { menuKey: "Branch Stock Management",   label: "Branch Stock Management",   link: "/branch-stock-report",       roles: ["admin"] },
+      { menuKey: "Branch Inventory Report",   label: "Branch Inventory Report",   link: "/branch-inventory",          roles: ["admin", "manager", "user", "franchiseeuser"] },
+      { menuKey: "Branch Inventory Ledger",   label: "Branch Inventory Ledger",   link: "/branch-inventory-ledger",   roles: ["admin", "manager", "user", "franchiseeuser"] },
+      { menuKey: "Stock Movement Report",     label: "Stock Movement Report",     link: "/stockmovementreport",       roles: ["admin", "user", "manager", "franchiseeuser"] },
+      { menuKey: "Physical Stock Report",     label: "Physical Stock Report",     link: "/physicalstockreport",       roles: ["admin", "user", "manager", "franchiseeuser"] },
+      { menuKey: "Stock Turnover Report",     label: "Stock Turnover Report",     link: "/stock-turnover",            roles: ["user", "admin"] },
+      { menuKey: "Stock Anomaly Report",      label: "Stock Anomaly Report",      link: "/stock-anomaly-report",      roles: ["admin", "manager"] },
+      { menuKey: "Item Sales Report",         label: "Item Sales Report",         link: "/item-sales",                roles: ["user", "admin"] },
+      { menuKey: "Item Movement Report",      label: "Item Movement Report",      link: "/item-movement-report",      roles: ["admin", "user", "manager", "franchiseeuser"] },
+      { menuKey: "Item Velocity Report",      label: "Item Velocity Report",      link: "/item-velocity-report",      roles: ["admin", "user", "manager", "franchiseeuser"] },
+      { menuKey: "Item Transfer Report",      label: "Item Transfer Report",      link: "/item-transfer-report",      roles: ["admin", "manager", "user", "franchiseeuser"] },
+      { menuKey: "Category Item Report",      label: "Category Item Report",      link: "/category-item-report",      roles: ["admin", "manager", "user"] },
+      { menuKey: "Stock Transfer In Report",  label: "Stock Transfer In Report",  link: "/stocktransfer-in-report",   roles: ["admin", "franchiseeuser", "user"] },
+      { menuKey: "Stock Transfer Out Report", label: "Stock Transfer Out Report", link: "/stocktransfer-out-report",  roles: ["admin", "franchiseeuser"] },
     ],
   },
 
@@ -133,6 +164,8 @@ export const MENU_TREE = [
   },
 
   // -- Masters --------------------------------------------------------------
+  // Cost Stamping joins Item Cost Override / Cost Price History - the same
+  // costing cluster, previously split off into Setup & Administration.
   {
     menuKey: "Masters", label: "Masters", icon: Tune, color: "#004D40", link: "",
     roles: ["admin", "user", "cgn", "franchiseeuser"], hasSubmenu: true,
@@ -141,6 +174,7 @@ export const MENU_TREE = [
       { menuKey: "POS Address Configuration", label: "POS Address Configuration", link: "/pos-address-config",      roles: ["admin"] },
       { menuKey: "Item Cost Override",        label: "Item Cost Override",        link: "/item-cost-override",      roles: ["admin"] },
       { menuKey: "Cost Price History",        label: "Cost Price History",        link: "/cost-price-history",      roles: ["admin"] },
+      { menuKey: "Cost Stamping",             label: "Cost & Profit Stamping",    link: "/cost-stamping",           roles: ["admin"] },
       { menuKey: "Receipt Modes",             label: "Receipt Modes",             link: "/receipt-modes",           roles: ["admin"] },
       { menuKey: "Item Search",               label: "Item Search",               link: "/itemsearch",              roles: ["admin", "user", "cgn", "franchiseeuser"] },
       { menuKey: "Item Creation",             label: "Item Creation",             link: "/createitemmaster",        roles: ["admin", "user"] },
@@ -157,57 +191,9 @@ export const MENU_TREE = [
     ],
   },
 
-  // -- Reports --------------------------------------------------------------
-  {
-    menuKey: "Reports", label: "Reports", icon: Assessment, color: "#283593", link: "",
-    roles: ["admin", "manager", "cgn", "user", "franchiseeuser", "WB"], hasSubmenu: true,
-    submenu: [
-      // Sales
-      { menuKey: "Sales Report",                         label: "Sales Report",                         link: "/sales",                                 roles: ["admin", "user", "manager", "franchiseeuser"] },
-      { menuKey: "Sales Re Print",                       label: "Sales Re Print",                       link: "/salessummaryreport",                    roles: ["admin", "user", "manager", "franchiseeuser"] },
-      { menuKey: "Sales Tax Summary",                    label: "Sales Tax Summary",                    link: "/salestaxsummary",                       roles: ["admin", "user", "manager", "franchiseeuser"] },
-      { menuKey: "HSN wise Sales",                       label: "HSN wise Sales",                       link: "/hsnsales",                              roles: ["admin", "franchiseeuser", "user"] },
-      { menuKey: "HSN Sales Summary",                    label: "HSN Sales Summary",                    link: "/hsn-sales-summary",                     roles: ["admin", "franchiseeuser", "user"] },
-      { menuKey: "All Branch Sales Report",              label: "All Branch Sales Report",              link: "/sales-report-all-branch",               roles: ["admin", "user", "manager"] },
-      { menuKey: "All Branch Categorywise Sales Report", label: "All Branch Categorywise Sales Report", link: "/sales-category-wise-report-all-branch", roles: ["admin", "user", "manager"] },
-      { menuKey: "Season Sales Report",                  label: "Season Sales Report",                  link: "/seasonalreport",                        roles: ["admin"] },
-      { menuKey: "Salesman Report",                      label: "Salesman Report",                      link: "/salesman-report",                       roles: ["admin", "manager", "user"] },
-      // Purchase
-      { menuKey: "Purchase Report",                      label: "Purchase Report",                      link: "/purchasereport",                        roles: ["admin", "user", "manager", "franchiseeuser"] },
-      { menuKey: "HSN wise Purchase",                    label: "HSN wise Purchase",                    link: "/hsnwise-purchase-report",               roles: ["admin", "user"] },
-      // Stock & Inventory
-      { menuKey: "Item Stock Report",                    label: "Item Stock Report",                    link: "/item-stock-report",                     roles: ["admin", "user", "manager", "cgn"] },
-      { menuKey: "All Branch Stock Report",              label: "All Branch Stock Report",              link: "/stock-report-all-branch",               roles: ["admin", "user", "manager", "cgn", "franchiseeuser"] },
-      { menuKey: "Branch Stock Report",                  label: "Branch Stock Report",                  link: "/branch-stock-view",                     roles: ["admin", "manager", "user", "franchiseeuser"] },
-      { menuKey: "Branch Stock Management",              label: "Branch Stock Management",              link: "/branch-stock-report",                   roles: ["admin"] },
-      { menuKey: "Branch Inventory Report",              label: "Branch Inventory Report",              link: "/branch-inventory",                      roles: ["admin", "manager", "user", "franchiseeuser"] },
-      { menuKey: "Branch Inventory Ledger",              label: "Branch Inventory Ledger",              link: "/branch-inventory-ledger",               roles: ["admin", "manager", "user", "franchiseeuser"] },
-      { menuKey: "Stock Movement Report",                label: "Stock Movement Report",                link: "/stockmovementreport",                   roles: ["admin", "user", "manager", "franchiseeuser"] },
-      { menuKey: "Physical Stock Report",                label: "Physical Stock Report",                link: "/physicalstockreport",                   roles: ["admin", "user", "manager", "franchiseeuser"] },
-      { menuKey: "Stock Turnover Report",                label: "Stock Turnover Report",                link: "/stock-turnover",                        roles: ["user", "admin"] },
-      { menuKey: "Stock Anomaly Report",                 label: "Stock Anomaly Report",                 link: "/stock-anomaly-report",                  roles: ["admin", "manager"] },
-      // Item analysis
-      { menuKey: "Item Sales Report",                    label: "Item Sales Report",                    link: "/item-sales",                            roles: ["user", "admin"] },
-      { menuKey: "Item Movement Report",                 label: "Item Movement Report",                 link: "/item-movement-report",                  roles: ["admin", "user", "manager", "franchiseeuser"] },
-      { menuKey: "Item Velocity Report",                 label: "Item Velocity Report",                 link: "/item-velocity-report",                  roles: ["admin", "user", "manager", "franchiseeuser"] },
-      { menuKey: "Item Transfer Report",                 label: "Item Transfer Report",                 link: "/item-transfer-report",                  roles: ["admin", "manager", "user", "franchiseeuser"] },
-      { menuKey: "Category Item Report",                 label: "Category Item Report",                 link: "/category-item-report",                  roles: ["admin", "manager", "user"] },
-      { menuKey: "Stock Transfer In Report",             label: "Stock Transfer In Report",             link: "/stocktransfer-in-report",               roles: ["admin", "franchiseeuser", "user"] },
-      { menuKey: "Stock Transfer Out Report",            label: "Stock Transfer Out Report",            link: "/stocktransfer-out-report",              roles: ["admin", "franchiseeuser"] },
-      // Production
-      { menuKey: "Production Planning Report",           label: "Production Planning Report",           link: "/production-planning-report",            roles: ["admin", "manager", "user"] },
-      { menuKey: "Production Execution Report",          label: "Production Execution Report",          link: "/production-execution-report",           roles: ["admin", "manager", "user"] },
-      // Profit
-      { menuKey: "Branch Profit Report",                 label: "Branch Profit Report",                 link: "/branch-profit-report",                  roles: ["admin", "manager"] },
-      { menuKey: "Monthly Branch Profit Report",         label: "Monthly Branch Profit Report",         link: "/monthly-branch-profit-report",          roles: ["admin", "manager"] },
-      // Operations
-      { menuKey: "Day End Report",                       label: "Day End Report",                       link: "/day-end-report",                        roles: ["admin", "manager"] },
-      { menuKey: "Bill Series Report",                   label: "Bill Series Report",                   link: "/billseriesreport",                      roles: ["admin", "user", "manager"] },
-      { menuKey: "Documents List",                       label: "Documents List",                       link: "/documents-list",                        roles: ["user", "admin", "WB"] },
-    ],
-  },
-
   // -- Accounting -----------------------------------------------------------
+  // Gains the two profit reports - financial statements, not operational
+  // reports - that used to sit in the catch-all Reports group.
   {
     menuKey: "Accounting", label: "Accounting", icon: AccountBalance, color: "#00695C", link: "",
     roles: ["admin", "manager"], hasSubmenu: true,
@@ -223,7 +209,7 @@ export const MENU_TREE = [
       { menuKey: "Branch Monthly Expense",  label: "Branch Monthly Expense",  link: "/branch-monthly-expense",           roles: ["admin", "manager"] },
       { menuKey: "Shop Expense Report",     label: "Shop Expense Report",     link: "/shop-expense-report",              roles: ["admin", "manager"] },
       { menuKey: "Inter-Branch Transfer",   label: "Inter-Branch Transfer",   link: "/accounting/inter-branch-transfer", roles: ["admin", "manager"] },
-      // Reports
+      // Statements & reports
       { menuKey: "Trial Balance",           label: "Trial Balance",           link: "/accounting/trial-balance",         roles: ["admin", "manager"] },
       { menuKey: "Ledger Statement",        label: "Ledger Statement",        link: "/accounting/ledger-statement",      roles: ["admin", "manager"] },
       { menuKey: "Profit & Loss",           label: "Profit & Loss",           link: "/accounting/profit-loss",           roles: ["admin", "manager"] },
@@ -242,6 +228,8 @@ export const MENU_TREE = [
       { menuKey: "Daily Cash Summary",          label: "Daily Cash Summary",          link: "/accounting/daily-cash-summary",          roles: ["admin", "manager"] },
       { menuKey: "Inventory Ledger",        label: "Inventory Ledger",        link: "/accounting/inventory-ledger",      roles: ["admin", "manager"] },
       { menuKey: "Stock Valuation",         label: "Stock Valuation",         link: "/accounting/stock-valuation",       roles: ["admin", "manager"] },
+      { menuKey: "Branch Profit Report",         label: "Branch Profit Report",         link: "/branch-profit-report",         roles: ["admin", "manager"] },
+      { menuKey: "Monthly Branch Profit Report", label: "Monthly Branch Profit Report", link: "/monthly-branch-profit-report", roles: ["admin", "manager"] },
       // Operations
       { menuKey: "Period Closing",          label: "Period Closing",          link: "/accounting/period-closing",        roles: ["admin"] },
       { menuKey: "Budget Manager",          label: "Budget Manager",          link: "/accounting/budget-manager",        roles: ["admin", "manager"] },
@@ -250,17 +238,43 @@ export const MENU_TREE = [
   },
 
   // -- Franchise Management -------------------------------------------------
+  // Trimmed to the two actual business-management screens. Platform/ops
+  // tooling (Event Monitor, Master Sync, DB Migrations, etc.) moved to
+  // System Administration - same access role, different audience.
   {
     menuKey: "Franchise Management", label: "Franchise", icon: Business, color: "#6A1B9A", link: "",
     roles: ["admin", "system-admin"], hasSubmenu: true,
     submenu: [
-      { menuKey: "Franchise Master",         label: "Franchise Master",  link: "/franchise-master",          roles: ["admin", "system-admin"] },
+      { menuKey: "Franchise Master", label: "Franchise Master", link: "/franchise-master", roles: ["admin", "system-admin"] },
+      { menuKey: "Franchise Users",  label: "Franchise Users",  link: "/franchise-users",  roles: ["admin", "system-admin"] },
+    ],
+  },
+
+  // -- System Administration -------------------------------------------------
+  // New group: ongoing operational/platform tooling, as distinct from the
+  // one-time onboarding wizard in Setup & Administration. Combines the
+  // day-to-day admin tools that used to trail after that wizard, the two
+  // operational reports orphaned by retiring the Reports catch-all, and the
+  // platform/engineering tools that used to sit inside Franchise Management.
+  {
+    menuKey: "System Administration", label: "System Administration", icon: AdminPanelSettings, color: "#455A64", link: "",
+    roles: ["admin", "WB", "manager", "user", "system-admin", "MACHINE_ADMIN"], hasSubmenu: true,
+    submenu: [
+      { menuKey: "Branch Day End Settings", label: "Branch Day End Settings", link: "/branch-day-end-settings", roles: ["admin"] },
+      { menuKey: "Clear Day End",           label: "Clear Day End",           link: "/day-end-clear",           roles: ["admin"] },
+      { menuKey: "Day End Report",          label: "Day End Report",          link: "/day-end-report",          roles: ["admin", "manager"] },
+      { menuKey: "Version Management",      label: "Version Management",      link: "/version-management",      roles: ["admin"] },
+      { menuKey: "Admin Page",              label: "Admin Page",              link: "/branch-request-list",     roles: ["admin", "WB"] },
+      { menuKey: "Reprocess Voucher",       label: "Reprocess Voucher",       link: "/reprocess-voucher-form",  roles: ["admin", "WB"] },
+      { menuKey: "POS Machine Approval",    label: "POS Machine Approval",    link: "/pos-machine-approval",    roles: ["admin", "MACHINE_ADMIN"] },
+      { menuKey: "Connected POS Terminals", label: "Connected POS Terminals", link: "/pos-sessions",            roles: ["admin"] },
+      { menuKey: "UPI Payment Setup",       label: "UPI Payment Setup",       link: "/upi-config",              roles: ["admin"] },
+      { menuKey: "Documents List",          label: "Documents List",          link: "/documents-list",          roles: ["user", "admin", "WB"] },
       { menuKey: "Event Monitor",            label: "Event Monitor",     link: "/event-monitor",             roles: ["admin", "system-admin"], icon: Hub },
       { menuKey: "Master Sync",              label: "Master Sync",       link: "/master-sync",               roles: ["admin", "system-admin"] },
       { menuKey: "Franchise Stock Transfer", label: "Stock Transfer",    link: "/franchise-stock-transfer",  roles: ["admin", "system-admin"] },
       { menuKey: "Transfer Config",          label: "Transfer Config",   link: "/franchise-transfer-config", roles: ["admin", "system-admin"] },
       { menuKey: "Franchise Migration",      label: "Migration Utility", link: "/franchise-migration",       roles: ["admin", "system-admin"] },
-      { menuKey: "Franchise Users",          label: "Franchise Users",   link: "/franchise-users",           roles: ["admin", "system-admin"] },
       { menuKey: "DB Migrations",            label: "DB Migrations",     link: "/db-migrations",             roles: ["admin", "system-admin"], icon: Storage },
     ],
   },
