@@ -24,6 +24,9 @@ import {
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import "dayjs/locale/en";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+import { useNavigate } from "react-router-dom";
 
 dayjs.extend(utc);
 
@@ -34,10 +37,6 @@ dayjs.extend(utc);
 // date as UTC and converting to IST here is what makes the two columns comparable.
 const formatAcceptDateIST = (value) =>
   value ? dayjs.utc(value).utcOffset(330).format("YYYY-MM-DD HH:mm:ss") : "";
-import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
-import { useNavigate } from "react-router-dom";
-
 
 const StockTransferInReport = () => {
   const [fromBranch, setFromBranch] = useState("");
