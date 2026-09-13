@@ -28,6 +28,7 @@ import {
   AccountBalance,
   Build,
   Assignment,
+  Storage,
 } from "@mui/icons-material";
 
 export const MENU_TREE = [
@@ -257,6 +258,7 @@ export const MENU_TREE = [
       { menuKey: "Transfer Config",          label: "Transfer Config",   link: "/franchise-transfer-config", roles: ["admin", "system-admin"] },
       { menuKey: "Franchise Migration",      label: "Migration Utility", link: "/franchise-migration",       roles: ["admin", "system-admin"] },
       { menuKey: "Franchise Users",          label: "Franchise Users",   link: "/franchise-users",           roles: ["admin", "system-admin"] },
+      { menuKey: "DB Migrations",            label: "DB Migrations",     link: "/db-migrations",             roles: ["admin", "system-admin"], icon: Storage },
     ],
   },
 

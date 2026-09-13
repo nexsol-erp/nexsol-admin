@@ -6,7 +6,7 @@ import {
 import {
   getLedgerAccounts, getBankStatements, getUnmatchedStatements,
   getUnmatchedGlEntries, matchReconciliation, unmatchReconciliation,
-  getBankReconciliationSummary, createBankStatement,
+  getBankReconciliationSummary, createBankStatement, postBankStatementLineToLedger,
 } from "./accountingApi";
 import { useFinancialYear } from "./useFinancialYear";
 
@@ -15,6 +15,7 @@ const fmt = (n) => Number(n || 0).toLocaleString("en-IN", { minimumFractionDigit
 export default function BankReconciliation() {
   const [tab, setTab]           = useState(0);
   const [accounts, setAccounts] = useState([]);
+  const [allAccounts, setAllAccounts] = useState([]);
   const [accountId, setAccountId] = useState("");
   const [from, setFrom]         = useState("");
   const [to, setTo]             = useState("");
@@ -27,9 +28,15 @@ export default function BankReconciliation() {
   const [selectedGl, setSelectedGl]     = useState(null);
   const [msg, setMsg]           = useState(null);
   const [newStmt, setNewStmt]   = useState({ description: "", debitAmount: "", creditAmount: "", referenceNumber: "", statementDate: "" });
+  const [offsetAccountId, setOffsetAccountId] = useState("");
+  const [journalNarration, setJournalNarration] = useState("");
 
   useEffect(() => {
-    getLedgerAccounts().then((d) => setAccounts((Array.isArray(d) ? d : []).filter((a) => a.bank)));
+    getLedgerAccounts().then((d) => {
+      const list = Array.isArray(d) ? d : [];
+      setAccounts(list.filter((a) => a.bank));
+      setAllAccounts(list);
+    });
   }, []);
 
   const load = async () => {
@@ -52,6 +59,19 @@ export default function BankReconciliation() {
       setSelectedStmt(null); setSelectedGl(null);
       load();
     } catch { setMsg({ type: "error", text: "Match failed." }); }
+  };
+
+  const handlePostJournal = async () => {
+    if (!selectedStmt || !offsetAccountId) return;
+    try {
+      const result = await postBankStatementLineToLedger({
+        bankStatementId: selectedStmt, offsetLedgerAccountId: offsetAccountId, narration: journalNarration,
+      });
+      if (result?.error) throw new Error(result.error);
+      setMsg({ type: "success", text: "Posted to ledger and reconciled." });
+      setSelectedStmt(null); setOffsetAccountId(""); setJournalNarration("");
+      load();
+    } catch (e) { setMsg({ type: "error", text: e.message || "Posting failed." }); }
   };
 
   const handleUnmatch = async (stmtId) => {
@@ -124,8 +144,21 @@ export default function BankReconciliation() {
             </Table>
           </Paper>
 
-          <Box display="flex" flexDirection="column" justifyContent="center" gap={1}>
+          <Box display="flex" flexDirection="column" justifyContent="center" gap={1} sx={{ minWidth: 220 }}>
             <Button variant="contained" onClick={handleMatch} disabled={!selectedStmt || !selectedGl}>Match ↔</Button>
+            <Divider sx={{ my: 1 }}>or</Divider>
+            <Typography variant="caption" color="text.secondary">
+              No matching GL entry for the selected line? Post it directly (bank charges, interest, an unrecognised transfer).
+            </Typography>
+            <TextField select label="Offset Account" size="small" value={offsetAccountId}
+              onChange={(e) => setOffsetAccountId(e.target.value)} disabled={!selectedStmt}>
+              {allAccounts.map((a) => <MenuItem key={a.id} value={a.id}>{a.accountCode} - {a.accountName}</MenuItem>)}
+            </TextField>
+            <TextField label="Narration (optional)" size="small" value={journalNarration}
+              onChange={(e) => setJournalNarration(e.target.value)} disabled={!selectedStmt} />
+            <Button variant="outlined" onClick={handlePostJournal} disabled={!selectedStmt || !offsetAccountId}>
+              Post as Journal Entry
+            </Button>
           </Box>
 
           <Paper sx={{ flex: 1, p: 1 }}>
