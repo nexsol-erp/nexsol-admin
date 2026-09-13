@@ -4,12 +4,18 @@ import { localSearchItems, loadAllItemsToCache, hasCache } from "../cache/itemCa
 
 const { Text } = Typography;
 
-export default function ItemLookupModal({ open, initialQuery, onClose, onPick, onAfterClose, onQueryChange, hideOutOfStock = true }) {
+export default function ItemLookupModal({ open, initialQuery, onClose, onPick, onAfterClose, onQueryChange, hideOutOfStock = true, cacheVersion }) {
   const inputRef = useRef(null);
   // When reopening with no fresh query (no scanned barcode carried over), keep
   // showing the previous search's filtered rows instead of re-running the
   // search against an empty string — only clear the visible text box.
   const skipSearchRef = useRef(false);
+  // If the caller bumps cacheVersion (e.g. right after a sale updates stock in
+  // the cache), the stale-rows optimization above must not apply on the next
+  // open — otherwise a sale completed while this modal was last closed shows
+  // pre-sale quantities until something else (like a page remount) forces a
+  // real re-search.
+  const lastCacheVersionRef = useRef(cacheVersion);
 
   const [q, setQ] = useState(initialQuery || "");
   const [rows, setRows] = useState([]);
@@ -52,9 +58,13 @@ export default function ItemLookupModal({ open, initialQuery, onClose, onPick, o
   useEffect(() => {
     if (!open) return;
     const iq = initialQuery || "";
+    const cacheChanged = cacheVersion !== lastCacheVersionRef.current;
+    lastCacheVersionRef.current = cacheVersion;
     // No fresh query to seed with, but we already have results on screen from
-    // last time — clear the box without wiping the list.
-    skipSearchRef.current = iq === "" && rows.length > 0;
+    // last time — clear the box without wiping the list. Not if the cache
+    // changed underneath us since we last closed (e.g. a sale just ran) —
+    // then the on-screen rows are known stale and must be re-fetched.
+    skipSearchRef.current = iq === "" && rows.length > 0 && !cacheChanged;
     setQ(iq);
     setSelectedIndex(0);
     setTimeout(() => inputRef.current?.focus?.(), 50);
