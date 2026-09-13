@@ -169,6 +169,9 @@ import BankReconciliation from "./components/accounting/BankReconciliation";
 import BankStatementImport from "./components/accounting/BankStatementImport";
 import BankNarrationRulesPage from "./components/accounting/BankNarrationRulesPage";
 import BankStatementReview from "./components/accounting/BankStatementReview";
+import CashSummaryConfigPage from "./components/CashSummaryConfigPage";
+import CashSummaryManualEntryPage from "./components/CashSummaryManualEntryPage";
+import DailyCashSummaryReport from "./components/DailyCashSummaryReport";
 import InventoryLedger from "./components/accounting/InventoryLedger";
 import StockValuation from "./components/accounting/StockValuation";
 import CustomerAging from "./components/accounting/CustomerAging";
@@ -307,6 +310,9 @@ const ROUTE_ORDER = [
   { key: "Bank Statements",                 path: "/accounting/bank-statement-import" },
   { key: "Bank Narration Rules",            path: "/accounting/bank-narration-rules" },
   { key: "Bank Statement Review",           path: "/accounting/bank-statement-review" },
+  { key: "Cash Summary Line Items",         path: "/accounting/cash-summary-line-items" },
+  { key: "Cash Summary Manual Entries",     path: "/accounting/cash-summary-manual-entries" },
+  { key: "Daily Cash Summary",              path: "/accounting/daily-cash-summary" },
   { key: "Inventory Ledger",                path: "/accounting/inventory-ledger" },
   { key: "Stock Valuation",                 path: "/accounting/stock-valuation" },
   { key: "Customer Aging",                  path: "/accounting/customer-aging" },
@@ -666,6 +672,9 @@ function HideOnScroll({ children }) {
             <Route path="/accounting/bank-statement-import" element={<BankStatementImport />} />
             <Route path="/accounting/bank-narration-rules" element={<BankNarrationRulesPage />} />
             <Route path="/accounting/bank-statement-review" element={<BankStatementReview />} />
+            <Route path="/accounting/cash-summary-line-items" element={<CashSummaryConfigPage />} />
+            <Route path="/accounting/cash-summary-manual-entries" element={<CashSummaryManualEntryPage />} />
+            <Route path="/accounting/daily-cash-summary" element={<DailyCashSummaryReport />} />
             <Route path="/accounting/inventory-ledger" element={<InventoryLedger />} />
             <Route path="/accounting/stock-valuation" element={<StockValuation />} />
             <Route path="/accounting/customer-aging" element={<CustomerAging />} />

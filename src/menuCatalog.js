@@ -237,6 +237,9 @@ export const MENU_TREE = [
       { menuKey: "Bank Statements",         label: "Bank Statements",         link: "/accounting/bank-statement-import", roles: ["admin", "manager"] },
       { menuKey: "Bank Narration Rules",    label: "Bank Narration Rules",    link: "/accounting/bank-narration-rules",  roles: ["admin", "manager"] },
       { menuKey: "Bank Statement Review",   label: "Bank Statement Review",   link: "/accounting/bank-statement-review", roles: ["admin", "manager"] },
+      { menuKey: "Cash Summary Line Items",     label: "Cash Summary Line Items",     link: "/accounting/cash-summary-line-items",     roles: ["admin", "manager"] },
+      { menuKey: "Cash Summary Manual Entries", label: "Cash Summary Manual Entries", link: "/accounting/cash-summary-manual-entries", roles: ["admin", "manager"] },
+      { menuKey: "Daily Cash Summary",          label: "Daily Cash Summary",          link: "/accounting/daily-cash-summary",          roles: ["admin", "manager"] },
       { menuKey: "Inventory Ledger",        label: "Inventory Ledger",        link: "/accounting/inventory-ledger",      roles: ["admin", "manager"] },
       { menuKey: "Stock Valuation",         label: "Stock Valuation",         link: "/accounting/stock-valuation",       roles: ["admin", "manager"] },
       // Operations
