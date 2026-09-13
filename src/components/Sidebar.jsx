@@ -163,21 +163,22 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
 
   const itemButtonSx = (link) => ({
     px: 2,
-    py: 0.85,
-    minHeight: 40,
+    py: 0.65,
+    minHeight: 34,
     borderLeft: isActive(link) ? `3px solid ${C.activeBorder}` : "3px solid transparent",
     bgcolor: isActive(link) ? C.activeBg : "transparent",
     transition: "background-color 0.15s ease, border-color 0.15s ease",
     "& .MuiListItemIcon-root": {
       color: isActive(link) ? C.textActive : C.icon,
-      minWidth: 36,
+      minWidth: 34,
       transition: "color 0.15s ease",
+      "& .MuiSvgIcon-root": { fontSize: 18 },
     },
     "& .MuiListItemText-primary": {
-      fontSize: 13.5,
+      fontSize: 12.5,
       fontWeight: isActive(link) ? 600 : 400,
       color: isActive(link) ? C.textActive : C.text,
-      lineHeight: 1.4,
+      lineHeight: 1.35,
     },
     "&:hover": {
       bgcolor: isActive(link) ? C.activeBg : C.hover,
@@ -188,17 +189,18 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
 
   const parentButtonSx = (isOpen, hasActive) => ({
     px: 2,
-    py: 0.85,
-    minHeight: 40,
+    py: 0.65,
+    minHeight: 34,
     borderLeft: hasActive ? `3px solid ${C.activeBorder}` : "3px solid transparent",
     bgcolor: hasActive ? C.activeBg : "transparent",
     transition: "background-color 0.15s ease",
     "& .MuiListItemIcon-root": {
       color: hasActive ? C.textActive : C.icon,
-      minWidth: 36,
+      minWidth: 34,
+      "& .MuiSvgIcon-root": { fontSize: 18 },
     },
     "& .MuiListItemText-primary": {
-      fontSize: 13.5,
+      fontSize: 12.5,
       fontWeight: hasActive || isOpen ? 600 : 400,
       color: hasActive || isOpen ? C.textActive : C.text,
     },
@@ -210,14 +212,15 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
   });
 
   const subItemButtonSx = (link) => ({
-    pl: "44px",
-    py: 0.65,
-    minHeight: 34,
+    pl: "42px",
+    py: 0.5,
+    minHeight: 30,
     bgcolor: isActive(link) ? C.activeBg : "transparent",
     "& .MuiListItemText-primary": {
-      fontSize: 12.5,
+      fontSize: 11.5,
       fontWeight: isActive(link) ? 600 : 400,
       color: isActive(link) ? C.textActive : "rgba(255,255,255,0.65)",
+      lineHeight: 1.3,
     },
     "&:hover": {
       bgcolor: C.hover,
@@ -431,7 +434,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
             px: 1.5,
             py: 0.6,
             mb: 0.5,
-            "& .MuiListItemText-primary": { fontSize: 13, color: C.textMuted },
+            "& .MuiListItemText-primary": { fontSize: 12, color: C.textMuted },
             "&:hover": { bgcolor: C.hover, "& .MuiListItemText-primary": { color: C.text } },
           }}
         >
@@ -459,7 +462,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
             px: 1.5,
             py: 0.6,
             mb: 0.5,
-            "& .MuiListItemText-primary": { fontSize: 13, color: C.textMuted },
+            "& .MuiListItemText-primary": { fontSize: 12, color: C.textMuted },
             "&:hover": { bgcolor: C.hover, "& .MuiListItemText-primary": { color: C.text } },
           }}
         >
@@ -476,7 +479,7 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
             borderRadius: "8px",
             px: 1.5,
             py: 0.6,
-            "& .MuiListItemText-primary": { fontSize: 13, color: "rgba(255,100,100,0.75)" },
+            "& .MuiListItemText-primary": { fontSize: 12, color: "rgba(255,100,100,0.75)" },
             "&:hover": {
               bgcolor: "rgba(255,80,80,0.08)",
               "& .MuiListItemText-primary": { color: "#ff6b6b" },

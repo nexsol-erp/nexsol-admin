@@ -1,0 +1,99 @@
+TradeLink247 — cold outreach email (plain-text version)
+Bakery / supermarket prospects. Send with TradeLink247-Brochure.pdf attached.
+
+MERGE FIELDS
+  {{FirstName}}        first name of the owner or manager
+  {{BusinessName}}     their shop or chain
+  {{City}}             used in the footer permission line
+  {{DemoLink}}         booking link, or strip the line and let them reply
+  {{SenderName}}       your name
+  {{SenderTitle}}      your title
+  {{SenderPhone}}      your direct number
+  {{CompanyAddress}}   registered address — required for bulk mail
+  {{UnsubscribeLink}}  required for bulk mail
+
+SUBJECT LINES — pick one, test two
+  1. What does a batch of bread actually cost you?
+  2. {{BusinessName}} — the till keeps billing when the internet drops
+  3. A stock take that closes the same evening
+  4. Built for bakeries, not adapted for them
+
+Subject 1 is the strongest opener for a bakery: it is a real question most
+owners cannot answer, and it is not a sales claim. Subject 2 suits a
+supermarket with more than one outlet. Avoid the word "ERP" in the subject —
+it reads as expensive and slow before the email is even open.
+
+---------------------------------------------------------------------------
+
+Hello {{FirstName}},
+
+Most billing software handles the counter and stops there. If you are running
+{{BusinessName}} across more than one shop, the expensive questions sit
+somewhere else: what a batch actually cost to make, which lines quietly
+stopped selling, and whether the stock figure is anything like the shelf.
+
+TradeLink247 is an ERP built for bakeries and supermarkets from the production
+side inward. It is in daily use today, not in development:
+
+- Recipes, planning and real batch cost. Raw material leaves stock
+  automatically, and every sale carries the cost it was made at, so margin is
+  a fact rather than a month-end guess.
+
+- A till that keeps billing offline. Sales queue on the machine and sync
+  themselves when the line returns. Your counter does not stop because the
+  internet did.
+
+- Stock taking on a phone. Walk the aisle, scan, count. The stock take closes
+  the same evening instead of being typed up over the weekend.
+
+- Franchisees as their own business. Each one gets its own database and books,
+  while you keep the transfer price, credit limit and approval rules centrally.
+
+Rather than a showroom demo, send us a day of your sales and a sample of your
+item list. We will set up a demo with your products, your prices and your
+branches, so you are looking at your own business on the system. It takes us
+a day, and costs you nothing.
+
+Book a 30-minute demo: {{DemoLink}}
+
+The full brochure is attached — the whole system module by module, including
+the reports, the accounting and how a rollout runs.
+
+Happy to answer anything directly — just reply to this note.
+
+{{SenderName}}
+{{SenderTitle}}, MapleERP (P) Ltd
+{{SenderPhone}} · admin@tradelink247.com · tradelink247.com
+
+---
+MapleERP (P) Ltd · {{CompanyAddress}}
+You are receiving this because you run a food retail or bakery business in
+{{City}}. Reply with "remove" and we will not write again:
+{{UnsubscribeLink}}
+
+---------------------------------------------------------------------------
+
+FOLLOW-UP (send 5-6 working days later, reply on the same thread, no attachment)
+
+Hello {{FirstName}},
+
+Short follow-up on the note below.
+
+The one thing worth two minutes of your time: we can load your own item list
+and a day of your sales into a demo, so you see your products and your
+margins rather than ours. Most owners find something in their own numbers
+during that call.
+
+Worth a look, or shall I leave it?
+
+{{SenderName}}
+
+NOTES ON SENDING
+- Attach the PDF for the first email only. A follow-up with an attachment is
+  far more likely to be filtered.
+- Send from a person's address, not info@ or sales@. Cold mail from a role
+  address lands in spam and reads as a blast.
+- Keep the first email under 200 words of body copy if you cut it further —
+  the four points are the part to protect.
+- The offer to load their own data is the strongest line here. Do not drop it
+  to save space, and do not make it unless you will actually do it in a day.

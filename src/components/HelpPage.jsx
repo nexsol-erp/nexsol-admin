@@ -54,6 +54,7 @@ const toc = [
   { id: "desktop-app",     label: "POS Desktop Application" },
   { id: "roles",           label: "User Roles & Access" },
   { id: "reports",         label: "Reports Guide" },
+  { id: "cash-summary",    label: "Daily Cash Summary — Configuration Guide" },
   { id: "tips",            label: "Tips & Common Mistakes" },
   { id: "support",         label: "Contact Support" },
 ];
@@ -367,6 +368,71 @@ const HelpPage = () => (
           <MenuRow name="Bank Narration Rules" desc="Set up rules that auto-resolve the counterparty/category on imported statement lines by narration pattern." />
           <MenuRow name="Bank Statement Review" desc="Fix lines resolution couldn't place, optionally saving the fix as a new rule." />
           <MenuRow name="Bank Reconciliation" desc="Match statement lines to GL entries. See the note under Tips — the balance-comparison figure needs the bank account's opening balance set correctly first." />
+        </SubSection>
+        <SubSection title="Daily Cash Summary">
+          <MenuRow name="Cash Summary Line Items" desc="Define the formula: an ordered list of line items, each ADD or SUBTRACT, at SHOP level (rolls into that branch's Expected Cash to Bank) or FINAL level (rolls into the company-wide total, after every shop's own total). Each line item is sourced from mapped expense categories, sales, a manual entry, or a fixed amount." />
+          <MenuRow name="Cash Summary Manual Entries" desc="Capture a figure for any line item configured as source MANUAL — for a figure with no home among the expense categories." />
+          <MenuRow name="Daily Cash Summary" desc="Pick a date to see every shop's Expected Cash to Bank and the company-wide Final Expected Cash to Bank, or download the Excel version." />
+        </SubSection>
+      </Section>
+
+      {/* Daily Cash Summary — generic mechanism + Hotcakes example configuration */}
+      <Section id="cash-summary" title="Daily Cash Summary — Configuration Guide">
+        <P>
+          This report replaces a manual spreadsheet workflow with one built entirely from
+          configuration — nothing about any customer's categories is hardcoded. Every business
+          formula reduces to the same shape, so a new tenant sets this up once, in the admin
+          screens, without any code change.
+        </P>
+        <SubSection title="The generic mechanism">
+          <P>
+            A <b>line item</b> is one row of the formula. It has:
+          </P>
+          <UL items={[
+            "Sign — ADD or SUBTRACT into its level's total.",
+            "Level — SHOP (rolls into that one branch's Expected Cash to Bank) or FINAL (rolls into the company-wide total, added on top of the sum of every shop's own total).",
+            "Source — EXPENSE_TYPES (sum of one or more mapped expense categories for that branch/date), SALES (the branch's sales total for the date), MANUAL (a figure entered under Cash Summary Manual Entries), or CONSTANT (a fixed configured amount).",
+          ]} />
+          <P>
+            A shop's <b>Expected Cash to Bank</b> is the signed sum of its SHOP-level lines. The
+            company's <b>Final Expected Cash to Bank</b> is the sum of every shop's total, plus
+            the signed sum of the FINAL-level lines.
+          </P>
+          <P>
+            <b>One expense category can be mapped to at most one active line item.</b> This is
+            enforced when saving a line item, not just a convention — it exists specifically
+            because a real production entry was once typed into the wrong category and silently
+            double-counted between two totals. Configuring that mistake is no longer possible;
+            reassigning a category to a different line item first requires removing it from its
+            current one.
+          </P>
+        </SubSection>
+        <SubSection title="Example: setting this up for Hotcakes">
+          <P>
+            This is how Hotcakes' own spreadsheet formula maps onto the generic model — a
+            worked example for setting up any tenant with a similar per-shop cash reconciliation.
+          </P>
+          <P><b>SHOP level</b> (one set of lines, computed per branch):</P>
+          <UL items={[
+            "Total Sales — ADD, source SALES.",
+            "Advance Received — ADD, source EXPENSE_TYPES, mapped to the Advance Received category.",
+            "Swiggy / Zomato — SUBTRACT, source EXPENSE_TYPES, mapped to the Swiggy/Zomato settlement category.",
+            "Total Expense — SUBTRACT, source EXPENSE_TYPES, mapped to Shop Expense and Order Advance Adjusted together (two categories, one line item, one number).",
+          ]} />
+          <P><b>FINAL level</b> (computed once, on top of the sum of all shops' totals):</P>
+          <UL items={[
+            "Farm Expense — SUBTRACT, source EXPENSE_TYPES.",
+            "Girish — SUBTRACT, source EXPENSE_TYPES.",
+            "Salary Advance — SUBTRACT, source EXPENSE_TYPES.",
+            "Hotcakes Common — SUBTRACT, source EXPENSE_TYPES.",
+            "Proprietor Withdrawal — SUBTRACT, source CONSTANT, amount ₹15,000.",
+            "Chachan Cash Receipts — ADD, source MANUAL (this figure is company-wide, not per shop, so it's entered once per date under Cash Summary Manual Entries with no branch selected).",
+          ]} />
+          <P>
+            Every other category in Hotcakes' expense list that isn't listed above simply has no
+            line item and plays no part in this report — exactly like leaving a row out of the
+            spreadsheet.
+          </P>
         </SubSection>
       </Section>
 
