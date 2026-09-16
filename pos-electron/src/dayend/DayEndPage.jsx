@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { DatePicker, InputNumber, Modal, Table, message } from "antd";
+import { DatePicker, InputNumber, Modal, Table, Tag, Tooltip, message } from "antd";
+import { SyncOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { apiUrl } from "../utils/apiUrl";
+import { getPendingCount, syncPendingSales } from "../pos/offlineQueue";
 
 const DENOMINATIONS = [500, 200, 100, 50, 20, 10, 5, 2, 1];
 
@@ -35,6 +37,19 @@ export default function DayEndPage({ pendingDate, onClose }) {
 
   const branchCode = String(globalThis.POS_BRANCH_CODE || localStorage.getItem("selectedBranchCode") || "").trim();
   const [branchInfo, setBranchInfo] = useState(null);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const [checkingSync, setCheckingSync] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  // Poll the offline sales queue while this page is open so Day End can't be
+  // saved while sales are still waiting to reach the server.
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = () => getPendingCount().then((c) => { if (!cancelled) setPendingSyncCount(c); });
+    refresh();
+    const interval = setInterval(refresh, 10_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
   useEffect(() => {
     if (!branchCode) return;
@@ -75,18 +90,54 @@ export default function DayEndPage({ pendingDate, onClose }) {
     setQtyByDenom((prev) => ({ ...prev, [String(currency)]: nextQty }));
   };
 
-  const handleSaveClick = () => {
-    if (saving) return;
+  const onSyncClick = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    const { synced, failed } = await syncPendingSales();
+    if (synced > 0) message.success(`Synced ${synced} offline sale${synced > 1 ? "s" : ""}`);
+    if (failed > 0) message.warning(`${failed} sale${failed > 1 ? "s" : ""} still pending`);
+    setPendingSyncCount(await getPendingCount());
+    setSyncing(false);
+  };
+
+  const handleSaveClick = async () => {
+    if (saving || checkingSync) return;
     if (!(grandTotal > 0)) {
       message.warning("Grand total must be greater than 0 to save Day End");
       return;
     }
+
+    setCheckingSync(true);
+    try {
+      if (navigator.onLine) await syncPendingSales();
+      const pending = await getPendingCount();
+      setPendingSyncCount(pending);
+      if (pending > 0) {
+        message.error(
+          `Cannot complete Day End — ${pending} sale${pending > 1 ? "s are" : " is"} still pending sync to the server. Connect to the internet and try again.`
+        );
+        return;
+      }
+    } finally {
+      setCheckingSync(false);
+    }
+
     setConfirmOpen(true);
   };
 
   const onSaveDayEnd = async () => {
     setConfirmOpen(false);
     if (saving) return;
+
+    const pending = await getPendingCount();
+    setPendingSyncCount(pending);
+    if (pending > 0) {
+      message.error(
+        `Cannot complete Day End — ${pending} sale${pending > 1 ? "s are" : " is"} still pending sync to the server. Connect to the internet and try again.`
+      );
+      return;
+    }
+
     const dateKey = dayEndDate.format("YYYY-MM-DD");
     const records = loadDayEndRecords();
     const exists = records.some((r) => r.dateKey === dateKey && r.branchCode === branchCode);
@@ -240,7 +291,7 @@ export default function DayEndPage({ pendingDate, onClose }) {
     padding: "0 12px",
   };
 
-  const canSave = !saving && grandTotal > 0 && !isSaved;
+  const canSave = !saving && !checkingSync && grandTotal > 0 && !isSaved && pendingSyncCount === 0;
 
   return (
     <div className="pos-container">
@@ -299,13 +350,25 @@ export default function DayEndPage({ pendingDate, onClose }) {
             cursor: canSave ? "pointer" : "not-allowed",
           }}
         >
-          {saving ? "Saving…" : "Save Day End"}
+          {saving ? "Saving…" : checkingSync ? "Checking sync…" : "Save Day End"}
         </button>
 
         {isSaved && (
           <span style={{ fontSize: 12, fontWeight: "bold", color: "#fff9c4", marginLeft: 4 }}>
             ✓ Day End Completed
           </span>
+        )}
+        {!isSaved && pendingSyncCount > 0 && (
+          <Tooltip title={syncing ? "Syncing…" : `${pendingSyncCount} offline sale(s) — click to sync`}>
+            <Tag
+              color="error"
+              icon={<SyncOutlined spin={syncing} />}
+              style={{ cursor: "pointer", marginLeft: 4 }}
+              onClick={onSyncClick}
+            >
+              {pendingSyncCount} pending — Day End blocked
+            </Tag>
+          </Tooltip>
         )}
       </div>
 
