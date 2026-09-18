@@ -74,6 +74,7 @@ export const MENU_TREE = [
       { menuKey: "HSN wise Sales",                       label: "HSN wise Sales",                       link: "/hsnsales",                              roles: ["admin", "franchiseeuser", "user"] },
       { menuKey: "HSN Sales Summary",                    label: "HSN Sales Summary",                    link: "/hsn-sales-summary",                     roles: ["admin", "franchiseeuser", "user"] },
       { menuKey: "All Branch Sales Report",              label: "All Branch Sales Report",              link: "/sales-report-all-branch",               roles: ["admin", "user", "manager"] },
+      { menuKey: "Branch Sales Summary Report",          label: "Branch Sales Summary Report",          link: "/branch-sales-summary-report",           roles: ["admin", "user", "manager"] },
       { menuKey: "All Branch Categorywise Sales Report", label: "All Branch Categorywise Sales Report", link: "/sales-category-wise-report-all-branch", roles: ["admin", "user", "manager"] },
       { menuKey: "Season Sales Report",                  label: "Season Sales Report",                  link: "/seasonalreport",                        roles: ["admin"] },
       { menuKey: "Salesman Report",                      label: "Salesman Report",                      link: "/salesman-report",                       roles: ["admin", "manager", "user"] },

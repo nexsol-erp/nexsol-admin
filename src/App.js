@@ -69,6 +69,7 @@ import StockAnomalyReport from "./components/StockAnomalyReport"
 import StockReportExclusionPage from "./components/StockReportExclusionPage"
 
 import SalesReportAllBranch from "./components/SalesReportAllBranch"
+import BranchSalesSummaryReport from "./components/BranchSalesSummaryReport"
 import WeighBridgeEngageReport from "./components/WeighBridgeEngageReport";
 import WeighBridgeResync from "./components/WeighBridgeResync";
 import WeighbridgeUsageReport from "./components/WeighbridgeUsageReport";
@@ -553,6 +554,7 @@ function HideOnScroll({ children }) {
             <Route path="/stock-anomaly-report" element={<StockAnomalyReport />} />
             <Route path="/report-exclusions" element={<StockReportExclusionPage />} />
             <Route path="/sales-report-all-branch" element={<SalesReportAllBranch />} />
+            <Route path="/branch-sales-summary-report" element={<BranchSalesSummaryReport />} />
             <Route path="/bridge-count" element={<WeighBridgeEngageReport />} />
             <Route path="/weighbridgeusage" element={<WeighbridgeUsageReport />} />
             <Route path="/weighbridge-resync" element={<WeighBridgeResync />} />
