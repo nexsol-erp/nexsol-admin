@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import {
   Box, Typography, Button, Paper, Table, TableHead, TableRow, TableCell,
-  TableBody, TableContainer, TextField, Alert, CircularProgress, Chip,
+  TableBody, TableContainer, TextField, Alert, CircularProgress, Chip, Tabs, Tab,
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import ExcessShortageMonthly from "./ExcessShortageMonthly";
 
 const STATUS = {
   EXCESS:      { label: "Excess",      color: "success" },
@@ -19,7 +20,7 @@ const STATUS = {
  * receipts recorded in sales for the day, with the difference.
  * Difference = collected - expected: positive is an excess, negative a shortage.
  */
-export default function ExcessShortageReport() {
+function DailyExcessShortage() {
   const tenancyId = localStorage.getItem("tenancyId");
   const headers = { Authorization: `Bearer ${localStorage.getItem("jwtToken")}` };
 
@@ -82,8 +83,7 @@ export default function ExcessShortageReport() {
   const headCell = { color: "#fff", fontWeight: 700 };
 
   return (
-    <Box p={3}>
-      <Typography variant="h5" gutterBottom>Excess / Shortage Report</Typography>
+    <Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Cash counted at Day End by each branch, beside the cash receipts recorded in sales for the
         day (net of cash returns). Difference = Collected − Expected: a positive figure is an
@@ -148,6 +148,20 @@ export default function ExcessShortageReport() {
           </Table>
         </TableContainer>
       )}
+    </Box>
+  );
+}
+
+export default function ExcessShortageReport() {
+  const [tab, setTab] = useState(0);
+  return (
+    <Box p={3}>
+      <Typography variant="h5" gutterBottom>Excess / Shortage Report</Typography>
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}>
+        <Tab label="Daily" />
+        <Tab label="Monthly Analysis" />
+      </Tabs>
+      {tab === 0 ? <DailyExcessShortage /> : <ExcessShortageMonthly />}
     </Box>
   );
 }
