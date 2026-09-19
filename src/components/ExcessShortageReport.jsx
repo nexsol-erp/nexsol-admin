@@ -65,6 +65,7 @@ function DailyExcessShortage() {
       "Day End Collected": Number(r.dayEndCollected),
       "Total Sales": Number(r.totalSales),
       "Cash Sales": Number(r.expectedCash),
+      "Other Modes": Number(r.otherModes),
       Difference: Number(r.difference),
       Status: STATUS[r.status]?.label ?? r.status,
     }));
@@ -73,6 +74,7 @@ function DailyExcessShortage() {
       "Day End Collected": Number(report.totalDayEndCollected),
       "Total Sales": Number(report.totalSales),
       "Cash Sales": Number(report.totalExpectedCash),
+      "Other Modes": Number(report.totalOtherModes),
       Difference: Number(report.totalDifference),
       Status: "",
     });
@@ -89,8 +91,9 @@ function DailyExcessShortage() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Cash counted at Day End by each branch, beside the day's Total Sales and the Cash Sales
         (cash receipts, net of cash returns). Difference = Day End Collected − Cash Sales: a
-        positive figure is an excess, a negative one is a shortage. Card, UPI and delivery-app
-        sales are in Total Sales but not expected in the till, so they are left out of the difference.
+        positive figure is an excess, a negative one is a shortage. Other Modes is every non-cash
+        payment (card, UPI, delivery apps...); it is in Total Sales but not expected in the till, so
+        it is left out of the difference. Total Sales also carries the small bill round-off.
       </Typography>
 
       <Box display="flex" gap={2} alignItems="center" mb={2}>
@@ -112,7 +115,7 @@ function DailyExcessShortage() {
       )}
 
       {report && report.rows.length > 0 && (
-        <TableContainer component={Paper} sx={{ maxWidth: 1000 }}>
+        <TableContainer component={Paper} sx={{ maxWidth: 1150 }}>
           <Table size="small">
             <TableHead sx={{ bgcolor: "#1976d2" }}>
               <TableRow>
@@ -120,6 +123,7 @@ function DailyExcessShortage() {
                 <TableCell align="right" sx={headCell}>Day End Collected</TableCell>
                 <TableCell align="right" sx={headCell}>Total Sales</TableCell>
                 <TableCell align="right" sx={headCell}>Cash Sales</TableCell>
+                <TableCell align="right" sx={headCell}>Other Modes</TableCell>
                 <TableCell align="right" sx={headCell}>Difference</TableCell>
                 <TableCell align="center" sx={headCell}>Status</TableCell>
               </TableRow>
@@ -131,6 +135,7 @@ function DailyExcessShortage() {
                   <TableCell align="right">{r.status === "NOT_ENTERED" ? "—" : fmt(r.dayEndCollected)}</TableCell>
                   <TableCell align="right">{fmt(r.totalSales)}</TableCell>
                   <TableCell align="right">{fmt(r.expectedCash)}</TableCell>
+                  <TableCell align="right">{fmt(r.otherModes)}</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700, color: diffColor(r.difference) }}>
                     {signedFmt(r.difference)}
                   </TableCell>
@@ -145,6 +150,7 @@ function DailyExcessShortage() {
                 <TableCell align="right">{fmt(report.totalDayEndCollected)}</TableCell>
                 <TableCell align="right">{fmt(report.totalSales)}</TableCell>
                 <TableCell align="right">{fmt(report.totalExpectedCash)}</TableCell>
+                <TableCell align="right">{fmt(report.totalOtherModes)}</TableCell>
                 <TableCell align="right" sx={{ color: diffColor(report.totalDifference) }}>
                   {signedFmt(report.totalDifference)}
                 </TableCell>
