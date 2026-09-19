@@ -43,7 +43,13 @@ export default function ExcessShortageReport() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Could not generate the report.");
       }
-      setReport(await res.json());
+      const data = await res.json();
+      // An older backend without this endpoint answers 200 from a catch-all /reports/{code}
+      // handler with a different shape - show that as an error instead of crashing the page.
+      if (!Array.isArray(data?.rows)) {
+        throw new Error("The server did not return an Excess / Shortage report. The backend may need updating.");
+      }
+      setReport(data);
     } catch (e) {
       setError(e.message);
       setReport(null);
