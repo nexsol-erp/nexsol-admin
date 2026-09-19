@@ -173,6 +173,7 @@ import BankStatementReview from "./components/accounting/BankStatementReview";
 import CashSummaryConfigPage from "./components/CashSummaryConfigPage";
 import CashSummaryManualEntryPage from "./components/CashSummaryManualEntryPage";
 import DailyCashSummaryReport from "./components/DailyCashSummaryReport";
+import ExcessShortageReport from "./components/ExcessShortageReport";
 import InventoryLedger from "./components/accounting/InventoryLedger";
 import StockValuation from "./components/accounting/StockValuation";
 import CustomerAging from "./components/accounting/CustomerAging";
@@ -677,6 +678,7 @@ function HideOnScroll({ children }) {
             <Route path="/accounting/cash-summary-line-items" element={<CashSummaryConfigPage />} />
             <Route path="/accounting/cash-summary-manual-entries" element={<CashSummaryManualEntryPage />} />
             <Route path="/accounting/daily-cash-summary" element={<DailyCashSummaryReport />} />
+            <Route path="/accounting/excess-shortage" element={<ExcessShortageReport />} />
             <Route path="/accounting/inventory-ledger" element={<InventoryLedger />} />
             <Route path="/accounting/stock-valuation" element={<StockValuation />} />
             <Route path="/accounting/customer-aging" element={<CustomerAging />} />

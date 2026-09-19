@@ -227,6 +227,7 @@ export const MENU_TREE = [
       { menuKey: "Cash Summary Line Items",     label: "Cash Summary Line Items",     link: "/accounting/cash-summary-line-items",     roles: ["admin", "manager"] },
       { menuKey: "Cash Summary Manual Entries", label: "Cash Summary Manual Entries", link: "/accounting/cash-summary-manual-entries", roles: ["admin", "manager"] },
       { menuKey: "Daily Cash Summary",          label: "Daily Cash Summary",          link: "/accounting/daily-cash-summary",          roles: ["admin", "manager"] },
+      { menuKey: "Excess Shortage Report",      label: "Excess / Shortage Report",    link: "/accounting/excess-shortage",             roles: ["admin", "manager"] },
       { menuKey: "Inventory Ledger",        label: "Inventory Ledger",        link: "/accounting/inventory-ledger",      roles: ["admin", "manager"] },
       { menuKey: "Stock Valuation",         label: "Stock Valuation",         link: "/accounting/stock-valuation",       roles: ["admin", "manager"] },
       { menuKey: "Branch Profit Report",         label: "Branch Profit Report",         link: "/branch-profit-report",         roles: ["admin", "manager"] },
