@@ -63,14 +63,16 @@ function DailyExcessShortage() {
     const rows = report.rows.map((r) => ({
       Branch: branchLabel(r),
       "Day End Collected": Number(r.dayEndCollected),
-      "Expected Cash (Sales)": Number(r.expectedCash),
+      "Total Sales": Number(r.totalSales),
+      "Cash Sales": Number(r.expectedCash),
       Difference: Number(r.difference),
       Status: STATUS[r.status]?.label ?? r.status,
     }));
     rows.push({
       Branch: "Total",
       "Day End Collected": Number(report.totalDayEndCollected),
-      "Expected Cash (Sales)": Number(report.totalExpectedCash),
+      "Total Sales": Number(report.totalSales),
+      "Cash Sales": Number(report.totalExpectedCash),
       Difference: Number(report.totalDifference),
       Status: "",
     });
@@ -85,9 +87,10 @@ function DailyExcessShortage() {
   return (
     <Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Cash counted at Day End by each branch, beside the cash receipts recorded in sales for the
-        day (net of cash returns). Difference = Collected − Expected: a positive figure is an
-        excess, a negative one is a shortage.
+        Cash counted at Day End by each branch, beside the day's Total Sales and the Cash Sales
+        (cash receipts, net of cash returns). Difference = Day End Collected − Cash Sales: a
+        positive figure is an excess, a negative one is a shortage. Card, UPI and delivery-app
+        sales are in Total Sales but not expected in the till, so they are left out of the difference.
       </Typography>
 
       <Box display="flex" gap={2} alignItems="center" mb={2}>
@@ -109,13 +112,14 @@ function DailyExcessShortage() {
       )}
 
       {report && report.rows.length > 0 && (
-        <TableContainer component={Paper} sx={{ maxWidth: 900 }}>
+        <TableContainer component={Paper} sx={{ maxWidth: 1000 }}>
           <Table size="small">
             <TableHead sx={{ bgcolor: "#1976d2" }}>
               <TableRow>
                 <TableCell sx={headCell}>Branch</TableCell>
                 <TableCell align="right" sx={headCell}>Day End Collected</TableCell>
-                <TableCell align="right" sx={headCell}>Expected Cash (Sales)</TableCell>
+                <TableCell align="right" sx={headCell}>Total Sales</TableCell>
+                <TableCell align="right" sx={headCell}>Cash Sales</TableCell>
                 <TableCell align="right" sx={headCell}>Difference</TableCell>
                 <TableCell align="center" sx={headCell}>Status</TableCell>
               </TableRow>
@@ -125,6 +129,7 @@ function DailyExcessShortage() {
                 <TableRow key={r.branchCode}>
                   <TableCell>{branchLabel(r)}</TableCell>
                   <TableCell align="right">{r.status === "NOT_ENTERED" ? "—" : fmt(r.dayEndCollected)}</TableCell>
+                  <TableCell align="right">{fmt(r.totalSales)}</TableCell>
                   <TableCell align="right">{fmt(r.expectedCash)}</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700, color: diffColor(r.difference) }}>
                     {signedFmt(r.difference)}
@@ -138,6 +143,7 @@ function DailyExcessShortage() {
               <TableRow sx={{ "& td": { fontWeight: 700, borderTop: "2px solid #1976d2" } }}>
                 <TableCell>Total</TableCell>
                 <TableCell align="right">{fmt(report.totalDayEndCollected)}</TableCell>
+                <TableCell align="right">{fmt(report.totalSales)}</TableCell>
                 <TableCell align="right">{fmt(report.totalExpectedCash)}</TableCell>
                 <TableCell align="right" sx={{ color: diffColor(report.totalDifference) }}>
                   {signedFmt(report.totalDifference)}
