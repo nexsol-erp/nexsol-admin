@@ -25,13 +25,12 @@ export default function DailyCashSummaryReport() {
   const signed = (line) => sign(line) + fmt(line.amount);
   const remarkCell = (text) => <TableCell sx={{ color: "text.secondary" }}>{text || ""}</TableCell>;
 
-  // Entry heading: the expense head (a line can map several) and payee; FINAL lines span
-  // branches, so they also lead with the branch.
+  // Entry heading: the expense head (a line can map several), else the line itself; FINAL
+  // lines span branches, so they also lead with the branch.
   const entryLabel = (line, e, showBranch) =>
-    [showBranch ? e.branchCode : null, e.expenseTypeName || line.label, e.payee]
-      .filter(Boolean).join(" - ");
+    [showBranch ? e.branchCode : null, e.headName || line.label].filter(Boolean).join(" - ");
 
-  // One line item. Expense lines list every entry on its own row with its remark; several
+  // One line item. Expense and manual lines list every entry on its own row with its remark; several
   // entries under one line get a group total, a single entry stands alone.
   const renderLine = (line, showBranch = false) => {
     const entries = line.entries || [];
