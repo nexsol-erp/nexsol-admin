@@ -21,7 +21,57 @@ export default function DailyCashSummaryReport() {
   const [error, setError] = useState(null);
 
   const fmt = (n) => Number(n ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const signed = (line) => (line.sign === "SUBTRACT" ? "-" : "+") + fmt(line.amount);
+  const sign = (line) => (line.sign === "SUBTRACT" ? "-" : "+");
+  const signed = (line) => sign(line) + fmt(line.amount);
+  const remarkCell = (text) => <TableCell sx={{ color: "text.secondary" }}>{text || ""}</TableCell>;
+
+  // Entry heading: the expense head (a line can map several) and payee; FINAL lines span
+  // branches, so they also lead with the branch.
+  const entryLabel = (line, e, showBranch) =>
+    [showBranch ? e.branchCode : null, e.expenseTypeName || line.label, e.payee]
+      .filter(Boolean).join(" - ");
+
+  // One line item. Expense lines list every entry on its own row with its remark; several
+  // entries under one line get a group total, a single entry stands alone.
+  const renderLine = (line, showBranch = false) => {
+    const entries = line.entries || [];
+    if (entries.length === 0) {
+      return (
+        <TableRow key={line.lineItemId}>
+          <TableCell>{line.label}</TableCell>
+          <TableCell align="right">{signed(line)}</TableCell>
+          {remarkCell("")}
+        </TableRow>
+      );
+    }
+    if (entries.length === 1) {
+      const e = entries[0];
+      return (
+        <TableRow key={line.lineItemId}>
+          <TableCell>{entryLabel(line, e, showBranch)}</TableCell>
+          <TableCell align="right">{sign(line) + fmt(e.amount)}</TableCell>
+          {remarkCell(e.remarks)}
+        </TableRow>
+      );
+    }
+    return [
+      <TableRow key={line.lineItemId}>
+        <TableCell colSpan={3} sx={{ fontWeight: 600 }}>{line.label}</TableCell>
+      </TableRow>,
+      ...entries.map((e, i) => (
+        <TableRow key={`${line.lineItemId}-${i}`}>
+          <TableCell sx={{ pl: 4 }}>{entryLabel(line, e, showBranch)}</TableCell>
+          <TableCell align="right">{sign(line) + fmt(e.amount)}</TableCell>
+          {remarkCell(e.remarks)}
+        </TableRow>
+      )),
+      <TableRow key={`${line.lineItemId}-total`} sx={{ "& td": { fontWeight: 600, borderTop: "1px solid #bdbdbd" } }}>
+        <TableCell sx={{ pl: 4 }}>Total {line.label}</TableCell>
+        <TableCell align="right">{signed(line)}</TableCell>
+        <TableCell />
+      </TableRow>,
+    ];
+  };
 
   const handleRun = async () => {
     if (!date) return;
@@ -94,19 +144,17 @@ export default function DailyCashSummaryReport() {
               <Table size="small">
                 <TableHead sx={{ bgcolor: "#1976d2" }}>
                   <TableRow>
-                    <TableCell sx={{ color: "#fff", fontWeight: 700 }} colSpan={2}>{shop.branchCode}</TableCell>
+                    <TableCell sx={{ color: "#fff", fontWeight: 700 }}>{shop.branchCode}</TableCell>
+                    <TableCell />
+                    <TableCell sx={{ color: "#fff", fontWeight: 700 }}>Remarks</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {shop.lines.map((line) => (
-                    <TableRow key={line.lineItemId}>
-                      <TableCell>{line.label}</TableCell>
-                      <TableCell align="right">{signed(line)}</TableCell>
-                    </TableRow>
-                  ))}
+                  {shop.lines.map((line) => renderLine(line))}
                   <TableRow>
                     <TableCell sx={{ fontWeight: 700 }}>Expected Cash to Bank</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700 }}>{fmt(shop.expectedCashToBank)}</TableCell>
+                    <TableCell />
                   </TableRow>
                 </TableBody>
               </Table>
@@ -119,23 +167,22 @@ export default function DailyCashSummaryReport() {
             <Table size="small">
               <TableHead sx={{ bgcolor: "#1976d2" }}>
                 <TableRow>
-                  <TableCell sx={{ color: "#fff", fontWeight: 700 }} colSpan={2}>Final Reconciliation</TableCell>
+                  <TableCell sx={{ color: "#fff", fontWeight: 700 }}>Final Reconciliation</TableCell>
+                  <TableCell />
+                  <TableCell sx={{ color: "#fff", fontWeight: 700 }}>Remarks</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 <TableRow>
                   <TableCell>Sum of Shop Totals</TableCell>
                   <TableCell align="right">{fmt(report.sumOfShopTotals)}</TableCell>
+                  <TableCell />
                 </TableRow>
-                {report.finalLines.map((line) => (
-                  <TableRow key={line.lineItemId}>
-                    <TableCell>{line.label}</TableCell>
-                    <TableCell align="right">{signed(line)}</TableCell>
-                  </TableRow>
-                ))}
+                {report.finalLines.map((line) => renderLine(line, true))}
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>Final Expected Cash to Bank</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700 }}>{fmt(report.finalExpectedCashToBank)}</TableCell>
+                  <TableCell />
                 </TableRow>
               </TableBody>
             </Table>
