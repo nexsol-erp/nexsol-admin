@@ -16,8 +16,8 @@ const STATUS = {
 };
 
 /**
- * Excess / Shortage: per branch, the cash counted and entered at Day End beside the cash
- * receipts recorded in sales for the day, with the difference.
+ * Excess / Shortage: per branch, the cash counted and entered at Day End beside the Expected
+ * Cash to Bank from the Daily Cash Summary, with the difference.
  * Difference = collected - expected: positive is an excess, negative a shortage.
  */
 function DailyExcessShortage() {
@@ -63,19 +63,21 @@ function DailyExcessShortage() {
     const rows = report.rows.map((r) => ({
       Branch: branchLabel(r),
       "Day End Collected": Number(r.dayEndCollected),
+      "Expected Cash to Bank": Number(r.expectedCashToBank),
+      Difference: Number(r.difference),
       "Total Sales": Number(r.totalSales),
       "Cash Sales": Number(r.expectedCash),
       "Other Modes": Number(r.otherModes),
-      Difference: Number(r.difference),
       Status: STATUS[r.status]?.label ?? r.status,
     }));
     rows.push({
       Branch: "Total",
       "Day End Collected": Number(report.totalDayEndCollected),
+      "Expected Cash to Bank": Number(report.totalExpectedCashToBank),
+      Difference: Number(report.totalDifference),
       "Total Sales": Number(report.totalSales),
       "Cash Sales": Number(report.totalExpectedCash),
       "Other Modes": Number(report.totalOtherModes),
-      Difference: Number(report.totalDifference),
       Status: "",
     });
     const workbook = XLSX.utils.book_new();
@@ -89,11 +91,11 @@ function DailyExcessShortage() {
   return (
     <Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Cash counted at Day End by each branch, beside the day's Total Sales and the Cash Sales
-        (cash receipts, net of cash returns). Difference = Day End Collected − Cash Sales: a
-        positive figure is an excess, a negative one is a shortage. Other Modes is every non-cash
-        payment (card, UPI, delivery apps...); it is in Total Sales but not expected in the till, so
-        it is left out of the difference. Total Sales also carries the small bill round-off.
+        Cash counted at Day End by each branch, against the Expected Cash to Bank from the Daily
+        Cash Summary. Difference = Day End Collected − Expected Cash to Bank: a positive figure is
+        an excess, a negative one is a shortage. Total Sales, Cash Sales (cash receipts, net of cash
+        returns) and Other Modes (card, UPI, delivery apps...) are shown for reference and do not
+        enter the difference. Total Sales also carries the small bill round-off.
       </Typography>
 
       <Box display="flex" gap={2} alignItems="center" mb={2}>
@@ -115,16 +117,17 @@ function DailyExcessShortage() {
       )}
 
       {report && report.rows.length > 0 && (
-        <TableContainer component={Paper} sx={{ maxWidth: 1150 }}>
+        <TableContainer component={Paper} sx={{ maxWidth: 1300 }}>
           <Table size="small">
             <TableHead sx={{ bgcolor: "#1976d2" }}>
               <TableRow>
                 <TableCell sx={headCell}>Branch</TableCell>
                 <TableCell align="right" sx={headCell}>Day End Collected</TableCell>
+                <TableCell align="right" sx={headCell}>Expected Cash to Bank</TableCell>
+                <TableCell align="right" sx={headCell}>Difference</TableCell>
                 <TableCell align="right" sx={headCell}>Total Sales</TableCell>
                 <TableCell align="right" sx={headCell}>Cash Sales</TableCell>
                 <TableCell align="right" sx={headCell}>Other Modes</TableCell>
-                <TableCell align="right" sx={headCell}>Difference</TableCell>
                 <TableCell align="center" sx={headCell}>Status</TableCell>
               </TableRow>
             </TableHead>
@@ -133,12 +136,13 @@ function DailyExcessShortage() {
                 <TableRow key={r.branchCode}>
                   <TableCell>{branchLabel(r)}</TableCell>
                   <TableCell align="right">{r.status === "NOT_ENTERED" ? "—" : fmt(r.dayEndCollected)}</TableCell>
-                  <TableCell align="right">{fmt(r.totalSales)}</TableCell>
-                  <TableCell align="right">{fmt(r.expectedCash)}</TableCell>
-                  <TableCell align="right">{fmt(r.otherModes)}</TableCell>
+                  <TableCell align="right">{fmt(r.expectedCashToBank)}</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700, color: diffColor(r.difference) }}>
                     {signedFmt(r.difference)}
                   </TableCell>
+                  <TableCell align="right">{fmt(r.totalSales)}</TableCell>
+                  <TableCell align="right">{fmt(r.expectedCash)}</TableCell>
+                  <TableCell align="right">{fmt(r.otherModes)}</TableCell>
                   <TableCell align="center">
                     <Chip size="small" label={STATUS[r.status]?.label ?? r.status}
                           color={STATUS[r.status]?.color ?? "default"} />
@@ -148,12 +152,13 @@ function DailyExcessShortage() {
               <TableRow sx={{ "& td": { fontWeight: 700, borderTop: "2px solid #1976d2" } }}>
                 <TableCell>Total</TableCell>
                 <TableCell align="right">{fmt(report.totalDayEndCollected)}</TableCell>
-                <TableCell align="right">{fmt(report.totalSales)}</TableCell>
-                <TableCell align="right">{fmt(report.totalExpectedCash)}</TableCell>
-                <TableCell align="right">{fmt(report.totalOtherModes)}</TableCell>
+                <TableCell align="right">{fmt(report.totalExpectedCashToBank)}</TableCell>
                 <TableCell align="right" sx={{ color: diffColor(report.totalDifference) }}>
                   {signedFmt(report.totalDifference)}
                 </TableCell>
+                <TableCell align="right">{fmt(report.totalSales)}</TableCell>
+                <TableCell align="right">{fmt(report.totalExpectedCash)}</TableCell>
+                <TableCell align="right">{fmt(report.totalOtherModes)}</TableCell>
                 <TableCell />
               </TableRow>
             </TableBody>
