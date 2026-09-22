@@ -304,6 +304,12 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
     return Number.isFinite(n) ? n : null;
   };
 
+  // Weighed decimal stock (KGS etc.) rarely lands on an exact value — a closing balance
+  // of e.g. 0.003 is float/scale residue, not real stock. STOCK_EPS treats anything within
+  // this of a boundary as being at that boundary, both when deciding "no stock left" and
+  // when comparing a requested qty against the available balance.
+  const STOCK_EPS = 0.001;
+
   const updateItem = (key, patch) => {
     // Logged here rather than inside the updater: React may invoke an updater twice.
     if (Object.hasOwn(patch, "qty")) {
@@ -316,7 +322,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
         const next = { ...r, ...patch };
         const available   = getAvailableQty(next);
         const requestedQty = Number(next.qty) || 0;
-        if (!isItemDynamic(next.item_id) && Object.hasOwn(patch, "qty") && available !== null && requestedQty > available) {
+        if (!isItemDynamic(next.item_id) && Object.hasOwn(patch, "qty") && available !== null && requestedQty > available + STOCK_EPS) {
           next.qty = available;
           message.warning(`Only ${available} in stock for ${next.item_name}`);
         }
@@ -347,7 +353,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       if (existing) {
         const nextQty = (Number(existing.qty) || 0) + 1;
         const allowed = getAvailableQty(existing) ?? available;
-        if (!isItemDynamic(itm.itemId) && allowed !== null && nextQty > allowed) {
+        if (!isItemDynamic(itm.itemId) && allowed !== null && nextQty > allowed + STOCK_EPS) {
           message.warning(`Only ${allowed} in stock for ${existing.item_name}`);
           return prev; // no change
         }
@@ -360,15 +366,20 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
           return next;
         });
       } else {
-        if (!isItemDynamic(itm.itemId) && available !== null && available <= 0) {
+        if (!isItemDynamic(itm.itemId) && available !== null && available <= STOCK_EPS) {
           message.warning(`No stock for ${itm.itemName}`);
           return prev; // no change
         }
+        // Default qty is 1, but for a fractional stock balance (e.g. 0.5kg left) that would
+        // silently over-allocate — cap the initial qty to what's actually on hand.
+        const initialQty = (!isItemDynamic(itm.itemId) && available !== null && available < 1)
+          ? available
+          : 1;
         const row = {
           key: crypto.randomUUID(), item_id: itm.itemId, item_name: itm.itemName,
-          barcode: itm.barcode, qty: 1, available_qty: available,
+          barcode: itm.barcode, qty: initialQty, available_qty: available,
           tax_rate: itm.taxRate, standard_price: itm.standardPrice,
-          amount: round2n(Number(itm.standardPrice) || 0),
+          amount: round2n(initialQty * (Number(itm.standardPrice) || 0)),
           batch, unit: itm.unitName || "", expiry: itm.expiry || "",
           category: itm.category || "",
         };
@@ -862,7 +873,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       render: (_, row) => (
         <InputNumber
           ref={(el) => { if (el) qtyInputRefs.current[row.key] = el; else delete qtyInputRefs.current[row.key]; }}
-          value={row.qty} min={0} controls={false} keyboard={false}
+          value={row.qty} min={0} precision={3} controls={false} keyboard={false}
           onChange={(val) => updateItem(row.key, { qty: val })}
           onFocus={(e) => e.target.select()}
           onKeyDown={(e) => {
