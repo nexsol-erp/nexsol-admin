@@ -106,7 +106,7 @@ export const MENU_TREE = [
     submenu: [
       { menuKey: "Production Def",       label: "Production Def",       link: "/production-def",       roles: ["admin", "manager", "user"] },
       { menuKey: "Production Planning",  label: "Production Planning",  link: "/production-planning",  roles: ["admin", "manager", "user"] },
-      { menuKey: "Production Planning Import",  label: "Production Planning Import (Excel)",  link: "/production-planning-import",  roles: ["admin", "manager", "user"] },
+      { menuKey: "Production Planning Import",  label: "🧪 Production Planning Import (Excel) - DEPLOY CHECK",  link: "/production-planning-import",  roles: ["admin", "manager", "user"] },
       { menuKey: "Production Execution", label: "Production Execution", link: "/production-execution", roles: ["admin", "manager", "user"] },
       { menuKey: "Production Planning Report",  label: "Production Planning Report",  link: "/production-planning-report",  roles: ["admin", "manager", "user"] },
       { menuKey: "Production Execution Report", label: "Production Execution Report", link: "/production-execution-report", roles: ["admin", "manager", "user"] },
