@@ -6,6 +6,10 @@ import { apiUrl } from "../utils/apiUrl";
 import { getPendingCount, syncPendingSales } from "../pos/offlineQueue";
 
 const DENOMINATIONS = [500, 200, 100, 50, 20, 10, 5, 2, 1];
+// ₹1 and ₹2 coins — capped per denomination so a mistyped/miscounted entry
+// doesn't wildly overstate the cash count.
+const SMALL_COIN_DENOMS = [1, 2];
+const SMALL_COIN_MAX = 200;
 
 function round2n(v) {
   const n = Number(v) || 0;
@@ -86,7 +90,11 @@ export default function DayEndPage({ pendingDate, onClose }) {
   );
 
   const updateQty = (currency, value) => {
-    const nextQty = Math.max(Number(value || 0), 0);
+    let nextQty = Math.max(Number(value || 0), 0);
+    if (SMALL_COIN_DENOMS.includes(Number(currency)) && nextQty > SMALL_COIN_MAX) {
+      nextQty = SMALL_COIN_MAX;
+      message.warning(`Currency ${currency} is capped at ${SMALL_COIN_MAX} nos`);
+    }
     setQtyByDenom((prev) => ({ ...prev, [String(currency)]: nextQty }));
   };
 
@@ -272,6 +280,7 @@ export default function DayEndPage({ pendingDate, onClose }) {
       render: (_, row) => (
         <InputNumber
           min={0}
+          max={SMALL_COIN_DENOMS.includes(row.currency) ? SMALL_COIN_MAX : undefined}
           precision={0}
           value={row.quantity}
           onChange={(val) => updateQty(row.currency, val)}
