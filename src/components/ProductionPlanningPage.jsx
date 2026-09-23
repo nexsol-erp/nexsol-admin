@@ -18,6 +18,7 @@ import {
   CircularProgress,
   Stack,
   Divider,
+  Chip,
 } from "@mui/material";
 import {
   Delete as DeleteIcon,
@@ -27,6 +28,8 @@ import {
   Summarize as SummarizeIcon,
   Download as DownloadIcon,
   TableChart as ExcelIcon,
+  Search as SearchIcon,
+  NoteAdd as NoteAddIcon,
 } from "@mui/icons-material";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -59,6 +62,15 @@ const ProductionPlanningPage = () => {
   const [generating, setGenerating] = useState(false);
   const [message, setMessage] = useState({ text: "", severity: "info" });
   const [savedVoucherNumber, setSavedVoucherNumber] = useState("");
+
+  // Load an existing planning (e.g. one created by Excel import) by date range, then
+  // generate/save its raw materials, instead of only ever creating a brand new planning.
+  const todayStr = new Date().toISOString().split("T")[0];
+  const [fetchFromDate, setFetchFromDate] = useState(todayStr);
+  const [fetchToDate, setFetchToDate] = useState(todayStr);
+  const [fetchingPlannings, setFetchingPlannings] = useState(false);
+  const [fetchedPlannings, setFetchedPlannings] = useState([]); // [{voucherNumber, voucherDate, items:[...]}]
+  const [loadedVoucherNumber, setLoadedVoucherNumber] = useState("");
 
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
@@ -108,6 +120,72 @@ const ProductionPlanningPage = () => {
 
   const addRow = () => setProductionRows(prev => [...prev, emptyProductionRow()]);
   const deleteRow = (key) => setProductionRows(prev => prev.filter(r => r.key !== key));
+
+  const fetchPlanningsByDate = useCallback(async () => {
+    if (!fetchFromDate || !fetchToDate) return;
+    setFetchingPlannings(true);
+    setFetchedPlannings([]);
+    try {
+      const params = new URLSearchParams({
+        branchCode,
+        fromDate: fetchFromDate,
+        toDate: fetchToDate,
+      });
+      const res = await fetch(`/api/${tenancyId}/production-planning?${params.toString()}`, { headers });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const rows = await res.json();
+      const byVoucher = {};
+      (Array.isArray(rows) ? rows : []).forEach((r) => {
+        if (!r.voucherNumber) return;
+        if (!byVoucher[r.voucherNumber]) {
+          byVoucher[r.voucherNumber] = { voucherNumber: r.voucherNumber, voucherDate: r.voucherDate, items: [] };
+        }
+        byVoucher[r.voucherNumber].items.push(r);
+      });
+      const list = Object.values(byVoucher).sort((a, b) => (a.voucherDate < b.voucherDate ? 1 : -1));
+      setFetchedPlannings(list);
+      if (list.length === 0) {
+        setMessage({ text: "No plannings found for this date range / branch.", severity: "info" });
+      }
+    } catch (e) {
+      setMessage({ text: "Failed to fetch plannings: " + e.message, severity: "error" });
+    } finally {
+      setFetchingPlannings(false);
+    }
+  }, [fetchFromDate, fetchToDate, branchCode, tenancyId, token]);
+
+  const loadPlanning = (plan) => {
+    setLoadedVoucherNumber(plan.voucherNumber);
+    setVoucherDate((plan.voucherDate || "").split("T")[0] || todayStr);
+    setProductionRows(
+      plan.items.map((it) => ({
+        key: it.id,
+        itemName: it.itemName || "",
+        barCode: it.barCode || "",
+        qty: it.qty ?? "",
+        taxRate: it.taxRate ?? "",
+        standardPrice: it.standardPrice ?? "",
+        amount: it.amount ?? "",
+        batch: it.batch || "",
+        unit: it.unit || "",
+        expiry: it.expiry || "",
+        itemId: it.itemId || "",
+      }))
+    );
+    setRawMaterialDetails([]);
+    setRawMaterialSummary([]);
+    setMessage({ text: "", severity: "info" });
+  };
+
+  const startNewPlanning = () => {
+    setLoadedVoucherNumber("");
+    setSavedVoucherNumber("");
+    setProductionRows([emptyProductionRow()]);
+    setRawMaterialDetails([]);
+    setRawMaterialSummary([]);
+    setVoucherDate(todayStr);
+    setMessage({ text: "", severity: "info" });
+  };
 
   const generateRawMaterials = useCallback(async () => {
     const validRows = productionRows.filter(r => r.itemName.trim() && parseFloat(r.qty) > 0);
@@ -206,7 +284,46 @@ const ProductionPlanningPage = () => {
     saveAs(new Blob([buf], { type: "application/octet-stream" }), `production_planning_${voucherDate}.xlsx`);
   };
 
+  const handleSaveRawMaterialsToExisting = async () => {
+    if (rawMaterialSummary.length === 0) {
+      setMessage({ text: "Generate the raw material list first", severity: "warning" });
+      return;
+    }
+    setLoading(true);
+    setMessage({ text: "", severity: "info" });
+    try {
+      const payload = rawMaterialSummary.map(r => ({
+        itemName: r.itemName,
+        itemId: r.itemId || "",
+        qty: r.qty,
+        standardPrice: r.standardPrice || 0,
+        amount: 0,
+        barCode: r.barcode || "",
+        batch: "",
+        expiry: "",
+        taxRate: 0,
+      }));
+      const res = await fetch(
+        `/api/${tenancyId}/production-planning/${encodeURIComponent(loadedVoucherNumber)}/raw-materials`,
+        { method: "POST", headers, body: JSON.stringify(payload) }
+      );
+      if (res.ok) {
+        setMessage({ text: `Raw materials saved for planning ${loadedVoucherNumber}.`, severity: "success" });
+      } else {
+        setMessage({ text: "Failed to save raw materials", severity: "error" });
+      }
+    } catch (e) {
+      setMessage({ text: "Error: " + e.message, severity: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSave = async () => {
+    if (loadedVoucherNumber) {
+      return handleSaveRawMaterialsToExisting();
+    }
+
     const validRows = productionRows.filter(r => r.itemName.trim());
     if (validRows.length === 0) {
       setMessage({ text: "Add at least one production item", severity: "warning" });
@@ -278,6 +395,15 @@ const ProductionPlanningPage = () => {
         Production Planning
       </Typography>
 
+      {loadedVoucherNumber && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Editing raw materials for an existing planning. Row edits here only affect the raw
+          material calculation below — they do not change the saved planning items. Click
+          "Generate Raw Material List" then "Save Raw Materials" to attach the breakdown to
+          planning <b>{loadedVoucherNumber}</b>.
+        </Alert>
+      )}
+
       {message.text && (
         <Alert severity={message.severity} sx={{ mb: 2 }} onClose={() => setMessage({ text: "", severity: "info" })}>
           {message.text}
@@ -294,8 +420,81 @@ const ProductionPlanningPage = () => {
             onChange={(e) => setVoucherDate(e.target.value)}
             InputLabelProps={{ shrink: true }}
             sx={{ width: 180 }}
+            disabled={!!loadedVoucherNumber}
           />
+          {loadedVoucherNumber && (
+            <>
+              <Chip color="primary" label={`Editing planning: ${loadedVoucherNumber}`} />
+              <Button size="small" startIcon={<NoteAddIcon />} onClick={startNewPlanning}>
+                New Planning
+              </Button>
+            </>
+          )}
         </Stack>
+      </Paper>
+
+      {/* Load Existing Planning */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1.5 }}>
+          Load Existing Planning
+        </Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
+          <TextField
+            label="From Date"
+            type="date"
+            size="small"
+            value={fetchFromDate}
+            onChange={(e) => setFetchFromDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ width: 180 }}
+          />
+          <TextField
+            label="To Date"
+            type="date"
+            size="small"
+            value={fetchToDate}
+            onChange={(e) => setFetchToDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ width: 180 }}
+          />
+          <Button
+            variant="outlined"
+            startIcon={fetchingPlannings ? <CircularProgress size={16} /> : <SearchIcon />}
+            onClick={fetchPlanningsByDate}
+            disabled={fetchingPlannings}
+          >
+            Fetch Plannings
+          </Button>
+        </Stack>
+
+        {fetchedPlannings.length > 0 && (
+          <TableContainer sx={{ mt: 2 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ backgroundColor: "primary.dark" }}>
+                  <TableCell sx={{ color: "white", fontWeight: "bold" }}>Voucher Number</TableCell>
+                  <TableCell sx={{ color: "white", fontWeight: "bold" }}>Date</TableCell>
+                  <TableCell sx={{ color: "white", fontWeight: "bold" }}>Items</TableCell>
+                  <TableCell sx={{ color: "white", fontWeight: "bold" }}></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {fetchedPlannings.map((plan) => (
+                  <TableRow key={plan.voucherNumber} hover selected={plan.voucherNumber === loadedVoucherNumber}>
+                    <TableCell>{plan.voucherNumber}</TableCell>
+                    <TableCell>{(plan.voucherDate || "").split("T")[0]}</TableCell>
+                    <TableCell>{plan.items.length}</TableCell>
+                    <TableCell>
+                      <Button size="small" variant="contained" onClick={() => loadPlanning(plan)}>
+                        Load
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
       </Paper>
 
       {/* Production Items Table */}
@@ -411,9 +610,9 @@ const ProductionPlanningPage = () => {
           color="primary"
           startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
           onClick={handleSave}
-          disabled={loading}
+          disabled={loading || (loadedVoucherNumber && rawMaterialSummary.length === 0)}
         >
-          Save
+          {loadedVoucherNumber ? "Save Raw Materials" : "Save"}
         </Button>
       </Stack>
 
