@@ -102,6 +102,7 @@ import WastageEntry from "./components/WastageEntry";
 import WastageReport from "./components/WastageReport";
 import ProductionDefPage from "./components/ProductionDefPage";
 import ProductionPlanningPage from "./components/ProductionPlanningPage";
+import ProductionPlanningImport from "./components/ProductionPlanningImport";
 import ProductionExecutionPage from "./components/ProductionExecutionPage";
 import ProductionPlanningReport from "./components/ProductionPlanningReport";
 import ProductionExecutionReport from "./components/ProductionExecutionReport";
@@ -213,6 +214,7 @@ const ROUTE_ORDER = [
   { key: "Goods Receipt",                    path: "/goodsreceipt" },
   { key: "Production Def",                   path: "/production-def" },
   { key: "Production Planning",              path: "/production-planning" },
+  { key: "Production Planning Import",       path: "/production-planning-import" },
   { key: "Production Execution",             path: "/production-execution" },
   { key: "Weighbridge",                      path: "/weighbridge" },
   { key: "Weight-Count",                     path: "/bridge-count" },
@@ -625,6 +627,7 @@ function HideOnScroll({ children }) {
 />
 <Route path="/production-def" element={<ProductionDefPage />} />
 <Route path="/production-planning" element={<ProductionPlanningPage />} />
+<Route path="/production-planning-import" element={<ProductionPlanningImport />} />
 <Route path="/production-execution" element={<ProductionExecutionPage />} />
 <Route path="/production-planning-report" element={<ProductionPlanningReport />} />
 <Route path="/production-execution-report" element={<ProductionExecutionReport />} />
