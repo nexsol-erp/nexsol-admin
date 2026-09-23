@@ -47,6 +47,13 @@ jobs:
           retention-days: 7
 
   # ── Job 2: Deploy everything ─────────────────────────────────────────────────
+  # Every step below that SSHes/SCPs into the deploy host is tried, and on failure
+  # retried once after a short wait, before failing the job. The server takes
+  # constant internet-wide SSH scanning traffic with no fail2ban, which
+  # occasionally trips sshd's MaxStartups throttle and resets an in-flight
+  # connection ("handshake failed... connection reset by peer") - a transient
+  # condition unrelated to deploy correctness, so a short retry clears it in
+  # nearly all cases without masking a real, persistent failure.
   build-and-deploy:
     runs-on: ubuntu-latest
     needs: [build-pos]
@@ -80,7 +87,9 @@ jobs:
           chmod 644 "public/downloads/TradeLink247-POS-${{ steps.pos-ver.outputs.version }}.exe"
           chmod 644 "public/downloads/TradeLink247-POS-Setup-${{ steps.pos-ver.outputs.version }}.exe"
 
-      - name: Prepare folders on server
+      - name: Prepare folders on server (attempt 1)
+        id: prepare_1
+        continue-on-error: true
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -90,7 +99,24 @@ jobs:
             mkdir -p ${{ env.UPDATE_ASSETS_DIR }}/windows
             chmod -R 775 ${{ env.UPDATE_ASSETS_DIR }}/windows
 
-      - name: Deploy portable POS exe
+      - name: Wait before retrying (prepare folders)
+        if: steps.prepare_1.outcome == 'failure'
+        run: sleep 20
+
+      - name: Prepare folders on server (retry)
+        if: steps.prepare_1.outcome == 'failure'
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p ${{ env.UPDATE_ASSETS_DIR }}/windows
+            chmod -R 775 ${{ env.UPDATE_ASSETS_DIR }}/windows
+
+      - name: Deploy portable POS exe (attempt 1)
+        id: pos_exe_1
+        continue-on-error: true
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -101,7 +127,25 @@ jobs:
           strip_components: 2
           overwrite: true
 
-      - name: Deploy POS full installer
+      - name: Wait before retrying (portable POS exe)
+        if: steps.pos_exe_1.outcome == 'failure'
+        run: sleep 20
+
+      - name: Deploy portable POS exe (retry)
+        if: steps.pos_exe_1.outcome == 'failure'
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "public/downloads/TradeLink247-POS-${{ steps.pos-ver.outputs.version }}.exe"
+          target: "${{ env.UPDATE_ASSETS_DIR }}/windows/"
+          strip_components: 2
+          overwrite: true
+
+      - name: Deploy POS full installer (attempt 1)
+        id: pos_installer_1
+        continue-on-error: true
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -112,7 +156,41 @@ jobs:
           strip_components: 2
           overwrite: true
 
-      - name: Update latest.txt on server
+      - name: Wait before retrying (POS full installer)
+        if: steps.pos_installer_1.outcome == 'failure'
+        run: sleep 20
+
+      - name: Deploy POS full installer (retry)
+        if: steps.pos_installer_1.outcome == 'failure'
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "public/downloads/TradeLink247-POS-Setup-${{ steps.pos-ver.outputs.version }}.exe"
+          target: "${{ env.UPDATE_ASSETS_DIR }}/windows/"
+          strip_components: 2
+          overwrite: true
+
+      - name: Update latest.txt on server (attempt 1)
+        id: latest_txt_1
+        continue-on-error: true
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "${{ steps.pos-ver.outputs.version }}" > ${{ env.UPDATE_ASSETS_DIR }}/latest.txt
+            echo "Deployed v${{ steps.pos-ver.outputs.version }}"
+            ls -lh ${{ env.UPDATE_ASSETS_DIR }}/windows/
+
+      - name: Wait before retrying (latest.txt)
+        if: steps.latest_txt_1.outcome == 'failure'
+        run: sleep 20
+
+      - name: Update latest.txt on server (retry)
+        if: steps.latest_txt_1.outcome == 'failure'
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -136,7 +214,9 @@ jobs:
           kill $HEARTBEAT_PID
           exit $BUILD_RESULT
 
-      - name: Deploy build to temporary folder on server
+      - name: Deploy build to temporary folder on server (attempt 1)
+        id: build_temp_1
+        continue-on-error: true
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -147,7 +227,42 @@ jobs:
           strip_components: 0
           overwrite: true
 
-      - name: Move build to /var/www/html and reload nginx
+      - name: Wait before retrying (build temp folder)
+        if: steps.build_temp_1.outcome == 'failure'
+        run: sleep 20
+
+      - name: Deploy build to temporary folder on server (retry)
+        if: steps.build_temp_1.outcome == 'failure'
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "build/*"
+          target: "${{ env.TEMP_DEPLOY_DIR }}/"
+          strip_components: 0
+          overwrite: true
+
+      - name: Move build to /var/www/html and reload nginx (attempt 1)
+        id: move_build_1
+        continue-on-error: true
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo mkdir -p /var/www/html
+            sudo rm -rf /var/www/html/*
+            sudo cp -r /home/deploy/tmp-deploy/build/* /var/www/html/
+            sudo systemctl reload nginx
+
+      - name: Wait before retrying (move build / reload nginx)
+        if: steps.move_build_1.outcome == 'failure'
+        run: sleep 20
+
+      - name: Move build to /var/www/html and reload nginx (retry)
+        if: steps.move_build_1.outcome == 'failure'
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
