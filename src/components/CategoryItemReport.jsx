@@ -24,7 +24,7 @@ import { saveAs } from "file-saver";
 
 const CategoryItemReport = () => {
   const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedCategories, setSelectedCategories] = useState([]);
   const [loadingCats, setLoadingCats] = useState(false);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -47,16 +47,18 @@ const CategoryItemReport = () => {
   }, []);
 
   const fetchItems = async () => {
-    if (!selectedCategory) return;
+    if (!selectedCategories.length) return;
     const tenancyId = localStorage.getItem("tenancyId");
     const token = localStorage.getItem("jwtToken");
-    const catId = selectedCategory.id ?? selectedCategory.categoryId;
+    const catIds = selectedCategories.map((c) => c.id ?? c.categoryId);
     setLoading(true);
     setError(null);
     setFetched(false);
     try {
+      const params = new URLSearchParams();
+      catIds.forEach((id) => params.append("categoryIds", id));
       const res = await fetch(
-        `/api/${tenancyId}/item-category-map/by-category/${encodeURIComponent(catId)}`,
+        `/api/${tenancyId}/item-category-map/by-categories?${params.toString()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -64,7 +66,7 @@ const CategoryItemReport = () => {
       setItems(Array.isArray(data) ? data : []);
       setFetched(true);
     } catch (e) {
-      setError("Failed to fetch items for the selected category.");
+      setError("Failed to fetch items for the selected categories.");
       setItems([]);
     } finally {
       setLoading(false);
@@ -105,6 +107,7 @@ const CategoryItemReport = () => {
   const handleExcel = () => {
     const rows = items.map((item, idx) => ({
       "#": idx + 1,
+      Category: item.categoryName ?? item.category_name ?? "",
       "Item ID": item.itemId ?? item.item_id ?? "",
       "Item Name": item.itemName ?? item.item_name ?? "",
       "HSN Code": item.hsnCode ?? item.hsn_code ?? "",
@@ -116,13 +119,17 @@ const CategoryItemReport = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Category Items");
     const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const fileTag =
+      selectedCategories.length === 1
+        ? (selectedCategories[0]?.categoryName ?? selectedCategories[0]?.name ?? "report")
+        : `${selectedCategories.length}_categories`;
     saveAs(
       new Blob([buf], { type: "application/octet-stream" }),
-      `Category_Items_${selectedCategory?.categoryName ?? "report"}.xlsx`
+      `Category_Items_${fileTag}.xlsx`
     );
   };
 
-  const catName = selectedCategory?.categoryName ?? selectedCategory?.name ?? "";
+  const catNames = selectedCategories.map((c) => c.categoryName ?? c.name ?? "").filter(Boolean);
   const today = new Date().toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
@@ -139,11 +146,12 @@ const CategoryItemReport = () => {
       <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
           <Autocomplete
+            multiple
             options={categories}
             loading={loadingCats}
-            value={selectedCategory}
+            value={selectedCategories}
             onChange={(_, val) => {
-              setSelectedCategory(val);
+              setSelectedCategories(val);
               setItems([]);
               setFetched(false);
               setError(null);
@@ -156,12 +164,21 @@ const CategoryItemReport = () => {
             isOptionEqualToValue={(opt, val) =>
               (opt?.id ?? opt?.categoryId) === (val?.id ?? val?.categoryId)
             }
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip
+                  size="small"
+                  label={option?.categoryName ?? option?.name ?? ""}
+                  {...getTagProps({ index })}
+                />
+              ))
+            }
             noOptionsText="No categories"
             sx={{ minWidth: 280, flexGrow: 1 }}
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Select Category"
+                label="Select Categories"
                 size="small"
                 InputProps={{
                   ...params.InputProps,
@@ -178,7 +195,7 @@ const CategoryItemReport = () => {
           <Button
             variant="contained"
             onClick={fetchItems}
-            disabled={!selectedCategory || loading}
+            disabled={!selectedCategories.length || loading}
             sx={{ minWidth: 130 }}
           >
             {loading ? <CircularProgress size={20} color="inherit" /> : "Get Items"}
@@ -223,12 +240,14 @@ const CategoryItemReport = () => {
               Printed on: {today}
             </Typography>
             <Divider sx={{ my: 1 }} />
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Stack direction="row" spacing={1} alignItems="center">
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={1}>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                 <Typography variant="body2" color="text.secondary">
-                  Category:
+                  {catNames.length > 1 ? "Categories:" : "Category:"}
                 </Typography>
-                <Chip label={catName} size="small" color="primary" />
+                {catNames.map((name) => (
+                  <Chip key={name} label={name} size="small" color="primary" />
+                ))}
               </Stack>
               <Typography variant="body2" color="text.secondary">
                 Total Items: <strong>{items.length}</strong>
@@ -241,14 +260,14 @@ const CategoryItemReport = () => {
               variant="outlined"
               sx={{ p: 4, textAlign: "center", color: "text.secondary" }}
             >
-              No items found for this category.
+              No items found for the selected categories.
             </Paper>
           ) : (
             <TableContainer component={Paper} variant="outlined">
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ backgroundColor: "#2c3e50" }}>
-                    {["#", "Item ID", "Item Name", "HSN Code", "Unit", "Tax %", "Std. Price"].map(
+                    {["#", "Category", "Item ID", "Item Name", "HSN Code", "Unit", "Tax %", "Std. Price"].map(
                       (h) => (
                         <TableCell
                           key={h}
@@ -278,6 +297,9 @@ const CategoryItemReport = () => {
                       <TableCell sx={{ color: "#555", fontSize: "0.8rem" }}>
                         {idx + 1}
                       </TableCell>
+                      <TableCell sx={{ color: "#212121", fontSize: "0.82rem" }}>
+                        {row.categoryName ?? row.category_name ?? "—"}
+                      </TableCell>
                       <TableCell sx={{ color: "#212121", fontSize: "0.82rem", fontFamily: "monospace" }}>
                         {row.itemId ?? row.item_id ?? "—"}
                       </TableCell>
@@ -305,7 +327,7 @@ const CategoryItemReport = () => {
                   ))}
                   <TableRow sx={{ backgroundColor: "#dde3ea" }}>
                     <TableCell
-                      colSpan={7}
+                      colSpan={8}
                       sx={{ color: "#212121", fontWeight: 700, fontSize: "0.85rem", py: 1 }}
                     >
                       Total Items: {items.length}
