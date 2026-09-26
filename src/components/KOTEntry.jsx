@@ -8,12 +8,13 @@ import {
   Segmented, Select, Space, Spin, Tag, Tooltip, Typography, message,
 } from "antd";
 import {
-  AppstoreOutlined, ArrowLeftOutlined, CameraOutlined, CheckCircleOutlined, ClockCircleOutlined,
+  AppstoreOutlined, ArrowLeftOutlined, CheckCircleOutlined, ClockCircleOutlined,
   DeleteOutlined, DollarOutlined, FireOutlined, LockOutlined, MergeCellsOutlined, MinusOutlined,
   MoreOutlined, PlusOutlined, PrinterOutlined, ReloadOutlined, ScissorOutlined, SearchOutlined,
   SettingOutlined, SyncOutlined, UserOutlined,
 } from "@ant-design/icons";
 import BarcodeScannerModal from "./BarcodeScannerModal";
+import ItemPicker, { findByCode, normalizeItem } from "./pos/ItemPicker";
 import { useBranch } from "./BranchContext";
 import { billHtml, kotSlipHtml, printHtml, receiptHtml } from "./kot/kotPrint";
 
@@ -61,18 +62,6 @@ const S = {
     padding: "10px 0", borderBottom: "1px solid #f0f0f0",
   },
 };
-
-function normalizeItem(it) {
-  return {
-    id: it.id ?? it.itemId ?? it.code ?? it.itemCode ?? String(it.barcode ?? it.name ?? it.itemName ?? ""),
-    name: it.itemName ?? it.name ?? it.title ?? it.description ?? String(it.id ?? ""),
-    barcode: it.barcode ?? it.barCode ?? it.qr ?? "",
-    code: it.itemCode ?? it.code ?? "",
-    unit: it.unitName ?? it.unit ?? "",
-    rate: Number(it.rate ?? it.saleRate ?? it.sellingPrice ?? it.mrp ?? it.standardPrice ?? it.price ?? 0) || 0,
-    taxRate: Number(it.taxRate ?? it.tax_rate ?? 0) || 0,
-  };
-}
 
 function readJson(key, fallback) {
   try {
@@ -150,7 +139,6 @@ const KOTEntry = () => {
   // ── items ────────────────────────────────────────────────────────────────
   const [cache, setCache] = useState(() => readJson(LS_CACHE_KEY, []).map(normalizeItem));
   const [recent, setRecent] = useState(() => readJson(LS_RECENT_KEY, []));
-  const [itemQuery, setItemQuery] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const searchRef = useRef(null);
@@ -285,7 +273,6 @@ const KOTEntry = () => {
   const openTable = async (name) => {
     setTable(name);
     setMobilePane("Menu");
-    setItemQuery("");
     const existing = ticketByTable[name];
     if (existing) {
       loadTicketIntoView(existing);
@@ -358,9 +345,7 @@ const KOTEntry = () => {
   };
 
   const addByCode = (raw) => {
-    const code = String(raw || "").trim().toLowerCase();
-    if (!code) return false;
-    const it = cache.find((x) => String(x.barcode || "").toLowerCase() === code || String(x.code || "").toLowerCase() === code);
+    const it = findByCode(cache, raw);
     if (!it) return false;
     addItem(it);
     message.success({ content: `${it.name} added`, duration: 1 });
@@ -486,21 +471,6 @@ const KOTEntry = () => {
   const sentLines = lines.filter((l) => l.printed);
   const newLines = lines.filter((l) => !l.printed);
   const status = ticket?.status || (lines.length ? "OPEN" : "FREE");
-
-  const itemResults = useMemo(() => {
-    const q = itemQuery.trim().toLowerCase();
-    if (!q) {
-      // Recently ordered items first, then the rest of the menu.
-      const byId = new Map(cache.map((it) => [it.id, it]));
-      const rec = recent.map((id) => byId.get(id)).filter(Boolean);
-      const seen = new Set(rec.map((it) => it.id));
-      return [...rec, ...cache.filter((it) => !seen.has(it.id))].slice(0, 48);
-    }
-    return cache
-      .filter((it) => it.name?.toLowerCase().includes(q) || String(it.barcode || "").toLowerCase().includes(q)
-        || String(it.code || "").toLowerCase().includes(q))
-      .slice(0, 60);
-  }, [itemQuery, cache, recent]);
 
   const newQtyByItem = useMemo(() => {
     const m = {};
@@ -695,61 +665,20 @@ const KOTEntry = () => {
 
   const menuPane = (
     <Card style={S.card} bodyStyle={{ padding: isPhone ? 12 : 16 }}>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <Input
-          ref={searchRef}
-          size="large"
-          allowClear
-          value={itemQuery}
-          onChange={(e) => setItemQuery(e.target.value)}
-          onPressEnter={() => {
-            if (addByCode(itemQuery)) setItemQuery("");
-            else if (itemResults.length === 1) { addItem(itemResults[0]); setItemQuery(""); }
-          }}
-          prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
-          placeholder={isMobile ? "Search items" : "Search item or scan barcode (F2)"}
-        />
-        <Tooltip title="Scan with camera">
-          <Button size="large" icon={<CameraOutlined />} onClick={() => setScanOpen(true)} />
-        </Tooltip>
-      </div>
-      <Text type="secondary" style={{ fontSize: 12 }}>
-        {itemQuery.trim() ? `${itemResults.length}${itemResults.length === 60 ? "+" : ""} matches` : recent.length ? "Recently ordered first" : "Items"}
-      </Text>
-      {itemResults.length ? (
-        <div style={{
-          display: "grid", gridTemplateColumns: `repeat(auto-fill, minmax(${isPhone ? 130 : 150}px, 1fr))`, gap: 8, marginTop: 8,
-          maxHeight: isMobile ? "none" : "calc(100vh - 290px)", overflowY: isMobile ? "visible" : "auto", paddingRight: 2,
-        }}>
-          {itemResults.map((it) => {
-            const q = newQtyByItem[it.id];
-            return (
-              <button
-                type="button"
-                key={it.id}
-                onClick={() => addItem(it)}
-                style={{
-                  textAlign: "left", border: q ? "1.5px solid #c026d3" : "1px solid #f0f0f0", background: q ? "#fdf4ff" : "#fff",
-                  borderRadius: 10, padding: "10px 10px", cursor: "pointer", minHeight: 72, display: "flex",
-                  flexDirection: "column", justifyContent: "space-between", position: "relative", font: "inherit", color: "inherit",
-                }}
-              >
-                <span style={{ fontWeight: 600, fontSize: 13, lineHeight: 1.25, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", paddingRight: q ? 22 : 0 }}>
-                  {it.name}
-                </span>
-                <span style={{ fontSize: 13, color: "#c026d3", fontWeight: 700 }}>{inr(it.rate)}</span>
-                {q ? (
-                  <span style={{ position: "absolute", top: 6, right: 6, background: "#c026d3", color: "#fff", borderRadius: 10, fontSize: 11, padding: "0 6px", fontWeight: 700 }}>
-                    {q}
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        <Empty style={{ padding: "24px 0" }} description={cache.length ? "No items match" : "No items on this device yet. Tap Sync items."} />
-      )}
+      <ItemPicker
+        ref={searchRef}
+        items={cache}
+        recent={recent}
+        qtyById={newQtyByItem}
+        onPick={(it) => addItem(it)}
+        onCode={addByCode}
+        onScan={() => setScanOpen(true)}
+        accent="#c026d3"
+        accentBg="#fdf4ff"
+        isPhone={isPhone}
+        isMobile={isMobile}
+        maxHeight="calc(100vh - 290px)"
+      />
     </Card>
   );
 
