@@ -135,6 +135,7 @@ import SalesmanReport from "./components/SalesmanReport";
 import CategoryItemReport from "./components/CategoryItemReport";
 import CategorySalesSummaryReport from "./components/CategorySalesSummaryReport";
 import MyReports from "./components/MyReports";
+import RegulatoryIntegration from "./components/regulatory/RegulatoryIntegration";
 import MenuMapPage from "./components/MenuMapPage";
 import SetupWizardPage from "./components/SetupWizardPage";
 import StockTransferDiscountPage from "./components/StockTransferDiscountPage";
@@ -336,6 +337,7 @@ const ROUTE_ORDER = [
   { key: "Workflow Designer",                path: "/bpmn-editorr" },
   { key: "My Tasks",                         path: "/my-tasks" },
   { key: "My Reports",                       path: "/my-reports" },
+  { key: "E-Invoicing",                      path: "/e-invoicing" },
   { key: "Workflow Instances",               path: "/workflow-instances" },
   { key: "About",                            path: "/about" },
   { key: "Help",                             path: "/help" },
@@ -649,6 +651,7 @@ function HideOnScroll({ children }) {
 <Route path="/category-item-report" element={<CategoryItemReport />} />
 <Route path="/category-sales-summary-report" element={<CategorySalesSummaryReport />} />
 <Route path="/my-reports" element={<MyReports />} />
+<Route path="/e-invoicing" element={<RegulatoryIntegration />} />
 <Route path="/branch-profit-report" element={<BranchProfitReport />} />
 <Route path="/branch-monthly-expense" element={<BranchExpenseEntryPage />} />
 <Route path="/monthly-branch-profit-report" element={<MonthlyBranchProfitReport />} />
