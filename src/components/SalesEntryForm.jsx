@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Form, Input, Button, Select, Table, Typography, Space, InputNumber, message, Spin,
-  Modal, Radio, Checkbox, Card, Descriptions, Result, Row, Col, Alert,
+  Modal, Checkbox, Card, Result, Row, Col, Grid, Segmented, Tag, Avatar, Divider, Empty,
 } from "antd";
-import { DeleteOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined, PlusOutlined, MinusOutlined, SearchOutlined, UserAddOutlined, PhoneOutlined,
+  EnvironmentOutlined, SaveOutlined, PrinterOutlined,
+} from "@ant-design/icons";
 import { getItems } from "../services/apiservice";
 import { useBranch } from "./BranchContext";
 
@@ -44,6 +47,34 @@ function isInterState(customer, branch) {
 
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const money = (n) => r2(n).toFixed(2);
+const inr = (n) => `₹${r2(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const S = {
+  page: { padding: 16, maxWidth: 1280, margin: "0 auto" },
+  header: {
+    display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between",
+    gap: 12, marginBottom: 16,
+  },
+  // A grid track of minmax(0, 1fr) keeps long selected labels from widening the page on phones.
+  stack: { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 },
+  card: { borderRadius: 10, minWidth: 0, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" },
+  step: {
+    display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22,
+    borderRadius: "50%", background: "#1677ff", color: "#fff", fontSize: 12, fontWeight: 600,
+  },
+  label: { fontSize: 12, color: "rgba(0,0,0,0.55)", marginBottom: 4 },
+  addressBox: {
+    background: "#fafafa", border: "1px solid #f0f0f0", borderRadius: 6, padding: "6px 10px",
+    minHeight: 54, whiteSpace: "pre-wrap",
+  },
+  lineCard: { border: "1px solid #f0f0f0", borderRadius: 8, padding: 10, marginBottom: 8, background: "#fff" },
+  bottomBar: {
+    position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 1000, background: "#fff",
+    borderTop: "1px solid #e5e5e5", boxShadow: "0 -2px 8px rgba(0,0,0,0.08)", color: "#111",
+    display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+    padding: "10px 16px calc(10px + env(safe-area-inset-bottom))",
+  },
+};
 
 function calcLine(line) {
   const amount = r2(line.qty * line.rate);
@@ -56,6 +87,32 @@ const authHeaders = () => ({
   "Content-Type": "application/json",
 });
 const api = (path) => `/api/${localStorage.getItem("tenancyId")}${path}`;
+
+const ONES = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven",
+  "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+const TENS = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+function twoDigits(n) {
+  return n < 20 ? ONES[n] : `${TENS[Math.floor(n / 10)]}${n % 10 ? ` ${ONES[n % 10]}` : ""}`;
+}
+// Indian numbering (crore / lakh / thousand), as printed on GST invoices.
+function rupeesInWords(amount) {
+  const total = Math.round((Number(amount) || 0) * 100);
+  let n = Math.floor(total / 100);
+  const paise = total % 100;
+  if (n === 0 && paise === 0) return "Rupees Zero Only";
+  const parts = [];
+  const crore = Math.floor(n / 10000000); n %= 10000000;
+  const lakh = Math.floor(n / 100000); n %= 100000;
+  const thousand = Math.floor(n / 1000); n %= 1000;
+  const hundred = Math.floor(n / 100); n %= 100;
+  if (crore) parts.push(`${crore >= 100 ? rupeesInWords(crore).replace(/^Rupees | Only$/g, "") : twoDigits(crore)} Crore`);
+  if (lakh) parts.push(`${twoDigits(lakh)} Lakh`);
+  if (thousand) parts.push(`${twoDigits(thousand)} Thousand`);
+  if (hundred) parts.push(`${ONES[hundred]} Hundred`);
+  if (n) parts.push(twoDigits(n));
+  const rupees = parts.length ? `Rupees ${parts.join(" ")}` : "Rupees Zero";
+  return `${rupees}${paise ? ` and ${twoDigits(paise)} Paise` : ""} Only`;
+}
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -112,6 +169,8 @@ function printTaxInvoice(inv) {
       ${payRows}
       ${inv.credit ? `<tr class="grand"><td>Balance due</td><td style="text-align:right;">${money(inv.balanceDue)}</td></tr>` : ""}
     </table>
+    <p style="margin-top:12px"><b>Amount in words:</b> ${esc(rupeesInWords(inv.totalAmount))}</p>
+    <div style="margin-top:48px;text-align:right">For <b>${esc(inv.branchName || inv.branchCode)}</b><br><br><br>Authorised Signatory</div>
   </body></html>`;
 
   const win = window.open("", "_blank", "width=900,height=700");
@@ -126,6 +185,8 @@ const emptyPayments = { CASH: 0, UPI: 0, CARD: 0 };
 
 const SalesEntryForm = () => {
   const { branch: branchCode, setBranch, branches } = useBranch();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.lg;
   const [customerForm] = Form.useForm();
   const qtyRef = useRef(null);
 
@@ -304,180 +365,324 @@ const SalesEntryForm = () => {
     }
   };
 
+  const readiness = [
+    !branchCode && "Select a branch",
+    !customer && "Select or add a customer",
+    !lines.length && "Add at least one item",
+    paid - totals.total > 0.01 && "Payment is more than the total",
+    !credit && lines.length > 0 && Math.abs(balance) > 0.01 && "Payment must equal the total, or choose Credit",
+  ].filter(Boolean);
+  const ready = readiness.length === 0;
+  const cgst = r2(totals.tax / 2);
+  const sgst = r2(totals.tax - cgst);
+  const itemCount = lines.length;
+
+  const removeLine = (key) => setLines((prev) => prev.filter((x) => x.key !== key));
+
+  // ── pieces ────────────────────────────────────────────────────────────────
+  const sectionTitle = (step, title, extra) => (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+      <Space size={10}>
+        <span style={S.step}>{step}</span>
+        <span style={{ fontWeight: 600 }}>{title}</span>
+      </Space>
+      {extra}
+    </div>
+  );
+
+  const summaryRow = (label, value, opts = {}) => (
+    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", ...(opts.style || {}) }}>
+      <Text type={opts.muted ? "secondary" : undefined} strong={opts.strong}>{label}</Text>
+      <Text strong={opts.strong} type={opts.type} style={opts.valueStyle}>{value}</Text>
+    </div>
+  );
+
+  const customerCard = (
+    <Card size="small" style={S.card} title={sectionTitle(1, "Customer",
+      <Button size="small" icon={<UserAddOutlined />} onClick={() => setNewCustomerOpen(true)}>
+        {isMobile ? "New" : "New customer"}
+      </Button>)}>
+      <Select showSearch allowClear size="large" style={{ width: "100%" }}
+        placeholder="Search by name, GSTIN or mobile" suffixIcon={<SearchOutlined />}
+        value={customerId} onChange={selectCustomer} options={customerOptions} optionFilterProp="label" />
+      {customer ? (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <Avatar size={44} style={{ background: "#1677ff", flexShrink: 0 }}>
+              {(customer.name || "?").trim().charAt(0).toUpperCase()}
+            </Avatar>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 16 }}>{customer.name}</div>
+              <Space size={[4, 4]} wrap style={{ marginTop: 4 }}>
+                {customer.gst
+                  ? <Tag color="blue">GSTIN {customer.gst}</Tag>
+                  : <Tag>Unregistered</Tag>}
+                {customer.state && <Tag>{customer.state}</Tag>}
+                {customer.mobile && <Tag icon={<PhoneOutlined />}>{customer.mobile}</Tag>}
+                <Tag color={interState ? "purple" : "green"}>{interState ? "IGST" : "CGST + SGST"}</Tag>
+              </Space>
+            </div>
+          </div>
+          <Row gutter={[16, 12]} style={{ marginTop: 14 }}>
+            <Col xs={24} md={12}>
+              <div style={S.label}>Billing address</div>
+              <div style={S.addressBox}>{customer.address || <Text type="secondary">Not on file</Text>}</div>
+            </Col>
+            <Col xs={24} md={12}>
+              <div style={S.label}><EnvironmentOutlined /> Delivery address</div>
+              <Input.TextArea autoSize={{ minRows: 2, maxRows: 5 }} value={deliveryAddress}
+                onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Where the goods go" />
+            </Col>
+          </Row>
+        </div>
+      ) : (
+        <Text type="secondary" style={{ display: "block", marginTop: 10 }}>
+          GST is worked out from the customer's state, so pick the customer first.
+        </Text>
+      )}
+    </Card>
+  );
+
+  const itemPicker = (
+    <Row gutter={[8, 8]} align="middle" style={{ marginBottom: 12 }}>
+      <Col xs={24} md={11}>
+        <Select showSearch size="large" style={{ width: "100%" }} placeholder="Item name, barcode or code"
+          suffixIcon={<SearchOutlined />} value={pick.item?.id} filterOption={false} onSearch={setItemSearch}
+          onChange={pickItem} options={itemOptions} notFoundContent={itemSearch ? "No matching item" : null} />
+      </Col>
+      <Col xs={8} md={3}>
+        <InputNumber ref={qtyRef} size="large" min={0.001} value={pick.qty} placeholder="Qty" style={{ width: "100%" }}
+          inputMode="decimal" onChange={(q) => setPick({ ...pick, qty: q })} onPressEnter={addLine} />
+      </Col>
+      <Col xs={16} md={5}>
+        <InputNumber size="large" min={0} value={pick.rate} placeholder="Rate incl. GST" style={{ width: "100%" }}
+          prefix="₹" inputMode="decimal" onChange={(r) => setPick({ ...pick, rate: r })} onPressEnter={addLine} />
+      </Col>
+      <Col xs={24} md={5}>
+        <Button size="large" type="primary" icon={<PlusOutlined />} block onClick={addLine} disabled={!pick.item}>
+          Add{pick.item ? ` · GST ${pick.item.taxRate ?? 0}%` : ""}
+        </Button>
+      </Col>
+    </Row>
+  );
+
   const columns = [
-    { title: "Item", dataIndex: "itemName" },
-    { title: "HSN", dataIndex: "hsnCode", width: 90 },
     {
-      title: "Qty", dataIndex: "qty", width: 90,
-      render: (v, l) => <InputNumber min={0.001} value={v} size="small" style={{ width: 80 }}
+      title: "Item", dataIndex: "itemName",
+      render: (v, l) => (<><div style={{ fontWeight: 500 }}>{v}</div>
+        <Text type="secondary" style={{ fontSize: 12 }}>{l.hsnCode ? `HSN ${l.hsnCode} · ` : ""}GST {l.taxRate}%</Text></>),
+    },
+    {
+      title: "Qty", dataIndex: "qty", width: 100,
+      render: (v, l) => <InputNumber min={0.001} value={v} style={{ width: 88 }}
         onChange={(q) => updateLine(l.key, { qty: q || 0 })} />,
     },
     {
-      title: "Rate (incl. GST)", dataIndex: "rate", width: 120,
-      render: (v, l) => <InputNumber min={0} value={v} size="small" style={{ width: 105 }}
+      title: "Rate", dataIndex: "rate", width: 130,
+      render: (v, l) => <InputNumber min={0} value={v} prefix="₹" style={{ width: 118 }}
         onChange={(r) => updateLine(l.key, { rate: r || 0 })} />,
     },
-    { title: "GST %", dataIndex: "taxRate", width: 70, align: "right" },
-    { title: "Taxable", dataIndex: "taxable", width: 100, align: "right", render: money },
-    { title: interState ? "IGST" : "CGST + SGST", dataIndex: "tax", width: 100, align: "right", render: money },
-    { title: "Amount", dataIndex: "amount", width: 100, align: "right", render: money },
+    { title: "Taxable", dataIndex: "taxable", width: 110, align: "right", render: inr },
+    { title: interState ? "IGST" : "GST", dataIndex: "tax", width: 100, align: "right", render: inr },
+    { title: "Amount", dataIndex: "amount", width: 120, align: "right", render: (v) => <b>{inr(v)}</b> },
     {
-      width: 50,
-      render: (_, l) => <Button size="small" danger icon={<DeleteOutlined />}
-        onClick={() => setLines((prev) => prev.filter((x) => x.key !== l.key))} />,
+      width: 48,
+      render: (_, l) => <Button type="text" danger icon={<DeleteOutlined />} aria-label="Remove item"
+        onClick={() => removeLine(l.key)} />,
     },
   ];
 
+  const mobileLines = (
+    <div>
+      {calcLines.map((l) => (
+        <div key={l.key} style={S.lineCard}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 600 }}>{l.itemName}</div>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {l.hsnCode ? `HSN ${l.hsnCode} · ` : ""}GST {l.taxRate}% · tax {inr(l.tax)}
+              </Text>
+            </div>
+            <Button type="text" danger icon={<DeleteOutlined />} aria-label="Remove item" onClick={() => removeLine(l.key)} />
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
+            <Space.Compact>
+              <Button icon={<MinusOutlined />} aria-label="Less"
+                onClick={() => updateLine(l.key, { qty: Math.max(1, r2(l.qty - 1)) })} />
+              <InputNumber min={0.001} value={l.qty} controls={false} inputMode="decimal"
+                style={{ width: 56, textAlign: "center" }} onChange={(q) => updateLine(l.key, { qty: q || 0 })} />
+              <Button icon={<PlusOutlined />} aria-label="More" onClick={() => updateLine(l.key, { qty: r2(l.qty + 1) })} />
+            </Space.Compact>
+            <Text type="secondary">×</Text>
+            <InputNumber min={0} value={l.rate} prefix="₹" controls={false} inputMode="decimal"
+              style={{ flex: 1, minWidth: 0 }} onChange={(r) => updateLine(l.key, { rate: r || 0 })} />
+            <Text strong style={{ minWidth: 80, textAlign: "right" }}>{inr(l.amount)}</Text>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const itemsCard = (
+    <Card size="small" style={S.card} title={sectionTitle(2, "Items",
+      itemCount > 0 && <Text type="secondary">{itemCount} item{itemCount > 1 ? "s" : ""}</Text>)}>
+      {itemPicker}
+      {calcLines.length === 0 ? (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No items yet. Search above to add one." />
+      ) : isMobile ? mobileLines : (
+        <Table size="middle" columns={columns} dataSource={calcLines} rowKey="key" pagination={false} />
+      )}
+    </Card>
+  );
+
+  const paymentCard = (
+    <Card size="small" style={S.card} title={sectionTitle(3, "Payment")}>
+      <Segmented block size="large" value={credit ? "credit" : "paid"}
+        onChange={(v) => setCredit(v === "credit")}
+        options={[{ label: "Paid in full", value: "paid" }, { label: "Credit", value: "credit" }]} />
+      <Text type="secondary" style={{ display: "block", margin: "10px 0 12px" }}>
+        {credit
+          ? "Enter any down payment. The rest goes on the customer's account and is collected from the Receipt screen."
+          : "Split across Cash, UPI and Card if needed. Tap Rest to fill the balance."}
+      </Text>
+      {PAY_MODES.map((m) => (
+        <div key={m} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <span style={{ width: 64, fontWeight: 500 }}>{PAY_LABELS[m]}</span>
+          <InputNumber min={0} value={payments[m] || null} placeholder="0.00" prefix="₹" inputMode="decimal"
+            style={{ flex: 1 }} onChange={(v) => setPayments({ ...payments, [m]: v || 0 })} />
+          <Button onClick={() => fillRest(m)} disabled={!totals.total}>Rest</Button>
+        </div>
+      ))}
+    </Card>
+  );
+
+  const summaryCard = (
+    <Card size="small" style={S.card} title={<span style={{ fontWeight: 600 }}>Summary</span>}>
+      {summaryRow("Taxable value", inr(totals.taxable), { muted: true })}
+      {interState
+        ? summaryRow("IGST", inr(totals.tax), { muted: true })
+        : (<>{summaryRow("CGST", inr(cgst), { muted: true })}{summaryRow("SGST", inr(sgst), { muted: true })}</>)}
+      <Divider style={{ margin: "8px 0" }} />
+      {summaryRow("Invoice total", inr(totals.total), { strong: true, valueStyle: { fontSize: 22 } })}
+      {summaryRow("Paid now", inr(paid), { muted: true })}
+      {credit
+        ? summaryRow("On credit", inr(Math.max(0, balance)), { strong: true, type: balance > 0 ? "warning" : undefined })
+        : summaryRow("Balance", inr(balance), { type: Math.abs(balance) > 0.01 ? "danger" : "success" })}
+      {!isMobile && (
+        <>
+          <Button type="primary" size="large" block icon={<SaveOutlined />} loading={saving}
+            disabled={!ready} onClick={save} style={{ marginTop: 12 }}>Save invoice</Button>
+          {!ready && <Text type="secondary" style={{ display: "block", marginTop: 8, fontSize: 12 }}>{readiness[0]}</Text>}
+        </>
+      )}
+    </Card>
+  );
+
   if (savedInvoice) {
+    const onCredit = savedInvoice.credit && Number(savedInvoice.balanceDue) > 0;
     return (
-      <div style={{ padding: 24, maxWidth: 900, margin: "auto" }}>
-        <Result
-          status="success"
-          title={`Invoice ${savedInvoice.voucherNumber} saved`}
-          subTitle={savedInvoice.credit && Number(savedInvoice.balanceDue) > 0
-            ? `${savedInvoice.customerName}: total ₹${money(savedInvoice.totalAmount)}, paid ₹${money(savedInvoice.paidAmount)}, ₹${money(savedInvoice.balanceDue)} on credit`
-            : `${savedInvoice.customerName}: ₹${money(savedInvoice.totalAmount)} paid in full`}
-          extra={[
-            <Button key="print" type="primary" onClick={() => printTaxInvoice(savedInvoice)}>Print tax invoice</Button>,
-            <Button key="new" onClick={resetInvoice}>New invoice</Button>,
-          ]}
-        />
+      <div style={{ ...S.page, maxWidth: 640 }}>
+        <Card style={S.card}>
+          <Result
+            status="success"
+            title={`Invoice ${savedInvoice.voucherNumber} saved`}
+            subTitle={savedInvoice.customerName}
+            style={{ padding: isMobile ? "16px 0" : undefined }}
+          />
+          {summaryRow("Invoice total", inr(savedInvoice.totalAmount), { strong: true })}
+          {summaryRow("Paid now", inr(savedInvoice.paidAmount), { muted: true })}
+          {onCredit && summaryRow("On credit", inr(savedInvoice.balanceDue), { strong: true, type: "warning" })}
+          <Row gutter={[8, 8]} style={{ marginTop: 16 }}>
+            <Col xs={24} sm={12}>
+              <Button type="primary" size="large" block icon={<PrinterOutlined />}
+                onClick={() => printTaxInvoice(savedInvoice)}>Print tax invoice</Button>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Button size="large" block icon={<PlusOutlined />} onClick={resetInvoice}>New invoice</Button>
+            </Col>
+          </Row>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 1100, margin: "auto" }}>
-      <Title level={3} style={{ marginBottom: 16, color: "inherit" }}>Sales Entry</Title>
+    <div style={{ ...S.page, paddingBottom: isMobile ? 96 : S.page.padding }}>
+      <div style={S.header}>
+        <div>
+          <Title level={isMobile ? 4 : 3} style={{ margin: 0, color: "inherit" }}>Sales Entry</Title>
+          <Text style={{ color: "inherit", opacity: 0.7 }}>GST tax invoice</Text>
+        </div>
+        <div style={{ display: "flex", gap: 8, minWidth: 0, flex: isMobile ? "1 1 100%" : undefined }}>
+          <Select style={{ minWidth: isMobile ? 0 : 220, flex: 1 }} value={branchCode || undefined}
+            placeholder="Select branch" onChange={setBranch}
+            options={branches.map((b) => ({ value: b.branchCode, label: b.branchName ? `${b.branchCode} — ${b.branchName}` : b.branchCode }))} />
+          <Input type="date" value={voucherDate} onChange={(e) => setVoucherDate(e.target.value)}
+            style={{ width: 150, flexShrink: 0 }} aria-label="Invoice date" />
+        </div>
+      </div>
+
       <Spin spinning={loading}>
-        <Card size="small" style={{ marginBottom: 12 }}>
-          <Row gutter={12}>
-            <Col xs={24} md={8}>
-              <Text type="secondary">Branch</Text>
-              <Select style={{ width: "100%" }} value={branchCode || undefined} placeholder="Select branch"
-                onChange={setBranch}
-                options={branches.map((b) => ({ value: b.branchCode, label: b.branchName ? `${b.branchCode} — ${b.branchName}` : b.branchCode }))} />
-            </Col>
-            <Col xs={24} md={6}>
-              <Text type="secondary">Invoice date</Text>
-              <Input type="date" value={voucherDate} onChange={(e) => setVoucherDate(e.target.value)} />
-            </Col>
-          </Row>
-        </Card>
-
-        <Card size="small" title="Customer" style={{ marginBottom: 12 }}
-          extra={<Button onClick={() => setNewCustomerOpen(true)}>New customer</Button>}>
-          <Select showSearch allowClear style={{ width: "100%" }} placeholder="Search by name, GSTIN or mobile"
-            value={customerId} onChange={selectCustomer} options={customerOptions} optionFilterProp="label" />
-          {customer && (
-            <>
-              <Descriptions size="small" column={{ xs: 1, md: 3 }} style={{ marginTop: 12 }}>
-                <Descriptions.Item label="GSTIN">{customer.gst || "Unregistered"}</Descriptions.Item>
-                <Descriptions.Item label="State">{customer.state || "—"}</Descriptions.Item>
-                <Descriptions.Item label="Mobile">{customer.mobile || "—"}</Descriptions.Item>
-                <Descriptions.Item label="Billing address" span={3}>{customer.address || "—"}</Descriptions.Item>
-              </Descriptions>
-              <Text type="secondary">Delivery address</Text>
-              <Input.TextArea autoSize={{ minRows: 2 }} value={deliveryAddress}
-                onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Where the goods go" />
-              <div style={{ marginTop: 6 }}>
-                <Text type="secondary">
-                  {interState ? "Customer is in another state, so this invoice charges IGST." : "Same state as the branch, so this invoice charges CGST + SGST."}
-                </Text>
-              </div>
-            </>
-          )}
-        </Card>
-
-        <Card size="small" title="Items" style={{ marginBottom: 12 }}>
-          <Space wrap style={{ marginBottom: 12 }}>
-            <Select showSearch style={{ width: 320 }} placeholder="Item name, barcode or code"
-              value={pick.item?.id} filterOption={false} onSearch={setItemSearch}
-              onChange={pickItem} options={itemOptions} />
-            <InputNumber ref={qtyRef} min={0.001} value={pick.qty} placeholder="Qty" style={{ width: 90 }}
-              onChange={(q) => setPick({ ...pick, qty: q })} onPressEnter={addLine} />
-            <InputNumber min={0} value={pick.rate} placeholder="Rate incl. GST" style={{ width: 140 }}
-              onChange={(r) => setPick({ ...pick, rate: r })} onPressEnter={addLine} />
-            <Text type="secondary">{pick.item ? `GST ${pick.item.taxRate ?? 0}%` : ""}</Text>
-            <Button type="primary" onClick={addLine}>Add</Button>
-          </Space>
-          <Table size="small" columns={columns} dataSource={calcLines} rowKey="key" pagination={false}
-            scroll={{ x: 800 }}
-            summary={() => (
-              <Table.Summary>
-                <Table.Summary.Row>
-                  <Table.Summary.Cell index={0} colSpan={5} align="right"><b>Total</b></Table.Summary.Cell>
-                  <Table.Summary.Cell index={1} align="right">{money(totals.taxable)}</Table.Summary.Cell>
-                  <Table.Summary.Cell index={2} align="right">{money(totals.tax)}</Table.Summary.Cell>
-                  <Table.Summary.Cell index={3} align="right"><b>₹{money(totals.total)}</b></Table.Summary.Cell>
-                  <Table.Summary.Cell index={4} />
-                </Table.Summary.Row>
-              </Table.Summary>
-            )} />
-          {!interState && totals.tax > 0 && (
-            <div style={{ textAlign: "right", marginTop: 6 }}>
-              <Text type="secondary">CGST ₹{money(totals.tax / 2)} · SGST ₹{money(totals.tax - r2(totals.tax / 2))}</Text>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} lg={16}>
+            <div style={S.stack}>
+              {customerCard}
+              {itemsCard}
+              {isMobile && paymentCard}
+              {isMobile && summaryCard}
             </div>
+          </Col>
+          {!isMobile && (
+            <Col xs={24} lg={8}>
+              <div style={{ position: "sticky", top: 80 }}>
+                <div style={S.stack}>
+                  {summaryCard}
+                  {paymentCard}
+                </div>
+              </div>
+            </Col>
           )}
-        </Card>
-
-        <Card size="small" title="Payment" style={{ marginBottom: 12 }}>
-          <div style={{ marginBottom: 12 }}>
-            <Radio.Group value={credit ? "credit" : "paid"} onChange={(e) => setCredit(e.target.value === "credit")}>
-              <Radio.Button value="paid">Paid in full</Radio.Button>
-              <Radio.Button value="credit">Credit</Radio.Button>
-            </Radio.Group>
-          </div>
-          {credit && (
-            <Alert type="info" showIcon style={{ marginBottom: 12 }}
-              message="Enter any down payment below. The rest goes on the customer's account and is collected later from the Receipt screen." />
-          )}
-          <Space wrap size="large">
-            {PAY_MODES.map((m) => (
-              <Space key={m} direction="vertical" size={2}>
-                <Text type="secondary">{credit ? `Down payment · ${PAY_LABELS[m]}` : PAY_LABELS[m]}</Text>
-                <Space.Compact>
-                  <InputNumber min={0} value={payments[m]} style={{ width: 130 }}
-                    onChange={(v) => setPayments({ ...payments, [m]: v || 0 })} />
-                  <Button onClick={() => fillRest(m)}>Rest</Button>
-                </Space.Compact>
-              </Space>
-            ))}
-          </Space>
-          <div style={{ marginTop: 12 }}>
-            <Text>Paid now ₹{money(paid)}</Text>
-            <Text style={{ marginLeft: 24 }} type={balance > 0.01 && !credit ? "danger" : undefined}>
-              {credit ? `On credit ₹${money(Math.max(0, balance))}` : `Balance ₹${money(balance)}`}
-            </Text>
-          </div>
-        </Card>
-
-        <Button type="primary" size="large" loading={saving} onClick={save}>Save invoice</Button>
+        </Row>
       </Spin>
 
+      {isMobile && (
+        <div style={{ ...S.bottomBar, left: screens.sm ? 240 : 0 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 12, opacity: 0.7 }}>
+              {ready ? (credit && balance > 0.01 ? `${inr(balance)} on credit` : "Total") : readiness[0]}
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{inr(totals.total)}</div>
+          </div>
+          <Button type="primary" size="large" icon={<SaveOutlined />} loading={saving} disabled={!ready} onClick={save}>
+            Save
+          </Button>
+        </div>
+      )}
+
       <Modal open={newCustomerOpen} title="New customer" okText="Add customer"
-        onOk={createCustomer} onCancel={() => setNewCustomerOpen(false)} destroyOnClose>
+        onOk={createCustomer} onCancel={() => setNewCustomerOpen(false)} destroyOnClose
+        width={isMobile ? "100%" : 560} style={isMobile ? { top: 0, maxWidth: "100vw", margin: 0, paddingBottom: 0 } : undefined}>
         <Form form={customerForm} layout="vertical" initialValues={{ sameAsBilling: true }}>
           <Form.Item name="name" label="Name" rules={[{ required: true, whitespace: true, message: "Enter the customer's name" }]}>
-            <Input />
+            <Input size="large" />
           </Form.Item>
           <Form.Item name="gst" label="GSTIN" normalize={(v) => (v || "").toUpperCase().replace(/\s/g, "")}
             rules={[{ validator: (_, v) => (!v || GSTIN_RE.test(v) ? Promise.resolve() : Promise.reject(new Error("Not a valid GSTIN"))) }]}>
-            <Input placeholder="Leave empty for an unregistered customer" maxLength={15}
+            <Input size="large" placeholder="Leave empty for an unregistered customer" maxLength={15}
               onChange={(e) => {
                 const st = GST_STATES[gstStateCode(e.target.value.toUpperCase())];
                 if (st) customerForm.setFieldsValue({ state: st });
               }} />
           </Form.Item>
           <Row gutter={12}>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="mobile" label="Mobile" rules={[{ pattern: /^[0-9+ ]{0,15}$/, message: "Digits only" }]}>
-                <Input maxLength={15} />
+                <Input size="large" maxLength={15} inputMode="tel" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="state" label="State" rules={[{ required: true, message: "Pick the state (decides IGST)" }]}>
-                <Select showSearch options={Object.values(GST_STATES).sort().map((s) => ({ value: s, label: s }))} />
+                <Select size="large" showSearch options={Object.values(GST_STATES).sort().map((s) => ({ value: s, label: s }))} />
               </Form.Item>
             </Col>
           </Row>
