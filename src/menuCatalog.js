@@ -139,6 +139,7 @@ export const MENU_TREE = [
       { menuKey: "Item Velocity Report",      label: "Item Velocity Report",      link: "/item-velocity-report",      roles: ["admin", "user", "manager", "franchiseeuser"] },
       { menuKey: "Item Transfer Report",      label: "Item Transfer Report",      link: "/item-transfer-report",      roles: ["admin", "manager", "user", "franchiseeuser"] },
       { menuKey: "Category Item Report",      label: "Category Item Report",      link: "/category-item-report",      roles: ["admin", "manager", "user"] },
+      { menuKey: "Category Sales Summary Report", label: "Category Sales Summary Report", link: "/category-sales-summary-report", roles: ["admin", "manager", "user"] },
       { menuKey: "Stock Transfer In Report",  label: "Stock Transfer In Report",  link: "/stocktransfer-in-report",   roles: ["admin", "franchiseeuser", "user"] },
       { menuKey: "Stock Transfer Out Report", label: "Stock Transfer Out Report", link: "/stocktransfer-out-report",  roles: ["admin", "franchiseeuser"] },
     ],
