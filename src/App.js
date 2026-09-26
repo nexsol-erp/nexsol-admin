@@ -106,6 +106,7 @@ import ProductionPlanningImport from "./components/ProductionPlanningImport";
 import ProductionExecutionPage from "./components/ProductionExecutionPage";
 import ProductionPlanningReport from "./components/ProductionPlanningReport";
 import ProductionExecutionReport from "./components/ProductionExecutionReport";
+import RawMaterialUsageReport from "./components/RawMaterialUsageReport";
 
 
 import "./i18n"; // i18n config
@@ -280,6 +281,7 @@ const ROUTE_ORDER = [
   { key: "Stock Transfer In Report",         path: "/stocktransfer-in-report" },
   { key: "Production Planning Report",       path: "/production-planning-report" },
   { key: "Production Execution Report",      path: "/production-execution-report" },
+  { key: "Raw Material Usage Report",        path: "/raw-material-usage-report" },
   { key: "Item Transfer Report",             path: "/item-transfer-report" },
   { key: "Salesman Report",                  path: "/salesman-report" },
   { key: "Category Item Report",             path: "/category-item-report" },
@@ -631,6 +633,7 @@ function HideOnScroll({ children }) {
 <Route path="/production-execution" element={<ProductionExecutionPage />} />
 <Route path="/production-planning-report" element={<ProductionPlanningReport />} />
 <Route path="/production-execution-report" element={<ProductionExecutionReport />} />
+<Route path="/raw-material-usage-report" element={<RawMaterialUsageReport />} />
 <Route path="/goodsreceipt" element={<GoodsReceiptForm />} />
 <Route path="/receipt-modes" element={<ReceiptModePage />} />
 <Route path="/upi-config" element={<UpiConfigPage />} />
