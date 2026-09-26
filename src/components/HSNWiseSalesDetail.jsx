@@ -24,6 +24,7 @@ import {
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import RunInBackground, { isLongRange, LongRangeNotice } from "./backgroundReports/RunInBackground";
 
 const HSNSalesDetail = () => {
 
@@ -154,12 +155,26 @@ const HSNSalesDetail = () => {
         <TextField type="date" label="To Date" value={toDate} onChange={handleToDateChange} InputLabelProps={{ shrink: true }} sx={{ flex: 1 }} />
       </Box>
 
-      <Button variant="contained" color="primary" onClick={fetchSalesData} sx={{ mb: 3 }}>
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={fetchSalesData}
+        sx={{ mb: 3 }}
+        disabled={isLongRange(fromDate, toDate)}
+      >
         Fetch Sales Data
       </Button>
       <Button variant="contained" color="secondary" onClick={handleClickOpen} sx={{ mb: 3, ml: 2 }}>
         Export to Excel
       </Button>
+      <RunInBackground
+        type="HSN_SALES"
+        params={{ branchCode: branch, fromDate, toDate }}
+        disabled={!branch}
+        sx={{ mb: 3, ml: 2 }}
+      />
+
+      <LongRangeNotice fromDate={fromDate} toDate={toDate} sx={{ mb: 2 }} />
 
       <Dialog open={open} onClose={handleClose}>
         <DialogTitle>Export to Excel</DialogTitle>
