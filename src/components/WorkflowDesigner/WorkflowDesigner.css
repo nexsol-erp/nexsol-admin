@@ -300,3 +300,13 @@
 .wd-definition-list button:hover {
   background: #e3f2fd;
 }
+
+.wd-help-steps {
+  padding-left: 20px;
+  margin: 8px 0 12px;
+}
+
+.wd-help-steps li {
+  margin-bottom: 6px;
+  line-height: 1.4;
+}

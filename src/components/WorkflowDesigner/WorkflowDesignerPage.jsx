@@ -65,6 +65,7 @@ export default function WorkflowDesignerPage() {
   const [busy, setBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState(null);
   const [openDialogVisible, setOpenDialogVisible] = useState(false);
+  const [publishHelpVisible, setPublishHelpVisible] = useState(false);
   const [definitions, setDefinitions] = useState([]);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
@@ -495,6 +496,7 @@ export default function WorkflowDesignerPage() {
           <span className={`wd-dirty-indicator ${dirty ? "dirty" : "clean"}`}>
             {dirty ? "Unsaved changes" : "Saved"}
           </span>
+          <button onClick={() => setPublishHelpVisible(true)}>How to Publish</button>
           <button onClick={handleClose}>Close Designer</button>
         </div>
       </div>
@@ -553,6 +555,41 @@ export default function WorkflowDesignerPage() {
               ))}
             </ul>
             <button onClick={() => setOpenDialogVisible(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {publishHelpVisible && (
+        <div className="wd-modal-backdrop" onClick={() => setPublishHelpVisible(false)}>
+          <div className="wd-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>How to Publish a Workflow</h3>
+            <p>
+              A workflow file (.bpmn) in the repository does nothing until it is published here.
+              Publishing applies to the tenant you are logged in to, so repeat it for each tenant
+              that uses the workflow. You need the admin or system-admin role.
+            </p>
+            <ol className="wd-help-steps">
+              <li>Get the .bpmn file, for example from <code>server-postgres/docs/workflows</code> on GitHub.</li>
+              <li>Click <b>Import BPMN</b> and choose the file. The diagram appears on the canvas.</li>
+              <li>Optionally click <b>Validate</b> to see any problems before publishing.</li>
+              <li>
+                Click <b>Publish</b>. It validates, saves a draft for you if needed, and publishes
+                that version. You do not need to click Save Draft first.
+              </li>
+              <li>
+                Click <b>Open</b> and check the workflow is listed as <b>PUBLISHED</b> with its
+                process id (for example <code>R01_REPORT_READY</code>).
+              </li>
+            </ol>
+            <p>
+              Do not click <b>Start Instance</b> for workflows the system raises itself (task
+              workflows and report-ready tasks). The backend starts those when they are needed.
+            </p>
+            <p>
+              To change a published workflow, open it, edit or import the new file, and publish
+              again. That creates a new version; <b>Version History</b> shows the earlier ones.
+            </p>
+            <button onClick={() => setPublishHelpVisible(false)}>Close</button>
           </div>
         </div>
       )}

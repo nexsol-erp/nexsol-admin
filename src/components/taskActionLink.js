@@ -54,7 +54,9 @@ const SCREEN_PARAMS = {
   "Stock Transfer In Report": ["branchCode", "voucherNumber", "fromBranch"],
   // MissingDayEndDetector
   "Day End Report":           ["branchCode", "tradeDate"],
-  // CategorySalesReportRunner (R01) - highlights the finished request in the list
+  // BackgroundReportRunner (R01) - highlights the finished request in the list. The first
+  // tasks, raised before My Reports existed, still point at the category screen.
+  "My Reports":                    ["requestId"],
   "Category Sales Summary Report": ["requestId"],
 };
 
