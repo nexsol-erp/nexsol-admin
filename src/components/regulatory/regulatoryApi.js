@@ -40,6 +40,7 @@ export const setCredential = (provider, key, value) =>
 export const removeCredential = (provider, key) =>
   call(`/config/${enc(provider)}/credentials/${enc(key)}`, { method: "DELETE" });
 export const testConnection = (provider) => call(`/config/${enc(provider)}/test`, { method: "POST" });
+export const onboard = (provider, input) => call(`/config/${enc(provider)}/onboard`, { method: "POST", body: input });
 export const readiness = (provider) => call(`/readiness/${enc(provider)}`);
 export const auditLog = (provider) => call(`/config/${enc(provider)}/audit`);
 

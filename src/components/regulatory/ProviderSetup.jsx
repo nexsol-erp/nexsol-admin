@@ -9,7 +9,7 @@ import {
   TextField, Typography,
 } from "@mui/material";
 import {
-  formatDateTime, listConfigs, listProviders, readiness, removeCredential, saveConfig, setCredential,
+  formatDateTime, listConfigs, listProviders, onboard, readiness, removeCredential, saveConfig, setCredential,
   testConnection,
 } from "./regulatoryApi";
 
@@ -189,6 +189,9 @@ const ProviderDetail = ({ provider, config, onChanged }) => {
 
       {config ? (
         <>
+          {provider.capabilities?.includes("ONBOARDING") && (
+            <Onboarding provider={provider} config={config} onChanged={onChanged} />
+          )}
           <Credentials provider={provider} config={config} onChanged={onChanged} />
           <ConnectionAndReadiness provider={provider} config={config} onChanged={onChanged} />
         </>
@@ -350,6 +353,66 @@ const CredentialDialog = ({ provider, credentialKey, onClose, onSaved }) => {
         </Button>
       </DialogActions>
     </Dialog>
+  );
+};
+
+// Providers that fetch their own credentials (ZATCA: OTP -> compliance checks -> production
+// certificate). The OTP is used once and never stored; the server lists each step it took.
+const Onboarding = ({ provider, config, onChanged }) => {
+  const [otp, setOtp] = useState("");
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState(null);
+  const sandbox = config.environment === "SANDBOX" && !config.settings?.endpointVariant;
+
+  const run = async () => {
+    setRunning(true);
+    setResult(null);
+    const r = await onboard(provider.providerCode, otp.trim() ? { otp: otp.trim() } : {});
+    setRunning(false);
+    setResult(r.ok ? r.data : { ok: false, message: r.message, steps: [] });
+    setOtp("");
+    onChanged();
+  };
+
+  return (
+    <Box mt={4}>
+      <Typography variant="h6">Onboarding</Typography>
+      <Typography variant="body2" color="text.secondary" mb={1}>
+        Enter the one-time password from the tax authority portal
+        {sandbox ? " (the developer portal always uses 123345)" : ""}. The server creates the key and
+        certificate request, runs the compliance checks and stores the certificate. Leave it empty to
+        re-run the compliance checks after a fix.
+      </Typography>
+      <Stack direction="row" spacing={2} alignItems="center">
+        <TextField
+          size="small"
+          label="OTP"
+          value={otp}
+          onChange={(e) => setOtp(e.target.value)}
+          inputProps={{ inputMode: "numeric", maxLength: 6, autoComplete: "one-time-code" }}
+        />
+        <Button variant="contained" onClick={run} disabled={running}>
+          {running ? "Onboarding..." : otp.trim() ? "Onboard" : "Re-run checks"}
+        </Button>
+        {running && <CircularProgress size={20} />}
+      </Stack>
+      {result && (
+        <Box mt={2}>
+          <Alert severity={result.ok ? "success" : "error"}>{result.message}</Alert>
+          {result.steps?.length > 0 && (
+            <Table size="small" sx={{ mt: 1 }}>
+              <TableBody>
+                {result.steps.map((s, i) => (
+                  <TableRow key={i}>
+                    <TableCell sx={{ fontFamily: "monospace", fontSize: 12, wordBreak: "break-word" }}>{s}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Box>
+      )}
+    </Box>
   );
 };
 
