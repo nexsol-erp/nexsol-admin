@@ -110,6 +110,7 @@ export const MENU_TREE = [
       { menuKey: "Production Execution", label: "Production Execution", link: "/production-execution", roles: ["admin", "manager", "user"] },
       { menuKey: "Production Planning Report",  label: "Production Planning Report",  link: "/production-planning-report",  roles: ["admin", "manager", "user"] },
       { menuKey: "Production Execution Report", label: "Production Execution Report", link: "/production-execution-report", roles: ["admin", "manager", "user"] },
+      { menuKey: "Raw Material Usage Report",   label: "Raw Material Usage Report",   link: "/raw-material-usage-report",   roles: ["admin", "manager", "user"] },
     ],
   },
 
