@@ -133,6 +133,7 @@ import RoleMenuPage from "./components/RoleMenuPage";
 import RoleManagementPage from "./components/RoleManagementPage";
 import SalesmanReport from "./components/SalesmanReport";
 import CategoryItemReport from "./components/CategoryItemReport";
+import CategorySalesSummaryReport from "./components/CategorySalesSummaryReport";
 import MenuMapPage from "./components/MenuMapPage";
 import SetupWizardPage from "./components/SetupWizardPage";
 import StockTransferDiscountPage from "./components/StockTransferDiscountPage";
@@ -285,6 +286,7 @@ const ROUTE_ORDER = [
   { key: "Item Transfer Report",             path: "/item-transfer-report" },
   { key: "Salesman Report",                  path: "/salesman-report" },
   { key: "Category Item Report",             path: "/category-item-report" },
+  { key: "Category Sales Summary Report",     path: "/category-sales-summary-report" },
   { key: "Branch Profit Report",             path: "/branch-profit-report" },
   { key: "Branch Monthly Expense",           path: "/branch-monthly-expense" },
   { key: "Monthly Branch Profit Report",     path: "/monthly-branch-profit-report" },
@@ -643,6 +645,7 @@ function HideOnScroll({ children }) {
 <Route path="/item-transfer-report" element={<ItemTransferReport />} />
 <Route path="/salesman-report" element={<SalesmanReport />} />
 <Route path="/category-item-report" element={<CategoryItemReport />} />
+<Route path="/category-sales-summary-report" element={<CategorySalesSummaryReport />} />
 <Route path="/branch-profit-report" element={<BranchProfitReport />} />
 <Route path="/branch-monthly-expense" element={<BranchExpenseEntryPage />} />
 <Route path="/monthly-branch-profit-report" element={<MonthlyBranchProfitReport />} />

@@ -54,6 +54,8 @@ const SCREEN_PARAMS = {
   "Stock Transfer In Report": ["branchCode", "voucherNumber", "fromBranch"],
   // MissingDayEndDetector
   "Day End Report":           ["branchCode", "tradeDate"],
+  // CategorySalesReportRunner (R01) - highlights the finished request in the list
+  "Category Sales Summary Report": ["requestId"],
 };
 
 // Reuses menuCatalog's own flattenMenu rather than re-walking MENU_TREE here: the tree's
