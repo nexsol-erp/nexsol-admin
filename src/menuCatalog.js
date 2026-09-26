@@ -38,6 +38,7 @@ export const MENU_TREE = [
   { menuKey: "AI Stock Intelligence", label: "AI Stock Intelligence", icon: AutoGraph,  color: "#1565C0", link: "/ai-dashboard", roles: ["admin", "manager"] },
   { menuKey: "AI Report Assistant",   label: "AI Report Assistant",   icon: AutoGraph,  color: "#1565C0", link: "/ai-report",    roles: ["admin", "manager", "user"] },
   { menuKey: "My Tasks",              label: "My Tasks",              icon: Assignment, color: "#1565C0", link: "/my-tasks",     roles: ["admin", "manager", "user", "WB"] },
+  { menuKey: "My Reports",            label: "My Reports",            icon: Assessment, color: "#1565C0", link: "/my-reports",   roles: ["admin", "manager", "user"] },
   { menuKey: "Product 360",           label: "Product 360",           icon: Insights,   color: "#1565C0", link: "/product-360",  roles: ["admin", "manager", "user"] },
   { menuKey: "Insights",             label: "Insights",              icon: Insights,   color: "#00796B", link: "/insights",     roles: ["admin", "manager", "user"] },
 
