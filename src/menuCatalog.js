@@ -270,6 +270,7 @@ export const MENU_TREE = [
       { menuKey: "Clear Day End",           label: "Clear Day End",           link: "/day-end-clear",           roles: ["admin"] },
       { menuKey: "Day End Report",          label: "Day End Report",          link: "/day-end-report",          roles: ["admin", "manager"] },
       { menuKey: "Version Management",      label: "Version Management",      link: "/version-management",      roles: ["admin"] },
+      { menuKey: "E-Invoicing",             label: "E-Invoicing",             link: "/e-invoicing",             roles: ["admin", "manager"] },
       { menuKey: "Admin Page",              label: "Admin Page",              link: "/branch-request-list",     roles: ["admin", "WB"] },
       { menuKey: "Reprocess Voucher",       label: "Reprocess Voucher",       link: "/reprocess-voucher-form",  roles: ["admin", "WB"] },
       { menuKey: "POS Machine Approval",    label: "POS Machine Approval",    link: "/pos-machine-approval",    roles: ["admin", "MACHINE_ADMIN"] },
