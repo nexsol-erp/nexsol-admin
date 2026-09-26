@@ -25,6 +25,7 @@ import dayjs from "dayjs";
 import "dayjs/locale/en";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import RunInBackground, { isLongRange, LongRangeNotice } from "./backgroundReports/RunInBackground";
 
 const SalesDetail = () => {
   const [branch, setBranch] = useState("");
@@ -240,10 +241,17 @@ const handleExport = () => {
         color="primary"
         onClick={fetchSalesData}
         sx={{ mb: 3 }}
-        disabled={!branch}
+        disabled={!branch || isLongRange(fromDate, toDate)}
       >
         Fetch Sales Data
       </Button>
+
+      <RunInBackground
+        type="SALES_DETAIL"
+        params={{ branchCode: branch, fromDate, toDate }}
+        disabled={!branch}
+        sx={{ mb: 3, ml: 2 }}
+      />
 
       <Button
         variant="contained"
@@ -254,6 +262,8 @@ const handleExport = () => {
       >
         Export to Excel
       </Button>
+
+      <LongRangeNotice fromDate={fromDate} toDate={toDate} sx={{ mb: 2 }} />
 
       <Dialog open={open} onClose={handleClose}>
         <DialogTitle>Export to Excel</DialogTitle>
