@@ -647,7 +647,7 @@ const POSEntry = () => {
             }}
           >
             <div style={{ background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
-              <InvoicePrint bill={billToPrint} />
+              <InvoicePrint bill={billToPrint} ml={printPack} />
             </div>
           </div>
         ) : (

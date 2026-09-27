@@ -1,9 +1,9 @@
 // Loads the optional multi-language print pack for a branch. Never throws and never blocks
 // printing: any failure (old server, network, module not installed) means OFF, which prints
-// English exactly as before. Cached for five minutes per tenant and branch.
+// English exactly as before. Cached for a minute per tenant and branch.
 import { OFF } from "./localizer";
 
-const TTL_MS = 5 * 60 * 1000;
+const TTL_MS = 60 * 1000;
 const cache = new Map();
 
 export async function loadPrintPack(branchCode) {
