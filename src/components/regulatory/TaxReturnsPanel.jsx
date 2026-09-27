@@ -258,7 +258,7 @@ const ReturnDialog = ({ provider, obligation, onClose }) => {
         )}
         {draft && (
           <>
-            {hmrc && (draft.totals?.notes || []).map((n, i) => <Alert key={i} severity="info" sx={{ mb: 1 }}>{n}</Alert>)}
+            {(draft.notes || draft.totals?.notes || []).map((n, i) => <Alert key={i} severity="info" sx={{ mb: 1 }}>{n}</Alert>)}
             {(draft.files || []).length > 0 && (
               <Box mb={2}>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1} mb={1}>
