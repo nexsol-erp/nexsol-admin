@@ -54,6 +54,17 @@ export const refreshSubmission = (id) => call(`/submissions/${enc(id)}/refresh-s
 export const cancelSubmission = (id, reason) =>
   call(`/submissions/${enc(id)}/cancel`, { method: "POST", body: { reason } });
 
+// ---- transport documents (India e-way bill) ----
+
+export const findSales = (params) => call(`/sales?${new URLSearchParams(clean(params))}`);
+export const createTransportDocument = (providerCode, salesHdrId, transport) =>
+  call("/submissions", {
+    method: "POST",
+    body: { providerCode, salesHdrId, operation: "TRANSPORT_DOCUMENT", transport: clean(transport) },
+  });
+export const updateTransport = (id, transport) =>
+  call(`/submissions/${enc(id)}/transport`, { method: "POST", body: clean(transport) });
+
 // ---- periodic tax returns (HMRC Making Tax Digital VAT) ----
 
 // HMRC's fraud prevention rules want facts about the browser on every call. A random device id
