@@ -65,7 +65,7 @@ export const createTransportDocument = (providerCode, salesHdrId, transport) =>
 export const updateTransport = (id, transport) =>
   call(`/submissions/${enc(id)}/transport`, { method: "POST", body: clean(transport) });
 
-// ---- periodic tax returns (HMRC Making Tax Digital VAT) ----
+// ---- periodic tax returns (HMRC Making Tax Digital VAT, India GST returns) ----
 
 // HMRC's fraud prevention rules want facts about the browser on every call. A random device id
 // is kept in this browser; the server adds the public IP and port it saw.
@@ -119,6 +119,8 @@ export const taxObligations = (provider, params) =>
 export const taxReturnDraft = (provider, params) =>
   call(`${tr(provider)}/draft?${new URLSearchParams(clean(params))}`);
 export const submitTaxReturn = (provider, body) => call(tr(provider), withClient({ method: "POST", body }));
+export const taxReturnFile = (provider, type, params) =>
+  call(`${tr(provider)}/files/${enc(type)}?${new URLSearchParams(clean(params))}`);
 export const taxReturnHistory = (provider) => call(tr(provider));
 export const filedTaxReturn = (provider, periodKey) => call(`${tr(provider)}/filed/${enc(periodKey)}`, withClient());
 export const taxLiabilities = (provider, params) =>
