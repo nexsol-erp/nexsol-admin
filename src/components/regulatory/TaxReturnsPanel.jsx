@@ -1,7 +1,8 @@
 // TaxReturnsPanel.jsx
-// Periodic tax returns (HMRC Making Tax Digital for VAT): the periods the tax authority expects,
-// a return proposed from the ERP's sales and purchases to check and file, the filing history,
-// and what the authority says is owed and paid. Filing is a legal declaration for the business.
+// Periodic tax returns: HMRC Making Tax Digital for VAT (filed from here) and India GST returns
+// (GSTR-1 JSON to upload on the GST portal, GSTR-3B proposed here, filed on the portal and its ARN
+// recorded here). Shows the periods, a return proposed from the ERP's sales and purchases, the
+// filing history, and for HMRC what is owed and paid. Filing is a legal declaration for the business.
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
@@ -9,7 +10,7 @@ import {
 } from "@mui/material";
 import {
   checkClientInfo, formatDateTime, listConfigs, listProviders, statusColor, submitTaxReturn, taxLiabilities,
-  taxObligations, taxPayments, taxReturnDraft, taxReturnHistory,
+  taxObligations, taxPayments, taxReturnDraft, taxReturnFile, taxReturnHistory,
 } from "./regulatoryApi";
 
 const money = (v) => (v === null || v === undefined ? "" : Number(v).toLocaleString(undefined, {
@@ -17,6 +18,19 @@ const money = (v) => (v === null || v === undefined ? "" : Number(v).toLocaleStr
 }));
 
 const isoDaysAgo = (days) => new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+
+const HMRC = "HMRC_MTD_VAT";
+
+const download = (file) => {
+  const url = URL.createObjectURL(new Blob([file.content], { type: file.contentType || "application/json" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = file.fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
 
 const TaxReturnsPanel = () => {
   const [providers, setProviders] = useState([]);
@@ -46,7 +60,8 @@ const TaxReturnsPanel = () => {
   if (!providers.length) {
     return (
       <Alert severity="info">
-        No tax return provider is set up. Set up HMRC Making Tax Digital for VAT under Provider setup and connect to HMRC.
+        No tax return provider is set up. Under Provider setup, set up HMRC Making Tax Digital for VAT (and connect
+        to HMRC) or GST returns (India).
       </Alert>
     );
   }
@@ -64,7 +79,7 @@ const TaxReturnsPanel = () => {
       )}
       <Obligations provider={provider} sandbox={config?.environment === "SANDBOX"} />
       <History provider={provider} />
-      <Account provider={provider} />
+      {provider === HMRC && <Account provider={provider} />}
     </Box>
   );
 };
@@ -100,13 +115,15 @@ const Obligations = ({ provider, sandbox }) => {
   return (
     <Box>
       <Stack direction="row" spacing={2} alignItems="center" mb={1}>
-        <Typography variant="h6">VAT periods</Typography>
-        <TextField select size="small" value={status} onChange={(e) => setStatus(e.target.value)} sx={{ minWidth: 200 }}>
-          <MenuItem value="O">Open</MenuItem>
-          <MenuItem value="F">Filed, last 12 months</MenuItem>
-        </TextField>
+        <Typography variant="h6">{provider === HMRC ? "VAT periods" : "Return periods"}</Typography>
+        {provider === HMRC && (
+          <TextField select size="small" value={status} onChange={(e) => setStatus(e.target.value)} sx={{ minWidth: 200 }}>
+            <MenuItem value="O">Open</MenuItem>
+            <MenuItem value="F">Filed, last 12 months</MenuItem>
+          </TextField>
+        )}
         <Button onClick={load} disabled={loading}>Refresh</Button>
-        {sandbox && <Button onClick={runCheck}>Check fraud headers</Button>}
+        {sandbox && provider === HMRC && <Button onClick={runCheck}>Check fraud headers</Button>}
         {loading && <CircularProgress size={20} />}
       </Stack>
       {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
@@ -116,7 +133,7 @@ const Obligations = ({ provider, sandbox }) => {
           {checks.map((c, i) => <div key={i}>{c}</div>)}
         </Alert>
       )}
-      {rows && rows.length === 0 && !error && <Alert severity="info">No {status === "O" ? "open" : "filed"} VAT periods.</Alert>}
+      {rows && rows.length === 0 && !error && <Alert severity="info">No {status === "O" ? "open" : "filed"} periods.</Alert>}
       {rows && rows.length > 0 && (
         <Table size="small">
           <TableHead>
@@ -164,6 +181,10 @@ const ReturnDialog = ({ provider, obligation, onClose }) => {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [outcome, setOutcome] = useState(null);
+  const [reference, setReference] = useState("");
+  const [fileInfo, setFileInfo] = useState(null);
+  const [making, setMaking] = useState(null);
+  const hmrc = provider === HMRC;
 
   useEffect(() => {
     (async () => {
@@ -179,13 +200,29 @@ const ReturnDialog = ({ provider, obligation, onClose }) => {
     })();
   }, [provider, obligation]);
 
-  // Boxes 3 and 5 as the server will work them out, so the person sees what is filed.
+  // HMRC boxes 3 and 5 as the server will work them out, so the person sees what is filed.
+  // Other regimes' calculated boxes are worked out again by the server when the return is recorded.
   const shown = useMemo(() => {
+    if (!hmrc) return values;
     const n = (k) => Number(values[k] || 0);
     const total = Math.round((n("vatDueSales") + n("vatDueAcquisitions")) * 100) / 100;
     return { ...values, totalVatDue: total.toFixed(2),
       netVatDue: Math.abs(Math.round((total - n("vatReclaimedCurrPeriod")) * 100) / 100).toFixed(2) };
-  }, [values]);
+  }, [values, hmrc]);
+
+  const makeFile = async (f) => {
+    setMaking(f.type);
+    setFileInfo(null);
+    const r = await taxReturnFile(provider, f.type, { periodKey: obligation.periodKey, from: obligation.start, to: obligation.end });
+    setMaking(null);
+    if (!r.ok) {
+      setFileInfo({ severity: "error", lines: [r.message] });
+      return;
+    }
+    download(r.data);
+    const summary = Object.entries(r.data.summary || {}).map(([k, v]) => `${k}: ${v}`).join(", ");
+    setFileInfo({ severity: "info", lines: [`${r.data.fileName} downloaded. ${summary}`, ...(r.data.notes || [])] });
+  };
 
   const submit = async () => {
     setSubmitting(true);
@@ -194,7 +231,7 @@ const ReturnDialog = ({ provider, obligation, onClose }) => {
     (draft.boxes || []).filter((b) => !b.calculated).forEach((b) => { boxes[b.key] = values[b.key] === "" ? null : values[b.key]; });
     const r = await submitTaxReturn(provider, {
       periodKey: obligation.periodKey, periodStart: obligation.start, periodEnd: obligation.end, boxes,
-      declarationAccepted: declared,
+      declarationAccepted: declared, reference: draft.referenceLabel ? reference.trim() : undefined,
     });
     setSubmitting(false);
     if (!r.ok) {
@@ -208,7 +245,7 @@ const ReturnDialog = ({ provider, obligation, onClose }) => {
 
   return (
     <Dialog open onClose={() => onClose(filed)} maxWidth="md" fullWidth>
-      <DialogTitle>VAT return {obligation.periodKey}: {obligation.start} to {obligation.end}</DialogTitle>
+      <DialogTitle>{hmrc ? "VAT return" : "Return"} {obligation.periodKey}: {obligation.start} to {obligation.end}</DialogTitle>
       <DialogContent>
         {!draft && !error && <CircularProgress size={24} />}
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -221,7 +258,23 @@ const ReturnDialog = ({ provider, obligation, onClose }) => {
         )}
         {draft && (
           <>
-            {(draft.totals?.notes || []).map((n, i) => <Alert key={i} severity="info" sx={{ mb: 1 }}>{n}</Alert>)}
+            {hmrc && (draft.totals?.notes || []).map((n, i) => <Alert key={i} severity="info" sx={{ mb: 1 }}>{n}</Alert>)}
+            {(draft.files || []).length > 0 && (
+              <Box mb={2}>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} mb={1}>
+                  {draft.files.map((f) => (
+                    <Button key={f.type} variant="outlined" disabled={making !== null} onClick={() => makeFile(f)} title={f.description}>
+                      {making === f.type ? "Making..." : `Download ${f.label}`}
+                    </Button>
+                  ))}
+                </Stack>
+                {fileInfo && (
+                  <Alert severity={fileInfo.severity} onClose={() => setFileInfo(null)}>
+                    {fileInfo.lines.map((l, i) => <div key={i}>{l}</div>)}
+                  </Alert>
+                )}
+              </Box>
+            )}
             {draft.previousAttempts?.length > 0 && (
               <Alert severity="warning" sx={{ mb: 1 }}>
                 Earlier attempts for this period: {draft.previousAttempts.map((a) => `${a.status} ${formatDateTime(a.createdAt)}`).join(", ")}
@@ -231,7 +284,7 @@ const ReturnDialog = ({ provider, obligation, onClose }) => {
               <TableBody>
                 {draft.boxes.map((b) => (
                   <TableRow key={b.key}>
-                    <TableCell sx={{ width: 60, fontWeight: 600 }}>Box {b.number}</TableCell>
+                    <TableCell sx={{ width: 70, fontWeight: 600 }}>{hmrc ? `Box ${b.number}` : b.number}</TableCell>
                     <TableCell>{b.label}</TableCell>
                     <TableCell sx={{ width: 200 }}>
                       <TextField size="small" fullWidth value={shown[b.key] ?? ""} disabled={b.calculated || filed}
@@ -243,6 +296,11 @@ const ReturnDialog = ({ provider, obligation, onClose }) => {
                 ))}
               </TableBody>
             </Table>
+            {draft.referenceLabel && !filed && (
+              <TextField sx={{ mt: 2 }} fullWidth size="small" label={draft.referenceLabel} value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                helperText="File the return on the portal first, then record it here with the ARN it gives." />
+            )}
             {draft.declaration && !filed && (
               <FormControlLabel sx={{ mt: 2, alignItems: "flex-start" }}
                 control={<Checkbox checked={declared} onChange={(e) => setDeclared(e.target.checked)} />}
@@ -255,8 +313,8 @@ const ReturnDialog = ({ provider, obligation, onClose }) => {
         <Button onClick={() => onClose(filed)}>{filed ? "Close" : "Cancel"}</Button>
         {!filed && (
           <Button variant="contained" onClick={submit}
-            disabled={!draft || submitting || (draft.declaration && !declared)}>
-            {submitting ? "Submitting..." : "Submit to HMRC"}
+            disabled={!draft || submitting || (draft.declaration && !declared) || (draft.referenceLabel && !reference.trim())}>
+            {submitting ? "Saving..." : draft?.referenceLabel ? "Record as filed" : "Submit to HMRC"}
           </Button>
         )}
       </DialogActions>
@@ -287,7 +345,7 @@ const History = ({ provider }) => {
             <TableCell>When</TableCell>
             <TableCell>By</TableCell>
             <TableCell>Receipt</TableCell>
-            <TableCell align="right">Box 5</TableCell>
+            <TableCell align="right">Amount due</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
