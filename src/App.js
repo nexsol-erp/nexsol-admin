@@ -136,6 +136,7 @@ import CategoryItemReport from "./components/CategoryItemReport";
 import CategorySalesSummaryReport from "./components/CategorySalesSummaryReport";
 import MyReports from "./components/MyReports";
 import RegulatoryIntegration from "./components/regulatory/RegulatoryIntegration";
+import TaxAuthorityCallback from "./components/regulatory/TaxAuthorityCallback";
 import MenuMapPage from "./components/MenuMapPage";
 import SetupWizardPage from "./components/SetupWizardPage";
 import StockTransferDiscountPage from "./components/StockTransferDiscountPage";
@@ -652,6 +653,7 @@ function HideOnScroll({ children }) {
 <Route path="/category-sales-summary-report" element={<CategorySalesSummaryReport />} />
 <Route path="/my-reports" element={<MyReports />} />
 <Route path="/e-invoicing" element={<RegulatoryIntegration />} />
+<Route path="/e-invoicing/hmrc-callback" element={<TaxAuthorityCallback />} />
 <Route path="/branch-profit-report" element={<BranchProfitReport />} />
 <Route path="/branch-monthly-expense" element={<BranchExpenseEntryPage />} />
 <Route path="/monthly-branch-profit-report" element={<MonthlyBranchProfitReport />} />

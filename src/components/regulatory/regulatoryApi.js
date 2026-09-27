@@ -9,11 +9,13 @@ const authHeaders = () => ({
 
 const base = () => `/api/${localStorage.getItem("tenancyId")}/regulatory`;
 
-async function call(path, { method = "GET", body } = {}) {
+async function call(path, { method = "GET", body, headers = {} } = {}) {
   try {
     const res = await fetch(`${base()}${path}`, {
       method,
-      headers: body === undefined ? authHeaders() : { ...authHeaders(), "Content-Type": "application/json" },
+      headers: body === undefined
+        ? { ...authHeaders(), ...headers }
+        : { ...authHeaders(), ...headers, "Content-Type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const data = await res.json().catch(() => null);
@@ -51,6 +53,68 @@ export const retrySubmission = (id) => call(`/submissions/${enc(id)}/retry`, { m
 export const refreshSubmission = (id) => call(`/submissions/${enc(id)}/refresh-status`, { method: "POST" });
 export const cancelSubmission = (id, reason) =>
   call(`/submissions/${enc(id)}/cancel`, { method: "POST", body: { reason } });
+
+// ---- periodic tax returns (HMRC Making Tax Digital VAT) ----
+
+// HMRC's fraud prevention rules want facts about the browser on every call. A random device id
+// is kept in this browser; the server adds the public IP and port it saw.
+const DEVICE_KEY = "regulatoryDeviceId";
+
+const deviceId = () => {
+  let id = null;
+  try {
+    id = localStorage.getItem(DEVICE_KEY);
+    if (!id) {
+      id = window.crypto?.randomUUID
+        ? window.crypto.randomUUID()
+        : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0;
+            return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+          });
+      localStorage.setItem(DEVICE_KEY, id);
+    }
+  } catch (e) {
+    // Private mode: send no device id rather than a new one each call.
+  }
+  return id;
+};
+
+const timezone = () => {
+  const minutes = -new Date().getTimezoneOffset();
+  const sign = minutes >= 0 ? "+" : "-";
+  const abs = Math.abs(minutes);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `UTC${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
+};
+
+export const clientInfoHeaders = () => {
+  const h = {
+    "X-Client-Browser-JS-User-Agent": navigator.userAgent,
+    "X-Client-Screens": `width=${window.screen.width}&height=${window.screen.height}`
+      + `&scaling-factor=${window.devicePixelRatio || 1}&colour-depth=${window.screen.colorDepth}`,
+    "X-Client-Window-Size": `width=${window.innerWidth}&height=${window.innerHeight}`,
+    "X-Client-Timezone": timezone(),
+  };
+  const id = deviceId();
+  if (id) h["X-Client-Device-ID"] = id;
+  return h;
+};
+
+const tr = (provider) => `/tax-returns/${enc(provider)}`;
+const withClient = (opts = {}) => ({ ...opts, headers: clientInfoHeaders() });
+
+export const taxObligations = (provider, params) =>
+  call(`${tr(provider)}/obligations?${new URLSearchParams(clean(params))}`, withClient());
+export const taxReturnDraft = (provider, params) =>
+  call(`${tr(provider)}/draft?${new URLSearchParams(clean(params))}`);
+export const submitTaxReturn = (provider, body) => call(tr(provider), withClient({ method: "POST", body }));
+export const taxReturnHistory = (provider) => call(tr(provider));
+export const filedTaxReturn = (provider, periodKey) => call(`${tr(provider)}/filed/${enc(periodKey)}`, withClient());
+export const taxLiabilities = (provider, params) =>
+  call(`${tr(provider)}/liabilities?${new URLSearchParams(clean(params))}`, withClient());
+export const taxPayments = (provider, params) =>
+  call(`${tr(provider)}/payments?${new URLSearchParams(clean(params))}`, withClient());
+export const checkClientInfo = (provider) => call(`${tr(provider)}/client-info-check`, withClient());
 
 function clean(params) {
   const out = {};

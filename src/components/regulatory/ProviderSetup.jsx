@@ -189,9 +189,9 @@ const ProviderDetail = ({ provider, config, onChanged }) => {
 
       {config ? (
         <>
-          {provider.capabilities?.includes("ONBOARDING") && (
-            <Onboarding provider={provider} config={config} onChanged={onChanged} />
-          )}
+          {provider.capabilities?.includes("ONBOARDING") && (provider.capabilities?.includes("TAX_RETURN")
+            ? <ConnectToAuthority provider={provider} config={config} />
+            : <Onboarding provider={provider} config={config} onChanged={onChanged} />)}
           <Credentials provider={provider} config={config} onChanged={onChanged} />
           <ConnectionAndReadiness provider={provider} config={config} onChanged={onChanged} />
         </>
@@ -412,6 +412,53 @@ const Onboarding = ({ provider, config, onChanged }) => {
           )}
         </Box>
       )}
+    </Box>
+  );
+};
+
+// Providers the business grants access to by signing in at the tax authority (HMRC: Government
+// Gateway). The server returns the sign-in page; the authority sends the browser back to
+// /e-invoicing/hmrc-callback, which finishes the connection.
+export const CALLBACK_PROVIDER_KEY = "regulatoryConnectProvider";
+
+const ConnectToAuthority = ({ provider, config }) => {
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState("");
+  const connected = config.credentials?.some((c) => c.key === "refresh_token" && c.present);
+
+  const start = async () => {
+    setRunning(true);
+    setError("");
+    const r = await onboard(provider.providerCode, {});
+    const url = r.ok && r.data?.ok ? r.data.data?.authorizeUrl : null;
+    if (!url) {
+      setRunning(false);
+      setError(r.ok ? r.data?.message : r.message);
+      return;
+    }
+    try {
+      sessionStorage.setItem(CALLBACK_PROVIDER_KEY, provider.providerCode);
+    } catch (e) {
+      // The callback falls back to HMRC_MTD_VAT.
+    }
+    window.location.assign(url);
+  };
+
+  return (
+    <Box mt={4}>
+      <Typography variant="h6">Connect to the tax authority</Typography>
+      <Typography variant="body2" color="text.secondary" mb={1}>
+        Signs in at {provider.displayName} with the business's own user ID and grants this system access
+        to its VAT account. Set the redirectUri setting and the client_id and client_secret credentials
+        first. The access lasts 18 months, then connect again.
+      </Typography>
+      <Stack direction="row" spacing={2} alignItems="center">
+        <Button variant="contained" onClick={start} disabled={running}>
+          {running ? "Opening sign-in..." : connected ? "Connect again" : "Connect to HMRC"}
+        </Button>
+        {connected && <Chip color="success" size="small" label="Connected" />}
+      </Stack>
+      {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
     </Box>
   );
 };
