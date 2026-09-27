@@ -1,7 +1,11 @@
 // The desktop POS receipt (80 mm, printed as HTML through Electron). Pure: returns the HTML.
+// ml is the optional multi-language print pack; without it the receipt prints as it always has.
 
-export function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, itemwiseDiscount = 0, roundOff = 0, branchInfo, posAddressLines, salesmanName, customerMobile, voucherNumber }) {
+import { localizer } from "../multilanguage/localizer";
+
+export function buildReceiptHtml({ items, totalAmount, tendered, balance, receipts, itemwiseDiscount = 0, roundOff = 0, branchInfo, posAddressLines, salesmanName, customerMobile, voucherNumber, ml }) {
   const b = branchInfo || {};
+  const L = localizer(ml);
   // Web Admin ▸ POS Address Configuration lines take priority once set for the
   // branch; otherwise fall back to the old fixed-field concatenation, deduped
   // (two of these columns holding identical text used to print the same
@@ -31,7 +35,7 @@ export function buildReceiptHtml({ items, totalAmount, tendered, balance, receip
     return `
       <tr>
         <td class="sno">${serial}</td>
-        <td class="iname">${esc(r.item_name)}${taxLabel ? `<span class="tax-badge">${taxLabel}</span>` : ""}</td>
+        <td class="iname">${L.item(esc(r.item_name), r.item_name, r.item_id)}${taxLabel ? `<span class="tax-badge">${taxLabel}</span>` : ""}</td>
         <td class="num">${qty.toFixed(2)}</td>
         <td class="num">${effectiveRate.toFixed(2)}</td>
         <td class="num">${amt.toFixed(2)}</td>
@@ -68,9 +72,9 @@ export function buildReceiptHtml({ items, totalAmount, tendered, balance, receip
       </tr>`).join("");
 
   const tenderRow = Number(tendered) > 0
-    ? `<tr><td class="pay-mode">Tendered</td><td class="num">${Number(tendered).toFixed(2)}</td></tr>` : "";
+    ? `<tr><td class="pay-mode">${L.label("TENDERED", "Tendered")}</td><td class="num">${Number(tendered).toFixed(2)}</td></tr>` : "";
   const balanceRow = Number(balance) > 0
-    ? `<tr class="balance-row"><td class="pay-mode"><b>Balance</b></td><td class="num"><b>${Number(balance).toFixed(2)}</b></td></tr>` : "";
+    ? `<tr class="balance-row"><td class="pay-mode"><b>${L.label("BALANCE", "Balance")}</b></td><td class="num"><b>${Number(balance).toFixed(2)}</b></td></tr>` : "";
 
   return `<!DOCTYPE html>
 <html>
@@ -121,17 +125,17 @@ export function buildReceiptHtml({ items, totalAmount, tendered, balance, receip
 
   .footer { text-align: center; font-size: 10px; margin-top: 4px; line-height: 1.6; }
   .footer .thanks { font-weight: bold; font-size: 11px; }
-</style>
+${L.css}</style>
 </head>
 <body>
-  <div class="shop-name">${esc(b.branchName || b.branchCode || "POS INVOICE")}</div>
+  <div class="shop-name">${L.branch(esc(b.branchName || b.branchCode || "POS INVOICE"))}</div>
   ${addrHtml}
   ${phoneHtml}
   ${gstHtml}
   <hr class="solid"/>
-  <div class="invoice-title">TAX INVOICE</div>
+  <div class="invoice-title">${L.label("TAX_INVOICE", "TAX INVOICE")}</div>
   <hr class="dash"/>
-  <div class="meta"><span>Invoice: ${esc(voucherNumber || "—")}</span><span>${dateStr} ${timeStr}</span></div>
+  <div class="meta"><span>${L.label("INVOICE_NUMBER", "Invoice:")} ${esc(voucherNumber || "—")}</span><span>${dateStr} ${timeStr}</span></div>
   ${customerMobile ? `<div class="meta-single">Customer: ${esc(customerMobile)}</div>` : ""}
   ${salesmanName   ? `<div class="meta-single">Served by: ${esc(salesmanName)}</div>` : ""}
   <hr class="dash"/>
@@ -140,10 +144,10 @@ export function buildReceiptHtml({ items, totalAmount, tendered, balance, receip
     <thead>
       <tr>
         <th></th>
-        <th>Item</th>
-        <th class="num">Qty</th>
-        <th class="num">Rate</th>
-        <th class="num">Amt</th>
+        <th>${L.stack("ITEM", "Item")}</th>
+        <th class="num">${L.stack("QUANTITY", "Qty")}</th>
+        <th class="num">${L.stack("RATE", "Rate")}</th>
+        <th class="num">${L.stack("AMOUNT", "Amt")}</th>
       </tr>
     </thead>
     <tbody>${itemRows}</tbody>
@@ -167,7 +171,7 @@ export function buildReceiptHtml({ items, totalAmount, tendered, balance, receip
   ${Number(roundOff) !== 0 ? `<div class="total-line" style="font-size:11px;color:#888"><span>ROUND OFF</span><span>${Number(roundOff) > 0 ? "+" : ""}${Number(roundOff).toFixed(2)}</span></div>` : ""}
   <div class="total-line"><span>NET PAYABLE</span><span>${(Number(totalAmount||0) - Number(itemwiseDiscount) + Number(roundOff)).toFixed(2)}</span></div>
   ` : `
-  <div class="total-line"><span>TOTAL</span><span>${Number(totalAmount||0).toFixed(2)}</span></div>
+  <div class="total-line"><span>${L.label("TOTAL", "TOTAL")}</span><span>${Number(totalAmount||0).toFixed(2)}</span></div>
   ${Number(roundOff) !== 0 ? `<div class="total-line" style="font-size:11px;color:#888"><span>ROUND OFF</span><span>${Number(roundOff) > 0 ? "+" : ""}${Number(roundOff).toFixed(2)}</span></div>
   <div class="total-line"><span>NET PAYABLE</span><span>${(Number(totalAmount||0) + Number(roundOff)).toFixed(2)}</span></div>` : ""}
   `}
@@ -183,7 +187,7 @@ export function buildReceiptHtml({ items, totalAmount, tendered, balance, receip
   <hr class="dash"/>
 
   <div class="footer">
-    <div class="thanks">Thank you for your business!</div>
+    <div class="thanks">${L.label("THANK_YOU", "Thank you for your business!")}</div>
     <div>Please visit us again</div>
   </div>
   <br/><br/>

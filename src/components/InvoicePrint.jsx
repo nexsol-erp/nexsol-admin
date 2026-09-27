@@ -1,8 +1,18 @@
 import React, { forwardRef } from "react";
 import "./invoice.css";
+import { localizer } from "../multilanguage/localizer";
 
-const InvoicePrint = forwardRef(({ bill }, ref) => {
+// ml is the optional multi-language print pack; without it the receipt prints as it always has.
+const InvoicePrint = forwardRef(({ bill, ml }, ref) => {
   if (!bill) return null;
+  const L = localizer(ml);
+  const local = (text) => <span className="ml-l" lang={L.lang} dir={L.dir} style={ML_FONT}>{text}</span>;
+  // English as always when off; "second language / English", or the second language alone.
+  const lbl = (key, en) => {
+    const t = L.text(key);
+    if (!t) return en;
+    return L.localOnly ? local(t) : <>{local(t)} / {en}</>;
+  };
 
   const bi = bill.branchInfo || {};
   const storeName = bi.branchName || "MY STORE";
@@ -39,6 +49,7 @@ const InvoicePrint = forwardRef(({ bill }, ref) => {
     <div className="receipt-container" ref={ref}>
       {/* Header */}
       <div className="receipt-header">
+        {L.branchText() && <div className="ml-l" lang={L.lang} dir={L.dir} style={{ ...ML_FONT, fontSize: "16px", fontWeight: "bold" }}>{L.branchText()}</div>}
         <h2 style={{ margin: 0, fontSize: "18px" }}>{storeName}</h2>
         {addressParts.map((line, i) => <div key={i}>{line}</div>)}
         {storeState && !addressParts.some((p) => p?.includes(storeState)) && <div>{storeState}</div>}
@@ -51,10 +62,10 @@ const InvoicePrint = forwardRef(({ bill }, ref) => {
       {/* Meta */}
       <div className="receipt-info">
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span>Bill No: {bill.voucherNumber || "N/A"}</span>
+          <span>{lbl("BILL_NUMBER", "Bill No: ")}{bill.voucherNumber || "N/A"}</span>
           <span>{fmtDate(bill.voucherDate)}</span>
         </div>
-        <div>Customer: <span className="uppercase">{bill.customer?.name || "Walk-In"}</span></div>
+        <div>{lbl("CUSTOMER", "Customer: ")}<span className="uppercase">{bill.customer?.name || "Walk-In"}</span></div>
       </div>
 
       <div className="receipt-divider" />
@@ -63,16 +74,19 @@ const InvoicePrint = forwardRef(({ bill }, ref) => {
       <table className="receipt-table">
         <thead>
           <tr>
-            <th style={{ width: "45%" }}>ITEM</th>
-            <th className="text-right" style={{ width: "15%" }}>QTY</th>
-            <th className="text-right" style={{ width: "20%" }}>RATE</th>
-            <th className="text-right" style={{ width: "20%" }}>AMT</th>
+            <th style={{ width: "45%" }}>{lbl("ITEM", "ITEM")}</th>
+            <th className="text-right" style={{ width: "15%" }}>{lbl("QUANTITY", "QTY")}</th>
+            <th className="text-right" style={{ width: "20%" }}>{lbl("RATE", "RATE")}</th>
+            <th className="text-right" style={{ width: "20%" }}>{lbl("AMOUNT", "AMT")}</th>
           </tr>
         </thead>
         <tbody>
           {salesDetails.map((item, index) => (
             <tr key={index}>
-              <td style={{ paddingRight: 5 }}>{item.itemName}</td>
+              <td style={{ paddingRight: 5 }}>
+                {L.itemText(item.itemName, item.itemId) && <div className="ml-l" lang={L.lang} dir={L.dir} style={ML_FONT}>{L.itemText(item.itemName, item.itemId)}</div>}
+                {L.localOnly && L.itemText(item.itemName, item.itemId) ? null : item.itemName}
+              </td>
               <td className="text-right">{item.qty}</td>
               <td className="text-right">{Number(item.rate || 0).toFixed(2)}</td>
               <td className="text-right">{Number(item.amount || 0).toFixed(2)}</td>
@@ -112,18 +126,18 @@ const InvoicePrint = forwardRef(({ bill }, ref) => {
 
       {/* Total */}
       <div className="receipt-summary text-bold" style={{ fontSize: "14px" }}>
-        <span>TOTAL:</span>
+        <span>{lbl("TOTAL", "TOTAL:")}</span>
         <span>Rs. {Number(bill.totalAmount || 0).toFixed(2)}</span>
       </div>
 
       {Number(bill.tendered) > 0 && (
         <>
           <div className="receipt-summary">
-            <span>Cash Tendered:</span>
+            <span>{lbl("TENDERED", "Cash Tendered:")}</span>
             <span>{Number(bill.tendered).toFixed(2)}</span>
           </div>
           <div className="receipt-summary">
-            <span>Change Due:</span>
+            <span>{lbl("BALANCE", "Change Due:")}</span>
             <span>{Math.max(Number(bill.tendered) - Number(bill.totalAmount || 0), 0).toFixed(2)}</span>
           </div>
         </>
@@ -133,11 +147,14 @@ const InvoicePrint = forwardRef(({ bill }, ref) => {
 
       {/* Footer */}
       <div className="receipt-footer">
-        <div>** THANK YOU VISIT AGAIN **</div>
+        {L.text("THANK_YOU") && <div>{local(L.text("THANK_YOU"))}</div>}
+        {!(L.localOnly && L.text("THANK_YOU")) && <div>** THANK YOU VISIT AGAIN **</div>}
         <div style={{ marginTop: 5 }}>software by Maple ERP</div>
       </div>
     </div>
   );
 });
+
+const ML_FONT = { fontFamily: '"Noto Naskh Arabic","Noto Sans Arabic","Noto Sans","Segoe UI",Tahoma,Arial,sans-serif', unicodeBidi: "isolate" };
 
 export default InvoicePrint;

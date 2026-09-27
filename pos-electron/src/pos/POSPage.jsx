@@ -455,7 +455,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
 
   const reprintVoucher = async (record) => {
     if (!window.POS?.printHtml) { message.error("Print API not available"); return; }
-    const html = buildReceiptHtml(record);
+    const html = buildReceiptHtml({ ...record, ml: printPack });
     try {
       await window.POS.printHtml({ html, silent: false, deviceName: selectedPrinter || "" });
       message.success(`Reprinted: ${record.voucherNumber}`);
@@ -783,6 +783,37 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       .catch(() => {});
   }, [selectedBranchCode]);
 
+  // Optional multi-language receipts (server module, off unless an admin turns it on). The
+  // last answer is kept per branch so receipts stay bilingual offline; off prints as always.
+  const [printPack, setPrintPack] = useState(null);
+  useEffect(() => {
+    setPrintPack(null);
+    if (!selectedBranchCode) return;
+    const cacheKey = `posPrintPack_${selectedBranchCode}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) setPrintPack(JSON.parse(cached));
+    } catch {}
+
+    const tenantId = localStorage.getItem("tenancyId") || "";
+    const token    = localStorage.getItem("jwtToken") || "";
+    fetch(apiUrl(`/api/${tenantId}/multi-language/print-pack?branch=${encodeURIComponent(selectedBranchCode)}`), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        if (data.enabled === true) {
+          setPrintPack(data);
+          try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch {}
+        } else {
+          setPrintPack(null);
+          try { localStorage.removeItem(cacheKey); } catch {}
+        }
+      })
+      .catch(() => {});
+  }, [selectedBranchCode]);
+
   // Printing
   const [printers, setPrinters] = useState([]);
   const [selectedPrinter, setSelectedPrinter] = useState(
@@ -815,7 +846,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       roundOff: ro,
       branchInfo, posAddressLines, salesmanName, customerMobile, voucherNumber,
     };
-    const html = buildReceiptHtml(printData);
+    const html = buildReceiptHtml({ ...printData, ml: printPack });
     log("doPrint | htmlLen:", html.length, "| snapshotLen:", snapshot?.length);
     try {
       await window.POS.printHtml({ html, silent: true, deviceName: selectedPrinter || "" });
@@ -856,7 +887,7 @@ export default function POSPage({ onLogout, selectedBranchCode = "", prefillItem
       items, totalAmount, tendered, balance, receipts,
       itemwiseDiscount,
       roundOff,
-      branchInfo, posAddressLines, salesmanName, customerMobile, voucherNumber: "TEST",
+      branchInfo, posAddressLines, salesmanName, customerMobile, voucherNumber: "TEST", ml: printPack,
     });
     try {
       await window.POS.printHtml({ html, silent: false, deviceName: selectedPrinter || "" });

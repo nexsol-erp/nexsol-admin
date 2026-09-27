@@ -136,6 +136,8 @@ import CategoryItemReport from "./components/CategoryItemReport";
 import CategorySalesSummaryReport from "./components/CategorySalesSummaryReport";
 import MyReports from "./components/MyReports";
 import RegulatoryIntegration from "./components/regulatory/RegulatoryIntegration";
+import LanguagesPage from "./multilanguage/LanguagesPage";
+import { loadPrintPack } from "./multilanguage/printPack";
 import TaxAuthorityCallback from "./components/regulatory/TaxAuthorityCallback";
 import MenuMapPage from "./components/MenuMapPage";
 import SetupWizardPage from "./components/SetupWizardPage";
@@ -339,6 +341,7 @@ const ROUTE_ORDER = [
   { key: "My Tasks",                         path: "/my-tasks" },
   { key: "My Reports",                       path: "/my-reports" },
   { key: "E-Invoicing",                      path: "/e-invoicing" },
+  { key: "Languages",                        path: "/languages" },
   { key: "Workflow Instances",               path: "/workflow-instances" },
   { key: "About",                            path: "/about" },
   { key: "Help",                             path: "/help" },
@@ -653,6 +656,7 @@ function HideOnScroll({ children }) {
 <Route path="/category-sales-summary-report" element={<CategorySalesSummaryReport />} />
 <Route path="/my-reports" element={<MyReports />} />
 <Route path="/e-invoicing" element={<RegulatoryIntegration />} />
+<Route path="/languages" element={<LanguagesPage />} />
 <Route path="/e-invoicing/hmrc-callback" element={<TaxAuthorityCallback />} />
 <Route path="/branch-profit-report" element={<BranchProfitReport />} />
 <Route path="/branch-monthly-expense" element={<BranchExpenseEntryPage />} />
@@ -746,6 +750,15 @@ const App = () => {
     if (storedLanguage) {
       i18n.changeLanguage(storedLanguage);
       setLanguage(storedLanguage);
+    } else if (localStorage.getItem("tenancyId") && localStorage.getItem("jwtToken")) {
+      // Optional multi-language module: the tenant's default screen language for users who
+      // haven't picked one. Off (the usual case) changes nothing.
+      loadPrintPack(null).then((p) => {
+        if (p.defaultUiLanguage && !localStorage.getItem("language")) {
+          i18n.changeLanguage(p.defaultUiLanguage);
+          setLanguage(p.defaultUiLanguage);
+        }
+      });
     }
   }, [i18n]);
 

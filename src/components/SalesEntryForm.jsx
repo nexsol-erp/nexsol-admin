@@ -10,6 +10,7 @@ import {
 import { getItems } from "../services/apiservice";
 import { useBranch } from "./BranchContext";
 import { taxInvoiceHtml } from "./salesEntry/taxInvoiceHtml";
+import usePrintPack from "../multilanguage/usePrintPack";
 
 const { Title, Text } = Typography;
 
@@ -89,8 +90,8 @@ const authHeaders = () => ({
 });
 const api = (path) => `/api/${localStorage.getItem("tenancyId")}${path}`;
 
-function printTaxInvoice(inv) {
-  const html = taxInvoiceHtml(inv);
+function printTaxInvoice(inv, ml) {
+  const html = taxInvoiceHtml(inv, ml);
   const win = window.open("", "_blank", "width=900,height=700");
   if (!win) return;
   win.document.write(html);
@@ -103,6 +104,7 @@ const emptyPayments = { CASH: 0, UPI: 0, CARD: 0 };
 
 const SalesEntryForm = () => {
   const { branch: branchCode, setBranch, branches } = useBranch();
+  const printPack = usePrintPack(branchCode);
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.lg;
   const [customerForm] = Form.useForm();
@@ -513,7 +515,7 @@ const SalesEntryForm = () => {
           <Row gutter={[8, 8]} style={{ marginTop: 16 }}>
             <Col xs={24} sm={12}>
               <Button type="primary" size="large" block icon={<PrinterOutlined />}
-                onClick={() => printTaxInvoice(savedInvoice)}>Print tax invoice</Button>
+                onClick={() => printTaxInvoice(savedInvoice, printPack)}>Print tax invoice</Button>
             </Col>
             <Col xs={24} sm={12}>
               <Button size="large" block icon={<PlusOutlined />} onClick={resetInvoice}>New invoice</Button>

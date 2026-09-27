@@ -17,6 +17,7 @@ import BarcodeScannerModal from "./BarcodeScannerModal";
 import ItemPicker, { findByCode, normalizeItem } from "./pos/ItemPicker";
 import { useBranch } from "./BranchContext";
 import { billHtml, kotSlipHtml, printHtml, receiptHtml } from "./kot/kotPrint";
+import usePrintPack from "../multilanguage/usePrintPack";
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -110,6 +111,7 @@ const KOTEntry = () => {
   const isPhone = !screens.sm;
   const { branch: branchCode, setBranch, branches } = useBranch();
   const branchInfo = useMemo(() => branches.find((b) => b.branchCode === branchCode) || null, [branches, branchCode]);
+  const printPack = usePrintPack(branchCode);
   const printBranch = useMemo(() => ({
     branchName: branchInfo?.branchName,
     branchGst: branchInfo?.branchGst,
@@ -397,7 +399,7 @@ const KOTEntry = () => {
     const t = await ensureSaved();
     const billed = await call("POST", `/tables/${t.id}/bill`);
     loadTicketIntoView(billed);
-    printHtml(billHtml({ branch: printBranch, kotNumber: billed.kotNumber, tableName: table, salesMan: billed.salesManName, items: billed.lines }));
+    printHtml(billHtml({ branch: printBranch, kotNumber: billed.kotNumber, tableName: table, salesMan: billed.salesManName, items: billed.lines, ml: printPack }));
   });
 
   const openSettle = () => run("settle", async () => {
@@ -407,7 +409,7 @@ const KOTEntry = () => {
 
   const settle = async ({ customerId, payments, tendered }) => {
     const inv = await call("POST", `/tables/${ticket.id}/convert`, { customerId, salesManName: salesMan || null, payments });
-    const info = { inv, tableName: table, salesMan: salesMan || ticket.salesManName, tendered };
+    const info = { inv, tableName: table, salesMan: salesMan || ticket.salesManName, tendered, ml: printPack };
     setSettleOpen(false);
     printHtml(receiptHtml(info));
     setDone(info);

@@ -1,4 +1,7 @@
 // The A4 tax invoice the web Sales Entry prints. Pure: returns the HTML, the screen prints it.
+// ml is the optional multi-language print pack; without it the invoice prints as it always has.
+
+import { localizer } from "../../multilanguage/localizer";
 
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const money = (n) => r2(n).toFixed(2);
@@ -32,11 +35,12 @@ function rupeesInWords(amount) {
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-export function taxInvoiceHtml(inv) {
+export function taxInvoiceHtml(inv, ml) {
+  const L = localizer(ml);
   const td = (v, align = "left") => `<td style="border:1px solid #ccc;padding:4px 6px;text-align:${align};">${v}</td>`;
   const th = (v, align = "left") => `<th style="border:1px solid #ccc;padding:4px 6px;text-align:${align};background:#f3f3f3;">${v}</th>`;
   const rows = inv.lines.map((l, i) => `<tr>
-      ${td(i + 1, "center")}${td(esc(l.itemName))}${td(esc(l.hsnCode || ""))}
+      ${td(i + 1, "center")}${td(L.item(esc(l.itemName), l.itemName, l.itemId))}${td(esc(l.hsnCode || ""))}
       ${td(l.qty, "right")}${td(money(l.rate), "right")}${td(money(l.taxableAmount), "right")}
       ${td(`${l.taxRate}%`, "right")}${td(money(l.taxAmount), "right")}${td(money(l.amount), "right")}
     </tr>`).join("");
@@ -57,31 +61,31 @@ export function taxInvoiceHtml(inv) {
     .totals{width:320px;margin-left:auto;margin-top:10px}
     .totals td{padding:3px 6px}
     .grand td{font-weight:bold;border-top:1px solid #333}
-  </style></head><body>
-    <h2>TAX INVOICE${inv.credit ? " (CREDIT)" : ""}</h2>
+${L.css}  </style></head><body>
+    <h2>${L.label("TAX_INVOICE", "TAX INVOICE")}${inv.credit ? " (CREDIT)" : ""}</h2>
     <table class="parties"><tr>
-      <td><b>${esc(inv.branchName || inv.branchCode)}</b><br>${addr(inv.branchAddress)}
+      <td><b>${L.branch(esc(inv.branchName || inv.branchCode))}</b><br>${addr(inv.branchAddress)}
           ${inv.branchState ? `<br>State: ${esc(inv.branchState)}` : ""}
           ${inv.branchGst ? `<br>GSTIN: <b>${esc(inv.branchGst)}</b>` : ""}</td>
-      <td><b>Invoice No:</b> ${esc(inv.voucherNumber)}<br><b>Date:</b> ${esc(inv.voucherDate)}
+      <td><b>${L.label("INVOICE_NUMBER", "Invoice No:")}</b> ${esc(inv.voucherNumber)}<br><b>${L.label("DATE", "Date:")}</b> ${esc(inv.voucherDate)}
           <br><b>Place of supply:</b> ${esc(inv.customerState || inv.branchState || "")}
           <br><b>Tax:</b> ${inv.interState ? "IGST (inter-state)" : "CGST + SGST"}</td>
       <td></td>
     </tr><tr>
-      <td><b>Bill to</b><br><b>${esc(inv.customerName)}</b><br>${addr(inv.billingAddress)}
+      <td><b>${L.label("BUYER", "Bill to")}</b><br><b>${esc(inv.customerName)}</b><br>${addr(inv.billingAddress)}
           ${inv.customerState ? `<br>State: ${esc(inv.customerState)}` : ""}
           ${inv.customerGst ? `<br>GSTIN: <b>${esc(inv.customerGst)}</b>` : "<br>Unregistered"}
           ${inv.customerMobile ? `<br>Mobile: ${esc(inv.customerMobile)}` : ""}</td>
       <td colspan="2"><b>Ship to</b><br>${addr(inv.deliveryAddress || inv.billingAddress)}</td>
     </tr></table>
     <table style="margin-top:10px"><thead><tr>
-      ${th("#")}${th("Item")}${th("HSN")}${th("Qty", "right")}${th("Rate", "right")}
-      ${th("Taxable", "right")}${th("GST", "right")}${th("Tax", "right")}${th("Amount", "right")}
+      ${th("#")}${th(L.stack("ITEM", "Item"))}${th(L.stack("HSN", "HSN"))}${th(L.stack("QUANTITY", "Qty"), "right")}${th(L.stack("RATE", "Rate"), "right")}
+      ${th("Taxable", "right")}${th("GST", "right")}${th(L.stack("TAX", "Tax"), "right")}${th(L.stack("AMOUNT", "Amount"), "right")}
     </tr></thead><tbody>${rows}</tbody></table>
     <table class="totals">
       <tr><td>Taxable value</td><td style="text-align:right;">${money(inv.taxableAmount)}</td></tr>
       ${taxRows}
-      <tr class="grand"><td>Invoice total</td><td style="text-align:right;">${money(inv.totalAmount)}</td></tr>
+      <tr class="grand"><td>${L.label("TOTAL", "Invoice total")}</td><td style="text-align:right;">${money(inv.totalAmount)}</td></tr>
       ${payRows}
       ${inv.credit ? `<tr class="grand"><td>Balance due</td><td style="text-align:right;">${money(inv.balanceDue)}</td></tr>` : ""}
     </table>
