@@ -136,7 +136,7 @@ const SubmissionsPanel = () => {
   );
 };
 
-const SubmissionDialog = ({ id, onClose, onChanged }) => {
+export const SubmissionDialog = ({ id, onClose, onChanged }) => {
   const [detail, setDetail] = useState(null);
   const [notice, setNotice] = useState(null);
   const [busy, setBusy] = useState(false);
