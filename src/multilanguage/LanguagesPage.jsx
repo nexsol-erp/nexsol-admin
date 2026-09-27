@@ -46,7 +46,7 @@ function SettingsPanel({ overview, reload }) {
     const r = await saveSettings(scope, scope === "TENANT" ? null : key, body);
     if (!r.ok) return setMsg({ severity: "error", text: r.message });
     clearPrintPackCache();
-    setMsg({ severity: "success", text: "Saved. Screens pick it up within five minutes; the desktop POS on its next branch load." });
+    setMsg({ severity: "success", text: "Saved. Open screens pick it up within a minute (or on reload); the desktop POS on its next branch load." });
     reload();
   };
 
@@ -63,7 +63,9 @@ function SettingsPanel({ overview, reload }) {
     <Box>
       <Alert severity={t.enabled ? "info" : "success"} sx={{ mb: 2 }}>
         {t.enabled
-          ? `On for the tenant: ${t.invoiceLanguage || "ENGLISH_ONLY"}${t.language ? `, second language ${t.language}` : ""}.`
+          ? (t.language
+            ? `On for the tenant: ${t.invoiceLanguage || "BILINGUAL"}, second language ${t.language}.`
+            : "On for the tenant, but no second language is chosen, so invoices still print in English.")
           : "Off for the tenant: every screen prints in English as before. Companies or branches can still turn it on."}
       </Alert>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mb={2}>
@@ -90,7 +92,7 @@ function SettingsPanel({ overview, reload }) {
             </TextField>
             <TextField size="small" label="Second language (e.g. ar, hi, ml)" value={form.language || ""} onChange={set("language")} />
             <TextField select size="small" label="Printed invoices" value={form.invoiceLanguage || ""} onChange={set("invoiceLanguage")}>
-              <MenuItem value="">(same as above)</MenuItem>
+              <MenuItem value="">(same as above; second language and English when on)</MenuItem>
               <MenuItem value="ENGLISH_ONLY">English only</MenuItem>
               <MenuItem value="BILINGUAL">Second language and English</MenuItem>
               <MenuItem value="LOCAL_ONLY">Second language only</MenuItem>
