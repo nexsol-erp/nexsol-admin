@@ -14,6 +14,7 @@ import { useReactToPrint } from "react-to-print";
 import InvoicePrint from "./InvoicePrint";
 import BarcodeScannerModal from "./BarcodeScannerModal";
 import ItemPicker, { findByCode, normalizeItem } from "./pos/ItemPicker";
+import usePrintPack from "../multilanguage/usePrintPack";
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -112,6 +113,7 @@ const POSEntry = () => {
   const [mobilePane, setMobilePane] = useState("Items");
 
   const [billToPrint, setBillToPrint] = useState(null);
+  const printPack = usePrintPack(branchInfo?.branchCode);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -612,7 +614,7 @@ const POSEntry = () => {
 
       {/* Hidden print DOM */}
       <div style={{ position: "fixed", left: "-10000px", top: 0, width: "80mm", background: "white", zIndex: -1 }}>
-        <InvoicePrint ref={printContentRef} bill={billToPrint} />
+        <InvoicePrint ref={printContentRef} bill={billToPrint} ml={printPack} />
       </div>
 
       {/* Preview */}
