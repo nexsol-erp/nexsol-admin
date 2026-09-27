@@ -1,0 +1,459 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`A4 tax invoice 1`] = `
+"<!doctype html><html><head><title>Tax Invoice INV/0001</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:12px;margin:20px;color:#111}
+    h2{text-align:center;margin:0 0 12px}
+    table{border-collapse:collapse;width:100%}
+    .parties td{vertical-align:top;border:1px solid #ccc;padding:6px 8px;width:33%}
+    .totals{width:320px;margin-left:auto;margin-top:10px}
+    .totals td{padding:3px 6px}
+    .grand td{font-weight:bold;border-top:1px solid #333}
+  </style></head><body>
+    <h2>TAX INVOICE</h2>
+    <table class=\\"parties\\"><tr>
+      <td><b>Hotcakes Bakery</b><br>12 King Road, Riyadh
+          <br>State: Riyadh
+          <br>GSTIN: <b>310123456700003</b></td>
+      <td><b>Invoice No:</b> INV/0001<br><b>Date:</b> 2026-09-27
+          <br><b>Place of supply:</b> Riyadh
+          <br><b>Tax:</b> CGST + SGST</td>
+      <td></td>
+    </tr><tr>
+      <td><b>Bill to</b><br><b>Acme Traders</b><br>1 Olaya St<br>Riyadh
+          <br>State: Riyadh
+          <br>GSTIN: <b>300000000000003</b>
+          <br>Mobile: 0500000000</td>
+      <td colspan=\\"2\\"><b>Ship to</b><br>1 Olaya St<br>Riyadh</td>
+    </tr></table>
+    <table style=\\"margin-top:10px\\"><thead><tr>
+      <th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:left;background:#f3f3f3;\\">#</th><th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:left;background:#f3f3f3;\\">Item</th><th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:left;background:#f3f3f3;\\">HSN</th><th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;background:#f3f3f3;\\">Qty</th><th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;background:#f3f3f3;\\">Rate</th>
+      <th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;background:#f3f3f3;\\">Taxable</th><th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;background:#f3f3f3;\\">GST</th><th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;background:#f3f3f3;\\">Tax</th><th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;background:#f3f3f3;\\">Amount</th>
+    </tr></thead><tbody><tr>
+      <td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:center;\\">1</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:left;\\">Chocolate Cake</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:left;\\">1905</td>
+      <td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">2</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">8.70</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">17.39</td>
+      <td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">15%</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">2.61</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">20.00</td>
+    </tr><tr>
+      <td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:center;\\">2</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:left;\\">Tea &lt;hot&gt;</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:left;\\"></td>
+      <td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">1</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">3.50</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">3.04</td>
+      <td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">0%</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">0.00</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">3.50</td>
+    </tr></tbody></table>
+    <table class=\\"totals\\">
+      <tr><td>Taxable value</td><td style=\\"text-align:right;\\">20.43</td></tr>
+      <tr><td>CGST</td><td style=\\"text-align:right;\\">1.53</td></tr>
+       <tr><td>SGST</td><td style=\\"text-align:right;\\">1.54</td></tr>
+      <tr class=\\"grand\\"><td>Invoice total</td><td style=\\"text-align:right;\\">23.50</td></tr>
+      <tr><td>Paid by Cash</td><td style=\\"text-align:right;\\">23.50</td></tr>
+      
+    </table>
+    <p style=\\"margin-top:12px\\"><b>Amount in words:</b> Rupees Twenty Three and Fifty Paise Only</p>
+    <div style=\\"margin-top:48px;text-align:right\\">For <b>Hotcakes Bakery</b><br><br><br>Authorised Signatory</div>
+  </body></html>"
+`;
+
+exports[`A4 tax invoice 2`] = `
+"<!doctype html><html><head><title>Tax Invoice INV/0001</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:12px;margin:20px;color:#111}
+    h2{text-align:center;margin:0 0 12px}
+    table{border-collapse:collapse;width:100%}
+    .parties td{vertical-align:top;border:1px solid #ccc;padding:6px 8px;width:33%}
+    .totals{width:320px;margin-left:auto;margin-top:10px}
+    .totals td{padding:3px 6px}
+    .grand td{font-weight:bold;border-top:1px solid #333}
+  </style></head><body>
+    <h2>TAX INVOICE (CREDIT)</h2>
+    <table class=\\"parties\\"><tr>
+      <td><b>Hotcakes Bakery</b><br>12 King Road, Riyadh
+          <br>State: Riyadh
+          <br>GSTIN: <b>310123456700003</b></td>
+      <td><b>Invoice No:</b> INV/0001<br><b>Date:</b> 2026-09-27
+          <br><b>Place of supply:</b> Riyadh
+          <br><b>Tax:</b> IGST (inter-state)</td>
+      <td></td>
+    </tr><tr>
+      <td><b>Bill to</b><br><b>Acme Traders</b><br>1 Olaya St<br>Riyadh
+          <br>State: Riyadh
+          <br>Unregistered
+          <br>Mobile: 0500000000</td>
+      <td colspan=\\"2\\"><b>Ship to</b><br>1 Olaya St<br>Riyadh</td>
+    </tr></table>
+    <table style=\\"margin-top:10px\\"><thead><tr>
+      <th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:left;background:#f3f3f3;\\">#</th><th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:left;background:#f3f3f3;\\">Item</th><th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:left;background:#f3f3f3;\\">HSN</th><th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;background:#f3f3f3;\\">Qty</th><th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;background:#f3f3f3;\\">Rate</th>
+      <th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;background:#f3f3f3;\\">Taxable</th><th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;background:#f3f3f3;\\">GST</th><th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;background:#f3f3f3;\\">Tax</th><th style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;background:#f3f3f3;\\">Amount</th>
+    </tr></thead><tbody><tr>
+      <td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:center;\\">1</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:left;\\">Chocolate Cake</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:left;\\">1905</td>
+      <td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">2</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">8.70</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">17.39</td>
+      <td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">15%</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">2.61</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">20.00</td>
+    </tr><tr>
+      <td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:center;\\">2</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:left;\\">Tea &lt;hot&gt;</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:left;\\"></td>
+      <td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">1</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">3.50</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">3.04</td>
+      <td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">0%</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">0.00</td><td style=\\"border:1px solid #ccc;padding:4px 6px;text-align:right;\\">3.50</td>
+    </tr></tbody></table>
+    <table class=\\"totals\\">
+      <tr><td>Taxable value</td><td style=\\"text-align:right;\\">20.43</td></tr>
+      <tr><td>IGST</td><td style=\\"text-align:right;\\">3.07</td></tr>
+      <tr class=\\"grand\\"><td>Invoice total</td><td style=\\"text-align:right;\\">23.50</td></tr>
+      <tr><td>Paid by Cash</td><td style=\\"text-align:right;\\">23.50</td></tr>
+      <tr class=\\"grand\\"><td>Balance due</td><td style=\\"text-align:right;\\">23.50</td></tr>
+    </table>
+    <p style=\\"margin-top:12px\\"><b>Amount in words:</b> Rupees Twenty Three and Fifty Paise Only</p>
+    <div style=\\"margin-top:48px;text-align:right\\">For <b>Hotcakes Bakery</b><br><br><br>Authorised Signatory</div>
+  </body></html>"
+`;
+
+exports[`KOT slip, proforma bill and receipt 1`] = `
+"<html><head><title>KOT</title><style>
+  @page { size: 80mm auto; margin: 4mm; }
+  body { font-family: \\"Courier New\\", monospace; font-size: 11px; width: 72mm; margin: 0; color: #000; }
+  h3 { text-align: center; margin: 0 0 2px; font-size: 14px; text-transform: uppercase; }
+  .c { text-align: center; } .b { font-weight: bold; } .s { font-size: 9px; } .r { text-align: right; }
+  hr { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; border-bottom: 1px solid #000; padding: 2px 0; font-size: 9px; }
+  td { padding: 2px 0; vertical-align: top; }
+  .tot td { font-weight: bold; border-top: 1px solid #000; padding-top: 3px; font-size: 13px; }
+</style></head><body>
+    <h3>Hotcakes Bakery</h3><hr/>
+    <div class=\\"c b\\" style=\\"font-size:15px\\">KOT # K12</div>
+    <div class=\\"c s\\">27/09/2026, 10:15 am</div><hr/>
+    <div><b>Table:</b> T4</div>
+    <div><b>Captain:</b> Ali</div><hr/>
+    <table><thead><tr><th>Item</th><th class=\\"r\\">Qty</th></tr></thead><tbody><tr><td style=\\"font-size:12px\\">Chocolate Cake</td>
+      <td class=\\"r b\\" style=\\"font-size:13px\\">2</td></tr><tr><td style=\\"font-size:12px\\">Tea &lt;hot&gt;</td>
+      <td class=\\"r b\\" style=\\"font-size:13px\\">1</td></tr></tbody></table><hr/>
+    
+    <div class=\\"c\\" style=\\"margin-top:6px\\">2 items</div>
+  </body></html>"
+`;
+
+exports[`KOT slip, proforma bill and receipt 2`] = `
+"<html><head><title>Bill</title><style>
+  @page { size: 80mm auto; margin: 4mm; }
+  body { font-family: \\"Courier New\\", monospace; font-size: 11px; width: 72mm; margin: 0; color: #000; }
+  h3 { text-align: center; margin: 0 0 2px; font-size: 14px; text-transform: uppercase; }
+  .c { text-align: center; } .b { font-weight: bold; } .s { font-size: 9px; } .r { text-align: right; }
+  hr { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; border-bottom: 1px solid #000; padding: 2px 0; font-size: 9px; }
+  td { padding: 2px 0; vertical-align: top; }
+  .tot td { font-weight: bold; border-top: 1px solid #000; padding-top: 3px; font-size: 13px; }
+</style></head><body>
+    <h3>Hotcakes Bakery</h3>
+    <div class=\\"c s\\">12 King Road, Riyadh</div>
+    <div class=\\"c s\\">GSTIN: 310123456700003</div><hr/>
+    <div class=\\"c b\\" style=\\"font-size:12px\\">PROFORMA BILL</div>
+    <div class=\\"c s\\">KOT # K12</div>
+    <div class=\\"c s\\">27/09/2026, 10:15 am</div><hr/>
+    <div><b>Table:</b> T4</div>
+    <div><b>Captain:</b> Ali</div><hr/>
+    <table><thead><tr><th>Item</th><th class=\\"r\\">Qty</th><th class=\\"r\\">Rate</th><th class=\\"r\\">Amt</th></tr></thead><tbody><tr><td>Chocolate Cake</td><td class=\\"r\\" style=\\"padding:2px 4px\\">2.00</td>
+      <td class=\\"r\\" style=\\"padding:2px 4px\\">10.00</td><td class=\\"r\\">20.00</td></tr><tr><td>Tea &lt;hot&gt;</td><td class=\\"r\\" style=\\"padding:2px 4px\\">1.00</td>
+      <td class=\\"r\\" style=\\"padding:2px 4px\\">3.50</td><td class=\\"r\\">3.50</td></tr></tbody></table><hr/>
+    <table><tbody><tr><td>GST 15% (incl.)</td><td class=\\"r\\">2.61</td></tr></tbody></table><hr/>
+    <table><tbody><tr class=\\"tot\\"><td>TOTAL</td><td class=\\"r\\">&#8377;23.50</td></tr></tbody></table><hr/>
+    <div class=\\"c s\\" style=\\"margin-top:6px\\">** NOT A TAX INVOICE **</div>
+    <div class=\\"c s\\">Thank you!</div>
+  </body></html>"
+`;
+
+exports[`KOT slip, proforma bill and receipt 3`] = `
+"<html><head><title>Receipt</title><style>
+  @page { size: 80mm auto; margin: 4mm; }
+  body { font-family: \\"Courier New\\", monospace; font-size: 11px; width: 72mm; margin: 0; color: #000; }
+  h3 { text-align: center; margin: 0 0 2px; font-size: 14px; text-transform: uppercase; }
+  .c { text-align: center; } .b { font-weight: bold; } .s { font-size: 9px; } .r { text-align: right; }
+  hr { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; border-bottom: 1px solid #000; padding: 2px 0; font-size: 9px; }
+  td { padding: 2px 0; vertical-align: top; }
+  .tot td { font-weight: bold; border-top: 1px solid #000; padding-top: 3px; font-size: 13px; }
+</style></head><body>
+    <h3>Hotcakes Bakery</h3>
+    <div class=\\"c s\\">12 King Road, Riyadh</div>
+    <div class=\\"c s\\">GSTIN: 310123456700003</div><hr/>
+    <div class=\\"c b\\" style=\\"font-size:12px\\">TAX INVOICE</div>
+    <div class=\\"c s\\">Bill # INV/0001</div>
+    <div class=\\"c s\\">27/09/2026, 10:15 am</div><hr/>
+    <div><b>Customer:</b> Acme Traders</div>
+    <div><b>GSTIN:</b> 300000000000003</div>
+    <div><b>Table:</b> T4</div>
+    <div><b>Captain:</b> Ali</div><hr/>
+    <table><thead><tr><th>Item</th><th class=\\"r\\">Qty</th><th class=\\"r\\">Rate</th><th class=\\"r\\">Amt</th></tr></thead><tbody><tr><td>Chocolate Cake</td><td class=\\"r\\" style=\\"padding:2px 4px\\">2.00</td>
+      <td class=\\"r\\" style=\\"padding:2px 4px\\">8.70</td><td class=\\"r\\">20.00</td></tr><tr><td>Tea &lt;hot&gt;</td><td class=\\"r\\" style=\\"padding:2px 4px\\">1.00</td>
+      <td class=\\"r\\" style=\\"padding:2px 4px\\">3.50</td><td class=\\"r\\">3.50</td></tr></tbody></table><hr/>
+    <table><tbody><tr><td>Taxable</td><td class=\\"r\\">20.43</td></tr><tr><td>CGST</td><td class=\\"r\\">1.53</td></tr><tr><td>SGST</td><td class=\\"r\\">1.54</td></tr></tbody></table><hr/>
+    <table><tbody><tr class=\\"tot\\"><td>TOTAL</td><td class=\\"r\\">&#8377;23.50</td></tr>
+      <tr><td>Paid by CASH</td><td class=\\"r\\">23.50</td></tr><tr><td>Tendered</td><td class=\\"r\\">50.00</td></tr><tr><td>Change</td><td class=\\"r\\">26.50</td></tr>
+    </tbody></table><hr/>
+    <div class=\\"c\\" style=\\"margin-top:6px\\">Thank you, visit again!</div>
+  </body></html>"
+`;
+
+exports[`desktop POS receipt 1`] = `
+"<!DOCTYPE html>
+<html>
+<head>
+<meta charset=\\"utf-8\\"/>
+<style>
+  @page { margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11px;
+    width: 258px;
+    color: #000;
+    background: #fff;
+    padding: 6px 4px 6px 1px;
+  }
+  .shop-name { font-size: 14px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 2px; }
+  .addr { font-size: 10px; text-align: center; line-height: 1.4; }
+  .gst  { font-size: 10px; text-align: center; font-weight: bold; margin-top: 1px; }
+  .dash { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+  .solid { border: none; border-top: 2px solid #000; margin: 4px 0; }
+  .meta { font-size: 10px; display: flex; justify-content: space-between; margin: 2px 0; }
+  .meta-single { font-size: 10px; margin: 1px 0; }
+  .invoice-title { text-align: center; font-size: 11px; font-weight: bold; letter-spacing: 2px; margin: 3px 0; }
+
+  table.items { width: 100%; border-collapse: collapse; font-size: 10px; }
+  table.items th { text-align: left; font-size: 10px; padding: 1px 2px; border-bottom: 1px dashed #000; }
+  table.items th.num { text-align: right; padding-right: 3px; }
+  table.items td { padding: 1px 2px; vertical-align: top; }
+  table.items td.sno  { width: 14px; color: #000; }
+  table.items td.iname { width: 118px; }
+  table.items td.num { text-align: right; padding-right: 3px; }
+  .tax-badge { font-size: 9px; color: #000; margin-left: 2px; }
+
+  table.tax  { width: 100%; border-collapse: collapse; font-size: 10px; }
+  table.tax td { padding: 1px 2px; }
+  table.tax td.num { text-align: right; padding-right: 3px; }
+  .tax-label { font-size: 10px; font-weight: bold; margin: 3px 0 1px 0; }
+  .tax-total td { border-top: 1px dashed #000; }
+
+  .total-line { display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin: 4px 0; }
+
+  table.pay { width: 100%; border-collapse: collapse; font-size: 10px; }
+  table.pay td { padding: 1px 2px; }
+  table.pay td.pay-mode { text-transform: uppercase; }
+  table.pay td.num { text-align: right; padding-right: 3px; }
+  .balance-row td { border-top: 1px dashed #000; font-size: 11px; }
+
+  .footer { text-align: center; font-size: 10px; margin-top: 4px; line-height: 1.6; }
+  .footer .thanks { font-weight: bold; font-size: 11px; }
+</style>
+</head>
+<body>
+  <div class=\\"shop-name\\">Hotcakes Bakery</div>
+  <div class=\\"addr\\">12 King Road</div><div class=\\"addr\\">Riyadh</div>
+  <div class=\\"addr\\">Ph: 0110000000</div>
+  <div class=\\"addr\\">GST: 310123456700003</div>
+  <hr class=\\"solid\\"/>
+  <div class=\\"invoice-title\\">TAX INVOICE</div>
+  <hr class=\\"dash\\"/>
+  <div class=\\"meta\\"><span>Invoice: P-1</span><span>27 Sept 2026 10:15 am</span></div>
+  <div class=\\"meta-single\\">Customer: 0500000000</div>
+  <div class=\\"meta-single\\">Served by: Ali</div>
+  <hr class=\\"dash\\"/>
+
+  <table class=\\"items\\">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Item</th>
+        <th class=\\"num\\">Qty</th>
+        <th class=\\"num\\">Rate</th>
+        <th class=\\"num\\">Amt</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class=\\"sno\\">1</td>
+        <td class=\\"iname\\">Chocolate Cake<span class=\\"tax-badge\\">(15%)</span></td>
+        <td class=\\"num\\">2.00</td>
+        <td class=\\"num\\">10.00</td>
+        <td class=\\"num\\">20.00</td>
+      </tr>
+      <tr>
+        <td class=\\"sno\\">2</td>
+        <td class=\\"iname\\">Tea &lt;hot&gt;</td>
+        <td class=\\"num\\">1.00</td>
+        <td class=\\"num\\">3.50</td>
+        <td class=\\"num\\">3.50</td>
+      </tr></tbody>
+  </table>
+  <hr class=\\"dash\\"/>
+
+  
+  <div class=\\"tax-label\\">Tax Details</div>
+  <table class=\\"tax\\">
+    <tbody>
+      
+      <tr><td colspan=\\"3\\">CGST @7.5%</td><td class=\\"num\\">1.30</td></tr>
+      <tr><td colspan=\\"3\\">SGST @7.5%</td><td class=\\"num\\">1.30</td></tr>
+      <tr class=\\"tax-total\\"><td colspan=\\"3\\"><b>Total Tax</b></td><td class=\\"num\\"><b>2.61</b></td></tr>
+    </tbody>
+  </table>
+  <hr class=\\"dash\\"/>
+
+  
+  <div class=\\"total-line\\"><span>TOTAL</span><span>23.50</span></div>
+  
+  
+  <hr class=\\"solid\\"/>
+
+  <table class=\\"pay\\">
+    <tbody>
+      
+      <tr>
+        <td class=\\"pay-mode\\">CASH</td>
+        <td class=\\"num\\">23.50</td>
+      </tr>
+      <tr><td class=\\"pay-mode\\">Tendered</td><td class=\\"num\\">50.00</td></tr>
+      <tr class=\\"balance-row\\"><td class=\\"pay-mode\\"><b>Balance</b></td><td class=\\"num\\"><b>26.50</b></td></tr>
+    </tbody>
+  </table>
+  <hr class=\\"dash\\"/>
+
+  <div class=\\"footer\\">
+    <div class=\\"thanks\\">Thank you for your business!</div>
+    <div>Please visit us again</div>
+  </div>
+  <br/><br/>
+</body>
+</html>"
+`;
+
+exports[`desktop POS receipt 2`] = `
+"<!DOCTYPE html>
+<html>
+<head>
+<meta charset=\\"utf-8\\"/>
+<style>
+  @page { margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11px;
+    width: 258px;
+    color: #000;
+    background: #fff;
+    padding: 6px 4px 6px 1px;
+  }
+  .shop-name { font-size: 14px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 2px; }
+  .addr { font-size: 10px; text-align: center; line-height: 1.4; }
+  .gst  { font-size: 10px; text-align: center; font-weight: bold; margin-top: 1px; }
+  .dash { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+  .solid { border: none; border-top: 2px solid #000; margin: 4px 0; }
+  .meta { font-size: 10px; display: flex; justify-content: space-between; margin: 2px 0; }
+  .meta-single { font-size: 10px; margin: 1px 0; }
+  .invoice-title { text-align: center; font-size: 11px; font-weight: bold; letter-spacing: 2px; margin: 3px 0; }
+
+  table.items { width: 100%; border-collapse: collapse; font-size: 10px; }
+  table.items th { text-align: left; font-size: 10px; padding: 1px 2px; border-bottom: 1px dashed #000; }
+  table.items th.num { text-align: right; padding-right: 3px; }
+  table.items td { padding: 1px 2px; vertical-align: top; }
+  table.items td.sno  { width: 14px; color: #000; }
+  table.items td.iname { width: 118px; }
+  table.items td.num { text-align: right; padding-right: 3px; }
+  .tax-badge { font-size: 9px; color: #000; margin-left: 2px; }
+
+  table.tax  { width: 100%; border-collapse: collapse; font-size: 10px; }
+  table.tax td { padding: 1px 2px; }
+  table.tax td.num { text-align: right; padding-right: 3px; }
+  .tax-label { font-size: 10px; font-weight: bold; margin: 3px 0 1px 0; }
+  .tax-total td { border-top: 1px dashed #000; }
+
+  .total-line { display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin: 4px 0; }
+
+  table.pay { width: 100%; border-collapse: collapse; font-size: 10px; }
+  table.pay td { padding: 1px 2px; }
+  table.pay td.pay-mode { text-transform: uppercase; }
+  table.pay td.num { text-align: right; padding-right: 3px; }
+  .balance-row td { border-top: 1px dashed #000; font-size: 11px; }
+
+  .footer { text-align: center; font-size: 10px; margin-top: 4px; line-height: 1.6; }
+  .footer .thanks { font-weight: bold; font-size: 11px; }
+</style>
+</head>
+<body>
+  <div class=\\"shop-name\\">Hotcakes Bakery</div>
+  <div class=\\"addr\\">Line A</div><div class=\\"addr\\">Line B</div>
+  <div class=\\"addr\\">Ph: 0110000000</div>
+  <div class=\\"addr\\">GST: 310123456700003</div>
+  <hr class=\\"solid\\"/>
+  <div class=\\"invoice-title\\">TAX INVOICE</div>
+  <hr class=\\"dash\\"/>
+  <div class=\\"meta\\"><span>Invoice: P-2</span><span>27 Sept 2026 10:15 am</span></div>
+  
+  
+  <hr class=\\"dash\\"/>
+
+  <table class=\\"items\\">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Item</th>
+        <th class=\\"num\\">Qty</th>
+        <th class=\\"num\\">Rate</th>
+        <th class=\\"num\\">Amt</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class=\\"sno\\">1</td>
+        <td class=\\"iname\\">Chocolate Cake<span class=\\"tax-badge\\">(15%)</span></td>
+        <td class=\\"num\\">2.00</td>
+        <td class=\\"num\\">10.00</td>
+        <td class=\\"num\\">20.00</td>
+      </tr>
+      <tr>
+        <td class=\\"sno\\">2</td>
+        <td class=\\"iname\\">Tea &lt;hot&gt;</td>
+        <td class=\\"num\\">1.00</td>
+        <td class=\\"num\\">3.50</td>
+        <td class=\\"num\\">3.50</td>
+      </tr></tbody>
+  </table>
+  <hr class=\\"dash\\"/>
+
+  
+  <div class=\\"tax-label\\">Tax Details</div>
+  <table class=\\"tax\\">
+    <tbody>
+      
+      <tr><td colspan=\\"3\\">CGST @7.5%</td><td class=\\"num\\">1.30</td></tr>
+      <tr><td colspan=\\"3\\">SGST @7.5%</td><td class=\\"num\\">1.30</td></tr>
+      <tr class=\\"tax-total\\"><td colspan=\\"3\\"><b>Total Tax</b></td><td class=\\"num\\"><b>2.61</b></td></tr>
+    </tbody>
+  </table>
+  <hr class=\\"dash\\"/>
+
+  
+  <div class=\\"total-line\\"><span>GROSS</span><span>23.50</span></div>
+  <div class=\\"total-line\\" style=\\"color:#389e0d\\"><span>DISCOUNT</span><span>-1.00</span></div>
+  <div class=\\"total-line\\"><span>SUB TOTAL</span><span>22.50</span></div>
+  <div class=\\"total-line\\" style=\\"font-size:11px;color:#888\\"><span>ROUND OFF</span><span>+0.50</span></div>
+  <div class=\\"total-line\\"><span>NET PAYABLE</span><span>23.00</span></div>
+  
+  <hr class=\\"solid\\"/>
+
+  <table class=\\"pay\\">
+    <tbody>
+      
+      
+      
+    </tbody>
+  </table>
+  <hr class=\\"dash\\"/>
+
+  <div class=\\"footer\\">
+    <div class=\\"thanks\\">Thank you for your business!</div>
+    <div>Please visit us again</div>
+  </div>
+  <br/><br/>
+</body>
+</html>"
+`;
+
+exports[`web POS receipt 1`] = `"<div class=\\"receipt-container\\"><div class=\\"receipt-header\\"><h2 style=\\"margin:0;font-size:18px\\">Hotcakes Bakery</h2><div>12 King Road</div><div>Riyadh</div><div>Ph: 0110000000</div><div>GSTIN: 310123456700003</div></div><div class=\\"receipt-divider\\"></div><div class=\\"receipt-info\\"><div style=\\"display:flex;justify-content:space-between\\"><span>Bill No: W-1</span><span>27 Sept 2026</span></div><div>Customer: <span class=\\"uppercase\\">Walk-in</span></div></div><div class=\\"receipt-divider\\"></div><table class=\\"receipt-table\\"><thead><tr><th style=\\"width:45%\\">ITEM</th><th class=\\"text-right\\" style=\\"width:15%\\">QTY</th><th class=\\"text-right\\" style=\\"width:20%\\">RATE</th><th class=\\"text-right\\" style=\\"width:20%\\">AMT</th></tr></thead><tbody><tr><td style=\\"padding-right:5px\\">Chocolate Cake</td><td class=\\"text-right\\">2</td><td class=\\"text-right\\">10.00</td><td class=\\"text-right\\">20.00</td></tr><tr><td style=\\"padding-right:5px\\">Tea &lt;hot&gt;</td><td class=\\"text-right\\">1</td><td class=\\"text-right\\">3.50</td><td class=\\"text-right\\">3.50</td></tr></tbody></table><div class=\\"receipt-divider\\"></div><div style=\\"font-size:11px;font-weight:bold;margin-bottom:2px\\">Tax Details</div><div class=\\"receipt-summary\\" style=\\"font-size:11px\\"><span>CGST @7.5%</span><span>1.50</span></div><div class=\\"receipt-summary\\" style=\\"font-size:11px\\"><span>SGST @7.5%</span><span>1.50</span></div><div class=\\"receipt-summary text-bold\\" style=\\"font-size:12px;border-top:1px dashed #ccc;padding-top:2px\\"><span>Total Tax</span><span>3.00</span></div><div class=\\"receipt-divider\\"></div><div class=\\"receipt-summary text-bold\\" style=\\"font-size:14px\\"><span>TOTAL:</span><span>Rs. 23.50</span></div><div class=\\"receipt-summary\\"><span>Cash Tendered:</span><span>50.00</span></div><div class=\\"receipt-summary\\"><span>Change Due:</span><span>26.50</span></div><div class=\\"receipt-divider\\"></div><div class=\\"receipt-footer\\"><div>** THANK YOU VISIT AGAIN **</div><div style=\\"margin-top:5px\\">software by Maple ERP</div></div></div>"`;
