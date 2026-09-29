@@ -272,7 +272,9 @@ const POSEntry = () => {
     const tenancyId = localStorage.getItem("tenancyId");
     const token = localStorage.getItem("jwtToken");
 
+    // The server saves this as a cash-paid invoice for this branch and posts it to the ledger.
     const salesTransHdr = {
+      branchCode: localStorage.getItem("branchCode"),
       customer: {
         id: "001",
         name: customer || "POS",
@@ -318,6 +320,7 @@ const POSEntry = () => {
 
   const handleSave = async () => {
     if (!items.length) return message.error("Add at least one item");
+    if (!localStorage.getItem("branchCode")) return message.error("Pick a branch in the menu first.");
     // Blank cash received means the customer paid the exact amount.
     const paid = tendered == null ? totalAmount : Number(tendered) || 0;
     setSaving(true);
