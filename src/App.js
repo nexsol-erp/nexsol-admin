@@ -137,6 +137,8 @@ import CategorySalesSummaryReport from "./components/CategorySalesSummaryReport"
 import MyReports from "./components/MyReports";
 import RegulatoryIntegration from "./components/regulatory/RegulatoryIntegration";
 import LanguagesPage from "./multilanguage/LanguagesPage";
+import TallyIntegrationPage from "./tally/TallyIntegrationPage";
+import TallySyncStatusPage from "./tally/TallySyncStatusPage";
 import { loadPrintPack } from "./multilanguage/printPack";
 import TaxAuthorityCallback from "./components/regulatory/TaxAuthorityCallback";
 import MenuMapPage from "./components/MenuMapPage";
@@ -334,6 +336,8 @@ const ROUTE_ORDER = [
   { key: "Period Closing",                  path: "/accounting/period-closing" },
   { key: "Budget Manager",                  path: "/accounting/budget-manager" },
   { key: "Budget vs Actual",                path: "/accounting/budget-vs-actual" },
+  { key: "Tally Integration",               path: "/accounting/tally" },
+  { key: "Tally Sync Status",               path: "/accounting/tally-status" },
   { key: "Download",                         path: "/download" },
   { key: "Upload",                           path: "/uploadpage" },
   { key: "Invoice Designer",                 path: "/invoicedesigner" },
@@ -708,6 +712,8 @@ function HideOnScroll({ children }) {
             <Route path="/accounting/period-closing" element={<PeriodClosing />} />
             <Route path="/accounting/budget-manager" element={<BudgetManager />} />
             <Route path="/accounting/budget-vs-actual" element={<BudgetVsActual />} />
+            <Route path="/accounting/tally" element={<TallyIntegrationPage />} />
+            <Route path="/accounting/tally-status" element={<TallySyncStatusPage />} />
 
             {/* Franchise */}
             <Route path="/franchise-master"          element={<FranchiseMasterPage />} />
