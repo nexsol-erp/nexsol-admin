@@ -146,6 +146,33 @@ const DownloadPage = () => {
         </Box>
       </Paper>
 
+      {/* Tally Connector card */}
+      <Paper
+        elevation={3}
+        sx={{ padding: 4, maxWidth: 600, margin: "auto", marginTop: 4 }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>
+            Tally Connector
+          </Typography>
+          <Chip label="Windows" size="small" color="primary" variant="outlined" />
+        </Box>
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          Small tray app that sends vouchers from here into TallyPrime. Install it
+          on the PC that runs Tally, then pair it from Accounting &gt; Tally Integration.
+        </Typography>
+        <Box sx={{ mt: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<CloudDownloadIcon />}
+            href="/api/updates/tally-connector/download"
+          >
+            Download Tally Connector (.exe)
+          </Button>
+        </Box>
+      </Paper>
+
       {/* Existing desktop application card */}
       <Paper
         elevation={3}

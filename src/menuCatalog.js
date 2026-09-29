@@ -238,6 +238,8 @@ export const MENU_TREE = [
       { menuKey: "Monthly Branch Profit Report", label: "Monthly Branch Profit Report", link: "/monthly-branch-profit-report", roles: ["admin", "manager"] },
       // Operations
       { menuKey: "Period Closing",          label: "Period Closing",          link: "/accounting/period-closing",        roles: ["admin"] },
+      { menuKey: "Tally Integration",       label: "Tally Integration",       link: "/accounting/tally",                 roles: ["admin"] },
+      { menuKey: "Tally Sync Status",       label: "Tally Sync Status",       link: "/accounting/tally-status",          roles: ["admin", "manager"] },
       { menuKey: "Budget Manager",          label: "Budget Manager",          link: "/accounting/budget-manager",        roles: ["admin", "manager"] },
       { menuKey: "Budget vs Actual",        label: "Budget vs Actual",        link: "/accounting/budget-vs-actual",      roles: ["admin", "manager"] },
     ],
