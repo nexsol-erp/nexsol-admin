@@ -46,6 +46,14 @@ export const getTrialBalance = (from, to, branchCode) =>
   api.get("/reports/trial-balance", { from, to, branchCode });
 export const getLedgerStatement = (accountId, from, to, branchCode) =>
   api.get("/reports/ledger-statement", { accountId, from, to, branchCode });
+/** Trial Balance drill-down: one GL voucher with its legs and source bill. */
+export const getVoucherDetail = (voucherHeaderId) =>
+  fetch(`${base()}/reports/voucher/${encodeURIComponent(voucherHeaderId)}`, { headers: getHeaders() })
+    .then((r) => {
+      if (r.status === 404) throw new Error("Voucher not found.");
+      if (!r.ok) throw new Error("Could not load the voucher.");
+      return r.json();
+    });
 export const getCustomerStatement = (customerId, from, to) =>
   api.get("/reports/customer-statement", { customerId, from, to });
 export const getSupplierStatement = (supplierId, from, to) =>
