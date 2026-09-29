@@ -19,7 +19,9 @@ const DOWNLOADS = [
     icon: PointOfSaleIcon,
     title: "POS Launcher",
     file: "TradeLink247-POS-Launcher.zip",
-    href: "/downloads/launcher/LaunchPOSClinet.zip",
+    // Served by the backend with a server.json for this server added to the zip, so the
+    // launcher (and the POS it starts) connect here without any setup.
+    href: "/api/updates/pos/launcher.zip",
     tags: ["Windows", "Zip, no installer", "Install once per PC"],
     what:
       "A small Windows program (launchPOSClinet.exe) that downloads, updates and opens the TradeLink247 cashier POS.",
@@ -28,12 +30,12 @@ const DOWNLOADS = [
     steps: [
       "Download the zip on the cashier PC.",
       "Extract it to a permanent folder, for example C:\\TradeLink247\\. Keep all the files together; the launcher needs the DLLs and folders next to it.",
-      "Run launchPOSClinet.exe. On the first run it downloads the POS (TradeLink247-POS.exe) into the same folder, which needs an internet connection.",
+      "Run launchPOSClinet.exe. It already knows this server (the zip carries a server.json for it). On the first run it downloads the POS (TradeLink247-POS.exe) into the same folder, which needs an internet connection.",
       "Log in to the POS and pick the branch. New PCs may need approval in POS Machine Approval.",
       "Right-click launchPOSClinet.exe and choose Send to > Desktop (create shortcut). Always open the POS from this shortcut, not from TradeLink247-POS.exe, so updates are picked up.",
     ],
     notes:
-      "If the POS says it is not found and no update is available, check the PC can reach tradelink247.com and try again.",
+      "Download the zip from this page on each server; a zip from another server connects to that server. If the POS says it is not found and no update is available, check the PC can reach this server and try again. To point a PC at a different server, run launchPOSClinet.exe --change-server.",
   },
   {
     key: "tally-connector",
