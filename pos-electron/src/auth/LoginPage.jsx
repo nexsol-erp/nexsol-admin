@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Button, Card, Input, Typography, message, Select, Space } from "antd";
 import { decodeJwtPayload, getBranchLock, setBranchLock, isAdminRole } from "./auth";
 import { apiUrl } from "../utils/apiUrl";
+import { ChangeServerLink } from "./ServerSetup";
 import { log, error as logError } from "../utils/logger";
 
 const { Title, Text } = Typography;
@@ -175,6 +176,7 @@ export default function LoginPage({ onLoggedIn }) {
             ]}
           />
         </div>
+        <ChangeServerLink />
       </Card>
     </div>
   );

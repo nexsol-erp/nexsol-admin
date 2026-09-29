@@ -27,8 +27,10 @@ jobs:
         shell: pwsh
         run: |
           $cfg = Get-Content pos-electron/pos-config.json | ConvertFrom-Json
-          $cfg.apiServer = "${{ vars.POS_API_SERVER }}"
-          $cfg | ConvertTo-Json | Set-Content pos-electron/pos-config.json
+          # Pins installer (NSIS) builds to one server. Leave POS_API_SERVER unset for the normal
+          # build: the POS then follows the server its launcher was downloaded from.
+          $cfg | Add-Member -NotePropertyName apiServer -NotePropertyValue "${{ vars.POS_API_SERVER }}" -Force
+          $cfg | ConvertTo-Json -Depth 5 | Set-Content pos-electron/pos-config.json
           Write-Host "API server set to: ${{ vars.POS_API_SERVER }}"
 
       - name: Install pos-electron dependencies

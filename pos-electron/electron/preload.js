@@ -1,9 +1,8 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-// Read the runtime API server (from pos-config.json) synchronously before
+// Read the server this POS talks to (electron/serverConfig.js) synchronously before
 // any React code runs, so apiUrl() can use it instead of the build-time default.
-const _apiServer = ipcRenderer.sendSync("config:get-api-server");
-const _wsServer  = ipcRenderer.sendSync("config:get-ws-server");
+const _server = ipcRenderer.sendSync("config:get-server-state") || {};
 
 // Applies the user's saved print font/size preference (Settings ▸ Print Settings,
 // src/print/printPrefs.js) to every print job in one place, so none of the ~13
@@ -41,8 +40,18 @@ function applyPrintPrefs(html) {
 }
 
 contextBridge.exposeInMainWorld("POS", {
-  apiServer: _apiServer,
-  wsServer:  _wsServer,
+  apiServer: _server.apiServer,
+  wsServer:  _server.wsServer,
+  aiServer:  _server.aiServer,
+
+  // Server choice: { apiServer, wsServer, aiServer, name, confirmed, source, pendingSwitch }
+  serverState: _server,
+  server: {
+    check: (address) => ipcRenderer.invoke("server:check", address),
+    save: (cfg) => ipcRenderer.invoke("server:save", cfg),
+    checkMoved: () => ipcRenderer.invoke("server:check-moved"),
+    relaunch: () => ipcRenderer.send("app:relaunch"),
+  },
   listPrinters: () => ipcRenderer.invoke("printers:list"),
   printHtml: (payload) => ipcRenderer.invoke("print:html", { ...payload, html: applyPrintPrefs(payload?.html) }),
   printToPDF: (payload) => ipcRenderer.invoke("print:to-pdf", { ...payload, html: applyPrintPrefs(payload?.html) }),

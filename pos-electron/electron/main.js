@@ -86,12 +86,12 @@ ipcMain.handle("device:set-key", (_evt, key) => {
 let win;
 let customerDisplayWin = null;
 
-// Directory where the .exe lives — works for both portable and installed builds.
-function exeDir() {
-  return process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
-}
+const serverConfig = require("./serverConfig");
+const { exeDir } = serverConfig;
 
 // Reads pos-config.json — next to the .exe when packaged, or in project root in dev.
+// Holds printer settings. Server addresses now live in <userData>/server.json (serverConfig.js);
+// an apiServer left in here by an older install is migrated from there on first start.
 function getPosConfig() {
   const locations = app.isPackaged
     ? [path.join(exeDir(), "pos-config.json")]
@@ -102,28 +102,8 @@ function getPosConfig() {
   return {};
 }
 
-function savePosConfig(cfg) {
-  const p = app.isPackaged
-    ? path.join(exeDir(), "pos-config.json")
-    : path.join(__dirname, "../pos-config.json");
-  fs.writeFileSync(p, JSON.stringify(cfg, null, 2), "utf8");
-}
-
-// Resolve the backend API server URL.
-// Priority: pos-config.json (next to .exe) → env var → hardcoded default.
 function getApiServer() {
-  const cfg = getPosConfig();
-  if (cfg.apiServer) return String(cfg.apiServer).replace(/\/$/, "");
-  if (process.env.VITE_API_SERVER) return String(process.env.VITE_API_SERVER).replace(/\/$/, "");
-  return "https://www.tradelink247.com";
-}
-
-function getWsServer() {
-  const cfg = getPosConfig();
-  if (cfg.wsServer) return String(cfg.wsServer).replace(/\/$/, "");
-  // Derive from apiServer: https → wss, http → ws
-  const api = getApiServer();
-  return api.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
+  return serverConfig.getServerState().apiServer;
 }
 
 let _userRoles = [];
@@ -302,12 +282,35 @@ ipcMain.on("app:version", (event) => {
   event.returnValue = app.getVersion();
 });
 
-ipcMain.on("config:get-api-server", (event) => {
-  event.returnValue = getApiServer();
+ipcMain.on("config:get-server-state", (event) => {
+  event.returnValue = serverConfig.getServerState();
 });
 
-ipcMain.on("config:get-ws-server", (event) => {
-  event.returnValue = getWsServer();
+// "Connect to server" screen: ask a server who it is before saving it.
+ipcMain.handle("server:check", (_evt, address) => serverConfig.checkServer(address));
+
+ipcMain.handle("server:save", (_evt, cfg) => {
+  try {
+    const saved = serverConfig.save(cfg);
+    console.log("server:save |", saved.apiServer);
+    return { ok: true, config: saved };
+  } catch (e) {
+    console.error("server:save | error:", e.message);
+    return { ok: false, error: e.message };
+  }
+});
+
+// Online start: has the current server been retired in favour of another?
+ipcMain.handle("server:check-moved", () => serverConfig.checkMoved());
+
+// After a server change: restart so every request (and the file:// → API redirect set up
+// at startup) uses the new address. A portable build must restart its own .exe, not the
+// copy it unpacked to a temp folder.
+ipcMain.on("app:relaunch", () => {
+  const portable = process.env.PORTABLE_EXECUTABLE_FILE;
+  if (portable) app.relaunch({ execPath: portable, args: process.argv.slice(1) });
+  else app.relaunch();
+  app.exit(0);
 });
 
 ipcMain.handle("printers:list", async () => {

@@ -55,8 +55,10 @@ function buildWsUrl() {
     `&machine=${encodeURIComponent(machine)}&version=${encodeURIComponent(version)}`;
 }
 
-/** Derive WebSocket base from the REST API server URL in pos-config. */
+/** WebSocket base: the server's declared wsServer, else derived from the REST API server. */
 function deriveWsBase() {
+  const ws = typeof window !== "undefined" ? window.POS?.wsServer : null;
+  if (ws) return ws;
   const api = typeof window !== "undefined" ? window.POS?.apiServer : null;
   if (!api) return "ws://localhost:8083";
   // https://host → wss://host (nexsol-connect shares the same host via nginx)
