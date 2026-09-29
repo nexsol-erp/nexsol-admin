@@ -57,8 +57,14 @@ export default function TrialBalance() {
     setLoading(false);
   };
 
-  const totalDr = rows.reduce((s, r) => s + Number(r.debit || 0), 0);
-  const totalCr = rows.reduce((s, r) => s + Number(r.credit || 0), 0);
+  // Ledger amounts carry 4 decimals (GST splits like 47.6190). Adding them as floating point
+  // leaves tiny errors, so a balanced ledger could compare unequal; sum in 1/10000 units instead.
+  const toUnits = (n) => Math.round(Number(n || 0) * 10000);
+  const drUnits = rows.reduce((s, r) => s + toUnits(r.debit), 0);
+  const crUnits = rows.reduce((s, r) => s + toUnits(r.credit), 0);
+  const totalDr = drUnits / 10000;
+  const totalCr = crUnits / 10000;
+  const balanced = drUnits === crUnits;
 
   const exportXlsx = () => {
     const ws = XLSX.utils.json_to_sheet(rows.map((r) => ({
@@ -125,7 +131,7 @@ export default function TrialBalance() {
               <TableCell align="right"><b>{fmt(totalDr)}</b></TableCell>
               <TableCell align="right"><b>{fmt(totalCr)}</b></TableCell>
               <TableCell align="right">
-                <Chip label={totalDr === totalCr ? "✓ Balanced" : "✗ Unbalanced"} color={totalDr === totalCr ? "success" : "error"} size="small" />
+                <Chip label={balanced ? "✓ Balanced" : `✗ Off by ${fmt(Math.abs(totalDr - totalCr))}`} color={balanced ? "success" : "error"} size="small" />
               </TableCell>
             </TableRow>
           </TableFooter>
