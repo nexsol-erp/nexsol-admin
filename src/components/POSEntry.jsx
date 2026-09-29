@@ -274,7 +274,8 @@ const POSEntry = () => {
 
     // The server saves this as a cash-paid invoice for this branch and posts it to the ledger.
     const salesTransHdr = {
-      branchCode: localStorage.getItem("branchCode"),
+      // The sales header's base entity names this field branch_code in JSON.
+      branch_code: localStorage.getItem("branchCode"),
       customer: {
         id: "001",
         name: customer || "POS",
