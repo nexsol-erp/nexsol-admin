@@ -8,6 +8,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { getTrialBalance } from "./accountingApi";
 import { useFinancialYear } from "./useFinancialYear";
+import { AccountLedgerDialog, VoucherDialog } from "./LedgerDrilldown";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
@@ -22,6 +23,11 @@ export default function TrialBalance() {
   const [branches, setBranches]   = useState([]);
   const [rows, setRows]           = useState([]);
   const [loading, setLoading]     = useState(false);
+  // Drill-down: the account whose ledger is open, and the voucher opened from it. The ledger uses
+  // the range and branch the Trial Balance was generated with, not whatever is typed in since.
+  const [generated, setGenerated] = useState(null);
+  const [drillAccount, setDrillAccount] = useState(null);
+  const [voucherId, setVoucherId] = useState(null);
 
   const tenancyId = localStorage.getItem("tenancyId");
   const token     = localStorage.getItem("jwtToken");
@@ -54,6 +60,7 @@ export default function TrialBalance() {
     setLoading(true);
     const data = await getTrialBalance(from, to, branchCode);
     setRows(Array.isArray(data) ? data : []);
+    setGenerated({ from, to, branchCode });
     setLoading(false);
   };
 
@@ -79,6 +86,11 @@ export default function TrialBalance() {
   return (
     <Box p={3}>
       <Typography variant="h5" gutterBottom>Trial Balance</Typography>
+      {rows.length > 0 && (
+        <Typography variant="body2" color="text.secondary" mb={1}>
+          Click an account to see its entries, then a voucher to see the bill behind it.
+        </Typography>
+      )}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box display="flex" gap={2} flexWrap="wrap" alignItems="flex-end">
           <TextField label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
@@ -113,7 +125,12 @@ export default function TrialBalance() {
           </TableHead>
           <TableBody>
             {rows.map((r, i) => (
-              <TableRow key={i} hover>
+              <TableRow
+                key={i}
+                hover
+                onClick={() => r.ledgerAccountId && setDrillAccount(r)}
+                sx={{ cursor: r.ledgerAccountId ? "pointer" : "default" }}
+              >
                 <TableCell>{r.accountCode}</TableCell>
                 <TableCell>{r.accountName}</TableCell>
                 <TableCell>
@@ -136,6 +153,24 @@ export default function TrialBalance() {
             </TableRow>
           </TableFooter>
         </Table>
+      )}
+
+      {generated && (
+        <>
+          <AccountLedgerDialog
+            account={drillAccount}
+            from={generated.from}
+            to={generated.to}
+            branchCode={generated.branchCode}
+            onClose={() => setDrillAccount(null)}
+            onOpenVoucher={setVoucherId}
+          />
+          <VoucherDialog
+            voucherHeaderId={voucherId}
+            onClose={() => setVoucherId(null)}
+            onOpenAccount={(acc) => { setVoucherId(null); setDrillAccount(acc); }}
+          />
+        </>
       )}
     </Box>
   );

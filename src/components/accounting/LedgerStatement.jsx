@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Box, Typography, TextField, MenuItem, Button, Table, TableHead,
-  TableRow, TableCell, TableBody, Paper, Chip,
+  TableRow, TableCell, TableBody, Paper, Chip, Link,
   FormControl, InputLabel, Select,
 } from "@mui/material";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { getLedgerAccounts, getLedgerStatement } from "./accountingApi";
 import { useFinancialYear } from "./useFinancialYear";
+import { VoucherDialog } from "./LedgerDrilldown";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
@@ -21,6 +22,7 @@ export default function LedgerStatement() {
   useFinancialYear(setFrom, setTo);
   const [branches, setBranches]     = useState([]);
   const [result, setResult]         = useState(null);
+  const [voucherId, setVoucherId]   = useState(null);
 
   const tenancyId = localStorage.getItem("tenancyId");
   const token     = localStorage.getItem("jwtToken");
@@ -112,7 +114,11 @@ export default function LedgerStatement() {
               {(result.lines || []).map((l, i) => (
                 <TableRow key={i} hover>
                   <TableCell>{l.voucherDate}</TableCell>
-                  <TableCell>{l.voucherNumber}</TableCell>
+                  <TableCell>
+                    {l.voucherHeaderId
+                      ? <Link component="button" underline="hover" onClick={() => setVoucherId(l.voucherHeaderId)}>{l.voucherNumber}</Link>
+                      : l.voucherNumber}
+                  </TableCell>
                   <TableCell>{l.voucherTypeCode}</TableCell>
                   <TableCell>{l.description}</TableCell>
                   <TableCell align="right">{l.debit > 0 ? fmt(l.debit) : ""}</TableCell>
@@ -124,6 +130,17 @@ export default function LedgerStatement() {
           </Table>
         </>
       )}
+
+      <VoucherDialog
+        voucherHeaderId={voucherId}
+        onClose={() => setVoucherId(null)}
+        onOpenAccount={(acc) => {
+          // Jump this statement to the clicked account, keeping the same dates and branch.
+          setVoucherId(null);
+          setAccountId(acc.ledgerAccountId);
+          getLedgerStatement(acc.ledgerAccountId, from, to, branchCode).then(setResult);
+        }}
+      />
     </Box>
   );
 }
