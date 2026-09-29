@@ -8,10 +8,11 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { getBalanceSheet } from "./accountingApi";
 import { useFinancialYear } from "./useFinancialYear";
+import { AccountLedgerDialog, VoucherDialog } from "./LedgerDrilldown";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
-function BSSection({ title, rows, total, color }) {
+function BSSection({ title, rows, total, color, onOpen }) {
   return (
     <Box mb={3}>
       <Typography variant="subtitle1" fontWeight={700} sx={{ bgcolor: "action.selected", p: 1, borderRadius: 1 }}>
@@ -20,7 +21,12 @@ function BSSection({ title, rows, total, color }) {
       <Table size="small">
         <TableBody>
           {rows.map((r, i) => (
-            <TableRow key={i} hover>
+            <TableRow
+              key={i}
+              hover
+              onClick={() => r.ledgerAccountId && onOpen(r)}
+              sx={{ cursor: r.ledgerAccountId ? "pointer" : "default" }}
+            >
               <TableCell sx={{ pl: 3 }}>{r.accountCode}</TableCell>
               <TableCell>{r.accountName}</TableCell>
               <TableCell align="right">₹ {fmt(r.openingBalance)}</TableCell>
@@ -43,6 +49,10 @@ export default function BalanceSheet() {
   const [branchCode, setBranch] = useState("");
   const [branches, setBranches] = useState([]);
   const [data, setData]         = useState(null);
+  // Drill-down: the branch the report was generated for, the open account and voucher.
+  const [genBranch, setGenBranch] = useState("");
+  const [drill, setDrill]         = useState(null);
+  const [voucherId, setVoucherId] = useState(null);
 
   const tenancyId = localStorage.getItem("tenancyId");
   const token     = localStorage.getItem("jwtToken");
@@ -76,7 +86,14 @@ export default function BalanceSheet() {
     if (!asOfDate) return;
     const res = await getBalanceSheet(asOfDate, branchCode);
     setData(res);
+    setGenBranch(branchCode);
   };
+
+  // Balance Sheet openings are in the account's normal direction; the ledger wants Dr positive.
+  const openAccount = (side) => (r) => setDrill({
+    account: r,
+    opening: side === "ASSET" ? Number(r.openingBalance || 0) : -Number(r.openingBalance || 0),
+  });
 
   const exportXlsx = () => {
     if (!data) return;
@@ -97,6 +114,11 @@ export default function BalanceSheet() {
   return (
     <Box p={3}>
       <Typography variant="h5" gutterBottom>Balance Sheet</Typography>
+      {data && (
+        <Typography variant="body2" color="text.secondary" mb={1}>
+          Click an account to see its entries, then a voucher to see the bill behind it.
+        </Typography>
+      )}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box display="flex" gap={2} flexWrap="wrap" alignItems="flex-end">
           <TextField label="As of Date" type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} InputLabelProps={{ shrink: true }} />
@@ -136,7 +158,7 @@ export default function BalanceSheet() {
                   </TableRow>
                 </TableHead>
               </Table>
-              <BSSection title="Assets" rows={data.assets} total={data.totalAssets} color="primary" />
+              <BSSection title="Assets" rows={data.assets} total={data.totalAssets} color="primary" onOpen={openAccount("ASSET")} />
             </Paper>
           </Grid>
           <Grid item xs={12} md={6}>
@@ -151,8 +173,8 @@ export default function BalanceSheet() {
                   </TableRow>
                 </TableHead>
               </Table>
-              <BSSection title="Liabilities" rows={data.liabilities} total={data.totalLiabilities} color="error" />
-              <BSSection title="Equity" rows={data.equity} total={data.totalEquity} color="success" />
+              <BSSection title="Liabilities" rows={data.liabilities} total={data.totalLiabilities} color="error" onOpen={openAccount("LIABILITY")} />
+              <BSSection title="Equity" rows={data.equity} total={data.totalEquity} color="success" onOpen={openAccount("EQUITY")} />
               <Box display="flex" justifyContent="space-between" px={1} mt={1}>
                 <Typography>Current Year Profit</Typography>
                 <Typography fontWeight={700}>₹ {fmt(data.currentYearProfit)}</Typography>
@@ -167,6 +189,34 @@ export default function BalanceSheet() {
             </Paper>
           </Grid>
         </Grid>
+      )}
+
+      {data && data.periodFrom && (
+        <>
+          <AccountLedgerDialog
+            account={drill?.account || null}
+            from={data.periodFrom}
+            to={data.periodTo}
+            branchCode={genBranch}
+            openingBalance={drill?.opening}
+            onClose={() => setDrill(null)}
+            onOpenVoucher={setVoucherId}
+          />
+          <VoucherDialog
+            voucherHeaderId={voucherId}
+            onClose={() => setVoucherId(null)}
+            onOpenAccount={(acc) => {
+              // Keep the Balance Sheet's opening when the account is on it (income/expense accounts are not).
+              setVoucherId(null);
+              const find = (list) => (list || []).find((r) => r.ledgerAccountId === acc.ledgerAccountId);
+              const a = find(data.assets);
+              const le = find(data.liabilities) || find(data.equity);
+              if (a) openAccount("ASSET")(a);
+              else if (le) openAccount("LIABILITY")(le);
+              else setDrill({ account: acc, opening: undefined });
+            }}
+          />
+        </>
       )}
     </Box>
   );

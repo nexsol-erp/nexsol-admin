@@ -36,10 +36,12 @@ function DialogHeader({ title, subtitle, onClose }) {
 }
 
 /**
- * Trial Balance drill-down, step 1: every ledger entry of one account for the Trial Balance's
- * date range and branch, with a running balance. Clicking an entry opens its voucher.
+ * Trial Balance / Balance Sheet drill-down, step 1: every ledger entry of one account for the
+ * report's date range and branch, with a running balance. Clicking an entry opens its voucher.
+ * openingBalance (Dr positive) overrides the GL opening when the report takes its opening from
+ * elsewhere, e.g. the Balance Sheet's financial-year opening balances.
  */
-export function AccountLedgerDialog({ account, from, to, branchCode, onClose, onOpenVoucher }) {
+export function AccountLedgerDialog({ account, from, to, branchCode, openingBalance, onClose, onOpenVoucher }) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const [result, setResult] = useState(null);
@@ -51,10 +53,21 @@ export function AccountLedgerDialog({ account, from, to, branchCode, onClose, on
     setResult(null);
     setError("");
     getLedgerStatement(account.ledgerAccountId, from, to, branchCode)
-      .then((d) => { if (alive) (d && Array.isArray(d.lines) ? setResult(d) : setError("Could not load the ledger.")); })
+      .then((d) => {
+        if (!alive) return;
+        if (!d || !Array.isArray(d.lines)) { setError("Could not load the ledger."); return; }
+        if (openingBalance == null) { setResult(d); return; }
+        // Re-run the balance from the report's own opening, in 1/10000 units to avoid float drift.
+        let bal = Math.round(Number(openingBalance) * 10000);
+        const lines = d.lines.map((l) => {
+          bal += Math.round(Number(l.debit || 0) * 10000) - Math.round(Number(l.credit || 0) * 10000);
+          return { ...l, balance: bal / 10000 };
+        });
+        setResult({ ...d, openingBalance: Number(openingBalance), lines, closingBalance: bal / 10000 });
+      })
       .catch(() => { if (alive) setError("Could not load the ledger."); });
     return () => { alive = false; };
-  }, [account, from, to, branchCode]);
+  }, [account, from, to, branchCode, openingBalance]);
 
   const lines = result?.lines || [];
   const totalDr = lines.reduce((s, l) => s + Math.round(Number(l.debit || 0) * 10000), 0) / 10000;
