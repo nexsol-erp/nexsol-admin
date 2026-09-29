@@ -1,50 +1,166 @@
-import React from "react";
-import { Box, Typography, Paper, Divider, Chip } from "@mui/material";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Box, Typography, Paper, Divider, Chip, TextField, InputAdornment, Button,
+  Table, TableHead, TableBody, TableRow, TableCell, Alert, IconButton, Drawer, useMediaQuery,
+} from "@mui/material";
+import { Search as SearchIcon, OpenInNew, MenuBook, Close } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
+import { menuSections } from "../menuCatalog";
+import { useMenuAccess } from "./MenuAccessContext";
+import guides from "./help/content/guides";
+import general from "./help/content/general";
+import salesPurchase from "./help/content/salesPurchase";
+import stockProduction from "./help/content/stockProduction";
+import mastersAdmin from "./help/content/mastersAdmin";
+import accounting from "./help/content/accounting";
+import desktop from "./help/content/desktop";
+import screenshots from "./help/content/screenshots";
 
-const Section = ({ id, title, children }) => (
-  <Box id={id} sx={{ mb: 4 }}>
-    <Typography variant="h5" sx={{ color: "#1565c0", fontWeight: 700, mb: 1.5, mt: 3 }}>
-      {title}
-    </Typography>
-    <Divider sx={{ mb: 2 }} />
-    {children}
-  </Box>
-);
+// ============================================================================
+// HELP - the user manual. Concept guides come from help/content/guides.js;
+// the menu reference is generated from the shared menu catalog, so every
+// sidebar menu gets an entry, filled from the per-module content files.
+// ============================================================================
 
-const SubSection = ({ title, children }) => (
-  <Box sx={{ mb: 2 }}>
-    <Typography variant="h6" sx={{ color: "#333", fontWeight: 600, mb: 0.75, fontSize: "1rem" }}>
-      {title}
-    </Typography>
-    {children}
-  </Box>
-);
+const MENU_CONTENT = { ...general, ...salesPurchase, ...stockProduction, ...mastersAdmin, ...accounting };
+const DESKTOP_ORDER = [
+  "Installing & first login", "POS", "KOT", "Keyboard shortcuts", "Schemes at the till", "UPI payments",
+  "Sales Return", "Day End", "Daily Expense", "Expense Report", "Stock Transfer", "ST History", "Accept Stock",
+  "Physical Stock", "Weigh Bridge", "Salesman", "Item Sales", "Item Movement", "Stock Transfer In",
+  "Current Stock", "Working offline", "Updates",
+];
 
+const C = {
+  bg: "#f4f6f9", paper: "#ffffff", text: "#2b2f36", muted: "#5f6773", brand: "#1565c0",
+  brandSoft: "#e8f1fc", border: "#e1e5ea", code: "#1e1e1e",
+};
+
+export const helpSlug = (s) => "menu-" + String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+const deskSlug = (s) => "pos-" + String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+// All searchable text in an entry or guide, lower-cased.
+const textOf = (v) => {
+  if (v == null) return "";
+  if (typeof v === "string" || typeof v === "number") return String(v);
+  if (Array.isArray(v)) return v.map(textOf).join(" ");
+  if (typeof v === "object") return Object.values(v).map(textOf).join(" ");
+  return "";
+};
+const matches = (hay, words) => words.every((w) => hay.includes(w));
+
+// ---------------------------------------------------------------------------
+// Small building blocks
+// ---------------------------------------------------------------------------
 const P = ({ children }) => (
-  <Typography paragraph sx={{ color: "#444", lineHeight: 1.8, mb: 1 }}>
+  <Typography sx={{ color: C.text, lineHeight: 1.75, mb: 1.25, fontSize: 15 }}>{children}</Typography>
+);
+const H = ({ children }) => (
+  <Typography sx={{ color: C.text, fontWeight: 700, fontSize: 16, mt: 2.5, mb: 1 }}>{children}</Typography>
+);
+const List = ({ items, ordered }) => {
+  const Tag = ordered ? "ol" : "ul";
+  return (
+    <Tag style={{ color: C.text, paddingLeft: 22, margin: "0 0 12px", lineHeight: 1.75, fontSize: 15 }}>
+      {items.map((it, i) => <li key={i} style={{ marginBottom: 4 }}>{it}</li>)}
+    </Tag>
+  );
+};
+const DataTable = ({ head, rows }) => (
+  <Box sx={{ overflowX: "auto", mb: 2, border: `1px solid ${C.border}`, borderRadius: 1.5 }}>
+    <Table size="small" sx={{ "& td, & th": { color: C.text, borderColor: C.border, fontSize: 14, verticalAlign: "top" } }}>
+      <TableHead>
+        <TableRow sx={{ bgcolor: C.brandSoft }}>
+          {head.map((h) => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {rows.map((r, i) => (
+          <TableRow key={i}>{r.map((c, j) => <TableCell key={j}>{c}</TableCell>)}</TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </Box>
+);
+const Code = ({ children }) => (
+  <Box component="pre" sx={{ bgcolor: C.code, color: "#e6e6e6", p: 2, borderRadius: 1.5, fontSize: 13.5, overflowX: "auto", mb: 2, whiteSpace: "pre-wrap" }}>
     {children}
-  </Typography>
+  </Box>
 );
-
-const OL = ({ items }) => (
-  <ol style={{ color: "#444", paddingLeft: 22, lineHeight: 2 }}>
-    {items.map((item, i) => <li key={i}>{item}</li>)}
-  </ol>
+const Shot = ({ src, caption }) => (
+  <Box component="figure" sx={{ m: 0, mb: 2 }}>
+    <Box
+      component="img"
+      src={`/help/${src}`}
+      alt={caption || ""}
+      loading="lazy"
+      sx={{ width: "100%", maxWidth: 900, border: `1px solid ${C.border}`, borderRadius: 1.5, display: "block", bgcolor: "#fff" }}
+    />
+    {caption && <Typography component="figcaption" sx={{ color: C.muted, fontSize: 13, mt: 0.75 }}>{caption}</Typography>}
+  </Box>
 );
+const TONES = { info: "info", warn: "warning", tip: "success" };
+const btnSx = { color: C.brand, borderColor: "#9dbbe3", flexShrink: 0, "&:hover": { borderColor: C.brand, bgcolor: C.brandSoft } };
 
-const UL = ({ items }) => (
-  <ul style={{ color: "#444", paddingLeft: 22, lineHeight: 2 }}>
-    {items.map((item, i) => <li key={i}>{item}</li>)}
-  </ul>
-);
-
-const MenuRow = ({ name, desc }) => (
-  <Box sx={{ display: "flex", gap: 1.5, mb: 0.75, alignItems: "flex-start" }}>
-    <Chip label={name} size="small" sx={{ bgcolor: "#e3f2fd", color: "#1565c0", fontWeight: 600, fontSize: 11.5, flexShrink: 0, mt: 0.25 }} />
-    <Typography sx={{ color: "#444", fontSize: 14, lineHeight: 1.6 }}>{desc}</Typography>
+const MenuLinks = ({ keys, labelOf, hrefOf = (k) => `#${helpSlug(k)}` }) => (
+  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mt: 1, mb: 1 }}>
+    <Typography sx={{ color: C.muted, fontSize: 13, mr: 0.5, alignSelf: "center" }}>See:</Typography>
+    {keys.map((k) => (
+      <Chip
+        key={k} size="small" component="a" clickable href={hrefOf(k)} label={labelOf(k)}
+        sx={{ bgcolor: C.brandSoft, color: C.brand, fontWeight: 600 }}
+      />
+    ))}
   </Box>
 );
 
+const Blocks = ({ blocks, labelOf }) => blocks.map((b, i) => {
+  if (b.h) return <H key={i}>{b.h}</H>;
+  if (b.p) return <P key={i}>{b.p}</P>;
+  if (b.ul) return <List key={i} items={b.ul} />;
+  if (b.ol) return <List key={i} items={b.ol} ordered />;
+  if (b.table) return <DataTable key={i} {...b.table} />;
+  if (b.note) return <Alert key={i} severity={TONES[b.tone] || "info"} sx={{ mb: 2, fontSize: 14 }}>{b.note}</Alert>;
+  if (b.code) return <Code key={i}>{b.code}</Code>;
+  if (b.img) return <Shot key={i} src={b.img} caption={b.caption} />;
+  if (b.menus) return <MenuLinks key={i} keys={b.menus} labelOf={labelOf} />;
+  return null;
+});
+
+// One menu (or desktop screen) entry.
+const Entry = ({ id, title, path, entry, shot, onOpen, labelOf, hrefOf }) => (
+  <Paper id={id} variant="outlined" sx={{ p: { xs: 2, md: 2.5 }, mb: 2, borderColor: C.border, bgcolor: C.paper, scrollMarginTop: 80 }}>
+    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1, flexWrap: "wrap" }}>
+      <Box sx={{ flex: 1, minWidth: 200 }}>
+        <Typography sx={{ fontWeight: 700, fontSize: 17, color: C.text }}>{title}</Typography>
+        {path && <Typography sx={{ color: C.muted, fontSize: 13 }}>{path}</Typography>}
+      </Box>
+      {onOpen && (
+        <Button size="small" variant="outlined" endIcon={<OpenInNew sx={{ fontSize: 16 }} />} onClick={onOpen} sx={btnSx}>
+          Open
+        </Button>
+      )}
+    </Box>
+    {entry ? (
+      <Box sx={{ mt: 1.25 }}>
+        {entry.summary && <P>{entry.summary}</P>}
+        {shot && <Shot src={shot.src} caption={shot.caption} />}
+        {entry.steps?.length > 0 && (<><H>Step by step</H><List items={entry.steps} ordered /></>)}
+        {entry.fields?.length > 0 && (
+          <><H>Fields</H><DataTable head={["Field", "What to enter"]} rows={entry.fields.map((f) => [f.name, f.desc])} /></>
+        )}
+        {entry.accounting && (
+          <Alert severity="info" icon={false} sx={{ mb: 1.5, fontSize: 14 }}>
+            <strong>Stock and accounts: </strong>{entry.accounting}
+          </Alert>
+        )}
+        {entry.tips?.length > 0 && (<><H>Tips</H><List items={entry.tips} /></>)}
+        {entry.related?.length > 0 && labelOf && <MenuLinks keys={entry.related} labelOf={labelOf} hrefOf={hrefOf} />}
+      </Box>
+    ) : (
+      <Typography sx={{ color: C.muted, mt: 1, fontSize: 14 }}>Instructions for this screen are being written.</Typography>
+    )}
+  </Paper>
+);
 const toc = [
   { id: "overview",        label: "System Overview" },
   { id: "first-login",     label: "First Login & What You See" },
@@ -276,199 +392,202 @@ const HelpPage = () => (
           and syncs sales to the server automatically when connectivity is restored.
         </P>
 
-        <SubSection title="Configuration (pos-config.json)">
-          <P>Located next to the installed <code>.exe</code>. Edit with Notepad:</P>
-          <Box component="pre" sx={{ bgcolor: "#1e1e1e", color: "#d4d4d4", p: 2, borderRadius: 2, fontSize: 13, overflowX: "auto", mb: 1 }}>
-{`{
-  "apiServer": "http://YOUR-SERVER-IP:8084",
-  "printer": {
-    "paperWidthMm": 70,
-    "paperHeightMm": 3276
-  }
-}`}
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+const HelpPage = () => {
+  const navigate = useNavigate();
+  const { isEntryAllowed } = useMenuAccess();
+  const isDesktop = useMediaQuery("(min-width:1100px)");
+  const [query, setQuery] = useState("");
+  const [tocOpen, setTocOpen] = useState(false);
+
+  const sections = useMemo(() => menuSections().filter((s) => s.items.some((it) => it.link)), []);
+
+  const labelOf = useMemo(() => {
+    const map = {};
+    sections.forEach((s) => s.items.forEach((it) => { map[it.menuKey] = it.label; }));
+    return (k) => map[k] || k;
+  }, [sections]);
+
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const searching = words.length > 0;
+
+  const shownGuides = useMemo(
+    () => guides.filter((g) => !searching || matches((g.title + " " + textOf(g.blocks)).toLowerCase(), words)),
+    [searching, words.join(" ")] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const shownSections = useMemo(() => sections.map((sec) => ({
+    ...sec,
+    items: sec.items.filter((it) => it.link && it.menuKey !== "Help").filter((it) => {
+      if (!searching) return true;
+      const hay = `${it.label} ${it.menuKey} ${sec.title} ${textOf(MENU_CONTENT[it.menuKey])}`.toLowerCase();
+      return matches(hay, words);
+    }),
+  })).filter((sec) => sec.items.length > 0), [sections, searching, words.join(" ")]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const shownDesktop = useMemo(() => {
+    const keys = [...DESKTOP_ORDER.filter((k) => desktop[k]), ...Object.keys(desktop).filter((k) => !DESKTOP_ORDER.includes(k))];
+    return keys.filter((k) => !searching || matches(`${k} ${textOf(desktop[k])}`.toLowerCase(), words));
+  }, [searching, words.join(" ")]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const menuCount = shownSections.reduce((n, s) => n + s.items.length, 0);
+  const hitCount = shownGuides.length + menuCount + shownDesktop.length;
+
+  // Deep links (/help#menu-trial-balance) once content has rendered.
+  useEffect(() => {
+    const hash = window.location.hash?.slice(1);
+    if (!hash) return;
+    const t = setTimeout(() => document.getElementById(hash)?.scrollIntoView({ block: "start" }), 50);
+    return () => clearTimeout(t);
+  }, []);
+
+  const guideGroups = ["Start here", "Concepts"];
+  const tailGuides = shownGuides.filter((g) => !guideGroups.includes(g.group));
+
+  const go = (id) => {
+    setTocOpen(false);
+    document.getElementById(id)?.scrollIntoView({ block: "start", behavior: "smooth" });
+  };
+
+  const toc = (
+    <Box sx={{ fontSize: 14 }}>
+      {[...guideGroups, "Menu reference", "Desktop POS app", "Help"].map((grp) => {
+        let links = [];
+        if (grp === "Menu reference") links = shownSections.map((s) => ({ id: `sec-${s.key}`, label: s.title, n: s.items.length }));
+        else if (grp === "Desktop POS app") links = shownDesktop.length ? [{ id: "desktop-app", label: "All desktop screens", n: shownDesktop.length }] : [];
+        else links = shownGuides.filter((g) => g.group === grp).map((g) => ({ id: g.id, label: g.title }));
+        if (!links.length) return null;
+        return (
+          <Box key={grp} sx={{ mb: 2 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 0.6, mb: 0.5 }}>{grp}</Typography>
+            {links.map((l) => (
+              <Box
+                key={l.id} component="a" href={`#${l.id}`}
+                onClick={(e) => { e.preventDefault(); go(l.id); }}
+                sx={{ display: "flex", justifyContent: "space-between", gap: 1, py: 0.4, color: C.brand, textDecoration: "none", "&:hover": { textDecoration: "underline" } }}
+              >
+                <span>{l.label}</span>{l.n != null && <span style={{ color: C.muted }}>{l.n}</span>}
+              </Box>
+            ))}
           </Box>
-          <P>Set <code>apiServer</code> to your backend server's IP and port. The printer dimensions must exactly match the custom paper size configured in Windows printer settings.</P>
-        </SubSection>
+        );
+      })}
+    </Box>
+  );
 
-        <SubSection title="Desktop Menus">
-          <MenuRow name="POS" desc="Main billing screen. Scan barcodes or search by name. Supports offline mode — sales queue locally and sync when server is reachable." />
-          <MenuRow name="KOT" desc="Kitchen Order Ticket system. Create orders for the kitchen; convert to a POS bill when the customer pays." />
-          <MenuRow name="Day End" desc="Generate an end-of-day summary showing total sales, payment breakdown, and item quantities sold." />
-          <MenuRow name="Stock Transfer" desc="Transfer stock from this branch to another. Creates a transfer-out record here and a pending transfer-in at the destination." />
-          <MenuRow name="Accept Stock" desc="Accept incoming stock transfers from other branches." />
-          <MenuRow name="Weigh Bridge" desc="Integrates with a serial-port weighbridge to capture weights directly into transactions." />
-        </SubSection>
+  const renderGuide = (g) => (
+    <Box key={g.id} id={g.id} sx={{ mb: 4, scrollMarginTop: 80 }}>
+      <Typography variant="h5" sx={{ color: C.brand, fontWeight: 700, mb: 1 }}>{g.title}</Typography>
+      <Divider sx={{ mb: 2 }} />
+      <Blocks blocks={g.blocks} labelOf={labelOf} />
+    </Box>
+  );
 
-        <SubSection title="POS Workflow">
-          <OL items={[
-            "Open POS → select your branch and printer.",
-            "Scan a barcode or type an item name and press Enter.",
-            "Adjust quantity if needed.",
-            "Enter the amount tendered. The balance is calculated automatically.",
-            "Press Save (or Enter from the tendered field). The receipt prints silently.",
-            "If the server is offline, the sale is saved locally and will sync automatically once the connection is restored (the yellow 'pending' badge shows the count).",
-          ]} />
-        </SubSection>
+  return (
+    <Box sx={{ bgcolor: C.bg, minHeight: "100vh", p: { xs: 1.5, md: 3 }, width: "100%", maxWidth: "100%", minWidth: 0, overflowX: "hidden", boxSizing: "border-box" }}>
+      <Box sx={{ maxWidth: 1280, mx: "auto", display: "flex", gap: 3, alignItems: "flex-start" }}>
+        {isDesktop && (
+          <Paper variant="outlined" sx={{ width: 270, flexShrink: 0, p: 2, position: "sticky", top: 16, maxHeight: "calc(100vh - 32px)", overflowY: "auto", bgcolor: C.paper, borderColor: C.border }}>
+            {toc}
+          </Paper>
+        )}
 
-        <SubSection title="Test Print & Paper Size">
-          <P>
-            Click <strong>Print Test Invoice</strong> in the printer section (bottom-left of POS). The app
-            queries the selected printer for its paper dimensions, saves them to <code>pos-config.json</code>
-            automatically, and opens the system print dialog so you can verify alignment. If the paper size
-            is not detected automatically, set <code>paperWidthMm</code> and <code>paperHeightMm</code>
-            manually in the config file to match your Windows printer settings.
-          </P>
-        </SubSection>
-      </Section>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, mb: 3, bgcolor: C.paper, borderColor: C.border }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <MenuBook sx={{ color: C.brand }} />
+              <Typography variant="h4" sx={{ color: C.text, fontWeight: 800, fontSize: { xs: 24, md: 30 }, flex: 1 }}>
+                TradeLink 247 User Guide
+              </Typography>
+              {!isDesktop && (
+                <Button size="small" variant="outlined" onClick={() => setTocOpen(true)} sx={btnSx}>Contents</Button>
+              )}
+            </Box>
+            <Typography sx={{ color: C.muted, mt: 0.5, mb: 2 }}>
+              Setup, every menu step by step, accounting and stock costing, GST and the desktop POS.
+            </Typography>
+            <TextField
+              fullWidth size="small" value={query} onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search the guide, e.g. closing stock, e-way bill, day end, receipt"
+              InputProps={{
+                startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+                endAdornment: query && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setQuery("")} aria-label="Clear search"><Close fontSize="small" /></IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                "& .MuiInputBase-root": { bgcolor: "#fff", color: C.text },
+                "& .MuiOutlinedInput-notchedOutline": { borderColor: "#c3cad3" },
+                "& .MuiInputBase-root:hover .MuiOutlinedInput-notchedOutline": { borderColor: C.brand },
+                "& .MuiInputAdornment-root .MuiSvgIcon-root": { color: C.muted },
+                "& input::placeholder": { color: C.muted, opacity: 1 },
+              }}
+            />
+            {searching && (
+              <Typography sx={{ color: C.muted, fontSize: 13, mt: 1 }}>
+                {hitCount === 0 ? "Nothing matches. Try fewer or different words." : `${hitCount} section${hitCount === 1 ? "" : "s"} match.`}
+              </Typography>
+            )}
+          </Paper>
 
-      {/* 7. Roles */}
-      <Section id="roles" title="7. User Roles & Access">
-        <MenuRow name="system-admin" desc="Assigned automatically on signup. Has access to every menu. Cannot be restricted by Role Menu Access." />
-        <MenuRow name="admin" desc="Full access to branches, users, uploads, reports, and masters. Suitable for store managers or owners." />
-        <MenuRow name="user" desc="Access to POS, sales, purchase entry, item search, and most reports. Suitable for cashiers and branch operators." />
-        <MenuRow name="manager" desc="Access to dashboard, AI analytics, purchase, and reports. No access to branch/user administration." />
-        <MenuRow name="WB" desc="Weighbridge operator. Sees only weighbridge menus." />
-        <MenuRow name="franchiseeuser" desc="Franchisee view — reports and selected masters only." />
-        <P>
-          You can further restrict any role using <strong>Masters → Role Menu Access</strong>. Assign
-          specific menus to a role; only those menus will be visible. system-admin always sees everything
-          regardless of Role Menu Access settings.
-        </P>
-      </Section>
+          {shownGuides.filter((g) => guideGroups.includes(g.group)).map(renderGuide)}
 
-      {/* 8. Reports */}
-      <Section id="reports" title="8. Reports Guide">
-        <SubSection title="Sales Reports">
-          <MenuRow name="Sales Report" desc="Detailed line-by-line sales for a date range and branch." />
-          <MenuRow name="Sales Re Print" desc="Reprint any past sales invoice by voucher number." />
-          <MenuRow name="Sales Tax Summary" desc="Tax collected grouped by GST rate — use for GST returns." />
-          <MenuRow name="HSN wise Sales" desc="Sales grouped by HSN code for GST filing." />
-          <MenuRow name="All Branch Sales Report" desc="Consolidated sales across all branches." />
-          <MenuRow name="All Branch Categorywise Sales" desc="Sales broken down by product category across branches." />
-          <MenuRow name="Item Sales Report" desc="Sales volume and value per item." />
-          <MenuRow name="Season Sales Report" desc="Compare sales across different time periods or seasons." />
-          <MenuRow name="Bill Series Report" desc="Verify voucher number continuity — useful for audit." />
-        </SubSection>
-        <SubSection title="Stock Reports">
-          <MenuRow name="Stock Movement Report" desc="Complete in/out history for each item in a branch." />
-          <MenuRow name="Physical Stock Report" desc="Snapshot of current physical stock after corrections." />
-          <MenuRow name="All Branch Stock Report" desc="Current stock for all items across every branch." />
-          <MenuRow name="Item Stock Report" desc="Current stock for a specific item across branches." />
-          <MenuRow name="Branch Stock Report / Management" desc="Stock levels per branch with variance analysis." />
-          <MenuRow name="Branch Stock Diff Report" desc="Highlight discrepancies between expected and actual stock." />
-          <MenuRow name="Stock Turnover Report" desc="How fast each item is selling — identify slow movers." />
-          <MenuRow name="Stock Transfer Out / In Reports" desc="Full history of inter-branch stock movements." />
-        </SubSection>
-        <SubSection title="Purchase Reports">
-          <MenuRow name="Purchase Report" desc="All purchase invoices for a date range." />
-          <MenuRow name="HSN wise Purchase" desc="Purchase grouped by HSN code for input tax credit reconciliation." />
-        </SubSection>
-        <SubSection title="Bank Statements & Reconciliation">
-          <MenuRow name="Bank Statements" desc="Upload an ICICI or Axis statement PDF — the account's configured bank decides which parser runs. Also generates the daily transaction Excel report." />
-          <MenuRow name="Bank Narration Rules" desc="Set up rules that auto-resolve the counterparty/category on imported statement lines by narration pattern." />
-          <MenuRow name="Bank Statement Review" desc="Fix lines resolution couldn't place, optionally saving the fix as a new rule." />
-          <MenuRow name="Bank Reconciliation" desc="Match statement lines to GL entries. See the note under Tips — the balance-comparison figure needs the bank account's opening balance set correctly first." />
-        </SubSection>
-        <SubSection title="Daily Cash Summary">
-          <MenuRow name="Cash Summary Line Items" desc="Define the formula: an ordered list of line items, each ADD or SUBTRACT, at SHOP level (rolls into that branch's Expected Cash to Bank) or FINAL level (rolls into the company-wide total, after every shop's own total). Each line item is sourced from mapped expense categories, sales, a manual entry, or a fixed amount." />
-          <MenuRow name="Cash Summary Manual Entries" desc="Capture a figure for any line item configured as source MANUAL — for a figure with no home among the expense categories." />
-          <MenuRow name="Daily Cash Summary" desc="Pick a date to see every shop's Expected Cash to Bank and the company-wide Final Expected Cash to Bank, or download the Excel version." />
-        </SubSection>
-      </Section>
+          {shownSections.length > 0 && (
+            <Box id="menu-reference" sx={{ mb: 4 }}>
+              <Typography variant="h5" sx={{ color: C.brand, fontWeight: 700, mb: 1 }}>Menu reference</Typography>
+              <Divider sx={{ mb: 2 }} />
+              <P>Every menu in the web app, in sidebar order. The Open button appears on menus your role can use.</P>
+              {shownSections.map((sec) => (
+                <Box key={sec.key} id={`sec-${sec.key}`} sx={{ mb: 3, scrollMarginTop: 80 }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: 19, color: C.text, mb: 1.5 }}>{sec.title}</Typography>
+                  {sec.items.map((it) => {
+                    const allowed = isEntryAllowed ? isEntryAllowed(it.menuKey, it.roles, sec.parentRoles) : true;
+                    return (
+                      <Entry
+                        key={it.menuKey}
+                        id={helpSlug(it.menuKey)}
+                        title={it.label}
+                        path={`${sec.title} > ${it.label}`}
+                        entry={MENU_CONTENT[it.menuKey]}
+                        shot={screenshots[it.menuKey]}
+                        onOpen={allowed ? () => navigate(it.link) : null}
+                        labelOf={labelOf}
+                      />
+                    );
+                  })}
+                </Box>
+              ))}
+            </Box>
+          )}
 
-      {/* Daily Cash Summary — generic mechanism + Hotcakes example configuration */}
-      <Section id="cash-summary" title="Daily Cash Summary — Configuration Guide">
-        <P>
-          This report replaces a manual spreadsheet workflow with one built entirely from
-          configuration — nothing about any customer's categories is hardcoded. Every business
-          formula reduces to the same shape, so a new tenant sets this up once, in the admin
-          screens, without any code change.
-        </P>
-        <SubSection title="The generic mechanism">
-          <P>
-            A <b>line item</b> is one row of the formula. It has:
-          </P>
-          <UL items={[
-            "Sign — ADD or SUBTRACT into its level's total.",
-            "Level — SHOP (rolls into that one branch's Expected Cash to Bank) or FINAL (rolls into the company-wide total, added on top of the sum of every shop's own total).",
-            "Source — EXPENSE_TYPES (sum of one or more mapped expense categories for that branch/date), SALES (the branch's sales total for the date), MANUAL (a figure entered under Cash Summary Manual Entries), or CONSTANT (a fixed configured amount).",
-          ]} />
-          <P>
-            A shop's <b>Expected Cash to Bank</b> is the signed sum of its SHOP-level lines. The
-            company's <b>Final Expected Cash to Bank</b> is the sum of every shop's total, plus
-            the signed sum of the FINAL-level lines.
-          </P>
-          <P>
-            <b>One expense category can be mapped to at most one active line item.</b> This is
-            enforced when saving a line item, not just a convention — it exists specifically
-            because a real production entry was once typed into the wrong category and silently
-            double-counted between two totals. Configuring that mistake is no longer possible;
-            reassigning a category to a different line item first requires removing it from its
-            current one.
-          </P>
-        </SubSection>
-        <SubSection title="Example: setting this up for Hotcakes">
-          <P>
-            This is how Hotcakes' own spreadsheet formula maps onto the generic model — a
-            worked example for setting up any tenant with a similar per-shop cash reconciliation.
-          </P>
-          <P><b>SHOP level</b> (one set of lines, computed per branch):</P>
-          <UL items={[
-            "Total Sales — ADD, source SALES.",
-            "Advance Received — ADD, source EXPENSE_TYPES, mapped to the Advance Received category.",
-            "Swiggy / Zomato — SUBTRACT, source EXPENSE_TYPES, mapped to the Swiggy/Zomato settlement category.",
-            "Total Expense — SUBTRACT, source EXPENSE_TYPES, mapped to Shop Expense and Order Advance Adjusted together (two categories, one line item, one number).",
-          ]} />
-          <P><b>FINAL level</b> (computed once, on top of the sum of all shops' totals):</P>
-          <UL items={[
-            "Farm Expense — SUBTRACT, source EXPENSE_TYPES.",
-            "Girish — SUBTRACT, source EXPENSE_TYPES.",
-            "Salary Advance — SUBTRACT, source EXPENSE_TYPES.",
-            "Hotcakes Common — SUBTRACT, source EXPENSE_TYPES.",
-            "Proprietor Withdrawal — SUBTRACT, source CONSTANT, amount ₹15,000.",
-            "Chachan Cash Receipts — ADD, source MANUAL (this figure is company-wide, not per shop, so it's entered once per date under Cash Summary Manual Entries with no branch selected).",
-          ]} />
-          <P>
-            Every other category in Hotcakes' expense list that isn't listed above simply has no
-            line item and plays no part in this report — exactly like leaving a row out of the
-            spreadsheet.
-          </P>
-        </SubSection>
-      </Section>
+          {shownDesktop.length > 0 && (
+            <Box id="desktop-app" sx={{ mb: 4, scrollMarginTop: 80 }}>
+              <Typography variant="h5" sx={{ color: C.brand, fontWeight: 700, mb: 1 }}>Desktop POS app</Typography>
+              <Divider sx={{ mb: 2 }} />
+              <P>The Windows till app for each counter. Install it from Tools & Design > Download.</P>
+              {shownDesktop.map((k) => (
+                <Entry
+                  key={k} id={deskSlug(k)} title={k} entry={desktop[k]} shot={screenshots[`desktop:${k}`]}
+                  labelOf={(r) => (desktop[r] ? r : labelOf(r))}
+                  hrefOf={(r) => `#${desktop[r] ? deskSlug(r) : helpSlug(r)}`}
+                />
+              ))}
+            </Box>
+          )}
 
-      {/* 9. Tips */}
-      <Section id="tips" title="9. Tips & Common Mistakes">
-        <UL items={[
-          "Always complete Financial Year Setup before creating branches — the year is needed for voucher numbering.",
-          "Item Names in stock uploads must match the Item Master exactly (case-sensitive). A mismatch will skip that row.",
-          "Branch Codes are permanent. Choose a short, meaningful code (e.g. BLR01, DEL02) during Branch Creation.",
-          "If menus disappear after user creation, check Role Menu Access — the user's role may not have been granted access to those menus.",
-          "After uploading new items or stock, click Refresh Cache in the sidebar so the POS desktop picks up the changes.",
-          "The POS works offline — sales are queued and sync automatically. The yellow badge on the title bar shows pending count.",
-          "If a receipt prints blank, check that pos-config.json paperWidthMm/paperHeightMm match the Windows custom paper size exactly.",
-          "Schemes are evaluated in real time during POS billing. Publish a scheme via Manage Scheme before billing starts.",
-          "For GST returns: use HSN wise Sales and Sales Tax Summary reports — they give CGST + SGST split per rate.",
-          "Reprocess Voucher can fix sales that failed to sync to the server due to temporary errors.",
-          "Bank Reconciliation's balance-comparison figure will show a large, misleading \"difference\" even for a fully-matched account until the bank ledger account's Opening Balance (Dr/Cr) is set to its real-world balance as of when statement tracking began. Imported statement lines carry no opening balance of their own — only the GL side does — so the two won't line up until that's configured.",
-        ]} />
-      </Section>
+          {tailGuides.map(renderGuide)}
+        </Box>
+      </Box>
 
-      {/* 10. Support */}
-      <Section id="support" title="10. Contact Support">
-        <P>
-          If you encounter any issue not covered in this manual, reach out to the support team:
-        </P>
-        <P>
-          <strong>Email:</strong> erp.nexsol@gmail.com
-        </P>
-        <P>
-          When contacting support, include your company name, the menu or feature involved, and a
-          brief description of what you expected versus what happened. Screenshots are very helpful.
-        </P>
-      </Section>
-
-    </Paper>
-  </Box>
-);
+      <Drawer anchor="left" open={tocOpen} onClose={() => setTocOpen(false)} PaperProps={{ sx: { width: 290, p: 2, bgcolor: C.paper } }}>
+        {toc}
+      </Drawer>
+    </Box>
+  );
+};
 
 export default HelpPage;
