@@ -261,7 +261,7 @@ const HelpPage = () => (
         </SubSection>
 
         <SubSection title="Download">
-          <P>Download the latest TradeLink 247 POS desktop installer (.exe) for Windows. Install one copy per branch computer.</P>
+          <P>The one place for everything you install on your own PCs: the POS Launcher (installs and auto-updates the cashier POS) and the Tally Connector (sends vouchers into TallyPrime). Each download explains what it is and how to set it up.</P>
         </SubSection>
 
         <SubSection title="Invoice Designer">
