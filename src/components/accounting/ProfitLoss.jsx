@@ -7,17 +7,23 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { getProfitLoss } from "./accountingApi";
 import { useFinancialYear } from "./useFinancialYear";
+import { AccountLedgerDialog, VoucherDialog } from "./LedgerDrilldown";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
-function Section({ title, rows, total, color }) {
+function Section({ title, rows, total, color, onOpen }) {
   return (
     <>
       <TableRow sx={{ bgcolor: "action.selected" }}>
         <TableCell colSpan={3}><b>{title}</b></TableCell>
       </TableRow>
       {rows.map((r, i) => (
-        <TableRow key={i} hover>
+        <TableRow
+          key={i}
+          hover
+          onClick={() => r.ledgerAccountId && onOpen(r)}
+          sx={{ cursor: r.ledgerAccountId ? "pointer" : "default" }}
+        >
           <TableCell sx={{ pl: 4 }}>{r.accountCode}</TableCell>
           <TableCell>{r.accountName}</TableCell>
           <TableCell align="right">₹ {fmt(r.amount)}</TableCell>
@@ -36,6 +42,9 @@ export default function ProfitLoss() {
   const [to, setTo]             = useState("");
   const [branch, setBranch]     = useState("");
   const [data, setData]         = useState(null);
+  // Drill-down: the account whose entries are open, and the voucher opened from them.
+  const [drillAccount, setDrillAccount] = useState(null);
+  const [voucherId, setVoucherId]       = useState(null);
 
   useFinancialYear(setFrom, setTo);
 
@@ -64,6 +73,11 @@ export default function ProfitLoss() {
   return (
     <Box p={3}>
       <Typography variant="h5" gutterBottom>Profit & Loss Statement</Typography>
+      {data && (
+        <Typography variant="body2" color="text.secondary" mb={1}>
+          Click an account to see its entries, then a voucher to see the bill behind it.
+        </Typography>
+      )}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box display="flex" gap={2} flexWrap="wrap" alignItems="flex-end">
           <TextField label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
@@ -84,13 +98,13 @@ export default function ProfitLoss() {
             </TableRow>
           </TableHead>
           <TableBody>
-            <Section title="Revenue" rows={data.revenue} total={data.totalRevenue} color="success" />
-            <Section title="Cost of Goods Sold" rows={data.costOfGoodsSold} total={data.totalCogs} color="error" />
+            <Section title="Revenue" rows={data.revenue} total={data.totalRevenue} color="success" onOpen={setDrillAccount} />
+            <Section title="Cost of Goods Sold" rows={data.costOfGoodsSold} total={data.totalCogs} color="error" onOpen={setDrillAccount} />
             <TableRow sx={{ bgcolor: "primary.light" }}>
               <TableCell colSpan={2} align="right"><b>Gross Profit</b></TableCell>
               <TableCell align="right"><b>₹ {fmt(data.grossProfit)}</b></TableCell>
             </TableRow>
-            <Section title="Operating Expenses" rows={data.operatingExpenses} total={data.totalOperatingExpenses} color="warning" />
+            <Section title="Operating Expenses" rows={data.operatingExpenses} total={data.totalOperatingExpenses} color="warning" onOpen={setDrillAccount} />
             <Divider component="tr" />
             <TableRow sx={{ bgcolor: data.netProfit >= 0 ? "success.light" : "error.light" }}>
               <TableCell colSpan={2} align="right">
@@ -102,6 +116,27 @@ export default function ProfitLoss() {
             </TableRow>
           </TableBody>
         </Table>
+      )}
+
+      {data && (
+        <>
+          {/* P&L shows movement for the period only, so the ledger starts at zero and its
+              closing is the account's net for the period. */}
+          <AccountLedgerDialog
+            account={drillAccount}
+            from={data.from}
+            to={data.to}
+            branchCode={data.branchCode || ""}
+            openingBalance={0}
+            onClose={() => setDrillAccount(null)}
+            onOpenVoucher={setVoucherId}
+          />
+          <VoucherDialog
+            voucherHeaderId={voucherId}
+            onClose={() => setVoucherId(null)}
+            onOpenAccount={(acc) => { setVoucherId(null); setDrillAccount(acc); }}
+          />
+        </>
       )}
     </Box>
   );
