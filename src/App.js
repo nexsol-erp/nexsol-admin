@@ -94,7 +94,6 @@ import SalesTaxSummary from "./components/SalesTaxSummary";
 import PhysicalStockEntryReport from "./components/PhysicalStockEntryReport";
 
 import FinancialYearPage from "./components/FinancialYearPage";
-import VersionManagementPage from "./components/VersionManagementPage";
 import DayEndReport from "./components/DayEndReport";
 import BranchPricePage from "./components/BranchPricePage";
 import PhysicalStockCorrection from "./components/PhysicalStockCorrection";
@@ -232,7 +231,6 @@ const ROUTE_ORDER = [
   { key: "Branch Details",                   path: "/branch-update" },
   { key: "POS Address Configuration",        path: "/pos-address-config" },
   { key: "Branch Day End Settings",          path: "/branch-day-end-settings" },
-  { key: "Version Management",               path: "/version-management" },
   { key: "Scheme Creation",                  path: "/schemepage" },
   { key: "Manage Scheme",                    path: "/publishschemepage" },
   { key: "Menu Master",                      path: "/menu-master" },
@@ -622,7 +620,6 @@ function HideOnScroll({ children }) {
             <Route path="/day-end-clear" element={<DayEndClearPage />} />
             <Route path="/branch-price" element={<BranchPricePage />} />
             <Route path="/stock-transfer-discount" element={<StockTransferDiscountPage />} />
-            <Route path="/version-management" element={<VersionManagementPage />} />
 
 <Route
   path="/stock-transfer-out/invoice/:voucherNumber"

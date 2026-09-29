@@ -271,7 +271,6 @@ export const MENU_TREE = [
       { menuKey: "Branch Day End Settings", label: "Branch Day End Settings", link: "/branch-day-end-settings", roles: ["admin"] },
       { menuKey: "Clear Day End",           label: "Clear Day End",           link: "/day-end-clear",           roles: ["admin"] },
       { menuKey: "Day End Report",          label: "Day End Report",          link: "/day-end-report",          roles: ["admin", "manager"] },
-      { menuKey: "Version Management",      label: "Version Management",      link: "/version-management",      roles: ["admin"] },
       { menuKey: "E-Invoicing",             label: "E-Invoicing",             link: "/e-invoicing",             roles: ["admin", "manager"] },
       { menuKey: "Languages",               label: "Languages",               link: "/languages",               roles: ["admin"] },
       { menuKey: "Admin Page",              label: "Admin Page",              link: "/branch-request-list",     roles: ["admin", "WB"] },
