@@ -1,0 +1,59 @@
+name: Docker image
+
+# Builds the container image(s) for the Docker stack (nexsol-erp/nexsol-deploy) and pushes
+# them to GHCR on merges to main, tagged with the commit SHA and `latest`. Pull requests only
+# build, which checks the Dockerfile still works.
+#
+# This does not deploy anything. The existing deploy workflow keeps deploying the current
+# (systemd) server exactly as before; the Docker server is deployed from nexsol-deploy.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: docker-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build nexsol-admin-web (push on main)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ghcr.io/nexsol-erp/nexsol-admin-web:${{ github.sha }}
+            ghcr.io/nexsol-erp/nexsol-admin-web:latest
+          cache-from: type=gha,scope=nexsol-admin-web
+          cache-to: type=gha,mode=max,scope=nexsol-admin-web
+
+      # Private images count against the org's GitHub Packages storage, so old ones are pruned.
+      # Rollback needs only the last few.
+      - name: Keep only the newest 10 nexsol-admin-web images
+        uses: actions/delete-package-versions@v5
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        with:
+          package-name: nexsol-admin-web
+          package-type: container
+          min-versions-to-keep: 10

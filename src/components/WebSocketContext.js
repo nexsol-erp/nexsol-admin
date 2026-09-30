@@ -15,7 +15,14 @@ export const WebSocketProvider = ({ children }) => {
 
     if (tenancyId) {
       //const wsUrl = `ws://localhost:8081/ws?company=${tenancyId}&branch=${branchId}`;
-      const wsUrl = `wss://tradelink247.com/ws?company=${tenancyId}&branch=${branchId}`;
+      // The live site keeps its fixed address. Any other host (the Docker server's test
+      // hostname, a local stack) uses its own /ws, so a test copy never talks to production.
+      const host = window.location.hostname;
+      const wsBase =
+        host === "tradelink247.com" || host === "www.tradelink247.com"
+          ? "wss://tradelink247.com"
+          : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
+      const wsUrl = `${wsBase}/ws?company=${tenancyId}&branch=${branchId}`;
       console.log(`Attempting to connect to WebSocket at ${wsUrl}`);
       const websocket = new WebSocket(wsUrl);
 
