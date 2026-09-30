@@ -1,0 +1,60 @@
+{
+  "name": "tradelink247-weighbridge",
+  "version": "1.0.0",
+  "description": "TradeLink247 Weighbridge desktop app",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev:ui": "vite",
+    "dev:electron": "wait-on http://localhost:5174 && electron .",
+    "dev": "concurrently -k \"npm:dev:ui\" \"npm:dev:electron\"",
+    "build": "vite build",
+    "test": "node --test test/*.test.js",
+    "dist:win": "npm run build && electron-builder --win nsis"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "serialport": "^12.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "antd": "^6.3.3",
+    "concurrently": "^9.2.1",
+    "dayjs": "^1.11.20",
+    "electron": "^32.3.3",
+    "electron-builder": "^26.0.12",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "vite": "^6.4.1",
+    "wait-on": "^9.0.4"
+  },
+  "build": {
+    "appId": "com.tradelink247.weighbridge",
+    "productName": "TradeLink247 Weighbridge",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "TradeLink247-Weighbridge-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TradeLink247 Weighbridge"
+    }
+  }
+}
