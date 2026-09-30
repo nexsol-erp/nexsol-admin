@@ -1,0 +1,11 @@
+html, body, #root { margin: 0; height: 100%; }
+body { background: #f3f5f8; }
+.center-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, #0b3a75, #1d5fb4); }
+.weight-panel { background: #0d1117; border-radius: 10px; padding: 18px 24px; color: #fff; }
+.weight-digits { font-family: "Consolas", "Courier New", monospace; font-weight: 700; font-size: 96px; line-height: 1; letter-spacing: 4px; text-align: right; }
+.weight-meta { display: flex; justify-content: space-between; align-items: center; color: #90a4ae; font-size: 14px; margin-top: 8px; }
+.amount-box { background: #fff; border: 2px solid #0b3a75; border-radius: 10px; padding: 12px 16px; }
+.amount-box .value { font-size: 40px; font-weight: 800; color: #0b3a75; }
+.row-open td { background: #e8f5e9 !important; }
+.mono { font-family: "Consolas", "Courier New", monospace; }
+.monitor { background: #111; color: #9fe89f; font-family: "Consolas", "Courier New", monospace; font-size: 12px; height: 220px; overflow: auto; padding: 8px; border-radius: 6px; white-space: pre-wrap; word-break: break-all; }

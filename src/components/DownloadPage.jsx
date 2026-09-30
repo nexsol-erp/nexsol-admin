@@ -10,6 +10,7 @@ import {
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import SyncAltIcon from "@mui/icons-material/SyncAlt";
+import ScaleIcon from "@mui/icons-material/Scale";
 
 // Every file a customer installs comes from this page. Add new downloads to
 // this list so the explanation, purpose and steps always sit next to the file.
@@ -56,6 +57,27 @@ const DOWNLOADS = [
       "Watch progress and any errors in Tally Sync Status.",
     ],
     notes: null,
+  },
+  {
+    key: "weighbridge",
+    icon: ScaleIcon,
+    title: "Weighbridge",
+    file: "TradeLink247 Weighbridge setup (.exe)",
+    href: "/api/updates/weighbridge/download",
+    tags: ["Windows", "Installer", "Only for weighbridge sites"],
+    what:
+      "A desktop app for the weighbridge PC. It reads the live weight from the indicator, works out the charge, prints the weighment voucher and uploads every weighing to this server.",
+    purpose:
+      "Runs the weighbridge counter on its own, even when the internet is down: weighings and tare weights are kept on the PC and uploaded when the connection is back. It follows the same charging rule as before (a return weighing of a paid first weighing is free) and continues each branch's voucher numbers.",
+    steps: [
+      "Download and run the installer on the PC connected to the weighbridge indicator.",
+      "Open TradeLink247 Weighbridge, enter this server's address and sign in. Pick the branch if you have more than one.",
+      "Open Settings > Indicator. Pick the preset for your indicator make (or Custom), choose the COM port or network address, and use Show live data to check the weight is read correctly.",
+      "Open Settings > Printing to choose the printer, paper size (A5 or 80 mm) and number of copies.",
+      "Check the rates on the Rates tab, then start weighing from the Weighing tab (F9 saves and prints).",
+    ],
+    notes:
+      "Weighings made in the app show up under Weighbridge > WeighBridge Usage here, and Resync Records can ask the PC to upload a day again. An indicator setup that works can be exported from Settings and imported on other PCs with the same indicator.",
   },
 ];
 
