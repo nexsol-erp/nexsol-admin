@@ -424,32 +424,6 @@ const content = {
     related: ["Clear Day End", "Branch Day End Settings", "Excess Shortage Report", "Daily Cash Summary"],
   },
 
-  "Version Management": {
-    summary:
-      "Manages the POS application versions installed on cashier PCs: upload a new release, mark it optional, required or obsolete, and hand out the launcher.",
-    steps: [
-      "Open System Administration > Version Management.",
-      "Pick the platform tab (WINDOWS, LINUX or MAC).",
-      "Click \"Add Version\", type the \"Version\" (e.g. 2.1.8), an optional \"Build Number\", the platform and status, and \"Release Notes\".",
-      "Click \"Choose portable .exe (optional)\" to attach the installer file, then click \"Create\".",
-      "To change a release's status, use the dropdown in its \"Status\" column and confirm.",
-      "Use \"Download Launcher\" to get the zip for a new shop PC: extract it (for example to C:\\TradeLink247\\) and run launchPOSClinet.exe.",
-      "The icons on each row let you view the audit log, download the installer, delete the installer file from the server (obsolete versions only) or remove the version entry.",
-    ],
-    fields: [
-      { name: "OPTIONAL", desc: "Available, but terminals are not forced to take it." },
-      { name: "REQUIRED", desc: "All terminals must update to it." },
-      { name: "OBSOLETE", desc: "Blocks that version — terminals still on it cannot run." },
-    ],
-    tips: [
-      "The launcher is installed once per PC. On every start it checks this list and downloads the latest update by itself, so there is no reinstall for future releases.",
-      "Set a version to REQUIRED only once you are happy with it — every terminal will update on its next start.",
-      "Marking a version OBSOLETE stops shops using it; make sure a newer one is ready first.",
-      "Use Connected POS Terminals to disconnect a terminal so it picks up the update sooner.",
-    ],
-    related: ["Connected POS Terminals", "POS Machine Approval", "Download"],
-  },
-
   "E-Invoicing": {
     summary:
       "The one place where the company connects to a tax authority, sends invoices to it, follows what happened to them, files periodic returns and makes Indian e-way bills. It has four tabs: \"Provider setup\", \"Submissions\", \"Tax returns\" and \"E-way bills\".",
@@ -551,7 +525,7 @@ const content = {
       "Never approve a machine you cannot account for — approval lets that device bill and sync in that branch.",
       "\"Last Seen\" tells you whether an approved terminal is still in use.",
     ],
-    related: ["Connected POS Terminals", "Version Management"],
+    related: ["Connected POS Terminals", "Download"],
   },
 
   "Connected POS Terminals": {
@@ -567,7 +541,7 @@ const content = {
       "Do not disconnect a terminal in the middle of a sale; wait for a quiet moment.",
       "The \"Version\" column is the quickest way to spot shops still running an old release.",
     ],
-    related: ["Version Management", "POS Machine Approval"],
+    related: ["Download", "POS Machine Approval"],
   },
 
   "UPI Payment Setup": {
