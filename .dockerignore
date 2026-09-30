@@ -1,0 +1,10 @@
+node_modules/
+build/
+pos-electron/
+test-agent/
+ai-training/
+.git/
+.github/
+*.md
+*.pdf
+*.csv
