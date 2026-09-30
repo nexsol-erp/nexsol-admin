@@ -417,22 +417,22 @@ const content = {
 
   "Download": {
     summary:
-      "Where you get the programs that run on shop computers: the Cashier POS billing application, the Tally Connector, and branch-specific installers and patches.",
+      "The one place for everything you install on your own PCs: the POS Launcher, which installs and keeps the cashier POS up to date, and the Tally Connector, which sends vouchers into TallyPrime.",
     steps: [
       "Open Tools & Design > Download.",
-      "For a till, click \"Download Cashier POS Setup (.exe)\" and run the file on that computer. The branch and server are set at the first sign-in.",
-      "For Tally, click \"Download Tally Connector (.exe)\" and install it on the computer that runs TallyPrime, then pair it from Accounting > Tally Integration.",
-      "For the branch-specific desktop application, choose the branch under \"Branch Code\".",
-      "Click \"Download Full\" for a complete installer, or \"Download Patch\" for the latest update only.",
-      "Copy the downloaded file to the shop computer and run it there.",
+      "For a till, download the POS Launcher zip on the cashier PC and extract it to a permanent folder, for example C:\\TradeLink247\\. Keep all the files together.",
+      "Run launchPOSClinet.exe. On the first run it downloads the POS itself, so the PC needs internet.",
+      "Log in to the POS and pick the branch. A new PC may need approval in System Administration > POS Machine Approval.",
+      "Make a desktop shortcut to launchPOSClinet.exe (right-click > Send to > Desktop) and always open the POS from it, so updates are picked up.",
+      "For Tally, download the Tally Connector installer on the PC that runs TallyPrime, then pair it from Accounting > Tally Integration > Connectors.",
     ],
     tips: [
-      "\"Download Full\" and \"Download Patch\" stay greyed out until you pick a branch.",
-      "Install the patch only on a computer that already has the full application; a patch is not a first-time install.",
+      "You never reinstall the POS for an upgrade: each time the launcher starts, it checks for a newer version and downloads it.",
+      "If the POS says it is not found and no update is available, check that the PC can reach tradelink247.com.",
       "Windows may warn about a downloaded program. Keep the file and allow it to run.",
       "Install the Tally Connector on the Tally machine itself, not on the server.",
     ],
-    related: ["Upload"],
+    related: ["POS Machine Approval", "Tally Integration"],
   },
 
   "Upload": {

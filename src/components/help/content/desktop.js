@@ -3,7 +3,7 @@ const content = {
   "Installing & first login": {
     summary: "How to install the TradeLink247 POS desktop app on a cashier PC, log in, pick the branch, get the machine approved and set up the receipt printer.",
     steps: [
-      "In the web admin, open Tools & Design > Download and click \"Download Cashier POS Setup (.exe)\". Run TradeLink247-POS-Setup.exe on the cashier PC (Windows, 64-bit).",
+      "In the web admin, open Tools & Design > Download and download the POS Launcher zip on the cashier PC (Windows, 64-bit). Extract it to a permanent folder such as C:\\TradeLink247\\ and run launchPOSClinet.exe; on the first run it downloads the POS and opens it. Always start the POS from the launcher (make a desktop shortcut to it) so updates install.",
       "Start the app. After a short splash screen the login screen appears. Pick your \"Language\" if needed, type your \"Username\" and \"Password\" and click \"Login\" (or press Enter).",
       "The branches you are allowed to use come from your user account. If you have more than one, choose the branch from the \"Branch:\" drop-down in the top-right of the screen. Changing branch reloads the item list for that branch.",
       "The first time a PC logs in to a branch, it registers itself with the server. If an administrator has not yet approved it you will see \"Machine Pending Approval\" with a Registration ID. Ask an admin to approve it in the web admin under POS Machine Approval. The screen checks again every 30 seconds and opens by itself once approved.",
