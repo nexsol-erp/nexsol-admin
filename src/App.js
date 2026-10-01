@@ -74,6 +74,7 @@ import WeighBridgeEngageReport from "./components/WeighBridgeEngageReport";
 import WeighBridgeResync from "./components/WeighBridgeResync";
 import WeighbridgeUsageReport from "./components/WeighbridgeUsageReport";
 import VehicleWheelTypePage from "./components/VehicleWheelTypePage";
+import WeighbridgePcsPage from "./components/WeighbridgePcsPage";
 import BranchRequestList from "./components/BranchRequestList";
 import PosSessionsPage from "./components/PosSessionsPage";
 import ReprocessVoucherForm from "./components/ReprocessVoucherForm"
@@ -230,6 +231,7 @@ const ROUTE_ORDER = [
   { key: "WeighBridge Usage",                path: "/weighbridgeusage" },
   { key: "Weighbridge Resync",               path: "/weighbridge-resync" },
   { key: "Vehicle Wheel Type",               path: "/vehicle-wheel-type" },
+  { key: "Weighbridge PCs",                  path: "/weighbridge-pcs" },
   { key: "Branch Details",                   path: "/branch-update" },
   { key: "POS Address Configuration",        path: "/pos-address-config" },
   { key: "Branch Day End Settings",          path: "/branch-day-end-settings" },
@@ -578,6 +580,7 @@ function HideOnScroll({ children }) {
             <Route path="/weighbridgeusage" element={<WeighbridgeUsageReport />} />
             <Route path="/weighbridge-resync" element={<WeighBridgeResync />} />
             <Route path="/vehicle-wheel-type" element={<VehicleWheelTypePage />} />
+            <Route path="/weighbridge-pcs" element={<WeighbridgePcsPage />} />
             <Route path="/branch-request-list" element={<BranchRequestList />} />
             <Route path="/pos-sessions" element={<PosSessionsPage />} />
             <Route path="/reprocess-voucher-form" element={<ReprocessVoucherForm />} />

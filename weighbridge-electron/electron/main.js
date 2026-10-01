@@ -15,6 +15,8 @@ const { IndicatorSession, FrameSplitter, decodeFrame } = require("./indicator/pa
 const { Transport, listPorts } = require("./indicator/transport");
 const { voucherHtml, pdfFileName } = require("./voucher");
 const { Updater } = require("./updater");
+const { SettingsLock } = require("./settingsLock");
+const os = require("os");
 const { spawn } = require("child_process");
 
 if (!app.isPackaged) app.setPath("userData", path.join(__dirname, "../.electron-cache"));
@@ -45,6 +47,7 @@ let win = null;
 let store = null;
 let sync = null;
 let updater = null;
+let settingsLock = null;
 let installing = false;
 
 // ── settings ─────────────────────────────────────────────────────────────────
@@ -77,6 +80,12 @@ function isAdmin() {
 
 function requireAdmin() {
   if (!isAdmin()) throw new ValidationError("Only an admin can change this");
+}
+
+// Settings changes: an admin, and Settings not locked (see settingsLock.js).
+function requireSettings() {
+  requireAdmin();
+  settingsLock.require();
 }
 
 function send(channel, payload) {
@@ -274,6 +283,7 @@ function registerIpc() {
     log("INFO", "signed in", username, data.tenancyId, next.branchCode || autoBranch);
     if (autoBranch) await applyBranch(autoBranch);
     sync.run({ forcePull: true });
+    settingsLock.refresh().catch(() => {});
     return { auth: publicAuth(), isAdmin: isAdmin() };
   });
   handle("auth:logout", () => {
@@ -290,8 +300,10 @@ function registerIpc() {
   handle("branch:set", async ({ branchCode }) => {
     const a = auth();
     if (!a) throw new ValidationError("Sign in first");
-    if (a.branchCode && a.branchCode !== branchCode) requireAdmin();
+    const change = a.branchCode && a.branchCode !== branchCode;
+    if (change) requireSettings();
     const seeded = await applyBranch(branchCode);
+    if (change) settingsLock.saved();
     return { auth: publicAuth(), seeded };
   });
 
@@ -299,8 +311,9 @@ function registerIpc() {
   handle("indicator:presets", () => ({ presets: PRESETS }));
   handle("indicator:config", () => ({ config: indicatorConfig(), profile: session?.profile || null, status: indicatorStatus }));
   handle("indicator:save", ({ presetId, overrides }) => {
-    requireAdmin();
+    requireSettings();
     store.setSetting("indicator", { presetId, overrides: overrides || {} });
+    settingsLock.saved();
     startIndicator();
     return { profile: session.profile };
   });
@@ -323,7 +336,7 @@ function registerIpc() {
     return { saved: true, filePath };
   });
   handle("indicator:import", async () => {
-    requireAdmin();
+    requireSettings();
     const { canceled, filePaths } = await dialog.showOpenDialog(win, { title: "Load indicator profile", filters: [{ name: "Profile", extensions: ["json"] }], properties: ["openFile"] });
     if (canceled || !filePaths?.length) return { loaded: false };
     const data = JSON.parse(fs.readFileSync(filePaths[0], "utf8"));
@@ -379,10 +392,11 @@ function registerIpc() {
 
   // tare weights
   handle("tare:list", () => ({ tares: store.tares() }));
-  handle("tare:save", ({ vehicleNumber, wheelType, tareWeight, fromBridge }) => {
+  // The empty weight always comes from the indicator; a typed weight is ignored.
+  handle("tare:save", ({ vehicleNumber, wheelType }) => {
     const a = auth();
     if (!a?.branchCode) throw new ValidationError("Choose the branch in Settings first");
-    const t = fromBridge ? currentWeight() : Number(tareWeight);
+    const t = currentWeight();
     const row = store.saveTare({ vehicleNumber, wheelType, tareWeight: t, branchCode: a.branchCode, userId: a.username || "" });
     sync.run();
     return { tare: row };
@@ -411,8 +425,21 @@ function registerIpc() {
 
   // settings
   handle("settings:get", () => ({ print: printSettings(), weighing: weighingSettings(), pdfFolder: pdfFolder() }));
-  handle("settings:save-print", ({ print }) => { requireAdmin(); store.setSetting("print", { ...printSettings(), ...print }); return { print: printSettings() }; });
-  handle("settings:save-weighing", ({ weighing }) => { requireAdmin(); store.setSetting("weighing", { ...weighingSettings(), ...weighing }); simulated = null; return { weighing: weighingSettings() }; });
+  handle("settings:save-print", ({ print }) => {
+    requireSettings();
+    store.setSetting("print", { ...printSettings(), ...print });
+    settingsLock.saved();
+    return { print: printSettings() };
+  });
+  handle("settings:save-weighing", ({ weighing }) => {
+    requireSettings();
+    store.setSetting("weighing", { ...weighingSettings(), ...weighing });
+    settingsLock.saved();
+    simulated = null;
+    return { weighing: weighingSettings() };
+  });
+  handle("settings:lock", () => ({ lock: settingsLock.state() }));
+  handle("settings:lock-check", async () => ({ lock: await settingsLock.refresh() }));
   handle("settings:pick-folder", async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(win, { properties: ["openDirectory", "createDirectory"] });
     return canceled ? { folder: "" } : { folder: filePaths[0] };
@@ -543,6 +570,15 @@ app.whenReady().then(() => {
     log,
   });
   updater.on("state", (s) => send("wb:update", s));
+  settingsLock = new SettingsLock(store, {
+    checkin: (body) => sync.checkinTerminal(body),
+    info: () => ({ branchCode: auth()?.branchCode || "", machineName: os.hostname(), appVersion: app.getVersion() }),
+    log,
+  });
+  settingsLock.on("state", (s) => send("wb:settings-lock", s));
+  // the web admin's "allow changes" reaches the PC within a minute
+  setTimeout(() => settingsLock.refresh().catch(() => {}), 3000);
+  setInterval(() => settingsLock.refresh().catch(() => {}), 60 * 1000);
   registerIpc();
   createWindow();
   startIndicator();

@@ -115,7 +115,7 @@ export default function WeighingPage({ active }) {
       okText: "Save tare weight",
       onOk: async () => {
         try {
-          const r = await wb("saveTare", { vehicleNumber: form.vehicleNumber, wheelType: form.wheelType, fromBridge: true });
+          const r = await wb("saveTare", { vehicleNumber: form.vehicleNumber, wheelType: form.wheelType });
           message.success(`Tare weight saved (${r.tare.voucher_number})`);
           setBump((n) => n + 1);
         } catch (e) { message.error(e.message); }
@@ -236,7 +236,7 @@ export default function WeighingPage({ active }) {
   );
 }
 
-function WeightPanel({ reading, fresh, status }) {
+export function WeightPanel({ reading, fresh, status }) {
   const connected = status?.state === "connected";
   const w = fresh ? reading.weight : null;
   const color = !fresh ? "#546e7a" : reading.overload ? "#ff5252" : reading.stable ? "#00e676" : "#ffd54f";
