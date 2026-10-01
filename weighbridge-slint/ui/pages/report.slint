@@ -1,0 +1,65 @@
+import { LineEdit } from "std-widgets.slint";
+import { Theme, Btn, Card, Field, Note, Table, Stat } from "../theme.slint";
+import { WB } from "../state.slint";
+
+// Qt's Daily Weights report: vouchers for a period, total amount, last voucher, reprint.
+export component ReportPage inherits VerticalLayout {
+    spacing: 12px;
+    Card {
+        HorizontalLayout {
+            spacing: 12px;
+            Field {
+                label: "From (dd/mm/yyyy hh:mm)";
+                LineEdit {
+                    width: 180px;
+                    text <=> WB.report-from;
+                    accepted => { WB.report-load(); }
+                }
+            }
+            Field {
+                label: "To";
+                LineEdit {
+                    width: 180px;
+                    text <=> WB.report-to;
+                    accepted => { WB.report-load(); }
+                }
+            }
+            VerticalLayout {
+                alignment: end;
+                HorizontalLayout {
+                    spacing: 8px;
+                    Btn { text: "Show"; primary: true; clicked => { WB.report-load(); } }
+                    Btn { text: "Today"; clicked => { WB.report-today(); } }
+                    Btn { text: "Yesterday"; clicked => { WB.report-day(-1); } }
+                    Btn { text: "Export CSV"; clicked => { WB.report-csv(); } }
+                }
+            }
+            Rectangle { }
+            Stat { label: "Vouchers"; value: WB.report-count; }
+            Stat { label: "Total amount"; value: WB.report-total; }
+            Stat { label: "Last voucher"; value: WB.report-last; }
+        }
+        if WB.report-error != "": Note { text: WB.report-error; kind: "error"; }
+    }
+    Card {
+        vertical-stretch: 1;
+        Table {
+            columns: [
+                { title: "Voucher", width: 80 },
+                { title: "Date", width: 136 },
+                { title: "Vehicle", width: 0 },
+                { title: "Wheel", width: 100 },
+                { title: "Material", width: 110 },
+                { title: "Weight", width: 90, right: true },
+                { title: "First wt", width: 90, right: true },
+                { title: "Net", width: 90, right: true },
+                { title: "Amount", width: 90, right: true },
+            ];
+            tag-width: 90;
+            action: "Reprint";
+            rows: WB.report-rows;
+            empty-text: "No vouchers in this period";
+            action-clicked(i) => { WB.report-reprint(i); }
+        }
+    }
+}

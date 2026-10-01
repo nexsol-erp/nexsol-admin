@@ -1,0 +1,67 @@
+import { LineEdit } from "std-widgets.slint";
+import { Theme, Btn, Card, Field, Note, Table } from "../theme.slint";
+import { WB } from "../state.slint";
+
+// Charge per wheel type. Kept on the server (every branch and the web admin see the same list)
+// and cached here, so weighing works offline. Changed in the web admin (Weighbridge Rates); this
+// PC can change them only while the web admin allows it (Weighbridge PCs).
+export component RatesPage inherits VerticalLayout {
+    spacing: 12px;
+    alignment: start;
+    if WB.rates-can-edit: Card {
+        title: "Set a rate";
+        width: 800px;
+        HorizontalLayout {
+            spacing: 10px;
+            alignment: start;
+            LineEdit {
+                width: 260px;
+                height: 40px;
+                placeholder-text: "Wheel type, e.g. 10 WHEEL";
+                text <=> WB.new-wheel;
+            }
+            LineEdit {
+                width: 160px;
+                height: 40px;
+                placeholder-text: "Rate (₹)";
+                input-type: decimal;
+                text <=> WB.new-rate;
+                accepted => { WB.rate-add(); }
+            }
+            Btn {
+                primary: true;
+                text: "Save";
+                min-height: 40px;
+                busy: WB.rate-busy;
+                clicked => { WB.rate-add(); }
+            }
+        }
+        Text {
+            text: "Needs the internet. Changing an existing wheel type's rate applies from now on.";
+            color: Theme.faint;
+            font-size: Theme.small;
+        }
+    }
+    if !WB.rates-can-edit: Note {
+        width: 800px;
+        text: WB.rates-note;
+        kind: "info";
+    }
+    Card {
+        title: "Current rates";
+        width: 800px;
+        HorizontalLayout {
+            alignment: start;
+            Btn { text: "Refresh"; clicked => { WB.rates-refresh(); } }
+        }
+        Table {
+            height: 420px;
+            columns: [
+                { title: "Wheel type", width: 0 },
+                { title: "Rate", width: 160, right: true },
+            ];
+            rows: WB.rate-rows;
+            empty-text: "No rates yet. They are set in the web admin (Weighbridge Rates).";
+        }
+    }
+}

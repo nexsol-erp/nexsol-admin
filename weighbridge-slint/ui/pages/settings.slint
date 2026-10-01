@@ -1,0 +1,727 @@
+import { LineEdit, TextEdit, ScrollView } from "std-widgets.slint";
+import { Theme, Btn, Card, Field, Note, Table, Select, Segmented, Tag, LinkText } from "../theme.slint";
+import { WB } from "../state.slint";
+import { CameraView } from "weighing.slint";
+
+// A switch that only shows `checked`; a click asks for the other value through toggled().
+component Toggle inherits HorizontalLayout {
+    in property <string> text;
+    in property <bool> enabled: true;
+    in property <bool> checked;
+    callback toggled(bool);
+    spacing: 8px;
+    alignment: start;
+    VerticalLayout {
+        alignment: center;
+        Rectangle {
+            width: 40px;
+            height: 20px;
+            border-radius: 10px;
+            background: !root.enabled ? #d5dbe1 : root.checked ? Theme.navy : #ffffff;
+            border-width: root.checked && root.enabled ? 0px : 1px;
+            border-color: #8a96a3;
+            Rectangle {
+                x: root.checked ? parent.width - self.width - 4px : 4px;
+                width: 12px;
+                height: 12px;
+                border-radius: 6px;
+                background: root.checked ? #ffffff : #5f6b7a;
+                animate x { duration: 120ms; }
+            }
+            TouchArea {
+                enabled: root.enabled;
+                mouse-cursor: root.enabled ? pointer : default;
+                clicked => { root.toggled(!root.checked); }
+            }
+        }
+    }
+    Text {
+        text: root.text;
+        vertical-alignment: center;
+        color: root.enabled ? Theme.text : Theme.muted;
+        wrap: word-wrap;
+    }
+}
+
+component Input inherits LineEdit {
+    in property <bool> mono;
+    height: 34px;
+    font-family: root.mono ? "Consolas" : "";
+}
+
+// ── Indicator ────────────────────────────────────────────────────────────────
+// Everything that differs between indicator makes is a field here, so a new model is set up on
+// site: pick the closest preset, watch the raw data, adjust, save.
+component IndicatorSettings inherits VerticalLayout {
+    property <bool> ro: !WB.is-admin;
+    spacing: 12px;
+    Card {
+        title: "Indicator model";
+        HorizontalLayout {
+            spacing: 12px;
+            Field {
+                label: "Preset";
+                help: WB.preset-help;
+                horizontal-stretch: 1;
+                Select {
+                    enabled: !ro;
+                    labels: WB.preset-names;
+                    values: WB.preset-ids;
+                    value: WB.ind.preset;
+                    picked(v) => { WB.preset-picked(v); }
+                }
+            }
+            Field {
+                label: "Connection";
+                horizontal-stretch: 1;
+                HorizontalLayout {
+                    alignment: start;
+                    Segmented {
+                        enabled: !ro;
+                        options: ["Serial (COM port)", "Network (TCP/IP)"];
+                        values: ["serial", "tcp"];
+                        value: WB.ind.conn;
+                        picked(v) => { WB.ind.conn = v; }
+                    }
+                }
+            }
+            VerticalLayout {
+                alignment: start;
+                Tag {
+                    text: WB.ind-status;
+                    kind: WB.ind-connected ? "success" : "error";
+                }
+            }
+        }
+        if WB.ind.conn == "tcp": HorizontalLayout {
+            spacing: 12px;
+            Field {
+                label: "Indicator / converter IP address";
+                Input { enabled: !ro; text <=> WB.ind.host; placeholder-text: "192.168.1.50"; }
+            }
+            Field {
+                label: "TCP port";
+                Input { enabled: !ro; text <=> WB.ind.port; input-type: number; }
+            }
+            Rectangle { }
+        }
+        if WB.ind.conn != "tcp": VerticalLayout {
+            spacing: 10px;
+            HorizontalLayout {
+                spacing: 12px;
+                Field {
+                    label: "COM port";
+                    HorizontalLayout {
+                        spacing: 6px;
+                        Select {
+                            enabled: !ro;
+                            labels: WB.port-labels;
+                            values: WB.ports;
+                            value: WB.ind.path;
+                            placeholder: "Choose the port";
+                            picked(v) => { WB.ind.path = v; }
+                        }
+                        Btn { text: "Refresh"; clicked => { WB.refresh-ports(); } }
+                    }
+                }
+                Field {
+                    label: "Baud rate";
+                    Select {
+                        enabled: !ro;
+                        labels: ["1200", "2400", "4800", "9600", "19200", "38400", "57600", "115200"];
+                        values: ["1200", "2400", "4800", "9600", "19200", "38400", "57600", "115200"];
+                        value: WB.ind.baud;
+                        picked(v) => { WB.ind.baud = v; }
+                    }
+                }
+                Field {
+                    label: "Data bits / parity / stop bits";
+                    HorizontalLayout {
+                        spacing: 4px;
+                        Select {
+                            enabled: !ro;
+                            labels: ["5", "6", "7", "8"];
+                            values: ["5", "6", "7", "8"];
+                            value: WB.ind.data-bits;
+                            picked(v) => { WB.ind.data-bits = v; }
+                        }
+                        Select {
+                            enabled: !ro;
+                            labels: ["none", "even", "odd", "mark", "space"];
+                            values: ["none", "even", "odd", "mark", "space"];
+                            value: WB.ind.parity;
+                            picked(v) => { WB.ind.parity = v; }
+                        }
+                        Select {
+                            enabled: !ro;
+                            labels: ["1", "1.5", "2"];
+                            values: ["1", "1.5", "2"];
+                            value: WB.ind.stop-bits;
+                            picked(v) => { WB.ind.stop-bits = v; }
+                        }
+                    }
+                }
+            }
+            HorizontalLayout {
+                spacing: 12px;
+                Field {
+                    label: "Flow control";
+                    Select {
+                        enabled: !ro;
+                        labels: ["None", "Hardware (RTS/CTS)", "Software (XON/XOFF)"];
+                        values: ["none", "hardware", "software"];
+                        value: WB.ind.flow;
+                        picked(v) => { WB.ind.flow = v; }
+                    }
+                }
+                Field {
+                    label: "Raise DTR / RTS";
+                    help: "Some indicators only send when these are on";
+                    HorizontalLayout {
+                        spacing: 16px;
+                        alignment: start;
+                        Toggle { text: "DTR"; enabled: !ro; checked: WB.ind.dtr; toggled(v) => { WB.ind.dtr = v; } }
+                        Toggle { text: "RTS"; enabled: !ro; checked: WB.ind.rts; toggled(v) => { WB.ind.rts = v; } }
+                    }
+                }
+                Rectangle { }
+            }
+        }
+    }
+
+    Card {
+        title: "Data format";
+        HorizontalLayout {
+            spacing: 12px;
+            Field {
+                label: "Output mode";
+                HorizontalLayout {
+                    alignment: start;
+                    Segmented {
+                        enabled: !ro;
+                        options: ["Continuous", "Polled"];
+                        values: ["continuous", "poll"];
+                        value: WB.ind.mode;
+                        picked(v) => { WB.ind.mode = v; }
+                    }
+                }
+            }
+            if WB.ind.mode == "poll": Field {
+                label: "Poll command";
+                help: "e.g. SI<CR><LF>, W<CR>, P, \\x05";
+                Input { mono: true; enabled: !ro; text <=> WB.ind.poll-command; }
+            }
+            if WB.ind.mode == "poll": Field {
+                label: "Poll every (ms)";
+                Input { enabled: !ro; text <=> WB.ind.poll-interval; input-type: number; }
+            }
+            if WB.ind.mode != "poll": Rectangle { }
+        }
+        HorizontalLayout {
+            spacing: 12px;
+            Field {
+                label: "Framing";
+                Select {
+                    enabled: !ro;
+                    labels: ["Start and end markers", "Start marker + fixed length"];
+                    values: ["delimited", "fixed"];
+                    value: WB.ind.frame-type;
+                    picked(v) => { WB.ind.frame-type = v; }
+                }
+            }
+            Field {
+                label: "Start marker";
+                help: "<STX>, =, blank for none";
+                Input { mono: true; enabled: !ro; text <=> WB.ind.frame-start; }
+            }
+            if WB.ind.frame-type == "fixed": Field {
+                label: "Message length (bytes after start)";
+                Input { enabled: !ro; text <=> WB.ind.frame-length; input-type: number; }
+            }
+            if WB.ind.frame-type != "fixed": Field {
+                label: "End marker";
+                help: "<CR>, <LF>, <ETX>; use | for either";
+                Input { mono: true; enabled: !ro; text <=> WB.ind.frame-end; }
+            }
+        }
+        HorizontalLayout {
+            spacing: 12px;
+            Field {
+                label: "Decoder";
+                Select {
+                    enabled: !ro;
+                    labels: ["Pattern (text formats)", "Fixed positions", "Mettler Toledo status bytes"];
+                    values: ["regex", "fixed", "toledo"];
+                    value: WB.ind.decode-type;
+                    picked(v) => { WB.ind.decode-type = v; }
+                }
+            }
+            if WB.ind.decode-type == "regex": Field {
+                label: "Weight pattern";
+                help: "Regular expression with a (?<weight>…) group; optional sign, unit, status groups";
+                horizontal-stretch: 2;
+                Input { mono: true; enabled: !ro; text <=> WB.ind.pattern; }
+            }
+            if WB.ind.decode-type == "fixed": Field {
+                label: "Weight starts at / length";
+                HorizontalLayout {
+                    spacing: 4px;
+                    Input { enabled: !ro; text <=> WB.ind.weight-at; input-type: number; }
+                    Input { enabled: !ro; text <=> WB.ind.weight-length; input-type: number; }
+                }
+            }
+            if WB.ind.decode-type == "fixed": Field {
+                label: "Sign at / decimals digit at";
+                help: "Positions count from 0; leave blank if not sent";
+                HorizontalLayout {
+                    spacing: 4px;
+                    Input { enabled: !ro; text <=> WB.ind.sign-at; input-type: number; }
+                    Input { enabled: !ro; text <=> WB.ind.decimals-at; input-type: number; }
+                }
+            }
+            if WB.ind.decode-type == "toledo": Field {
+                label: "Take kg/lb from status byte";
+                Toggle { enabled: !ro; checked: WB.ind.unit-from-status; toggled(v) => { WB.ind.unit-from-status = v; } }
+            }
+            if WB.ind.decode-type == "toledo": Rectangle { }
+        }
+        if WB.ind.decode-type == "regex": HorizontalLayout {
+            spacing: 12px;
+            Field {
+                label: "Digits sent reversed";
+                Toggle { enabled: !ro; checked: WB.ind.reverse; toggled(v) => { WB.ind.reverse = v; } }
+            }
+            Field {
+                label: "Stable when status matches";
+                Input { mono: true; enabled: !ro; text <=> WB.ind.stable-pattern; }
+            }
+            Field {
+                label: "Moving when status matches";
+                Input { mono: true; enabled: !ro; text <=> WB.ind.motion-pattern; }
+            }
+        }
+        Rectangle { height: 1px; background: Theme.border; }
+        HorizontalLayout {
+            spacing: 12px;
+            Field {
+                label: "Unit when none is sent";
+                Select {
+                    enabled: !ro;
+                    labels: ["kg", "t", "lb", "g"];
+                    values: ["kg", "t", "lb", "g"];
+                    value: WB.ind.unit;
+                    picked(v) => { WB.ind.unit = v; }
+                }
+            }
+            Field {
+                label: "Implied decimals";
+                Input { enabled: !ro; text <=> WB.ind.implied-decimals; input-type: number; }
+            }
+            Field {
+                label: "Decimal comma";
+                Toggle { enabled: !ro; checked: WB.ind.decimal-comma; toggled(v) => { WB.ind.decimal-comma = v; } }
+            }
+            Field {
+                label: "Multiply by";
+                Input { enabled: !ro; text <=> WB.ind.multiplier; input-type: decimal; }
+            }
+            Field {
+                label: "Round to (kg)";
+                Input { enabled: !ro; text <=> WB.ind.resolution; input-type: decimal; }
+            }
+        }
+        HorizontalLayout {
+            spacing: 12px;
+            Field {
+                label: "No signal after (ms)";
+                Input { enabled: !ro; text <=> WB.ind.no-signal-ms; input-type: number; }
+            }
+            Field {
+                label: "Stable after N same readings";
+                Input { enabled: !ro; text <=> WB.ind.stable-count; input-type: number; }
+            }
+            Field {
+                label: "…within (kg)";
+                Input { enabled: !ro; text <=> WB.ind.stable-tol; input-type: decimal; }
+            }
+            Field {
+                label: "Empty bridge up to (kg)";
+                Input { enabled: !ro; text <=> WB.ind.zero-band; input-type: decimal; }
+            }
+            Field {
+                label: "Bridge engaged above (kg)";
+                Input { enabled: !ro; text <=> WB.ind.engage; input-type: decimal; }
+            }
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: start;
+            Btn { primary: true; enabled: !ro; text: "Save and reconnect"; clicked => { WB.ind-save(); } }
+            Btn { text: "Export profile"; clicked => { WB.ind-export(); } }
+            Btn { enabled: !ro; text: "Import profile"; clicked => { WB.ind-import(); } }
+            Btn { text: "Reconnect"; clicked => { WB.ind-reconnect(); } }
+        }
+    }
+
+    // Raw bytes from the indicator as they arrive, and what the current settings make of them.
+    Card {
+        title: "Raw data monitor";
+        HorizontalLayout {
+            spacing: 10px;
+            alignment: start;
+            Toggle {
+                text: "Show live data";
+                checked: WB.monitor-on;
+                toggled(v) => { WB.monitor-toggled(v); }
+            }
+            Btn { text: "Clear"; clicked => { WB.monitor-clear(); } }
+        }
+        Rectangle {
+            background: #10161d;
+            border-radius: 6px;
+            height: 200px;
+            clip: true;
+            ScrollView {
+                content-height: max(self.visible-height, mon.preferred-height + 16px);
+                content-y: min(0px, self.visible-height - self.content-height);
+                mon := Text {
+                    x: 10px;
+                    y: 8px;
+                    width: parent.width - 20px;
+                    text: WB.monitor-text != "" ? WB.monitor-text : WB.monitor-on ? "Waiting for data…" : "Turn on to see exactly what the indicator sends. BAD lines are messages the current settings could not read.";
+                    color: #b9f6ca;
+                    font-family: "Consolas";
+                    font-size: 13px;
+                    wrap: word-wrap;
+                }
+            }
+        }
+        Text {
+            text: "Test the settings above on a sample, before saving. Paste text from the monitor (control characters as <STX>, <CR>, \\x02 …).";
+            wrap: word-wrap;
+        }
+        HorizontalLayout {
+            spacing: 6px;
+            Input {
+                mono: true;
+                text <=> WB.sample;
+                placeholder-text: "<STX>001230<CR>";
+                accepted => { WB.ind-test(); }
+            }
+            Btn { text: "Test"; clicked => { WB.ind-test(); } }
+        }
+        if WB.tested: Table {
+            height: 160px;
+            columns: [
+                { title: "Message", width: 0 },
+                { title: "Weight (kg)", width: 140, right: true },
+                { title: "Stable", width: 140 },
+            ];
+            rows: WB.test-rows;
+            empty-text: "No complete message found: check the start and end markers";
+        }
+    }
+}
+
+// ── Printing ─────────────────────────────────────────────────────────────────
+component PrintSettings inherits Card {
+    property <bool> ro: !WB.is-admin;
+    title: "Voucher printing";
+    HorizontalLayout {
+        spacing: 12px;
+        Field {
+            label: "Printer";
+            horizontal-stretch: 2;
+            Select {
+                enabled: !ro;
+                blank-is-value: true;
+                labels: WB.printer-names;
+                values: WB.printer-values;
+                value: WB.print.printer;
+                picked(v) => { WB.print.printer = v; }
+            }
+        }
+        Field {
+            label: "Paper";
+            horizontal-stretch: 1;
+            Select {
+                enabled: !ro;
+                labels: ["A5 (like the old app)", "80 mm receipt", "Dot-matrix (plain text)"];
+                values: ["a5", "80mm", "text"];
+                value: WB.print.layout;
+                picked(v) => { WB.print.layout = v; }
+            }
+        }
+        Field {
+            label: "Copies";
+            Select {
+                enabled: !ro;
+                labels: ["1", "2", "3", "4", "5"];
+                values: ["1", "2", "3", "4", "5"];
+                value: WB.print.copies;
+                picked(v) => { WB.print.copies = v; }
+            }
+        }
+    }
+    if WB.print.layout == "text": HorizontalLayout {
+        spacing: 12px;
+        Field {
+            label: "Characters per line";
+            help: "40 on a 3-inch roll or narrow form, 80 on 9-inch paper";
+            Input { enabled: !ro; text <=> WB.print.text-width; input-type: number; }
+        }
+        Field {
+            label: "Feed to the next form after each voucher";
+            Toggle { enabled: !ro; checked: WB.print.form-feed; toggled(v) => { WB.print.form-feed = v; } }
+        }
+        Rectangle { }
+    }
+    HorizontalLayout {
+        spacing: 24px;
+        alignment: start;
+        Toggle { text: "Print after every save"; enabled: !ro; checked: WB.print.auto-print; toggled(v) => { WB.print.auto-print = v; } }
+        Toggle { text: "Keep a PDF copy"; enabled: !ro; checked: WB.print.keep-pdf; toggled(v) => { WB.print.keep-pdf = v; } }
+    }
+    Field {
+        label: "PDF folder";
+        HorizontalLayout {
+            spacing: 6px;
+            Input { enabled: false; text: WB.pdf-folder-shown; }
+            Btn { enabled: !ro; text: "Change"; clicked => { WB.pick-pdf-folder(); } }
+            Btn { text: "Open folder"; clicked => { WB.open-pdf-folder(); } }
+        }
+    }
+    HorizontalLayout {
+        spacing: 12px;
+        Field {
+            label: "Header lines (first line is the title)";
+            TextEdit {
+                enabled: !ro;
+                height: 120px;
+                text <=> WB.print.header;
+            }
+        }
+        Field {
+            label: "Footer";
+            Input { enabled: !ro; text <=> WB.print.footer; }
+            Rectangle { }
+        }
+    }
+    HorizontalLayout {
+        spacing: 8px;
+        alignment: start;
+        Btn { primary: true; enabled: !ro; text: "Save"; clicked => { WB.print-save(); } }
+        Btn { text: "Print a test voucher"; clicked => { WB.print-test(); } }
+    }
+}
+
+// ── Weighing ─────────────────────────────────────────────────────────────────
+component WeighingSettings inherits Card {
+    title: "Weighing";
+    Toggle {
+        text: "Save only on a stable weight";
+        enabled: WB.is-admin;
+        checked: WB.require-stable;
+        toggled(v) => { WB.require-stable = v; WB.weighing-save(); }
+    }
+    Toggle {
+        text: "Simulator (for training and testing without a vehicle)";
+        enabled: WB.is-admin;
+        checked: WB.simulator;
+        toggled(v) => { WB.simulator = v; WB.weighing-save(); }
+    }
+    if WB.simulator: HorizontalLayout {
+        spacing: 8px;
+        alignment: start;
+        Input { width: 160px; text <=> WB.sim-weight; input-type: decimal; }
+        Text { text: "kg"; vertical-alignment: center; }
+        Btn { text: "Put on bridge"; clicked => { WB.simulate(true); } }
+        Btn { text: "Clear"; clicked => { WB.simulate(false); } }
+    }
+    Text {
+        text: "The amount is always worked out from the wheel type rate: a return weighing of a paid first weighing is free, anything else is charged in full.";
+        color: Theme.muted;
+        wrap: word-wrap;
+    }
+}
+
+// ── Camera ───────────────────────────────────────────────────────────────────
+// A photo is taken each time a weighing is saved, kept on this PC and uploaded with it.
+component CameraSettings inherits Card {
+    property <bool> ro: !WB.is-admin;
+    title: "Camera";
+    Text {
+        text: "A photo is taken the moment a weighing is saved and kept on this PC. It can also be uploaded with the weighing (seen in the web admin's Weighbridge Entry) and printed on the voucher.";
+        color: Theme.muted;
+        wrap: word-wrap;
+    }
+    HorizontalLayout {
+        alignment: start;
+        Segmented {
+            enabled: !ro;
+            options: ["No camera", "USB / built-in camera", "IP camera"];
+            values: ["none", "webcam", "url"];
+            value: WB.cam.source;
+            picked(v) => { WB.cam.source = v; WB.cam-changed(); }
+        }
+    }
+    if WB.cam.source == "webcam": HorizontalLayout {
+        spacing: 8px;
+        alignment: start;
+        Select {
+            width: 380px;
+            enabled: !ro;
+            placeholder: WB.webcam-names.length == 0 ? "No camera found" : "Choose the camera";
+            labels: WB.webcam-names;
+            values: WB.webcam-names;
+            value: WB.cam.device;
+            picked(v) => { WB.cam.device = v; WB.cam-changed(); }
+        }
+        Btn { text: "Refresh list"; clicked => { WB.cam-refresh(); } }
+    }
+    if WB.cam.source == "url": Field {
+        label: "Snapshot address";
+        help: "The camera's snapshot (still picture) address. Hikvision: /ISAPI/Streaming/channels/101/picture · Dahua: /cgi-bin/snapshot.cgi";
+        HorizontalLayout {
+            spacing: 6px;
+            Input {
+                enabled: !ro;
+                text <=> WB.cam.url;
+                placeholder-text: "http://user:password@192.168.1.64/ISAPI/Streaming/channels/101/picture";
+                edited(t) => { WB.cam-changed(); }
+            }
+            Btn { text: "Test"; clicked => { WB.cam-test(); } }
+        }
+    }
+    if WB.cam.source != "none": VerticalLayout {
+        spacing: 10px;
+        Toggle {
+            text: "Upload photos to the server (seen in the web admin). Off: photos stay on this PC only.";
+            enabled: !ro;
+            checked: WB.cam.upload;
+            toggled(v) => { WB.cam.upload = v; WB.cam-changed(); }
+        }
+        Toggle {
+            text: "Print the photo on the voucher";
+            enabled: !ro;
+            checked: WB.cam.print-photo;
+            toggled(v) => { WB.cam.print-photo = v; WB.cam-changed(); }
+        }
+    }
+    if WB.cam.source != "none" && WB.camera-on: CameraView { title: "Preview (saved settings)"; }
+    HorizontalLayout {
+        spacing: 8px;
+        alignment: start;
+        Btn { primary: true; enabled: !ro && WB.cam-dirty; text: "Save"; clicked => { WB.cam-save(); } }
+        Btn { text: "Open photo folder"; clicked => { WB.open-photo-folder(); } }
+    }
+}
+
+// ── Branch & data ────────────────────────────────────────────────────────────
+component Row inherits Rectangle {
+    in property <string> label;
+    in property <string> value;
+    min-height: 36px;
+    border-width: 1px;
+    border-color: Theme.border;
+    HorizontalLayout {
+        spacing: 10px;
+        Rectangle {
+            width: 200px;
+            background: #f7f9fb;
+            Text { x: 10px; text: root.label; color: Theme.muted; vertical-alignment: center; height: parent.height; }
+        }
+        Text {
+            text: root.value;
+            vertical-alignment: center;
+            wrap: word-wrap;
+            horizontal-stretch: 1;
+        }
+    }
+}
+
+component DataSettings inherits Card {
+    VerticalLayout {
+        Row { label: "Server"; value: WB.data-server; }
+        Row { label: "Company"; value: WB.data-company; }
+        Row { label: "Branch"; value: WB.branch; }
+        Row { label: "Waiting to upload"; value: WB.data-waiting; }
+        Row { label: "Last sync"; value: WB.data-last-sync; }
+        Row { label: "App version"; value: WB.data-version; }
+    }
+    HorizontalLayout {
+        spacing: 8px;
+        alignment: start;
+        Btn { text: "Sync now"; clicked => { WB.sync-now(); } }
+        Btn { text: "Refresh history from server"; clicked => { WB.reseed(); } }
+        Btn { text: "Open log folder"; clicked => { WB.open-logs(); } }
+        Btn { text: "Check for updates"; busy: WB.update-busy; clicked => { WB.check-update(); } }
+        Btn { text: "Change branch"; danger: true; enabled: WB.is-admin; clicked => { WB.change-branch(); } }
+    }
+}
+
+export component SettingsPage inherits VerticalLayout {
+    spacing: 12px;
+    if !WB.is-admin: Note { text: "Settings are read-only. Sign in as an admin to change them."; kind: "info"; }
+    if WB.is-admin && WB.lock-banner != "": Note { text: WB.lock-banner; kind: "warning"; }
+    if WB.server-copy-shown: Note {
+        text: WB.server-copy-text;
+        kind: "default";
+        Btn {
+            text: "Fetch from server";
+            enabled: WB.can-fetch-copy;
+            busy: WB.copy-busy;
+            clicked => { WB.fetch-copy(); }
+        }
+    }
+    HorizontalLayout {
+        spacing: 12px;
+        vertical-stretch: 1;
+        VerticalLayout {
+            width: 170px;
+            spacing: 2px;
+            alignment: start;
+            for t[i] in [
+                { key: "indicator", label: "Indicator" },
+                { key: "printing", label: "Printing" },
+                { key: "weighing", label: "Weighing" },
+                { key: "camera", label: "Camera" },
+                { key: "data", label: "Branch & data" },
+            ]: Rectangle {
+                height: 40px;
+                border-radius: 6px;
+                background: WB.settings-tab == t.key ? Theme.blue-bg : sta.has-hover ? #eef2f7 : transparent;
+                Rectangle {
+                    x: 0;
+                    width: 3px;
+                    height: parent.height - 12px;
+                    background: WB.settings-tab == t.key ? Theme.navy : transparent;
+                }
+                Text {
+                    x: 14px;
+                    text: t.label;
+                    color: WB.settings-tab == t.key ? Theme.navy : Theme.text;
+                    font-weight: WB.settings-tab == t.key ? 600 : 400;
+                    vertical-alignment: center;
+                    height: parent.height;
+                }
+                sta := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { WB.settings-tab = t.key; WB.settings-shown(t.key); }
+                }
+            }
+        }
+        ScrollView {
+            VerticalLayout {
+                padding-right: 12px;
+                padding-bottom: 12px;
+                alignment: start;
+                if WB.settings-tab == "indicator": IndicatorSettings { }
+                if WB.settings-tab == "printing": PrintSettings { }
+                if WB.settings-tab == "weighing": WeighingSettings { }
+                if WB.settings-tab == "camera": CameraSettings { }
+                if WB.settings-tab == "data": DataSettings { }
+            }
+        }
+    }
+}

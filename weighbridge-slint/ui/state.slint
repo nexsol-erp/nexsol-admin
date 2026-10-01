@@ -1,0 +1,312 @@
+// Everything the screens show and every action they can take. Rust (src/ui.rs) fills the
+// properties and answers the callbacks; the screens only display and forward.
+
+import { TableRow, Choice } from "theme.slint";
+
+export struct Toast {
+    text: string,
+    // success | error | warning | info
+    kind: string,
+}
+
+export struct LastVoucher {
+    shown: bool,
+    id: string,
+    voucher: string,
+    vehicle: string,
+    weight: string,
+    net: string,
+    amount: string,
+    printed: bool,
+    photo: bool,
+}
+
+// The indicator profile as the Settings screen edits it (all text, converted in Rust).
+export struct IndForm {
+    preset: string,
+    conn: string,
+    path: string,
+    baud: string,
+    data-bits: string,
+    parity: string,
+    stop-bits: string,
+    flow: string,
+    dtr: bool,
+    rts: bool,
+    host: string,
+    port: string,
+    mode: string,
+    poll-command: string,
+    poll-interval: string,
+    frame-type: string,
+    frame-start: string,
+    frame-end: string,
+    frame-length: string,
+    decode-type: string,
+    pattern: string,
+    reverse: bool,
+    stable-pattern: string,
+    motion-pattern: string,
+    weight-at: string,
+    weight-length: string,
+    sign-at: string,
+    decimals-at: string,
+    unit-from-status: bool,
+    unit: string,
+    implied-decimals: string,
+    decimal-comma: bool,
+    multiplier: string,
+    resolution: string,
+    no-signal-ms: string,
+    stable-count: string,
+    stable-tol: string,
+    zero-band: string,
+    engage: string,
+}
+
+export struct PrintForm {
+    // "" = Windows default printer
+    printer: string,
+    // a5 | 80mm | text
+    layout: string,
+    copies: string,
+    auto-print: bool,
+    keep-pdf: bool,
+    pdf-folder: string,
+    header: string,
+    footer: string,
+    text-width: string,
+    form-feed: bool,
+}
+
+export struct CamForm {
+    // none | webcam | url
+    source: string,
+    // camera name
+    device: string,
+    url: string,
+    upload: bool,
+    print-photo: bool,
+}
+
+export global WB {
+    // ── app ──────────────────────────────────────────────────────────────────
+    in property <string> version;
+    // server | login | branch | main
+    in property <string> screen: "main";
+    in property <[Toast]> toasts;
+    // weigh | tares | report | rates | settings
+    in-out property <string> tab: "weigh";
+    callback tab-shown(string);
+
+    // a yes/no question (Save tare, Fetch settings, Change branch)
+    in property <string> ask-kind;
+    in property <string> ask-title;
+    in property <string> ask-text;
+    in property <string> ask-ok;
+    callback answered(string, bool);
+
+    // ── connect / sign in / branch ───────────────────────────────────────────
+    in-out property <string> server-address;
+    in property <string> server-error;
+    in property <bool> server-busy;
+    callback connect();
+
+    in property <string> login-subtitle;
+    in-out property <string> username;
+    in-out property <string> password;
+    in property <string> login-error;
+    in property <bool> login-busy;
+    callback login();
+
+    in property <[string]> branch-names;
+    in property <[string]> branch-codes;
+    in-out property <string> branch-code;
+    in property <string> branch-error;
+    in property <bool> branch-busy;
+    callback choose-branch();
+
+    // ── header ───────────────────────────────────────────────────────────────
+    in property <string> branch;
+    in property <string> user;
+    in property <bool> is-admin;
+    in property <string> sync-text: "…";
+    in property <string> sync-kind: "default";
+    in property <int> pending;
+    in property <string> sync-tip;
+    in property <bool> version-busy;
+    in property <bool> update-ready;
+    in property <string> update-version;
+    callback sign-out();
+    callback sync-now();
+    callback check-update();
+    callback install-update();
+
+    // ── weight ───────────────────────────────────────────────────────────────
+    in property <string> weight-text: "------";
+    // off | stable | moving | overload
+    in property <string> weight-state: "off";
+    in property <string> weight-tag: "Indicator not connected";
+    in property <string> weight-tag-kind: "error";
+    in property <string> indicator-message;
+    in property <bool> simulated;
+
+    // ── weighing ─────────────────────────────────────────────────────────────
+    in-out property <string> vehicle;
+    in property <[Choice]> vehicle-suggestions;
+    in-out property <bool> vehicle-popup;
+    in property <[string]> wheel-labels;
+    in property <[string]> wheel-values;
+    in-out property <string> wheel;
+    in property <bool> wheel-locked;
+    in-out property <string> material;
+    in property <[Choice]> material-suggestions;
+    in-out property <bool> material-popup;
+    in-out property <string> mobile;
+    // none | previous | tare
+    in property <string> kind: "none";
+    in property <string> amount-text: "₹ 0.00";
+    in property <string> reason-text: "Select the wheel type";
+    in property <string> first-text: "—";
+    in property <string> first-sub;
+    in property <string> net-text: "—";
+    in property <bool> can-save;
+    in property <bool> can-tare;
+    in property <string> hint;
+    in property <bool> saving;
+    in property <[TableRow]> history;
+    in property <[TableRow]> hist-tares;
+    in property <string> history-title: "Previous weighings";
+    in property <LastVoucher> last;
+    // camera live view
+    in property <bool> camera-on;
+    in property <image> camera-image;
+    in property <bool> camera-has-image;
+    in property <string> camera-error;
+    callback vehicle-edited(string);
+    callback vehicle-picked(string);
+    callback wheel-picked(string);
+    callback material-edited(string);
+    callback material-picked(string);
+    callback mobile-edited(string);
+    callback kind-picked(string);
+    callback history-clicked(int);
+    callback tare-clicked(int);
+    callback save();
+    callback clear();
+    callback tare-from-weighing();
+    callback reprint(string);
+
+    // ── tare weights ─────────────────────────────────────────────────────────
+    in-out property <string> tare-vehicle;
+    in-out property <string> tare-wheel;
+    in property <bool> tare-wheel-locked;
+    in property <bool> tare-can-save;
+    in property <bool> tare-saving;
+    in-out property <string> tare-filter;
+    in property <[TableRow]> tare-rows;
+    callback tare-vehicle-edited(string);
+    callback tare-wheel-picked(string);
+    callback tare-save();
+    callback tare-filter-edited(string);
+
+    // ── daily report ─────────────────────────────────────────────────────────
+    in-out property <string> report-from;
+    in-out property <string> report-to;
+    in property <[TableRow]> report-rows;
+    in property <string> report-count: "0";
+    in property <string> report-total: "₹ 0.00";
+    in property <string> report-last: "—";
+    in property <string> report-error;
+    callback report-load();
+    callback report-today();
+    callback report-day(int);
+    callback report-csv();
+    callback report-reprint(int);
+
+    // ── rates ────────────────────────────────────────────────────────────────
+    in property <[TableRow]> rate-rows;
+    in property <bool> rates-can-edit;
+    in property <string> rates-note;
+    in-out property <string> new-wheel;
+    in-out property <string> new-rate;
+    in property <bool> rate-busy;
+    callback rate-add();
+    callback rates-refresh();
+
+    // ── settings ─────────────────────────────────────────────────────────────
+    in property <bool> settings-locked;
+    in property <bool> lock-checking;
+    in property <string> lock-banner;
+    // indicator | printing | weighing | camera | data
+    in-out property <string> settings-tab: "indicator";
+    callback settings-shown(string);
+    in property <bool> server-copy-shown;
+    in property <string> server-copy-text;
+    in property <bool> can-fetch-copy;
+    in property <bool> copy-busy;
+    callback check-lock();
+    callback fetch-copy();
+
+    // indicator
+    in-out property <IndForm> ind;
+    in property <[string]> preset-names;
+    in property <[string]> preset-ids;
+    in property <string> preset-help;
+    in property <[string]> ports;
+    in property <[string]> port-labels;
+    in property <string> ind-status;
+    in property <bool> ind-connected;
+    in-out property <bool> monitor-on;
+    in property <string> monitor-text;
+    in-out property <string> sample;
+    in property <[TableRow]> test-rows;
+    in property <bool> tested;
+    callback preset-picked(string);
+    callback refresh-ports();
+    callback ind-save();
+    callback ind-export();
+    callback ind-import();
+    callback ind-reconnect();
+    callback monitor-toggled(bool);
+    callback monitor-clear();
+    callback ind-test();
+
+    // printing
+    in-out property <PrintForm> print;
+    in property <[string]> printer-names;
+    in property <[string]> printer-values;
+    in property <string> pdf-folder-shown;
+    callback print-save();
+    callback print-test();
+    callback pick-pdf-folder();
+    callback open-pdf-folder();
+
+    // weighing
+    in-out property <bool> require-stable;
+    in-out property <bool> simulator;
+    in-out property <string> sim-weight: "12500";
+    callback weighing-save();
+    callback simulate(bool);
+
+    // camera
+    in-out property <CamForm> cam;
+    in property <[string]> webcam-names;
+    in property <bool> cam-dirty;
+    callback cam-changed();
+    callback cam-save();
+    callback cam-refresh();
+    callback cam-test();
+    callback open-photo-folder();
+
+    // branch & data
+    in property <string> data-server;
+    in property <string> data-company;
+    in property <string> data-waiting;
+    in property <string> data-last-sync;
+    in property <string> data-version;
+    in property <bool> update-busy;
+    callback reseed();
+    callback open-logs();
+    callback change-branch();
+}

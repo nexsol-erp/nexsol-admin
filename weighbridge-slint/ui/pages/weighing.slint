@@ -1,0 +1,350 @@
+import { LineEdit } from "std-widgets.slint";
+import { Theme, Btn, Tag, Card, Field, Note, Segmented, Table, Select, Suggestions } from "../theme.slint";
+import { WB } from "../state.slint";
+
+// The live weight, big, like the indicator itself.
+export component WeightPanel inherits Rectangle {
+    background: #10161d;
+    border-radius: 8px;
+    min-height: 150px;
+    VerticalLayout {
+        padding: 16px;
+        padding-left: 22px;
+        spacing: 6px;
+        if WB.simulated: HorizontalLayout {
+            alignment: start;
+            Tag { text: "SIMULATOR"; kind: "warning"; }
+        }
+        HorizontalLayout {
+            alignment: end;
+            spacing: 12px;
+            Text {
+                text: WB.weight-text;
+                font-size: 76px;
+                font-weight: 700;
+                font-family: "Consolas";
+                horizontal-alignment: right;
+                color: WB.weight-state == "off" ? #546e7a : WB.weight-state == "overload" ? #ff5252 : WB.weight-state == "stable" ? #00e676 : #ffd54f;
+            }
+            VerticalLayout {
+                alignment: end;
+                padding-bottom: 12px;
+                Text { text: "kg"; font-size: 30px; color: #90a4ae; }
+            }
+        }
+        HorizontalLayout {
+            spacing: 12px;
+            Tag { text: WB.weight-tag; kind: WB.weight-tag-kind; font-size: 14px; }
+            Text {
+                horizontal-stretch: 1;
+                text: WB.indicator-message;
+                color: #90a4ae;
+                font-size: Theme.small;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+    }
+}
+
+component CameraView inherits Rectangle {
+    in property <string> title: "Camera";
+    background: Theme.card;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: Theme.border;
+    VerticalLayout {
+        padding: 8px;
+        spacing: 6px;
+        HorizontalLayout {
+            spacing: 8px;
+            Text { text: root.title; font-weight: 600; font-size: 15px; vertical-alignment: center; }
+            Rectangle { }
+            if WB.camera-error != "": Tag { text: "No picture"; kind: "error"; }
+            if WB.camera-error == "": Tag { text: "Photo taken on save"; kind: "success"; }
+        }
+        Rectangle {
+            background: #111111;
+            border-radius: 4px;
+            height: 230px;
+            clip: true;
+            if WB.camera-has-image && WB.camera-error == "": Image {
+                source: WB.camera-image;
+                width: parent.width;
+                height: parent.height;
+                image-fit: contain;
+            }
+            if WB.camera-error != "" || !WB.camera-has-image: Text {
+                text: WB.camera-error != "" ? WB.camera-error : "Waiting for the camera…";
+                color: WB.camera-error != "" ? #ff8a80 : #9e9e9e;
+                wrap: word-wrap;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                width: parent.width - 24px;
+            }
+        }
+    }
+}
+
+export { CameraView }
+
+export component WeighingPage inherits Rectangle {
+    callback focus-vehicle();
+    focus-vehicle => { vehicle-box.focus(); }
+
+    // F9 or Ctrl+S saves, like a till
+    fs := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.F9 || (e.modifiers.control && (e.text == "s" || e.text == "S")) {
+                WB.save();
+                return accept;
+            }
+            if e.text == Key.Escape {
+                WB.vehicle-popup = false;
+                WB.material-popup = false;
+                return accept;
+            }
+            reject
+        }
+
+        HorizontalLayout {
+            spacing: 16px;
+            // ── left: weight and the form ──
+            VerticalLayout {
+                // fixed 54/46 split (equal preferred widths), so the columns don't move when the last voucher appears
+                horizontal-stretch: 54;
+                preferred-width: 100px;
+                spacing: 12px;
+                WeightPanel { }
+
+                Rectangle {
+                    background: Theme.card;
+                    border-radius: 8px;
+                    border-width: 1px;
+                    border-color: Theme.border;
+                    VerticalLayout {
+                        padding: 14px;
+                        spacing: 12px;
+
+                        Rectangle {
+                            z: 3;
+                            HorizontalLayout {
+                                spacing: 12px;
+                                VerticalLayout {
+                                    horizontal-stretch: 1;
+                                    preferred-width: 200px;
+                                    spacing: 3px;
+                                    Text { text: "Vehicle number"; font-size: Theme.small; color: Theme.muted; }
+                                    vehicle-box := LineEdit {
+                                        text <=> WB.vehicle;
+                                        placeholder-text: "e.g. KL07AB1234";
+                                        font-size: 18px;
+                                        height: 42px;
+                                        edited(t) => { WB.vehicle-edited(t); }
+                                        accepted => { WB.vehicle-popup = false; }
+                                    }
+                                    Suggestions {
+                                        items: WB.vehicle-suggestions;
+                                        open: WB.vehicle-popup && vehicle-box.has-focus;
+                                        picked(v) => {
+                                            WB.vehicle-popup = false;
+                                            WB.vehicle-picked(v);
+                                        }
+                                    }
+                                }
+                                VerticalLayout {
+                                    horizontal-stretch: 1;
+                                    preferred-width: 200px;
+                                    spacing: 3px;
+                                    Text {
+                                        text: WB.wheel-locked ? "Wheel type  ·  locked, change in web admin" : "Wheel type";
+                                        font-size: Theme.small;
+                                        color: Theme.muted;
+                                        overflow: elide;
+                                    }
+                                    Select {
+                                        big: true;
+                                        labels: WB.wheel-labels;
+                                        values: WB.wheel-values;
+                                        value: WB.wheel;
+                                        enabled: !WB.wheel-locked;
+                                        picked(v) => { WB.wheel-picked(v); }
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            z: 2;
+                            HorizontalLayout {
+                                spacing: 12px;
+                                VerticalLayout {
+                                    horizontal-stretch: 1;
+                                    preferred-width: 200px;
+                                    spacing: 3px;
+                                    Text { text: "Material"; font-size: Theme.small; color: Theme.muted; }
+                                    material-box := LineEdit {
+                                        text <=> WB.material;
+                                        placeholder-text: "Sand, Metal…";
+                                        height: 42px;
+                                        edited(t) => { WB.material-edited(t); }
+                                        accepted => { WB.material-popup = false; }
+                                    }
+                                    Suggestions {
+                                        items: WB.material-suggestions;
+                                        open: WB.material-popup && material-box.has-focus;
+                                        picked(v) => {
+                                            WB.material-popup = false;
+                                            WB.material-picked(v);
+                                        }
+                                    }
+                                }
+                                VerticalLayout {
+                                    horizontal-stretch: 1;
+                                    preferred-width: 200px;
+                                    spacing: 3px;
+                                    Text { text: "Driver mobile"; font-size: Theme.small; color: Theme.muted; }
+                                    LineEdit {
+                                        text <=> WB.mobile;
+                                        height: 42px;
+                                        input-type: number;
+                                        edited(t) => { WB.mobile-edited(t); }
+                                    }
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            alignment: start;
+                            Segmented {
+                                big: true;
+                                options: ["New weighing", "Use previous weight", "Use tare weight"];
+                                values: ["none", "previous", "tare"];
+                                value: WB.kind;
+                                picked(v) => { WB.kind-picked(v); }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 12px;
+                            Rectangle {
+                                horizontal-stretch: 1;
+                                preferred-width: 100px;
+                                background: #f6faff;
+                                border-radius: 8px;
+                                border-width: 1px;
+                                border-color: #cfe0f5;
+                                VerticalLayout {
+                                    padding: 12px;
+                                    spacing: 2px;
+                                    Text { text: "Amount"; color: Theme.muted; }
+                                    Text { text: WB.amount-text; font-size: 34px; font-weight: 700; color: Theme.navy; }
+                                    Text { text: WB.reason-text; color: Theme.faint; font-size: Theme.small; wrap: word-wrap; }
+                                }
+                            }
+                            VerticalLayout {
+                                horizontal-stretch: 1;
+                                preferred-width: 100px;
+                                spacing: 8px;
+                                VerticalLayout {
+                                    Text { text: WB.kind == "tare" ? "Tare weight" : "First weight"; font-size: Theme.small; color: Theme.muted; }
+                                    Text { text: WB.first-text; font-size: 18px; font-weight: 600; }
+                                    if WB.first-sub != "": Text { text: WB.first-sub; font-size: 12px; color: Theme.faint; }
+                                }
+                                VerticalLayout {
+                                    Text { text: "Net weight"; font-size: Theme.small; color: Theme.muted; }
+                                    Text { text: WB.net-text; font-size: 24px; font-weight: 700; }
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 10px;
+                            alignment: start;
+                            Btn {
+                                big: true;
+                                primary: true;
+                                text: "Save & Print (F9)";
+                                min-width: 220px;
+                                enabled: WB.can-save;
+                                busy: WB.saving;
+                                clicked => { WB.save(); }
+                            }
+                            Btn {
+                                big: true;
+                                text: "Clear";
+                                clicked => {
+                                    WB.clear();
+                                    vehicle-box.focus();
+                                }
+                            }
+                            Btn {
+                                big: true;
+                                text: "Save as tare weight";
+                                enabled: WB.can-tare;
+                                clicked => { WB.tare-from-weighing(); }
+                            }
+                        }
+                        if WB.hint != "": Note { text: WB.hint; kind: "info"; }
+                    }
+                }
+                Rectangle { vertical-stretch: 1; }
+            }
+
+            // ── right: camera, last voucher, history ──
+            VerticalLayout {
+                horizontal-stretch: 46;
+                preferred-width: 100px;
+                spacing: 12px;
+                if WB.camera-on: CameraView { }
+                if WB.last.shown: Card {
+                    title: "Last voucher " + WB.last.voucher;
+                    pad: 12px;
+                    HorizontalLayout {
+                        spacing: 16px;
+                        Text { text: WB.last.vehicle; font-weight: 700; vertical-alignment: center; }
+                        Text { text: WB.last.weight; vertical-alignment: center; }
+                        if WB.last.net != "": Text { text: WB.last.net; vertical-alignment: center; }
+                        Text { text: WB.last.amount; vertical-alignment: center; }
+                        Tag { text: WB.last.printed ? "Printed" : "Not printed"; kind: WB.last.printed ? "success" : "error"; }
+                        if WB.last.photo: Tag { text: "Photo saved"; kind: "info"; }
+                        Rectangle { }
+                        Btn {
+                            text: "Reprint";
+                            clicked => { WB.reprint(WB.last.id); }
+                        }
+                    }
+                }
+                Card {
+                    title: WB.history-title;
+                    pad: 12px;
+                    vertical-stretch: 1;
+                    if WB.kind != "tare": Table {
+                        radio: WB.kind == "previous";
+                        columns: [
+                            { title: "Voucher", width: 72 },
+                            { title: "Date", width: 128 },
+                            { title: "Weight", width: 0, right: true },
+                            { title: "Paid", width: 64, right: true },
+                        ];
+                        tag-width: 140;
+                        rows: WB.history;
+                        empty-text: WB.vehicle == "" ? "Type a vehicle number" : "No earlier weighings for this vehicle";
+                        row-clicked(i) => { WB.history-clicked(i); }
+                    }
+                    if WB.kind == "tare": Table {
+                        radio: true;
+                        columns: [
+                            { title: "Voucher", width: 72 },
+                            { title: "Date", width: 140 },
+                            { title: "Tare", width: 0, right: true },
+                        ];
+                        rows: WB.hist-tares;
+                        empty-text: "No tare weight saved for this vehicle";
+                        row-clicked(i) => { WB.tare-clicked(i); }
+                    }
+                }
+            }
+        }
+    }
+}
