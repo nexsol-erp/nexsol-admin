@@ -332,21 +332,22 @@ function registerIpc() {
   handle("wb:materials", ({ prefix }) => ({ materials: store.materials(prefix) }));
   handle("wb:history", async ({ vehicleNumber }) => {
     const vehicle = normalizeVehicle(vehicleNumber);
-    let wheelType = store.wheelTypeOf(vehicle);
-    // Not weighed on this PC: ask the server, so a lorry known at another branch stays locked too.
-    if (!wheelType && vehicle.length >= 4 && sync.state.online !== false) {
+    // Ask the server too: a change made in the web admin (Vehicle Wheel Type) applies at once, and a
+    // lorry known only at another branch is locked as well. Offline, the local answer stands.
+    if (vehicle.length >= 4 && sync.state.online !== false) {
       try {
-        wheelType = await Promise.race([sync.lookupWheelType(vehicle), new Promise((r) => setTimeout(() => r(""), 3000))]);
-      } catch (_) { /* offline or signed out: the local answer stands */ }
+        await Promise.race([sync.lookupWheelType(vehicle), new Promise((r) => setTimeout(r, 2000))]);
+      } catch (_) { /* offline or signed out */ }
     }
-    return { ...store.history(vehicle), wheelType, wheelLocked: !!wheelType, canChangeWheel: isAdmin() };
+    const wheelType = store.wheelTypeOf(vehicle);
+    return { ...store.history(vehicle), wheelType, wheelLocked: !!wheelType };
   });
   handle("wb:quote", (q) => ({ quote: store.quote(q) }));
   handle("wb:save", async (form) => {
     const a = auth();
     if (!a?.branchCode) throw new ValidationError("Choose the branch in Settings first");
     const weight = currentWeight();
-    const row = store.saveWeighing({ ...form, weight, branchCode: a.branchCode, userId: a.username || "", allowWheelChange: isAdmin() && !!form.changeWheelType });
+    const row = store.saveWeighing({ ...form, weight, branchCode: a.branchCode, userId: a.username || "" });
     log("INFO", "saved", row.voucher_number, row.vehicle_number, row.lcd_number, row.amount, row.first_weight_kind);
     let print = { printed: false, pdf: null, error: "" };
     if (printSettings().autoPrint) print = await printVoucher(row);
@@ -367,11 +368,11 @@ function registerIpc() {
 
   // tare weights
   handle("tare:list", () => ({ tares: store.tares() }));
-  handle("tare:save", ({ vehicleNumber, wheelType, tareWeight, fromBridge, changeWheelType }) => {
+  handle("tare:save", ({ vehicleNumber, wheelType, tareWeight, fromBridge }) => {
     const a = auth();
     if (!a?.branchCode) throw new ValidationError("Choose the branch in Settings first");
     const t = fromBridge ? currentWeight() : Number(tareWeight);
-    const row = store.saveTare({ vehicleNumber, wheelType, tareWeight: t, branchCode: a.branchCode, userId: a.username || "", allowWheelChange: isAdmin() && !!changeWheelType });
+    const row = store.saveTare({ vehicleNumber, wheelType, tareWeight: t, branchCode: a.branchCode, userId: a.username || "" });
     sync.run();
     return { tare: row };
   });

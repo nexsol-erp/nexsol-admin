@@ -10,9 +10,9 @@ TradeLink247 server. It replaces the weighbridge screen of the old Qt app and ke
   weight, is charged in full.
 - Saving a return marks the vehicle's other open weighings closed, so a first weighing can be
   returned free only once.
-- Once a vehicle has a saved wheel type (from a weighing or tare here, or on the server from any
-  branch), the operator can't pick another. An admin can use Change for one save, and that becomes
-  the vehicle's wheel type.
+- Once a vehicle has a wheel type (from a weighing or tare here, or on the server from any
+  branch), the operator can't pick another. It is changed only in the web admin's Vehicle Wheel
+  Type screen; the app picks the change up when the vehicle is next entered, or within ten minutes.
 - Voucher numbers are 6 digits and continue from the branch's last voucher on the server.
 
 Everything is saved on the PC first (SQLite in `%APPDATA%\TradeLink247 Weighbridge`) and uploaded

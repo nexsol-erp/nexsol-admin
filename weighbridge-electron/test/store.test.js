@@ -135,21 +135,29 @@ test("vehicle numbers are normalised like the Qt validator", () => {
   assert.equal(normalizeVehicle(" kl-07 ab 1234 "), "KL07AB1234");
 });
 
-test("a vehicle's saved wheel type can't be changed except by an admin", () => {
+test("a vehicle's saved wheel type can't be changed on the PC", () => {
   const s = fresh();
   weigh(s);
   assert.equal(s.wheelTypeOf("kl07 ab1234"), "6 WHEEL");
-  assert.throws(() => weigh(s, { wheelType: "10 WHEEL" }), (e) => e instanceof ValidationError && /saved as 6 WHEEL/.test(e.message));
+  assert.throws(() => weigh(s, { wheelType: "10 WHEEL" }), (e) => e instanceof ValidationError && /saved as 6 WHEEL.*web admin/.test(e.message));
+  assert.throws(() => weigh(s, { wheelType: "10 WHEEL", allowWheelChange: true }), ValidationError, "no override on the PC");
   assert.throws(() => s.saveTare({ vehicleNumber: "KL07AB1234", wheelType: "10 WHEEL", tareWeight: 7000, now: tick() }), ValidationError);
   assert.equal(weigh(s).wheel_type, "6 WHEEL", "same wheel type still saves");
-
-  const changed = weigh(s, { wheelType: "10 WHEEL", allowWheelChange: true });
-  assert.equal(changed.wheel_type, "10 WHEEL");
-  assert.equal(s.wheelTypeOf("KL07AB1234"), "10 WHEEL", "the admin's change becomes the saved type");
-  assert.throws(() => weigh(s, { wheelType: "6 WHEEL" }), ValidationError);
 });
 
-test("a tare weight or the server's answer also fixes the wheel type", () => {
+test("a wheel type set in the web admin overrides the vehicle's history", () => {
+  const s = fresh();
+  weigh(s);
+  s.rememberWheelType("KL07AB1234", "10 WHEEL", "2026-10-01 05:00:00", true);
+  assert.equal(s.wheelTypeOf("KL07AB1234"), "10 WHEEL");
+  assert.throws(() => weigh(s), ValidationError, "the old 6 WHEEL is refused now");
+  assert.equal(weigh(s, { wheelType: "10 WHEEL" }).amount, 150);
+
+  s.rememberWheelType("KL07AB1234", "6 WHEEL", "2026-10-01 06:00:00", false);
+  assert.equal(s.wheelTypeOf("KL07AB1234"), "10 WHEEL", "server history never replaces a web admin setting");
+});
+
+test("a tare weight or the server's history also fixes the wheel type", () => {
   const s = fresh();
   s.saveTare({ vehicleNumber: "TN22Z9", wheelType: "10 WHEEL", tareWeight: 7000, now: tick() });
   assert.throws(() => weigh(s, { vehicleNumber: "TN22Z9" }), ValidationError);

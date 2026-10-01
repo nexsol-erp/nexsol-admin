@@ -18,9 +18,8 @@ export default function WeighingPage({ active }) {
   const [saving, setSaving] = useState(false);
   const [last, setLast] = useState(null);
   const [bump, setBump] = useState(0); // re-read the vehicle's history
-  // A vehicle's saved wheel type is locked; only an admin can unlock it for one save.
-  const [lock, setLock] = useState({ vehicle: "", wheelType: "", canChange: false });
-  const [changingWheel, setChangingWheel] = useState(false);
+  // A vehicle's saved wheel type is locked; it can only be changed in the web admin.
+  const [lock, setLock] = useState({ vehicle: "", wheelType: "" });
   const vehicleRef = useRef(null);
 
   // live weight
@@ -50,7 +49,7 @@ export default function WeighingPage({ active }) {
         const [veh, hist] = await Promise.all([wb("vehicles", { prefix: v }), v ? wb("history", { vehicleNumber: v }) : null]);
         setVehicleOptions(veh.vehicles.map((x) => ({ value: x.vehicleNumber, label: `${x.vehicleNumber}${x.wheelType ? `  ·  ${x.wheelType}` : ""}` })));
         setHistory(hist ? { weights: hist.weights, tares: hist.tares } : { weights: [], tares: [] });
-        setLock({ vehicle: v, wheelType: hist?.wheelLocked ? hist.wheelType : "", canChange: !!hist?.canChangeWheel });
+        setLock({ vehicle: v, wheelType: hist?.wheelLocked ? hist.wheelType : "" });
         if (hist?.wheelLocked) {
           setForm((f) => (f.vehicleNumber !== v ? f : { ...f, wheelType: hist.wheelType }));
         }
@@ -85,9 +84,7 @@ export default function WeighingPage({ active }) {
         material: form.material,
         mobileNumber: form.mobileNumber,
         source: form.kind === "none" ? { kind: "none" } : { kind: form.kind, id: form.sourceId },
-        changeWheelType: changingWheel,
       });
-      setChangingWheel(false);
       setLast({ row, print });
       if (print.error) message.warning(`Saved voucher ${row.voucher_number}, but printing failed: ${print.error}`);
       else message.success(`Saved voucher ${row.voucher_number}`);
@@ -98,7 +95,7 @@ export default function WeighingPage({ active }) {
     } finally {
       setSaving(false);
     }
-  }, [canSave, saving, form, changingWheel, message]);
+  }, [canSave, saving, form, message]);
 
   // F9 or Ctrl+S saves, like a till
   useEffect(() => {
@@ -118,7 +115,7 @@ export default function WeighingPage({ active }) {
       okText: "Save tare weight",
       onOk: async () => {
         try {
-          const r = await wb("saveTare", { vehicleNumber: form.vehicleNumber, wheelType: form.wheelType, fromBridge: true, changeWheelType: changingWheel });
+          const r = await wb("saveTare", { vehicleNumber: form.vehicleNumber, wheelType: form.wheelType, fromBridge: true });
           message.success(`Tare weight saved (${r.tare.voucher_number})`);
           setBump((n) => n + 1);
         } catch (e) { message.error(e.message); }
@@ -141,23 +138,17 @@ export default function WeighingPage({ active }) {
             <Col span={12}>
               <Label>Vehicle number</Label>
               <AutoComplete style={{ width: "100%" }} options={vehicleOptions} value={form.vehicleNumber}
-                onChange={(v) => { setChangingWheel(false); set({ vehicleNumber: String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, ""), wheelType: "", kind: "none", sourceId: "" }); }}>
+                onChange={(v) => { set({ vehicleNumber: String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, ""), wheelType: "", kind: "none", sourceId: "" }); }}>
                 <Input ref={vehicleRef} size="large" placeholder="KL07AB1234" style={{ fontWeight: 700, letterSpacing: 1 }} />
               </AutoComplete>
             </Col>
             <Col span={12}>
               <Label>
                 Wheel type
-                {wheelLocked && !changingWheel && (
-                  <span style={{ marginLeft: 8, color: "#888", fontWeight: 400 }}>
-                    saved for this vehicle
-                    {lock.canChange && <Button type="link" size="small" style={{ padding: "0 4px", height: "auto" }} onClick={() => setChangingWheel(true)}>Change</Button>}
-                  </span>
-                )}
-                {wheelLocked && changingWheel && <span style={{ marginLeft: 8, color: "#d46b08", fontWeight: 400 }}>changing (admin)</span>}
+                {wheelLocked && <span style={{ marginLeft: 8, color: "#888", fontWeight: 400 }}>locked · change in web admin</span>}
               </Label>
               <Select size="large" style={{ width: "100%" }} value={form.wheelType || undefined} onChange={(v) => set({ wheelType: v })}
-                disabled={wheelLocked && !changingWheel}
+                disabled={wheelLocked}
                 placeholder="Select" options={rates.map((r) => ({ value: r.wheelType, label: `${r.wheelType}  ·  ₹${r.wheelRate}` }))} />
             </Col>
             <Col span={12} style={{ marginTop: 10 }}>
