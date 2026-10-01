@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, App, Button, Card, Col, Descriptions, Divider, Input, InputNumber, Radio, Row, Select, Space, Switch, Table, Tabs, Typography } from "antd";
-import { wb } from "../api";
+import { wb, showDate } from "../api";
 
 export default function SettingsPage({ active, isAdmin, auth, lock, onChanged }) {
+  const [reload, setReload] = useState(0);
   if (!active) return null;
   return (
     <>
@@ -14,13 +15,65 @@ export default function SettingsPage({ active, isAdmin, auth, lock, onChanged })
             ? `Settings were opened from the web admin${lock.unlockedBy ? ` by ${lock.unlockedBy}` : ""}. They lock again after you save and restart the app.`
             : "Settings lock after the first save, from the next start. After that, only the web admin (Weighbridge PCs) can open them."} />
       )}
-      <Tabs tabPosition="left" items={[
+      <ServerCopy isAdmin={isAdmin} lock={lock} onFetched={() => { setReload((n) => n + 1); onChanged?.(); }} />
+      <Tabs key={reload} tabPosition="left" items={[
         { key: "indicator", label: "Indicator", children: <IndicatorSettings isAdmin={isAdmin} /> },
         { key: "printing", label: "Printing", children: <PrintSettings isAdmin={isAdmin} /> },
         { key: "weighing", label: "Weighing", children: <WeighingSettings isAdmin={isAdmin} /> },
         { key: "data", label: "Branch & data", children: <DataSettings auth={auth} isAdmin={isAdmin} onChanged={onChanged} /> },
       ]} />
     </>
+  );
+}
+
+// ── Copy on the server ───────────────────────────────────────────────────────
+// Every save sends a copy of these Settings to the server. "Fetch from server" puts it back,
+// after a reinstall, or copies another PC's at the same branch onto a new PC.
+
+function ServerCopy({ isAdmin, lock, onFetched }) {
+  const { message, modal } = App.useApp();
+  const [info, setInfo] = useState(null); // { supported, copy }
+  const [busy, setBusy] = useState(false);
+
+  const load = () => wb("serverSettingsCopy").then(setInfo).catch(() => setInfo(null));
+  useEffect(() => { load(); }, [lock?.backupSavedAt]);
+
+  const copy = info?.copy;
+  const from = copy ? (copy.thisPc ? "this PC" : copy.machineName || "another PC at this branch") : "";
+  const when = copy?.savedAt ? showDate(copy.savedAt) : "";
+
+  const fetchNow = () => modal.confirm({
+    title: "Replace this PC's settings with the copy on the server?",
+    content: `Indicator, printing and weighing settings saved ${when ? `on ${when} ` : ""}from ${from}${copy?.savedBy ? ` by ${copy.savedBy}` : ""}. You can change them again afterwards.`,
+    okText: "Fetch from server",
+    onOk: async () => {
+      setBusy(true);
+      try {
+        await wb("fetchServerSettings");
+        message.success("Settings fetched from the server");
+        onFetched();
+        load();
+      } catch (e) {
+        message.error(e.message);
+      } finally {
+        setBusy(false);
+      }
+    },
+  });
+
+  if (!info?.supported) return null;
+  return (
+    <Card size="small" style={{ marginBottom: 12 }}>
+      <Space wrap style={{ width: "100%", justifyContent: "space-between" }}>
+        <Typography.Text>
+          {copy
+            ? <>Copy on the server: saved {when && <>{when} </>}from <b>{from}</b>{copy.savedBy ? ` by ${copy.savedBy}` : ""}.</>
+            : "No copy of these settings on the server yet. One is sent when settings are saved."}
+          {lock?.backupPending && copy && <Typography.Text type="secondary"> Latest changes not sent yet.</Typography.Text>}
+        </Typography.Text>
+        <Button onClick={fetchNow} loading={busy} disabled={!copy || !isAdmin || lock?.locked}>Fetch from server</Button>
+      </Space>
+    </Card>
   );
 }
 

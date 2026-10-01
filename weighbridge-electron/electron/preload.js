@@ -62,6 +62,8 @@ contextBridge.exposeInMainWorld("WB", {
   saveWeighing: call("settings:save-weighing"),
   settingsLock: call("settings:lock"),
   checkSettingsLock: call("settings:lock-check"),
+  serverSettingsCopy: call("settings:server-copy"),
+  fetchServerSettings: call("settings:fetch-server"),
   pickFolder: call("settings:pick-folder"),
   openFolder: call("settings:open-folder"),
   printers: call("printers:list"),

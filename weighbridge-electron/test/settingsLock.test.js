@@ -161,3 +161,43 @@ test("developer tools follow the web admin's switch, and stay on with an older s
   await old.refresh();
   assert.equal(old.devToolsAllowed(), true);
 });
+
+test("each save sends a copy of the Settings until the server keeps it (V084)", async () => {
+  const store = new Store(":memory:");
+  const srv = fakeServer();
+  const kept = [];
+  let backupSupported = false;
+  const checkin = async (body) => {
+    const r = await srv.checkin(body);
+    if (backupSupported && body.settings) kept.push(body.settings);
+    return { ...r, settingsBackupSupported: backupSupported, settingsStored: backupSupported && !!body.settings };
+  };
+  let settings = { print: { copies: 1 } };
+  const lock = new SettingsLock(store, { checkin, info: () => ({ branchCode: "WB1" }), snapshot: () => settings });
+  await lock.refresh();
+  assert.equal(srv.calls.at(-1).settings, undefined, "nothing saved yet, nothing sent");
+  lock.saved();
+  await lock.refresh();
+  assert.deepEqual(srv.calls.at(-1).settings, { print: { copies: 1 } });
+  assert.equal(lock.state().backupPending, true, "an older server: keep it for later");
+  backupSupported = true;
+  await lock.refresh();
+  assert.deepEqual(kept, [{ print: { copies: 1 } }]);
+  assert.equal(lock.state().backupPending, false);
+  assert.equal(lock.state().backupSupported, true);
+  await lock.refresh();
+  assert.equal(srv.calls.at(-1).settings, undefined, "sent once");
+  settings = { print: { copies: 2 } };
+  lock.saved();
+  await lock.refresh();
+  assert.deepEqual(kept.at(-1), { print: { copies: 2 } });
+});
+
+test("a PC set up before the server kept copies sends one", async () => {
+  const store = new Store(":memory:");
+  store.setSetting("settingsLock", { setupDone: true, serverSupports: true });
+  const srv = fakeServer();
+  const lock = new SettingsLock(store, { checkin: srv.checkin, snapshot: () => ({ weighing: { x: 1 } }) });
+  await lock.refresh();
+  assert.deepEqual(srv.calls.at(-1).settings, { weighing: { x: 1 } });
+});

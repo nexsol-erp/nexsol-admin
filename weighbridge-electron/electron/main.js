@@ -158,6 +158,26 @@ setInterval(() => {
 }, 1000);
 
 // ── printing ─────────────────────────────────────────────────────────────────
+// What "Settings" means for the copy kept on the server (V084) and "Fetch from server".
+function settingsSnapshot() {
+  return { indicator: indicatorConfig(), print: printSettings(), weighing: weighingSettings() };
+}
+
+// Puts a copy from the server in place. A copy made on another PC keeps this PC's voucher
+// folder, since that path may not exist here.
+function applySettingsCopy(copy, fromThisPc) {
+  const s = copy && typeof copy === "object" ? copy : {};
+  const ok = (v) => v && typeof v === "object" && !Array.isArray(v);
+  if (!ok(s.indicator) && !ok(s.print) && !ok(s.weighing)) throw new ValidationError("The copy on the server has no settings in it");
+  if (ok(s.indicator) && s.indicator.presetId) store.setSetting("indicator", { presetId: String(s.indicator.presetId), overrides: ok(s.indicator.overrides) ? s.indicator.overrides : {} });
+  if (ok(s.print)) {
+    const print = { ...s.print };
+    if (!fromThisPc) print.pdfFolder = printSettings().pdfFolder || "";
+    store.setSetting("print", print);
+  }
+  if (ok(s.weighing)) store.setSetting("weighing", s.weighing);
+}
+
 function pdfFolder() {
   const p = printSettings().pdfFolder;
   return p || path.join(app.getPath("documents"), "TradeLink247 Weighbridge", "Vouchers");
@@ -439,6 +459,25 @@ function registerIpc() {
     simulated = null;
     return { weighing: weighingSettings() };
   });
+  // The copy on the server: this PC's, else the newest from another PC at the branch.
+  handle("settings:server-copy", async () => {
+    const r = await sync.savedSettings(settingsLock.terminalId, auth()?.branchCode || "");
+    if (!r?.supported) return { copy: null, supported: false };
+    if (!r.found) return { copy: null, supported: true };
+    return { supported: true, copy: { savedAt: r.savedAt, savedBy: r.savedBy, machineName: r.machineName, thisPc: !!r.thisPc } };
+  });
+  handle("settings:fetch-server", async () => {
+    requireSettings();
+    const r = await sync.savedSettings(settingsLock.terminalId, auth()?.branchCode || "");
+    if (!r?.supported) throw new ValidationError("The server doesn't keep settings yet (V084 migration).");
+    if (!r.found) throw new ValidationError("No settings saved on the server for this PC or branch yet");
+    applySettingsCopy(r.settings, !!r.thisPc);
+    settingsLock.saved();
+    simulated = null;
+    startIndicator();
+    log("INFO", "settings fetched from server", r.thisPc ? "(this PC)" : `(from ${r.machineName || "another PC"})`, r.savedAt || "");
+    return { from: { savedAt: r.savedAt, savedBy: r.savedBy, machineName: r.machineName, thisPc: !!r.thisPc } };
+  });
   handle("settings:lock", () => ({ lock: settingsLock.state() }));
   handle("settings:lock-check", async () => ({ lock: await settingsLock.refresh() }));
   handle("settings:pick-folder", async () => {
@@ -597,6 +636,7 @@ app.whenReady().then(() => {
     checkin: (body) => sync.checkinTerminal(body),
     info: () => ({ branchCode: auth()?.branchCode || "", machineName: os.hostname(), appVersion: app.getVersion() }),
     log,
+    snapshot: settingsSnapshot,
   });
   settingsLock.on("state", (s) => { send("wb:settings-lock", s); applyDevTools(); });
   // the web admin's "allow changes", rate changes and reopened weighings reach the PC within a minute

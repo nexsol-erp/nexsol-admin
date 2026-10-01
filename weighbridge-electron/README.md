@@ -52,6 +52,12 @@ the locked tab). The opening is used up by the next save on the PC, so Settings 
 following start. Each PC checks in with its own id, branch, name and version, which that screen
 lists.
 
+Every Settings save sends a copy of the PC's indicator, printing and weighing settings to the server
+with the next check-in (server V084; PCs set up earlier send one copy after updating). **Fetch from
+server** at the top of Settings puts the copy back after a reinstall; a new PC with no copy of its
+own gets the newest one from another PC at its branch (keeping its own voucher folder). Fetching
+counts as a save, so the usual Settings lock applies, and the settings can be changed afterwards.
+
 View > Toggle Developer Tools (F12) is hidden unless **Developer tools** is turned on for the PC in
 Weighbridge PCs (server V082; servers without it keep the menu item). It follows the switch within a
 minute, and closes the tools when it is turned off.
