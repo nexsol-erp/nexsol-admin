@@ -26,6 +26,14 @@ Download the installer from the web admin's Downloads page (`/api/updates/weighb
 run it, enter the server address, sign in and pick the branch. The first sign-in pulls the rates,
 the last voucher number and the branch's recent weighings and tare weights.
 
+## Updates
+
+The app checks the server for a newer version when it starts and every four hours. A newer
+installer downloads in the background; a bar then offers **Restart to update**, and otherwise it
+installs silently when the app is closed. Weighings, settings and the indicator setup are kept.
+Settings > Branch & data has **Check for updates**. PCs installed for all users may show a Windows
+permission prompt during the update. Versions before 1.0.2 don't check, so install 1.0.2 by hand once.
+
 ## Commissioning an indicator
 
 All indicator handling is configuration, in Settings > Indicator (admins only):

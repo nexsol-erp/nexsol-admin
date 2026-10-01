@@ -14,6 +14,8 @@ const { PRESETS, buildProfile, escapeCtl, unescapeCtl } = require("./indicator/p
 const { IndicatorSession, FrameSplitter, decodeFrame } = require("./indicator/parser");
 const { Transport, listPorts } = require("./indicator/transport");
 const { voucherHtml, pdfFileName } = require("./voucher");
+const { Updater } = require("./updater");
+const { spawn } = require("child_process");
 
 if (!app.isPackaged) app.setPath("userData", path.join(__dirname, "../.electron-cache"));
 
@@ -42,6 +44,8 @@ function log(level, ...args) {
 let win = null;
 let store = null;
 let sync = null;
+let updater = null;
+let installing = false;
 
 // ── settings ─────────────────────────────────────────────────────────────────
 const DEFAULT_PRINT = {
@@ -228,6 +232,13 @@ function registerIpc() {
 
   // server connection (same screen as the POS)
   handle("server:check", ({ address }) => serverConfig.checkServer(address));
+  handle("update:state", () => ({ state: updater.state }));
+  handle("update:check", async () => ({ state: await updater.check() }));
+  handle("update:install", () => {
+    if (!runInstaller(true)) throw new ValidationError("No update is ready to install");
+    setTimeout(() => app.quit(), 300);
+    return {};
+  });
   handle("server:save", ({ config }) => ({ config: serverConfig.save(config) }));
   ipcMain.on("app:relaunch", () => { app.relaunch(); app.exit(0); });
 
@@ -497,6 +508,21 @@ function createWindow() {
   ]));
 }
 
+// Runs the downloaded installer silently (/S keeps the install folder and data) and quits so it
+// can replace the files. relaunch: open the new version when done ("Restart to update").
+function runInstaller(relaunch) {
+  const st = updater?.state;
+  if (installing || st?.status !== "ready" || !st.file || process.platform !== "win32") return false;
+  installing = true;
+  log("INFO", "installing update", st.version, relaunch ? "and restarting" : "on close");
+  const args = ["/S"];
+  if (relaunch) args.push("--force-run");
+  spawn(st.file, args, { detached: true, stdio: "ignore" }).unref();
+  return true;
+}
+
+app.on("before-quit", () => { runInstaller(false); });
+
 app.on("second-instance", () => {
   if (win) { if (win.isMinimized()) win.restore(); win.focus(); }
 });
@@ -509,10 +535,19 @@ app.whenReady().then(() => {
     return a ? { ...a, apiServer: a.apiServer || serverConfig.getServerState().apiServer } : null;
   }, (url, opts) => net.fetch(url, opts));
   sync.on("state", (s) => send("wb:sync", s));
+  updater = new Updater({
+    currentVersion: app.getVersion(),
+    serverUrl: () => serverConfig.getServerState().apiServer,
+    fetchImpl: (url, opts) => net.fetch(url, opts),
+    dir: path.join(app.getPath("userData"), "updates"),
+    log,
+  });
+  updater.on("state", (s) => send("wb:update", s));
   registerIpc();
   createWindow();
   startIndicator();
   sync.start();
+  if (app.isPackaged) updater.start(); // a dev build would "update" itself to the published one
 });
 
 app.on("window-all-closed", () => {

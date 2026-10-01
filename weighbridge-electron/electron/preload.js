@@ -65,6 +65,10 @@ contextBridge.exposeInMainWorld("WB", {
   printers: call("printers:list"),
   testPrint: call("print:test"),
 
+  updateState: call("update:state"),
+  checkUpdate: call("update:check"),
+  installUpdate: call("update:install"),
+
   syncState: call("sync:state"),
   syncNow: call("sync:now"),
   seed: call("sync:seed"),
@@ -75,4 +79,5 @@ contextBridge.exposeInMainWorld("WB", {
   onRaw: on("wb:raw"),
   onFrame: on("wb:frame"),
   onSync: on("wb:sync"),
+  onUpdate: on("wb:update"),
 });

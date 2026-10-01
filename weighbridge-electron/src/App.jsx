@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { App as AntApp, Badge, Button, ConfigProvider, Layout, Space, Tabs, Tag, Tooltip, Typography } from "antd";
+import { Alert, App as AntApp, Badge, Button, ConfigProvider, Layout, Space, Tabs, Tag, Tooltip, Typography } from "antd";
 import { wb } from "./api";
 import ServerSetup from "./pages/ServerSetup";
 import LoginPage from "./pages/LoginPage";
@@ -61,10 +61,28 @@ function Shell() {
           <Button size="small" onClick={async () => { await wb("logout"); refresh(); }}>Sign out</Button>
         </Space>
       </Layout.Header>
+      <UpdateBar />
       <Layout.Content style={{ padding: "8px 20px 20px" }}>
         <Tabs activeKey={tab} onChange={setTab} items={items} size="large" destroyInactiveTabPane={false} />
       </Layout.Content>
     </Layout>
+  );
+}
+
+// A newer version was downloaded in the background. It installs on "Restart to update" or when
+// the app is closed, so the operator picks a moment between weighings.
+function UpdateBar() {
+  const { message } = AntApp.useApp();
+  const [u, setU] = useState(null);
+  useEffect(() => {
+    wb("updateState").then((r) => setU(r.state)).catch(() => {});
+    return window.WB.onUpdate(setU);
+  }, []);
+  if (u?.status !== "ready") return null;
+  return (
+    <Alert type="info" banner showIcon
+      message={`Version ${u.version} is ready. It installs when you restart the app or close it at the end of the day.`}
+      action={<Button size="small" type="primary" onClick={() => wb("installUpdate").catch((e) => message.error(e.message))}>Restart to update</Button>} />
   );
 }
 
