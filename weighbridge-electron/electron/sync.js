@@ -246,6 +246,17 @@ class Sync extends EventEmitter {
     return this._call("POST", "/weighbridge/terminals/checkin", body);
   }
 
+  // The Settings copy kept on the server (V084): this PC's, else the newest at the branch.
+  async savedSettings(terminalId, branchCode) {
+    const q = branchCode ? `?branch=${encodeURIComponent(branchCode)}` : "";
+    try {
+      return await this._call("GET", `/weighbridge/terminals/${encodeURIComponent(terminalId)}/saved-settings${q}`);
+    } catch (e) {
+      if (e.status === 404) return { supported: false };
+      throw e;
+    }
+  }
+
   async addRate(wheelType, wheelRate, terminalId) {
     const out = await this._call("POST", "/wb-rates", { wheelType, wheelRate, terminalId });
     await this.pullRates();

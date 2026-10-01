@@ -10,6 +10,10 @@
 // Rates have their own switch (V079): the Rates tab is view only unless the web admin has allowed
 // rate changes on this PC. It stays as the web admin left it; a save doesn't close it.
 // Developer tools (View menu, F12) work the same way (V082): off unless the web admin turns them on.
+//
+// After every Settings save the PC sends a copy of its Settings with the next check-in, until the
+// server says it kept it (V084). PCs set up before this send one copy too. "Fetch from server" on
+// the Settings page brings a copy back (main.js).
 
 const { EventEmitter } = require("events");
 const crypto = require("crypto");
@@ -19,11 +23,13 @@ const KEY = "settingsLock";
 
 class SettingsLock extends EventEmitter {
   // checkin(body) -> server reply { installed, settingsUnlocked, unlockedAt, unlockedBy }
-  constructor(store, { checkin, info = () => ({}), log = () => {} }) {
+  // snapshot() -> this PC's Settings, sent to the server as a copy
+  constructor(store, { checkin, info = () => ({}), log = () => {}, snapshot = null }) {
     super();
     this.store = store;
     this.checkin = checkin;
     this.info = info;
+    this.snapshot = snapshot;
     this.log = log;
     this.savedThisRun = false;
     this.busy = null;
@@ -34,6 +40,9 @@ class SettingsLock extends EventEmitter {
       const setUp = !!(store.getSetting("indicator", null) || store.getSetting("weighing", null));
       this._save({ setupDone: setUp, serverSupports: false, unlocked: false, unlockedAt: null, unlockedBy: null, usedUnlockAt: null });
     }
+    // a PC set up before the server kept copies sends one now
+    const cur = this._get();
+    if (cur.setupDone && cur.backupPending === undefined) this._save({ ...cur, backupPending: true });
   }
 
   get terminalId() { return this.store.getSetting("terminalId", ""); }
@@ -61,6 +70,10 @@ class SettingsLock extends EventEmitter {
       ratesManaged: this._ratesManaged(),
       ratesUnlocked: !!s.ratesUnlocked,
       devTools: this.devToolsAllowed(),
+      // the server keeps a copy of this PC's Settings (V084); pending = not sent since the last save
+      backupSupported: !!s.serverSupports && !!s.backupSupported,
+      backupPending: !!s.backupPending,
+      backupSavedAt: s.backupSavedAt || null,
     };
   }
 
@@ -95,7 +108,7 @@ class SettingsLock extends EventEmitter {
   // A Settings save went through: the PC is set up, and an opening from the web is used up.
   saved() {
     const s = this._get();
-    const next = { ...s, setupDone: true };
+    const next = { ...s, setupDone: true, backupPending: true };
     if (s.unlocked) {
       next.unlocked = false;
       next.usedUnlockAt = s.unlockedAt || "";
@@ -103,7 +116,7 @@ class SettingsLock extends EventEmitter {
     this.savedThisRun = true;
     this._save(next);
     this._emit();
-    if (next.usedUnlockAt) this.refresh().catch(() => {});
+    this.refresh().catch(() => {}); // reports a used opening and sends the Settings copy
   }
 
   // Asks the server; resolves to the state. Errors (offline, signed out, older server) keep the last answer.
@@ -112,7 +125,8 @@ class SettingsLock extends EventEmitter {
     this.busy = (async () => {
       const sent = this._get().usedUnlockAt || null;
       try {
-        const r = await this.checkin({ terminalId: this.terminalId, ...this.info(), settingsUsed: sent || undefined });
+        const backup = this._get().backupPending && this.snapshot ? this.snapshot() : undefined;
+        const r = await this.checkin({ terminalId: this.terminalId, ...this.info(), settingsUsed: sent || undefined, settings: backup });
         const s = this._get();
         const pending = s.usedUnlockAt || null;
         const next = { ...s };
@@ -124,6 +138,12 @@ class SettingsLock extends EventEmitter {
           next.devToolsSupported = false;
           next.devToolsEnabled = false;
         } else if (r) {
+          next.backupSupported = !!r.settingsBackupSupported;
+          // a save after this copy was taken keeps the copy pending: compare what was sent
+          if (backup && r.settingsStored && JSON.stringify(backup) === JSON.stringify(this.snapshot())) {
+            next.backupPending = false;
+            next.backupSavedAt = new Date().toISOString();
+          }
           next.devToolsSupported = !!r.devToolsSupported;
           next.devToolsEnabled = !!r.devToolsEnabled;
           next.ratesSupported = !!r.ratesSupported;
