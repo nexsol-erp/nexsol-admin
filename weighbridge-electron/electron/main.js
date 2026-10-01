@@ -584,6 +584,7 @@ app.whenReady().then(() => {
   }, (url, opts) => net.fetch(url, opts));
   sync.on("state", (s) => send("wb:sync", s));
   sync.on("warn", (m) => log("WARN", "sync", m));
+  sync.on("reopened", (n) => log("INFO", "sync", `${n} weighing(s) reopened from the web admin`));
   updater = new Updater({
     currentVersion: app.getVersion(),
     serverUrl: () => serverConfig.getServerState().apiServer,
@@ -598,11 +599,12 @@ app.whenReady().then(() => {
     log,
   });
   settingsLock.on("state", (s) => { send("wb:settings-lock", s); applyDevTools(); });
-  // the web admin's "allow changes" and rate changes reach the PC within a minute
+  // the web admin's "allow changes", rate changes and reopened weighings reach the PC within a minute
   setTimeout(() => settingsLock.refresh().catch(() => {}), 3000);
   setInterval(() => {
     settingsLock.refresh().catch(() => {});
     sync.pullRates().catch(() => {}); // offline or signed out: the cached rates stand
+    sync.pullReopened().catch(() => {}); // weighings reopened in the web admin
   }, 60 * 1000);
   registerIpc();
   createWindow();

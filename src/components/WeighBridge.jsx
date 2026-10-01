@@ -19,6 +19,8 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Alert,
+  Chip,
 } from "@mui/material";
 import dayjs from "dayjs";
 import "dayjs/locale/en";
@@ -36,6 +38,9 @@ const WeighBridge = () => {
   const [weighbridgeData, setWeighbridgeData] = useState([]);
   const [open, setOpen] = useState(false);
   const [fileName, setFileName] = useState("WeighbridgeData.xlsx");
+  const [reopenRow, setReopenRow] = useState(null);
+  const [reopenBusy, setReopenBusy] = useState(false);
+  const [message, setMessage] = useState(null);
 
   const fetchBranches = async () => {
     try {
@@ -108,8 +113,46 @@ const WeighBridge = () => {
     setOpen(false);
   };
 
+  // Reopen a closed weighing so the weighbridge PC can take this vehicle's second weight
+  // again, free, as its return. The PC picks it up within a minute.
+  const reopenWeighing = async () => {
+    const row = reopenRow;
+    setReopenBusy(true);
+    try {
+      const token = localStorage.getItem("jwtToken");
+      const tenancyId = localStorage.getItem("tenancyId");
+      const res = await fetch(
+        `/api/${tenancyId}/weighbridge/weights/${encodeURIComponent(row.id)}/reopen`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessage({ severity: "error", text: data.error || `Failed (HTTP ${res.status})` });
+        return;
+      }
+      setMessage({
+        severity: "success",
+        text: `Voucher ${row.voucher_number} of ${row.vehicle_number} is open again. The weighbridge PC at ${row.branch_code} will take its second weight free.`,
+      });
+      await fetchWeighBridgeData();
+    } catch (error) {
+      setMessage({ severity: "error", text: error.message });
+    } finally {
+      setReopenBusy(false);
+      setReopenRow(null);
+    }
+  };
+
   const handleExport = () => {
-    const worksheet = XLSX.utils.json_to_sheet(weighbridgeData);
+    const worksheet = XLSX.utils.json_to_sheet(
+      weighbridgeData.map(({ id, ...rest }) => rest)
+    );
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "WB Data");
     XLSX.write(workbook, { bookType: "xlsx", type: "array" });
@@ -229,6 +272,30 @@ const WeighBridge = () => {
         </DialogActions>
       </Dialog>
 
+      <Dialog open={!!reopenRow} onClose={() => !reopenBusy && setReopenRow(null)}>
+        <DialogTitle>Reopen this weighing?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {reopenRow &&
+              `Voucher ${reopenRow.voucher_number} of ${reopenRow.vehicle_number} at ${reopenRow.branch_code} will be open again, so the vehicle's next weighing there is its second weight, free. Any other open weighing of this vehicle at that branch is closed.`}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReopenRow(null)} disabled={reopenBusy}>
+            Cancel
+          </Button>
+          <Button onClick={reopenWeighing} disabled={reopenBusy} variant="contained">
+            Reopen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {message && (
+        <Alert severity={message.severity} onClose={() => setMessage(null)} sx={{ mt: 2 }}>
+          {message.text}
+        </Alert>
+      )}
+
       <TableContainer component={Paper} sx={{ width: "100%", mt: 2 }}>
         <Table>
           <TableHead>
@@ -255,7 +322,20 @@ const WeighBridge = () => {
                 <TableCell align="right">{row.lcd_number}</TableCell>
                 <TableCell align="right">{row.first_weight}</TableCell>
                 <TableCell align="right">{row.amount}</TableCell>
-                <TableCell align="right">{row.round_trip}</TableCell>
+                <TableCell align="right">
+                  {String(row.round_trip) === "1" ? (
+                    <>
+                      <Chip size="small" label="Closed" sx={{ mr: 1 }} />
+                      {row.id && (
+                        <Button size="small" onClick={() => setReopenRow(row)}>
+                          Reopen
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <Chip size="small" color="success" label="Open" />
+                  )}
+                </TableCell>
               </TableRow>
             ))}
             <TableRow>
