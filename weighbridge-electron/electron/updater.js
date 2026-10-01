@@ -7,7 +7,7 @@ const fs = require("fs");
 const path = require("path");
 const { EventEmitter } = require("events");
 
-const CHECK_EVERY_MS = 4 * 60 * 60 * 1000;
+const CHECK_EVERY_MS = 30 * 60 * 1000;
 const FIRST_CHECK_MS = 20 * 1000;
 const MIN_INSTALLER_BYTES = 1024 * 1024;
 

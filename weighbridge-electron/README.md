@@ -33,10 +33,10 @@ the last voucher number and the branch's recent weighings and tare weights.
 
 ## Updates
 
-The app checks the server for a newer version when it starts and every four hours. A newer
+The app checks the server for a newer version when it starts and every 30 minutes. A newer
 installer downloads in the background; a bar then offers **Restart to update**, and otherwise it
 installs silently when the app is closed. Weighings, settings and the indicator setup are kept.
-Settings > Branch & data has **Check for updates**. PCs installed for all users may show a Windows
+Clicking the version in the header (or Settings > Branch & data > **Check for updates**) checks at once. PCs installed for all users may show a Windows
 permission prompt during the update. Versions before 1.0.2 don't check, so install 1.0.2 by hand once.
 
 ## Settings lock

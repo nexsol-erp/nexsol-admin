@@ -61,6 +61,7 @@ function Shell() {
     <Layout style={{ minHeight: "100vh", background: "#f3f5f8" }}>
       <Layout.Header style={{ background: "#0b3a75", display: "flex", alignItems: "center", gap: 16, padding: "0 20px", height: 56 }}>
         <Typography.Text style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>TradeLink247 Weighbridge</Typography.Text>
+        <VersionTag />
         <Tag color="blue" style={{ fontSize: 14 }}>{auth.branchCode}</Tag>
         <div style={{ flex: 1 }} />
         <SyncBadge />
@@ -93,6 +94,26 @@ function LockedSettings({ onLock }) {
     }>
       <span style={{ pointerEvents: "auto" }}>🔒 Settings</span>
     </Popover>
+  );
+}
+
+// The running version; a click checks the server for a newer one (Settings may be locked).
+function VersionTag() {
+  const { message } = AntApp.useApp();
+  const [busy, setBusy] = useState(false);
+  const check = async () => {
+    setBusy(true);
+    try {
+      const { state } = await wb("checkUpdate");
+      if (state.status === "ready") message.success(`Version ${state.version} is ready to install`);
+      else if (state.status === "error") message.error(`Update check failed: ${state.error}`);
+      else message.info("This is the newest version");
+    } catch (e) { message.error(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <Tooltip title="Check for updates">
+      <Tag style={{ cursor: "pointer" }} onClick={busy ? undefined : check}>{busy ? "Checking…" : `v${window.WB?.version || ""}`}</Tag>
+    </Tooltip>
   );
 }
 
