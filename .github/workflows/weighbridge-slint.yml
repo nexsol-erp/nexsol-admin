@@ -50,6 +50,10 @@ jobs:
 
       - run: cargo build --release --locked
 
+      # NSIS is no longer on the windows-latest image
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+
       - name: Build installer
         shell: bash
         run: |
