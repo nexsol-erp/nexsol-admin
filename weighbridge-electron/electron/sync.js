@@ -69,6 +69,7 @@ class Sync extends EventEmitter {
       if (forcePull || Date.now() - this.lastPullAt > PULL_EVERY_MS) {
         await this.pullRates();
         await this.pullWheelTypes();
+        await this.pullReopened();
         try {
           await this.handleResyncRequests();
         } catch (e) {
@@ -215,6 +216,29 @@ class Sync extends EventEmitter {
   _since() {
     const s = this.store.getSetting("wheelTypesSince", "");
     return s ? `?since=${encodeURIComponent(s)}` : "";
+  }
+
+  // Weighings of this branch the web admin reopened since the last pull. Returns how many
+  // changed here. A server without the feature yet answers with an error: nothing to apply.
+  async pullReopened() {
+    const a = this.auth();
+    if (!a?.branchCode) return 0;
+    const saved = this.store.getSetting("reopenedSince", null);
+    const since = saved?.branch === a.branchCode ? saved.at : "";
+    let data;
+    try {
+      data = await this._call("GET", `/weighbridge/reopened?branch=${encodeURIComponent(a.branchCode)}${since ? `&since=${encodeURIComponent(since)}` : ""}`);
+    } catch (e) {
+      if (e instanceof AuthError) throw e;
+      return 0;
+    }
+    const rows = Array.isArray(data?.rows) ? data.rows : [];
+    const n = rows.length ? this.store.applyReopened(rows) : 0;
+    let latest = since;
+    for (const r of rows) if (r?.reopenedAt && String(r.reopenedAt) > latest) latest = String(r.reopenedAt);
+    if (latest && latest !== since) this.store.setSetting("reopenedSince", { branch: a.branchCode, at: latest });
+    if (n) this.emit("reopened", n);
+    return n;
   }
 
   // This PC checks in (Weighbridge PCs in the web admin) and learns whether its Settings are open.

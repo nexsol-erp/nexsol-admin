@@ -167,3 +167,27 @@ test("a tare weight or the server's history also fixes the wheel type", () => {
   s.rememberWheelType("KA01X1", "6 WHEEL", "2026-09-01 10:00:00");
   assert.throws(() => weigh(s, { vehicleNumber: "KA01X1", wheelType: "10 WHEEL" }), ValidationError);
 });
+
+test("a weighing reopened in the web admin gives a free return again", () => {
+  const s = fresh();
+  const first = weigh(s, { weight: 5000 });
+  const back = weigh(s, { source: { kind: "previous", id: first.id } });
+  assert.equal(back.amount, 0);
+  s.markSynced("weights", first.id);
+  assert.equal(s.applyReopened([{ ddId: first.id, vehicleNumber: "KL07AB1234" }]), 0, "skipped while the return waits to upload");
+  s.markSynced("weights", back.id);
+  assert.equal(s.getWeighing(first.id).round_trip, 1);
+  assert.equal(s.applyReopened([{ ddId: first.id, id: "srv-1", vehicleNumber: "kl 07 ab 1234" }]), 1);
+  assert.equal(s.getWeighing(first.id).round_trip, 0);
+  assert.equal(s.applyReopened([{ ddId: first.id, vehicleNumber: "KL07AB1234" }]), 0, "already open");
+  const again = weigh(s, { source: { kind: "previous", id: first.id } });
+  assert.equal(again.amount, 0);
+  assert.equal(s.getWeighing(first.id).round_trip, 1);
+
+  // One this PC never had (older than its history) is brought in open, and others close.
+  const fresh2 = weigh(s, { vehicleNumber: "TN22Z9", weight: 7000 });
+  s.markSynced("weights", fresh2.id);
+  assert.equal(s.applyReopened([{ ddId: "qt-old", vehicleNumber: "TN22Z9", voucherNumber: "000100", voucherDate: "2026-08-01T04:30:00.000+00:00", lcdNumber: 6000, roundTrip: 0 }]), 1);
+  assert.equal(s.getWeighing("qt-old").round_trip, 0);
+  assert.equal(s.getWeighing(fresh2.id).round_trip, 1);
+});

@@ -13,6 +13,9 @@ TradeLink247 server. It replaces the weighbridge screen of the old Qt app and ke
   weight, is charged in full.
 - Saving a return marks the vehicle's other open weighings closed, so a first weighing can be
   returned free only once.
+- A closed weighing can be opened again from the web admin (**Weighbridge Entry** > Reopen, server
+  V083). The PC picks it up within a minute, so the vehicle's next weighing there is its free
+  return. A vehicle with a weighing still waiting to upload on the PC is left as it is.
 - Once a vehicle has a wheel type (from a weighing or tare here, or on the server from any
   branch), the operator can't pick another. It is changed only in the web admin's Vehicle Wheel
   Type screen; the app picks the change up when the vehicle is next entered, or within ten minutes.

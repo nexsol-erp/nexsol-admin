@@ -155,3 +155,26 @@ test("a failing resync request check doesn't mark the PC offline", async () => {
   assert.equal(st.pending.weights, 0);
   assert.match(warns[0], /wb_resync_request/);
 });
+
+test("picks up weighings reopened in the web admin and remembers where it got to", async () => {
+  const s = storeWithRates();
+  const first = s.saveWeighing({ vehicleNumber: "KL1", wheelType: "6 WHEEL", weight: 9000, branchCode: "WB1" });
+  const back = s.saveWeighing({ vehicleNumber: "KL1", wheelType: "6 WHEEL", weight: 4000, branchCode: "WB1", source: { kind: "previous", id: first.id } });
+  s.markSynced("weights", first.id);
+  s.markSynced("weights", back.id);
+  const srv = fakeServer({
+    "GET /weighbridge/reopened": () => ({ installed: true, rows: [{ id: "x", ddId: first.id, vehicleNumber: "KL1", reopenedAt: "2026-10-01T12:00:00.123456" }] }),
+  });
+  const sync = new Sync(s, auth, srv.fetchImpl);
+  assert.equal(await sync.pullReopened(), 1);
+  assert.equal(s.getWeighing(first.id).round_trip, 0);
+  await sync.pullReopened();
+  assert.equal(srv.calls[0].path, "/weighbridge/reopened?branch=WB1");
+  assert.equal(srv.calls[1].path, "/weighbridge/reopened?branch=WB1&since=2026-10-01T12%3A00%3A00.123456");
+});
+
+test("a server without reopening: nothing to apply", async () => {
+  const s = storeWithRates();
+  const sync = new Sync(s, auth, fakeServer({}).fetchImpl);
+  assert.equal(await sync.pullReopened(), 0);
+});

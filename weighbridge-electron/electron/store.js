@@ -482,6 +482,30 @@ class Store {
     });
     return tx();
   }
+
+  // Weighings the web admin reopened (Weighbridge Entry > Reopen): open again here, so the
+  // vehicle's next weighing pairs with it as a free return, and the vehicle's other open ones
+  // close, as on the server. A vehicle with a weighing still waiting to upload is skipped: the
+  // server reopened without knowing it, and that upload closes the reopened one there too.
+  applyReopened(rows = []) {
+    const tx = this.db.transaction(() => {
+      let n = 0;
+      for (const s of rows) {
+        const id = String(s?.ddId || s?.id || "");
+        const vehicle = normalizeVehicle(s?.vehicleNumber);
+        if (!id || !vehicle) continue;
+        const pending = this.db.prepare("SELECT 1 FROM wb_weights WHERE vehicle_number = ? AND synced = 0 LIMIT 1").get(vehicle);
+        if (pending) continue;
+        const before = this.db.prepare("SELECT round_trip FROM wb_weights WHERE id = ?").get(id);
+        this.importFromServer({ weights: [{ ...s, roundTrip: 0 }] }); // older than this PC's history: bring it in
+        this.db.prepare("UPDATE wb_weights SET round_trip = 1 WHERE vehicle_number = ? AND id <> ? AND round_trip = 0").run(vehicle, id);
+        this.db.prepare("UPDATE wb_weights SET round_trip = 0 WHERE id = ?").run(id);
+        if (!before || before.round_trip !== 0) n++;
+      }
+      return n;
+    });
+    return tx();
+  }
 }
 
 module.exports = { Store, ValidationError, normalizeVehicle, localStamp, fromServerDate };
