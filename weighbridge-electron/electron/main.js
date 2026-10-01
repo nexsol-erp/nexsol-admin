@@ -8,7 +8,7 @@ const path = require("path");
 const fs = require("fs");
 
 const serverConfig = require("./serverConfig");
-const { Store, ValidationError, localStamp } = require("./store");
+const { Store, ValidationError, localStamp, normalizeVehicle } = require("./store");
 const { Sync } = require("./sync");
 const { PRESETS, buildProfile, escapeCtl, unescapeCtl } = require("./indicator/profiles");
 const { IndicatorSession, FrameSplitter, decodeFrame } = require("./indicator/parser");
@@ -330,7 +330,18 @@ function registerIpc() {
   handle("wb:rates", () => ({ rates: store.rates() }));
   handle("wb:vehicles", ({ prefix }) => ({ vehicles: store.vehicles(prefix) }));
   handle("wb:materials", ({ prefix }) => ({ materials: store.materials(prefix) }));
-  handle("wb:history", ({ vehicleNumber }) => ({ ...store.history(vehicleNumber), wheelType: store.wheelTypeOf(vehicleNumber) }));
+  handle("wb:history", async ({ vehicleNumber }) => {
+    const vehicle = normalizeVehicle(vehicleNumber);
+    // Ask the server too: a change made in the web admin (Vehicle Wheel Type) applies at once, and a
+    // lorry known only at another branch is locked as well. Offline, the local answer stands.
+    if (vehicle.length >= 4 && sync.state.online !== false) {
+      try {
+        await Promise.race([sync.lookupWheelType(vehicle), new Promise((r) => setTimeout(r, 2000))]);
+      } catch (_) { /* offline or signed out */ }
+    }
+    const wheelType = store.wheelTypeOf(vehicle);
+    return { ...store.history(vehicle), wheelType, wheelLocked: !!wheelType };
+  });
   handle("wb:quote", (q) => ({ quote: store.quote(q) }));
   handle("wb:save", async (form) => {
     const a = auth();

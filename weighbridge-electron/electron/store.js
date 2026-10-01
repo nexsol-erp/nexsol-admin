@@ -69,6 +69,15 @@ CREATE TABLE IF NOT EXISTS wb_engage (
   synced INTEGER DEFAULT 0
 );
 
+-- Wheel types from the server. set_on_server = 1: set in the web admin (Vehicle Wheel Type), which
+-- overrides everything. 0: the server's newest weighing or tare, for vehicles not weighed on this PC.
+CREATE TABLE IF NOT EXISTS wb_vehicle_wheel (
+  vehicle_number TEXT PRIMARY KEY,
+  wheel_type TEXT,
+  voucher_date TEXT,
+  set_on_server INTEGER DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
@@ -102,6 +111,9 @@ class Store {
     this.db.pragma("journal_mode = WAL");
     this.db.pragma("synchronous = FULL"); // a voucher that printed must survive a power cut
     this.db.exec(SCHEMA);
+    // columns added after a table first shipped
+    const cols = this.db.prepare("PRAGMA table_info(wb_vehicle_wheel)").all().map((c) => c.name);
+    if (!cols.includes("set_on_server")) this.db.exec("ALTER TABLE wb_vehicle_wheel ADD COLUMN set_on_server INTEGER DEFAULT 0");
   }
 
   close() { this.db.close(); }
@@ -176,10 +188,48 @@ class Store {
       GROUP BY material ORDER BY MAX(voucher_date) DESC LIMIT ?`).all(String(prefix || "") + "%", limit).map((r) => r.material);
   }
 
+  // The wheel type a vehicle is locked to: the one set in the web admin, else its newest weighing
+  // or tare here, else the server's newest. The operator can't pick another (see checkWheelType);
+  // only the web admin changes it.
   wheelTypeOf(vehicle) {
-    const row = this.db.prepare(`SELECT wheel_type FROM wb_weights WHERE vehicle_number = ? AND wheel_type <> ''
-      ORDER BY voucher_date DESC LIMIT 1`).get(normalizeVehicle(vehicle));
-    return row ? row.wheel_type : "";
+    const v = normalizeVehicle(vehicle);
+    if (!v) return "";
+    const set = this.db.prepare("SELECT wheel_type FROM wb_vehicle_wheel WHERE vehicle_number = ? AND set_on_server = 1").get(v);
+    if (set && set.wheel_type) return set.wheel_type;
+    const row = this.db.prepare(`SELECT wheel_type FROM (
+        SELECT wheel_type, voucher_date FROM wb_weights WHERE vehicle_number = ? AND COALESCE(wheel_type, '') <> ''
+        UNION ALL
+        SELECT wheel_type, voucher_date FROM wb_vehicles WHERE vehicle_number = ? AND COALESCE(wheel_type, '') <> ''
+      ) ORDER BY voucher_date DESC LIMIT 1`).get(v, v);
+    if (row) return row.wheel_type;
+    const known = this.db.prepare("SELECT wheel_type FROM wb_vehicle_wheel WHERE vehicle_number = ?").get(v);
+    return known ? known.wheel_type : "";
+  }
+
+  // setOnServer: true for a wheel type set in the web admin. A server-history answer never
+  // replaces one set in the web admin.
+  rememberWheelType(vehicle, wheelType, voucherDate, setOnServer = false) {
+    const v = normalizeVehicle(vehicle);
+    if (!v || !wheelType) return;
+    if (setOnServer) {
+      this.db.prepare(`INSERT INTO wb_vehicle_wheel (vehicle_number, wheel_type, voucher_date, set_on_server) VALUES (?, ?, ?, 1)
+        ON CONFLICT(vehicle_number) DO UPDATE SET wheel_type = excluded.wheel_type, voucher_date = excluded.voucher_date, set_on_server = 1`)
+        .run(v, String(wheelType), voucherDate || "");
+    } else {
+      this.db.prepare(`INSERT INTO wb_vehicle_wheel (vehicle_number, wheel_type, voucher_date, set_on_server) VALUES (?, ?, ?, 0)
+        ON CONFLICT(vehicle_number) DO UPDATE SET wheel_type = excluded.wheel_type, voucher_date = excluded.voucher_date
+        WHERE wb_vehicle_wheel.set_on_server = 0`)
+        .run(v, String(wheelType), voucherDate || "");
+    }
+  }
+
+  // Throws unless wheelType matches the vehicle's locked one.
+  checkWheelType(vehicle, wheelType) {
+    const saved = this.wheelTypeOf(vehicle);
+    if (saved && wheelType && saved !== wheelType) {
+      throw new ValidationError(`${normalizeVehicle(vehicle)} is saved as ${saved}. Its wheel type can only be changed in the web admin (Vehicle Wheel Type).`);
+    }
+    return saved;
   }
 
   // Previous weighings (newest first) and saved tares for one vehicle.
@@ -240,6 +290,7 @@ class Store {
     const mobile = String(mobileNumber || "").replace(/\D/g, "").slice(-15);
 
     const tx = this.db.transaction(() => {
+      this.checkWheelType(vehicle, wheelType);
       const src = this._source(source, vehicle);
       const rate = rateFor(this.allRates(), wheelType);
       if (!(rate > 0)) throw new ValidationError(`No rate set for wheel type ${wheelType}`);
@@ -302,6 +353,7 @@ class Store {
     if (!vehicle) throw new ValidationError("Enter the vehicle number");
     if (!Number.isFinite(t) || t <= 0) throw new ValidationError("Tare weight must be more than 0");
     const tx = this.db.transaction(() => {
+      this.checkWheelType(vehicle, wheelType);
       const row = {
         id: crypto.randomUUID(),
         voucher_number: this.nextVoucher("WT"),

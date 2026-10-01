@@ -18,6 +18,8 @@ export default function WeighingPage({ active }) {
   const [saving, setSaving] = useState(false);
   const [last, setLast] = useState(null);
   const [bump, setBump] = useState(0); // re-read the vehicle's history
+  // A vehicle's saved wheel type is locked; it can only be changed in the web admin.
+  const [lock, setLock] = useState({ vehicle: "", wheelType: "" });
   const vehicleRef = useRef(null);
 
   // live weight
@@ -47,7 +49,10 @@ export default function WeighingPage({ active }) {
         const [veh, hist] = await Promise.all([wb("vehicles", { prefix: v }), v ? wb("history", { vehicleNumber: v }) : null]);
         setVehicleOptions(veh.vehicles.map((x) => ({ value: x.vehicleNumber, label: `${x.vehicleNumber}${x.wheelType ? `  ·  ${x.wheelType}` : ""}` })));
         setHistory(hist ? { weights: hist.weights, tares: hist.tares } : { weights: [], tares: [] });
-        if (hist?.wheelType) setForm((f) => (f.wheelType ? f : { ...f, wheelType: hist.wheelType }));
+        setLock({ vehicle: v, wheelType: hist?.wheelLocked ? hist.wheelType : "" });
+        if (hist?.wheelLocked) {
+          setForm((f) => (f.vehicleNumber !== v ? f : { ...f, wheelType: hist.wheelType }));
+        }
       } catch (_) { /* typing */ }
     }, 250);
     return () => clearTimeout(t);
@@ -65,6 +70,7 @@ export default function WeighingPage({ active }) {
   }, [form.vehicleNumber, form.wheelType, form.kind, form.sourceId, weight]);
 
   const fresh = reading && signal && Date.now() - reading.at < 5000;
+  const wheelLocked = !!lock.wheelType && lock.vehicle === form.vehicleNumber;
   const canSave = fresh && reading.stable && !reading.overload && weight > 0 && form.vehicleNumber && form.wheelType
     && (form.kind === "none" || form.sourceId);
 
@@ -132,13 +138,17 @@ export default function WeighingPage({ active }) {
             <Col span={12}>
               <Label>Vehicle number</Label>
               <AutoComplete style={{ width: "100%" }} options={vehicleOptions} value={form.vehicleNumber}
-                onChange={(v) => set({ vehicleNumber: String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, ""), wheelType: "", kind: "none", sourceId: "" })}>
+                onChange={(v) => { set({ vehicleNumber: String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, ""), wheelType: "", kind: "none", sourceId: "" }); }}>
                 <Input ref={vehicleRef} size="large" placeholder="KL07AB1234" style={{ fontWeight: 700, letterSpacing: 1 }} />
               </AutoComplete>
             </Col>
             <Col span={12}>
-              <Label>Wheel type</Label>
+              <Label>
+                Wheel type
+                {wheelLocked && <span style={{ marginLeft: 8, color: "#888", fontWeight: 400 }}>locked · change in web admin</span>}
+              </Label>
               <Select size="large" style={{ width: "100%" }} value={form.wheelType || undefined} onChange={(v) => set({ wheelType: v })}
+                disabled={wheelLocked}
                 placeholder="Select" options={rates.map((r) => ({ value: r.wheelType, label: `${r.wheelType}  ·  ₹${r.wheelRate}` }))} />
             </Col>
             <Col span={12} style={{ marginTop: 10 }}>

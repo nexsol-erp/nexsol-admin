@@ -155,6 +155,7 @@ export const MENU_TREE = [
       { menuKey: "Weight-Count",       label: "Weight-Count",      link: "/bridge-count",       roles: ["WB"] },
       { menuKey: "WeighBridge Usage",  label: "WeighBridge Usage", link: "/weighbridgeusage",   roles: ["WB"] },
       { menuKey: "Weighbridge Resync", label: "Resync Records",    link: "/weighbridge-resync", roles: ["WB", "admin"] },
+      { menuKey: "Vehicle Wheel Type", label: "Vehicle Wheel Type", link: "/vehicle-wheel-type", roles: ["WB", "admin"] },
     ],
   },
 

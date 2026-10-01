@@ -68,6 +68,7 @@ class Sync extends EventEmitter {
       await this.push();
       if (forcePull || Date.now() - this.lastPullAt > PULL_EVERY_MS) {
         await this.pullRates();
+        await this.pullWheelTypes();
         await this.handleResyncRequests();
         this.lastPullAt = Date.now();
       }
@@ -168,9 +169,46 @@ class Sync extends EventEmitter {
     const data = await this._call("GET", `/weighbridge/sync?branch=${b}`);
     const imported = this.store.importFromServer(data || {});
     await this.pullRates();
+    await this.pullWheelTypes();
     this.store.setSetting("seededAt", new Date().toISOString());
     this._set({ online: true, needsLogin: false });
     return { imported, lastWB: this.store.lastVoucher("WB"), lastWT: this.store.lastVoucher("WT") };
+  }
+
+  // Wheel type the server has in force for a vehicle: set in the web admin, else its newest
+  // weighing or tare at any branch. "" when the server has none.
+  async lookupWheelType(vehicle) {
+    const r = await this._call("GET", `/weighbridge/wheel-type/${encodeURIComponent(vehicle)}`);
+    if (!r || !r.wheelType) return "";
+    const set = r.source === "set";
+    this.store.rememberWheelType(vehicle, String(r.wheelType), String((set ? r.updatedAt : r.lastDate) || ""), set);
+    return String(r.wheelType);
+  }
+
+  // Wheel types set or changed in the web admin since the last pull.
+  async pullWheelTypes() {
+    let data;
+    try {
+      data = await this._call("GET", `/weighbridge/wheel-types/changes${this._since()}`);
+    } catch (e) {
+      if (e instanceof AuthError) throw e;
+      return 0; // a server without the feature yet: nothing to apply
+    }
+    let latest = this.store.getSetting("wheelTypesSince", "");
+    let n = 0;
+    for (const r of Array.isArray(data?.rows) ? data.rows : []) {
+      if (!r?.vehicleNumber || !r.wheelType) continue;
+      this.store.rememberWheelType(r.vehicleNumber, String(r.wheelType), String(r.updatedAt || ""), true);
+      if (r.updatedAt && String(r.updatedAt) > latest) latest = String(r.updatedAt);
+      n++;
+    }
+    if (latest) this.store.setSetting("wheelTypesSince", latest);
+    return n;
+  }
+
+  _since() {
+    const s = this.store.getSetting("wheelTypesSince", "");
+    return s ? `?since=${encodeURIComponent(s)}` : "";
   }
 
   async addRate(wheelType, wheelRate) {

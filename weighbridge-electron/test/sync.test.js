@@ -101,3 +101,40 @@ test("seed continues voucher numbers and imports history", async () => {
   assert.deepEqual(out, { imported: { weights: 1, tares: 0 }, lastWB: 4521, lastWT: 33 });
   assert.equal(s.saveWeighing({ vehicleNumber: "KL9", wheelType: "6 WHEEL", weight: 1 }).voucher_number, "004522");
 });
+test("looks up a vehicle's wheel type on the server and remembers it", async () => {
+  const s = storeWithRates();
+  const srv = fakeServer({
+    "GET /weighbridge/wheel-type/MH12Q7": () => ({ vehicleNumber: "MH12Q7", wheelType: "10 WHEEL", source: "history", lastDate: "2026-09-01 10:00:00" }),
+    "GET /weighbridge/wheel-type/KL01A1": () => ({ vehicleNumber: "KL01A1", wheelType: "6 WHEEL", source: "set", updatedAt: "2026-10-01 05:00:00" }),
+    "GET /weighbridge/wheel-type/NONE1": () => ({ vehicleNumber: "NONE1", wheelType: "", source: "none" }),
+  });
+  const sync = new Sync(s, auth, srv.fetchImpl);
+  assert.equal(await sync.lookupWheelType("MH12Q7"), "10 WHEEL");
+  assert.equal(s.wheelTypeOf("MH12Q7"), "10 WHEEL");
+  s.saveWeighing({ vehicleNumber: "KL01A1", wheelType: "6 WHEEL", weight: 9000, branchCode: "WB1" });
+  assert.equal(await sync.lookupWheelType("KL01A1"), "6 WHEEL");
+  assert.equal(await sync.lookupWheelType("NONE1"), "");
+  assert.equal(s.wheelTypeOf("NONE1"), "");
+});
+
+test("pulls wheel types changed in the web admin, from where it left off", async () => {
+  const s = storeWithRates();
+  s.replaceRates([
+    { id: "a", wheelType: "6 WHEEL", wheelRate: 100, voucherDate: "2026-01-01" },
+    { id: "b", wheelType: "10 WHEEL", wheelRate: 150, voucherDate: "2026-01-01" },
+  ]);
+  s.saveWeighing({ vehicleNumber: "KL07AB1234", wheelType: "6 WHEEL", weight: 9000, branchCode: "WB1" });
+  const srv = fakeServer({
+    "GET /weighbridge/wheel-types/changes": () => ({ installed: true, rows: [
+      { vehicleNumber: "KL07AB1234", wheelType: "10 WHEEL", updatedAt: "2026-10-01 05:20:11.123456" },
+    ] }),
+  });
+  const sync = new Sync(s, auth, srv.fetchImpl);
+  assert.equal(await sync.pullWheelTypes(), 1);
+  assert.equal(s.wheelTypeOf("KL07AB1234"), "10 WHEEL");
+  await sync.pullWheelTypes();
+  assert.equal(srv.calls.at(-1).path, "/weighbridge/wheel-types/changes?since=2026-10-01%2005%3A20%3A11.123456");
+
+  const old = new Sync(storeWithRates(), auth, fakeServer({}).fetchImpl);
+  assert.equal(await old.pullWheelTypes(), 0, "a server without the feature is ignored");
+});
