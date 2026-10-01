@@ -9,6 +9,7 @@
 //
 // Rates have their own switch (V079): the Rates tab is view only unless the web admin has allowed
 // rate changes on this PC. It stays as the web admin left it; a save doesn't close it.
+// Developer tools (View menu, F12) work the same way (V082): off unless the web admin turns them on.
 
 const { EventEmitter } = require("events");
 const crypto = require("crypto");
@@ -59,7 +60,14 @@ class SettingsLock extends EventEmitter {
       // rates are managed from the web admin (V079); ratesUnlocked = this PC may change them
       ratesManaged: this._ratesManaged(),
       ratesUnlocked: !!s.ratesUnlocked,
+      devTools: this.devToolsAllowed(),
     };
+  }
+
+  // Servers without V082 keep developer tools available, as before.
+  devToolsAllowed() {
+    const s = this._get();
+    return !!s.serverSupports && !!s.devToolsSupported ? !!s.devToolsEnabled : true;
   }
 
   _ratesManaged() {
@@ -113,7 +121,11 @@ class SettingsLock extends EventEmitter {
           next.unlocked = false;
           next.ratesSupported = false;
           next.ratesUnlocked = false;
+          next.devToolsSupported = false;
+          next.devToolsEnabled = false;
         } else if (r) {
+          next.devToolsSupported = !!r.devToolsSupported;
+          next.devToolsEnabled = !!r.devToolsEnabled;
           next.ratesSupported = !!r.ratesSupported;
           next.ratesUnlocked = !!r.ratesUnlocked;
           next.serverSupports = true;

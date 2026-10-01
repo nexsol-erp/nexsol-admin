@@ -49,6 +49,10 @@ the locked tab). The opening is used up by the next save on the PC, so Settings 
 following start. Each PC checks in with its own id, branch, name and version, which that screen
 lists.
 
+View > Toggle Developer Tools (F12) is hidden unless **Developer tools** is turned on for the PC in
+Weighbridge PCs (server V082; servers without it keep the menu item). It follows the switch within a
+minute, and closes the tools when it is turned off.
+
 The lock needs the V078 migration on the server. Until it has run, Settings stay open. PCs that were
 set up on an earlier version lock from their first start on 1.0.3.
 

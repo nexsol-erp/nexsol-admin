@@ -22,7 +22,8 @@ import dayjs from "dayjs";
  * branch) locks once the PC is set up; "Allow settings changes" opens it again. The PC picks that
  * up within a minute. The opening is used up when Settings are saved on the PC: they lock again
  * at its next start. "Allow rate changes" separately lets a PC change rates on its Rates tab; it
- * stays as set here (rates themselves are changed in Weighbridge Rates).
+ * stays as set here (rates themselves are changed in Weighbridge Rates). "Developer tools" turns on the
+ * PC's View > Toggle Developer Tools (F12) for troubleshooting; it is off unless turned on here.
  */
 const fmt = (v) => (v ? dayjs(v).format("DD-MM-YYYY HH:mm") : "-");
 
@@ -30,6 +31,7 @@ const WeighbridgePcsPage = () => {
   const [rows, setRows] = useState([]);
   const [installed, setInstalled] = useState(true);
   const [ratesInstalled, setRatesInstalled] = useState(true);
+  const [devToolsInstalled, setDevToolsInstalled] = useState(true);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState(null);
 
@@ -46,6 +48,7 @@ const WeighbridgePcsPage = () => {
       const data = await res.json();
       setInstalled(data.installed !== false);
       setRatesInstalled(data.ratesInstalled !== false);
+      setDevToolsInstalled(data.devToolsInstalled !== false);
       setRows(Array.isArray(data.rows) ? data.rows : []);
     } catch (e) {
       setMessage({ severity: "error", text: e.message });
@@ -58,14 +61,14 @@ const WeighbridgePcsPage = () => {
     return () => clearInterval(t);
   }, [load]);
 
-  // what: "settings" | "rates"
+  // what: "settings" | "rates" | "dev-tools"
   const setUnlocked = async (row, unlocked, what = "settings") => {
     setBusy(row.terminalId);
     try {
       const res = await fetch(`/api/${tenancyId}/weighbridge/terminals/${encodeURIComponent(row.terminalId)}/${what}`, {
         method: "PUT",
         headers: headers(),
-        body: JSON.stringify({ unlocked }),
+        body: JSON.stringify(what === "dev-tools" ? { enabled: unlocked } : { unlocked }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -75,7 +78,9 @@ const WeighbridgePcsPage = () => {
       const name = row.machineName || row.branchCode || "The PC";
       setMessage({
         severity: "success",
-        text: what === "rates"
+        text: what === "dev-tools"
+          ? `${name}'s developer tools are ${unlocked ? "on (View menu, F12) within a minute" : "off"}.`
+          : what === "rates"
           ? unlocked
             ? `${name} can change rates within a minute, until you lock them here.`
             : `${name} can only view rates.`
@@ -114,6 +119,12 @@ const WeighbridgePcsPage = () => {
           then, admins can change rates on the PCs.
         </Alert>
       )}
+      {installed && !devToolsInstalled && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          The developer tools switch isn't set up on this server yet (the V082 migration hasn't been
+          run). Until then, developer tools stay available on the PCs.
+        </Alert>
+      )}
 
       {message && (
         <Alert severity={message.severity} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
@@ -134,12 +145,13 @@ const WeighbridgePcsPage = () => {
               <TableCell />
               <TableCell>Rates</TableCell>
               <TableCell />
+              <TableCell>Developer tools</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} sx={{ color: "text.secondary" }}>
+                <TableCell colSpan={10} sx={{ color: "text.secondary" }}>
                   No weighbridge PCs have checked in yet. They appear here once they run version 1.0.3 or later.
                 </TableCell>
               </TableRow>
@@ -191,6 +203,17 @@ const WeighbridgePcsPage = () => {
                       Allow rate changes
                     </Button>
                   )}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    size="small"
+                    color={r.devToolsEnabled ? "warning" : "primary"}
+                    variant={r.devToolsEnabled ? "contained" : "outlined"}
+                    disabled={busy === r.terminalId || !devToolsInstalled}
+                    onClick={() => setUnlocked(r, !r.devToolsEnabled, "dev-tools")}
+                  >
+                    {r.devToolsEnabled ? "On · turn off" : "Off · turn on"}
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
