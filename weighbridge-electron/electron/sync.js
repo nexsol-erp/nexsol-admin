@@ -69,7 +69,13 @@ class Sync extends EventEmitter {
       if (forcePull || Date.now() - this.lastPullAt > PULL_EVERY_MS) {
         await this.pullRates();
         await this.pullWheelTypes();
-        await this.handleResyncRequests();
+        try {
+          await this.handleResyncRequests();
+        } catch (e) {
+          // a server problem with resync requests must not show the PC as offline or stop uploads
+          if (e instanceof AuthError || !e.status) throw e;
+          this.emit("warn", `resync requests: ${e.message}`);
+        }
         this.lastPullAt = Date.now();
       }
       this._set({ online: true, needsLogin: false, lastSyncAt: new Date().toISOString(), lastError: "" });

@@ -563,6 +563,7 @@ app.whenReady().then(() => {
     return a ? { ...a, apiServer: a.apiServer || serverConfig.getServerState().apiServer } : null;
   }, (url, opts) => net.fetch(url, opts));
   sync.on("state", (s) => send("wb:sync", s));
+  sync.on("warn", (m) => log("WARN", "sync", m));
   updater = new Updater({
     currentVersion: app.getVersion(),
     serverUrl: () => serverConfig.getServerState().apiServer,
