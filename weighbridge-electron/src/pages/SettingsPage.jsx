@@ -345,6 +345,18 @@ function DataSettings({ auth, isAdmin, onChanged }) {
     return window.WB.onSync(setSync);
   }, []);
 
+  const [update, setUpdate] = useState(null);
+  useEffect(() => {
+    wb("updateState").then((r) => setUpdate(r.state)).catch(() => {});
+    return window.WB.onUpdate(setUpdate);
+  }, []);
+  const checkUpdate = () => wb("checkUpdate").then((r) => {
+    const st = r.state;
+    if (st.status === "ready") message.success(`Version ${st.version} is downloaded. Restart to update.`);
+    else if (st.status === "none") message.info("This is the latest version.");
+    else if (st.status === "error") message.error(`Couldn't check for updates: ${st.error}`);
+  }).catch((e) => message.error(e.message));
+
   const reseed = () => wb("seed").then((r) => message.success(`Copied ${r.seeded.imported.weights} weighings and ${r.seeded.imported.tares} tare weights. Next voucher after ${r.seeded.lastWB}.`)).catch((e) => message.error(e.message));
 
   const changeBranch = () => modal.confirm({
@@ -364,12 +376,17 @@ function DataSettings({ auth, isAdmin, onChanged }) {
         <Descriptions.Item label="Branch">{auth.branchCode}</Descriptions.Item>
         <Descriptions.Item label="Waiting to upload">{sync ? `${sync.pending.weights} weighings, ${sync.pending.tares} tare weights, ${sync.pending.engage} bridge events` : ""}</Descriptions.Item>
         <Descriptions.Item label="Last sync">{sync?.lastSyncAt ? new Date(sync.lastSyncAt).toLocaleString() : "never"}{sync?.lastError ? ` · ${sync.lastError}` : ""}</Descriptions.Item>
-        <Descriptions.Item label="App version">{window.WB.version}</Descriptions.Item>
+        <Descriptions.Item label="App version">
+          {window.WB.version}
+          {update?.status === "ready" && ` · version ${update.version} downloaded, restart to update`}
+          {update?.status === "downloading" && ` · downloading version ${update.version}…`}
+        </Descriptions.Item>
       </Descriptions>
       <Space style={{ marginTop: 12 }} wrap>
         <Button onClick={() => wb("syncNow").then(() => message.success("Sync done")).catch((e) => message.error(e.message))}>Sync now</Button>
         <Button onClick={reseed}>Refresh history from server</Button>
         <Button onClick={() => wb("openFolder", { which: "logs" })}>Open log folder</Button>
+        <Button onClick={checkUpdate} loading={update?.status === "checking" || update?.status === "downloading"}>Check for updates</Button>
         <Button danger disabled={!isAdmin} onClick={changeBranch}>Change branch</Button>
       </Space>
     </Card>
