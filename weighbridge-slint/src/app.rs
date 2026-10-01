@@ -1065,6 +1065,10 @@ impl Core {
                 c.refresh_lock();
                 let _ = c.sync.pull_rates();
                 let _ = c.sync.pull_reopened();
+                // PCs set up before the full wheel-type download get it once
+                if !c.auth().branch_code.is_empty() && !c.sync.has_all_wheel_types() {
+                    let _ = c.sync.pull_all_wheel_types();
+                }
             }),
         );
         every("sync", Duration::from_secs(2), crate::sync::PUSH_EVERY, Box::new(|c| {

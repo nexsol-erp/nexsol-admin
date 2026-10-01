@@ -307,6 +307,7 @@ impl Syncer {
         let (w, t) = self.db().import_from_server(&arr("weights"), &arr("tares"))?;
         self.pull_rates()?;
         self.pull_wheel_types()?;
+        self.pull_all_wheel_types()?;
         let (lwb, lwt) = {
             let db = self.db();
             db.set_setting("seededAt", &Value::String(chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)))?;
@@ -360,6 +361,46 @@ impl Syncer {
             db.set_setting("wheelTypesSince", &Value::String(latest))?;
         }
         Ok(n)
+    }
+
+    /// Every vehicle's wheel type from the server, a page at a time, so this PC knows a lorry last
+    /// weighed years ago (at any branch) even offline. Runs at branch setup and once on PCs set up
+    /// before this existed. A server without the endpoint yet: nothing to do, tried again later.
+    pub fn pull_all_wheel_types(&self) -> Res<usize> {
+        const PAGE: usize = 5000;
+        let mut after = String::new();
+        let mut n = 0;
+        loop {
+            let data = match self.api.call("GET", &format!("/weighbridge/wheel-types/all?limit={PAGE}&after={}", enc(&after)), None) {
+                Ok(d) => d,
+                Err(e @ AppError::Auth(_)) => return Err(e),
+                Err(e) => {
+                    crate::warn!("wheel types {e}");
+                    return Ok(n);
+                }
+            };
+            let rows = data.get("rows").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+            {
+                let db = self.db();
+                for r in &rows {
+                    let (v, wt) = (vstr(r, "vehicleNumber"), vstr(r, "wheelType"));
+                    db.remember_wheel_type(&v, &wt, &vstr(r, "date"), vstr(r, "source") == "set")?;
+                    n += 1;
+                }
+            }
+            match rows.last() {
+                Some(last) if rows.len() >= PAGE => after = vstr(last, "vehicleNumber"),
+                _ => break,
+            }
+        }
+        self.db().set_setting("wheelTypesAllAt", &Value::String(chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)))?;
+        crate::info!("wheel types: {n} vehicle(s) from the server");
+        Ok(n)
+    }
+
+    /// True once this PC has downloaded every vehicle's wheel type.
+    pub fn has_all_wheel_types(&self) -> bool {
+        !self.db().get_str("wheelTypesAllAt").is_empty()
     }
 
     /// Weighings of this branch the web admin reopened since the last pull. Returns how many
@@ -544,6 +585,39 @@ mod tests {
         );
         assert_eq!(sy.seed().unwrap(), (1, 0, 4521, 33));
         assert_eq!(weigh(&s, "KL9", 1.0, Pick::None).voucher_number, "004522");
+    }
+
+    #[test]
+    fn all_wheel_types_page_through_and_keep_set_ones_first() {
+        let s = store_with_rates();
+        let (sy, srv) = sync(
+            &s,
+            FakeServer::default().on("GET /weighbridge/wheel-types/all", |c| {
+                if c.path.contains("after=&") || c.path.ends_with("after=") {
+                    (200, json!({ "rows": [
+                        { "vehicleNumber": "KL01A1", "wheelType": "6 WHEEL", "source": "history", "date": "2024-05-01 09:00:00" },
+                        { "vehicleNumber": "KL01A2", "wheelType": "10 WHEEL", "source": "set", "date": "2026-09-30 10:00:00" },
+                    ] }))
+                } else {
+                    (200, json!({ "rows": [] }))
+                }
+            }),
+        );
+        assert!(!sy.has_all_wheel_types());
+        assert_eq!(sy.pull_all_wheel_types().unwrap(), 2);
+        assert!(sy.has_all_wheel_types());
+        assert!(srv.calls()[0].path.contains("limit=5000"));
+        let db = s.lock().unwrap();
+        assert_eq!(db.wheel_type_of("KL01A1"), "6 WHEEL");
+        assert_eq!(db.wheel_type_of("kl 01 a2"), "10 WHEEL");
+    }
+
+    #[test]
+    fn all_wheel_types_on_an_old_server_is_not_an_error() {
+        let s = store_with_rates();
+        let (sy, _) = sync(&s, FakeServer::default());
+        assert_eq!(sy.pull_all_wheel_types().unwrap(), 0);
+        assert!(!sy.has_all_wheel_types());
     }
 
     #[test]
