@@ -403,11 +403,12 @@ function registerIpc() {
   });
 
   // rates (kept on the server so every branch and the web admin see the same list)
+  // Rates are managed from the web admin; the PC changes them only when allowed there.
   handle("rates:add", async ({ wheelType, wheelRate }) => {
-    requireAdmin();
+    settingsLock.requireRates(isAdmin());
     if (!String(wheelType || "").trim()) throw new ValidationError("Enter the wheel type");
     if (!(Number(wheelRate) > 0)) throw new ValidationError("Rate must be more than 0");
-    await sync.addRate(String(wheelType).trim().toUpperCase(), Number(wheelRate));
+    await sync.addRate(String(wheelType).trim().toUpperCase(), Number(wheelRate), settingsLock.terminalId);
     return { rates: store.rates() };
   });
 
@@ -562,6 +563,7 @@ app.whenReady().then(() => {
     return a ? { ...a, apiServer: a.apiServer || serverConfig.getServerState().apiServer } : null;
   }, (url, opts) => net.fetch(url, opts));
   sync.on("state", (s) => send("wb:sync", s));
+  sync.on("warn", (m) => log("WARN", "sync", m));
   updater = new Updater({
     currentVersion: app.getVersion(),
     serverUrl: () => serverConfig.getServerState().apiServer,
@@ -576,9 +578,12 @@ app.whenReady().then(() => {
     log,
   });
   settingsLock.on("state", (s) => send("wb:settings-lock", s));
-  // the web admin's "allow changes" reaches the PC within a minute
+  // the web admin's "allow changes" and rate changes reach the PC within a minute
   setTimeout(() => settingsLock.refresh().catch(() => {}), 3000);
-  setInterval(() => settingsLock.refresh().catch(() => {}), 60 * 1000);
+  setInterval(() => {
+    settingsLock.refresh().catch(() => {});
+    sync.pullRates().catch(() => {}); // offline or signed out: the cached rates stand
+  }, 60 * 1000);
   registerIpc();
   createWindow();
   startIndicator();

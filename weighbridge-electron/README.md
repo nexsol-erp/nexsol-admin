@@ -4,7 +4,10 @@ Windows desktop app for the weighbridge PC. It reads the live weight from the in
 works out the charge, prints the weighment voucher and uploads every weighing to the
 TradeLink247 server. It replaces the weighbridge screen of the old Qt app and keeps its rules:
 
-- A new weighing is charged the newest rate for the wheel type (Rates tab).
+- A new weighing is charged the newest rate for the wheel type (Rates tab). Rates are set in the
+  web admin's **Weighbridge Rates** screen and reach every PC within a minute. A PC's Rates tab is
+  view only unless **Allow rate changes** is on for it in **Weighbridge PCs** (server V079; older
+  servers keep the admin-only rule).
 - Using a previous weighing that was not a return (`round_trip = 0`) is free: the vehicle is
   coming back to be weighed the other way. Using one that was already a return, or a tare
   weight, is charged in full.

@@ -138,3 +138,20 @@ test("pulls wheel types changed in the web admin, from where it left off", async
   const old = new Sync(storeWithRates(), auth, fakeServer({}).fetchImpl);
   assert.equal(await old.pullWheelTypes(), 0, "a server without the feature is ignored");
 });
+
+test("a failing resync request check doesn't mark the PC offline", async () => {
+  const s = storeWithRates();
+  s.saveWeighing({ vehicleNumber: "KL1", wheelType: "6 WHEEL", weight: 9000, branchCode: "WB1" });
+  const srv = fakeServer({
+    "POST /weighbridge/save": () => ({ success: true }),
+    "GET /wb-rates": () => [],
+    "GET /weighbridge/resync-request": () => ({ __status: 500, __body: { error: "relation wb_resync_request does not exist" } }),
+  });
+  const sync = new Sync(s, auth, srv.fetchImpl);
+  const warns = [];
+  sync.on("warn", (m) => warns.push(m));
+  const st = await sync.run({ forcePull: true });
+  assert.equal(st.online, true);
+  assert.equal(st.pending.weights, 0);
+  assert.match(warns[0], /wb_resync_request/);
+});

@@ -4,7 +4,10 @@ import { wb } from "../api";
 
 // Charge per wheel type. Kept on the server (every branch and the web admin see the same
 // list) and cached here, so weighing works offline. The newest rate for a wheel type wins.
-export default function RatesPage({ active, isAdmin }) {
+// Rates are changed in the web admin (Weighbridge Rates); this PC can change them only while the
+// web admin allows it (Weighbridge PCs). Servers without that switch keep the admin-only rule.
+export default function RatesPage({ active, isAdmin, lock }) {
+  const canEdit = lock?.ratesManaged ? !!lock.ratesUnlocked : isAdmin;
   const { message } = App.useApp();
   const [rates, setRates] = useState([]);
   const [form, setForm] = useState({ wheelType: "", wheelRate: null });
@@ -25,7 +28,7 @@ export default function RatesPage({ active, isAdmin }) {
 
   return (
     <Space direction="vertical" style={{ width: "100%", maxWidth: 800 }} size={12}>
-      {isAdmin ? (
+      {canEdit ? (
         <Card size="small" title="Set a rate">
           <Space wrap>
             <Input size="large" placeholder="Wheel type, e.g. 10 WHEEL" style={{ width: 240 }} value={form.wheelType}
@@ -37,7 +40,9 @@ export default function RatesPage({ active, isAdmin }) {
           <div style={{ color: "#777", marginTop: 8, fontSize: 13 }}>Needs the internet. Changing an existing wheel type's rate applies from now on.</div>
         </Card>
       ) : (
-        <Alert type="info" showIcon message="Only an admin can change rates." />
+        <Alert type="info" showIcon message={lock?.ratesManaged
+          ? "Rates are set in the web admin (Weighbridge Rates). This PC can only view them. An admin can allow rate changes here from Weighbridge PCs."
+          : "Only an admin can change rates."} />
       )}
       <Card size="small" title="Current rates" extra={<Button size="small" onClick={() => wb("syncNow").then(load)}>Refresh</Button>}>
         <Table size="small" rowKey="wheelType" pagination={false} dataSource={rates} columns={[

@@ -21,13 +21,15 @@ import dayjs from "dayjs";
  * Each weighbridge desktop app checks in here. Its Settings tab (indicator, printing, weighing,
  * branch) locks once the PC is set up; "Allow settings changes" opens it again. The PC picks that
  * up within a minute. The opening is used up when Settings are saved on the PC: they lock again
- * at its next start.
+ * at its next start. "Allow rate changes" separately lets a PC change rates on its Rates tab; it
+ * stays as set here (rates themselves are changed in Weighbridge Rates).
  */
 const fmt = (v) => (v ? dayjs(v).format("DD-MM-YYYY HH:mm") : "-");
 
 const WeighbridgePcsPage = () => {
   const [rows, setRows] = useState([]);
   const [installed, setInstalled] = useState(true);
+  const [ratesInstalled, setRatesInstalled] = useState(true);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState(null);
 
@@ -43,6 +45,7 @@ const WeighbridgePcsPage = () => {
       const res = await fetch(`/api/${tenancyId}/weighbridge/terminals`, { headers: headers() });
       const data = await res.json();
       setInstalled(data.installed !== false);
+      setRatesInstalled(data.ratesInstalled !== false);
       setRows(Array.isArray(data.rows) ? data.rows : []);
     } catch (e) {
       setMessage({ severity: "error", text: e.message });
@@ -55,10 +58,11 @@ const WeighbridgePcsPage = () => {
     return () => clearInterval(t);
   }, [load]);
 
-  const setUnlocked = async (row, unlocked) => {
+  // what: "settings" | "rates"
+  const setUnlocked = async (row, unlocked, what = "settings") => {
     setBusy(row.terminalId);
     try {
-      const res = await fetch(`/api/${tenancyId}/weighbridge/terminals/${encodeURIComponent(row.terminalId)}/settings`, {
+      const res = await fetch(`/api/${tenancyId}/weighbridge/terminals/${encodeURIComponent(row.terminalId)}/${what}`, {
         method: "PUT",
         headers: headers(),
         body: JSON.stringify({ unlocked }),
@@ -71,9 +75,13 @@ const WeighbridgePcsPage = () => {
       const name = row.machineName || row.branchCode || "The PC";
       setMessage({
         severity: "success",
-        text: unlocked
-          ? `${name} can change its settings within a minute. They lock again after they are saved and the app is restarted.`
-          : `${name}'s settings are locked.`,
+        text: what === "rates"
+          ? unlocked
+            ? `${name} can change rates within a minute, until you lock them here.`
+            : `${name} can only view rates.`
+          : unlocked
+            ? `${name} can change its settings within a minute. They lock again after they are saved and the app is restarted.`
+            : `${name}'s settings are locked.`,
       });
       load();
     } catch (e) {
@@ -100,6 +108,12 @@ const WeighbridgePcsPage = () => {
           Until then, Settings on the PCs stay open.
         </Alert>
       )}
+      {installed && !ratesInstalled && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          The rates lock isn't set up on this server yet (the V079 migration hasn't been run). Until
+          then, admins can change rates on the PCs.
+        </Alert>
+      )}
 
       {message && (
         <Alert severity={message.severity} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
@@ -118,12 +132,14 @@ const WeighbridgePcsPage = () => {
               <TableCell>Last seen</TableCell>
               <TableCell>Settings</TableCell>
               <TableCell />
+              <TableCell>Rates</TableCell>
+              <TableCell />
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} sx={{ color: "text.secondary" }}>
+                <TableCell colSpan={9} sx={{ color: "text.secondary" }}>
                   No weighbridge PCs have checked in yet. They appear here once they run version 1.0.3 or later.
                 </TableCell>
               </TableRow>
@@ -155,6 +171,24 @@ const WeighbridgePcsPage = () => {
                   ) : (
                     <Button size="small" variant="outlined" disabled={busy === r.terminalId} onClick={() => setUnlocked(r, true)}>
                       Allow settings changes
+                    </Button>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {r.ratesUnlocked ? (
+                    <Chip size="small" color="warning" label={`Can change${r.ratesUnlockedBy ? ` (by ${r.ratesUnlockedBy})` : ""}`} />
+                  ) : (
+                    <Chip size="small" variant="outlined" label="View only" />
+                  )}
+                </TableCell>
+                <TableCell align="right">
+                  {r.ratesUnlocked ? (
+                    <Button size="small" disabled={busy === r.terminalId || !ratesInstalled} onClick={() => setUnlocked(r, false, "rates")}>
+                      Lock rates
+                    </Button>
+                  ) : (
+                    <Button size="small" variant="outlined" disabled={busy === r.terminalId || !ratesInstalled} onClick={() => setUnlocked(r, true, "rates")}>
+                      Allow rate changes
                     </Button>
                   )}
                 </TableCell>
