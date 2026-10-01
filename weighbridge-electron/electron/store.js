@@ -69,6 +69,13 @@ CREATE TABLE IF NOT EXISTS wb_engage (
   synced INTEGER DEFAULT 0
 );
 
+-- Wheel types the server knows for vehicles this PC has not weighed yet (other branches, older trips).
+CREATE TABLE IF NOT EXISTS wb_vehicle_wheel (
+  vehicle_number TEXT PRIMARY KEY,
+  wheel_type TEXT,
+  voucher_date TEXT
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
@@ -176,10 +183,36 @@ class Store {
       GROUP BY material ORDER BY MAX(voucher_date) DESC LIMIT ?`).all(String(prefix || "") + "%", limit).map((r) => r.material);
   }
 
+  // The wheel type a vehicle is saved with: its newest weighing or tare here, else what the
+  // server reported. Once a vehicle has one, the operator can't pick another (see checkWheelType).
   wheelTypeOf(vehicle) {
-    const row = this.db.prepare(`SELECT wheel_type FROM wb_weights WHERE vehicle_number = ? AND wheel_type <> ''
-      ORDER BY voucher_date DESC LIMIT 1`).get(normalizeVehicle(vehicle));
-    return row ? row.wheel_type : "";
+    const v = normalizeVehicle(vehicle);
+    if (!v) return "";
+    const row = this.db.prepare(`SELECT wheel_type FROM (
+        SELECT wheel_type, voucher_date FROM wb_weights WHERE vehicle_number = ? AND COALESCE(wheel_type, '') <> ''
+        UNION ALL
+        SELECT wheel_type, voucher_date FROM wb_vehicles WHERE vehicle_number = ? AND COALESCE(wheel_type, '') <> ''
+      ) ORDER BY voucher_date DESC LIMIT 1`).get(v, v);
+    if (row) return row.wheel_type;
+    const known = this.db.prepare("SELECT wheel_type FROM wb_vehicle_wheel WHERE vehicle_number = ?").get(v);
+    return known ? known.wheel_type : "";
+  }
+
+  rememberWheelType(vehicle, wheelType, voucherDate) {
+    const v = normalizeVehicle(vehicle);
+    if (!v || !wheelType) return;
+    this.db.prepare(`INSERT INTO wb_vehicle_wheel (vehicle_number, wheel_type, voucher_date) VALUES (?, ?, ?)
+      ON CONFLICT(vehicle_number) DO UPDATE SET wheel_type = excluded.wheel_type, voucher_date = excluded.voucher_date`)
+      .run(v, String(wheelType), voucherDate || "");
+  }
+
+  // Throws unless wheelType matches the vehicle's saved one. allowChange is for admins.
+  checkWheelType(vehicle, wheelType, allowChange) {
+    const saved = this.wheelTypeOf(vehicle);
+    if (saved && wheelType && saved !== wheelType && !allowChange) {
+      throw new ValidationError(`${normalizeVehicle(vehicle)} is saved as ${saved}. Only an admin can change its wheel type.`);
+    }
+    return saved;
   }
 
   // Previous weighings (newest first) and saved tares for one vehicle.
@@ -231,7 +264,7 @@ class Store {
 
   // Saves one weighing and returns the stored row. weight comes from the live indicator,
   // never from the screen. Throws ValidationError for anything the operator must fix.
-  saveWeighing({ vehicleNumber, wheelType, material, mobileNumber, weight, source, branchCode, userId, now }) {
+  saveWeighing({ vehicleNumber, wheelType, material, mobileNumber, weight, source, branchCode, userId, now, allowWheelChange }) {
     const vehicle = normalizeVehicle(vehicleNumber);
     if (!vehicle) throw new ValidationError("Enter the vehicle number");
     if (!wheelType) throw new ValidationError("Select the wheel type");
@@ -240,6 +273,7 @@ class Store {
     const mobile = String(mobileNumber || "").replace(/\D/g, "").slice(-15);
 
     const tx = this.db.transaction(() => {
+      this.checkWheelType(vehicle, wheelType, allowWheelChange);
       const src = this._source(source, vehicle);
       const rate = rateFor(this.allRates(), wheelType);
       if (!(rate > 0)) throw new ValidationError(`No rate set for wheel type ${wheelType}`);
@@ -296,12 +330,13 @@ class Store {
   }
 
   // ── tare weights ─────────────────────────────────────────────────────────
-  saveTare({ vehicleNumber, wheelType, tareWeight, branchCode, userId, now }) {
+  saveTare({ vehicleNumber, wheelType, tareWeight, branchCode, userId, now, allowWheelChange }) {
     const vehicle = normalizeVehicle(vehicleNumber);
     const t = Number(tareWeight);
     if (!vehicle) throw new ValidationError("Enter the vehicle number");
     if (!Number.isFinite(t) || t <= 0) throw new ValidationError("Tare weight must be more than 0");
     const tx = this.db.transaction(() => {
+      this.checkWheelType(vehicle, wheelType, allowWheelChange);
       const row = {
         id: crypto.randomUUID(),
         voucher_number: this.nextVoucher("WT"),

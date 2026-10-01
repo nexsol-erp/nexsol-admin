@@ -173,6 +173,19 @@ class Sync extends EventEmitter {
     return { imported, lastWB: this.store.lastVoucher("WB"), lastWT: this.store.lastVoucher("WT") };
   }
 
+  // Wheel type the server has for a vehicle (any branch, weighings or tares), or "".
+  async lookupWheelType(vehicle) {
+    const rows = await this._call("GET", `/weighbridge/vehicle/${encodeURIComponent(vehicle)}`);
+    let best = null;
+    for (const r of Array.isArray(rows) ? rows : []) {
+      if (!r || !r.wheelType) continue;
+      const d = String(r.voucherDate || "");
+      if (!best || d > best.d) best = { wheelType: String(r.wheelType), d };
+    }
+    if (best) this.store.rememberWheelType(vehicle, best.wheelType, best.d);
+    return best ? best.wheelType : "";
+  }
+
   async addRate(wheelType, wheelRate) {
     const out = await this._call("POST", "/wb-rates", { wheelType, wheelRate });
     await this.pullRates();

@@ -101,3 +101,20 @@ test("seed continues voucher numbers and imports history", async () => {
   assert.deepEqual(out, { imported: { weights: 1, tares: 0 }, lastWB: 4521, lastWT: 33 });
   assert.equal(s.saveWeighing({ vehicleNumber: "KL9", wheelType: "6 WHEEL", weight: 1 }).voucher_number, "004522");
 });
+test("looks up a vehicle's wheel type on the server and remembers it", async () => {
+  const s = storeWithRates();
+  const srv = fakeServer({
+    "GET /weighbridge/vehicle/MH12Q7": () => [
+      { type: "WEIGHT", wheelType: "6 WHEEL", voucherDate: "2026-08-01T10:00:00.000+05:30" },
+      { type: "TARE", wheelType: "10 WHEEL", voucherDate: "2026-09-01T10:00:00.000+05:30" },
+      { type: "WEIGHT", wheelType: "", voucherDate: "2026-09-20T10:00:00.000+05:30" },
+    ],
+  });
+  const sync = new Sync(s, auth, srv.fetchImpl);
+  assert.equal(await sync.lookupWheelType("MH12Q7"), "10 WHEEL", "newest row with a wheel type");
+  assert.equal(s.wheelTypeOf("MH12Q7"), "10 WHEEL");
+  // unknown vehicle: the server answers []
+  const empty = new Sync(s, auth, fakeServer({ "GET /weighbridge/vehicle/NONE1": () => [] }).fetchImpl);
+  assert.equal(await empty.lookupWheelType("NONE1"), "");
+  assert.equal(s.wheelTypeOf("NONE1"), "");
+});

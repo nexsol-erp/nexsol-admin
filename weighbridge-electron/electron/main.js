@@ -8,7 +8,7 @@ const path = require("path");
 const fs = require("fs");
 
 const serverConfig = require("./serverConfig");
-const { Store, ValidationError, localStamp } = require("./store");
+const { Store, ValidationError, localStamp, normalizeVehicle } = require("./store");
 const { Sync } = require("./sync");
 const { PRESETS, buildProfile, escapeCtl, unescapeCtl } = require("./indicator/profiles");
 const { IndicatorSession, FrameSplitter, decodeFrame } = require("./indicator/parser");
@@ -330,13 +330,23 @@ function registerIpc() {
   handle("wb:rates", () => ({ rates: store.rates() }));
   handle("wb:vehicles", ({ prefix }) => ({ vehicles: store.vehicles(prefix) }));
   handle("wb:materials", ({ prefix }) => ({ materials: store.materials(prefix) }));
-  handle("wb:history", ({ vehicleNumber }) => ({ ...store.history(vehicleNumber), wheelType: store.wheelTypeOf(vehicleNumber) }));
+  handle("wb:history", async ({ vehicleNumber }) => {
+    const vehicle = normalizeVehicle(vehicleNumber);
+    let wheelType = store.wheelTypeOf(vehicle);
+    // Not weighed on this PC: ask the server, so a lorry known at another branch stays locked too.
+    if (!wheelType && vehicle.length >= 4 && sync.state.online !== false) {
+      try {
+        wheelType = await Promise.race([sync.lookupWheelType(vehicle), new Promise((r) => setTimeout(() => r(""), 3000))]);
+      } catch (_) { /* offline or signed out: the local answer stands */ }
+    }
+    return { ...store.history(vehicle), wheelType, wheelLocked: !!wheelType, canChangeWheel: isAdmin() };
+  });
   handle("wb:quote", (q) => ({ quote: store.quote(q) }));
   handle("wb:save", async (form) => {
     const a = auth();
     if (!a?.branchCode) throw new ValidationError("Choose the branch in Settings first");
     const weight = currentWeight();
-    const row = store.saveWeighing({ ...form, weight, branchCode: a.branchCode, userId: a.username || "" });
+    const row = store.saveWeighing({ ...form, weight, branchCode: a.branchCode, userId: a.username || "", allowWheelChange: isAdmin() && !!form.changeWheelType });
     log("INFO", "saved", row.voucher_number, row.vehicle_number, row.lcd_number, row.amount, row.first_weight_kind);
     let print = { printed: false, pdf: null, error: "" };
     if (printSettings().autoPrint) print = await printVoucher(row);
@@ -357,11 +367,11 @@ function registerIpc() {
 
   // tare weights
   handle("tare:list", () => ({ tares: store.tares() }));
-  handle("tare:save", ({ vehicleNumber, wheelType, tareWeight, fromBridge }) => {
+  handle("tare:save", ({ vehicleNumber, wheelType, tareWeight, fromBridge, changeWheelType }) => {
     const a = auth();
     if (!a?.branchCode) throw new ValidationError("Choose the branch in Settings first");
     const t = fromBridge ? currentWeight() : Number(tareWeight);
-    const row = store.saveTare({ vehicleNumber, wheelType, tareWeight: t, branchCode: a.branchCode, userId: a.username || "" });
+    const row = store.saveTare({ vehicleNumber, wheelType, tareWeight: t, branchCode: a.branchCode, userId: a.username || "", allowWheelChange: isAdmin() && !!changeWheelType });
     sync.run();
     return { tare: row };
   });
