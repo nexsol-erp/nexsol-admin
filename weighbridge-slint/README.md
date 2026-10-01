@@ -59,7 +59,9 @@ makensis -DVERSION=2.0.0 -DEXE=..\target\release\weighbridge-slint.exe installer
 
 Linux needs `libudev-dev`, `libxkbcommon-dev` and `libfontconfig1-dev`; printing and the USB
 camera work on Windows only. CI (`.github/workflows/weighbridge-slint.yml`) runs the tests and
-builds the installer as a workflow artifact. To release, bump `version` in `Cargo.toml`.
+builds the installer; on main it also publishes it to the server (`latest.txt` in
+`weighbridge.app.dir`), so /download serves it and site PCs update to it. To release, bump
+`version` in `Cargo.toml` and merge.
 
 Installer switches: `/S` silent, `/RUN` start the app afterwards (the updater uses both).
 

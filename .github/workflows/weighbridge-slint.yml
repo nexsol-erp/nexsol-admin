@@ -1,7 +1,8 @@
 name: Weighbridge app (Slint)
 
-# Tests and a Windows installer for weighbridge-slint. Artifact only for now: publishing to the
-# server (like weighbridge.yml does for the Electron build) waits until site testing is done.
+# Tests and a Windows installer for weighbridge-slint. On main it publishes the installer to the
+# server, where /download and the app's update check pick it up. The Slint app replaced the
+# Electron one (weighbridge.yml), which no longer publishes.
 on:
   push:
     branches: [main]
@@ -36,6 +37,8 @@ jobs:
   build-windows:
     runs-on: windows-latest
     needs: [test]
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -66,3 +69,67 @@ jobs:
           name: weighbridge-slint-installer
           path: weighbridge-slint/target/TradeLink247-Weighbridge-Setup-*.exe
           retention-days: 14
+
+  # ── Publish to the server (main only, when deploy secrets are set) ─────────
+  # The backend serves it at /api/updates/weighbridge/download from weighbridge.app.dir,
+  # and the web /download page links there. Same secrets as deploy.yml.
+  publish:
+    runs-on: ubuntu-latest
+    needs: [build-windows]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: .
+    env:
+      WB_DIR: ${{ vars.WEIGHBRIDGE_APP_DIR || '/home/deploy/tradelink-pos/weighbridge' }}
+      VERSION: ${{ needs.build-windows.outputs.version }}
+    steps:
+      - name: Check deploy secrets
+        id: can
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER_NAME: ${{ secrets.DEPLOY_USER }}
+          KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          if [ -z "$HOST" ] || [ -z "$USER_NAME" ] || [ -z "$KEY" ]; then echo "::warning::Deploy secrets not set; skipping publish."; exit 0; fi
+          echo "deploy=true" >> $GITHUB_OUTPUT
+
+      - uses: actions/download-artifact@v4
+        if: steps.can.outputs.deploy == 'true'
+        with:
+          name: weighbridge-slint-installer
+          path: out/
+
+      - name: Make the folder on the server
+        if: steps.can.outputs.deploy == 'true'
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: mkdir -p ${{ env.WB_DIR }}
+
+      - name: Copy the installer
+        if: steps.can.outputs.deploy == 'true'
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "out/TradeLink247-Weighbridge-Setup-${{ env.VERSION }}.exe"
+          target: "${{ env.WB_DIR }}/"
+          strip_components: 1
+          overwrite: true
+
+      # latest.txt goes last, so the download link never points at a half-copied file.
+      - name: Point latest.txt at it
+        if: steps.can.outputs.deploy == 'true'
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            chmod 644 "${{ env.WB_DIR }}/TradeLink247-Weighbridge-Setup-${{ env.VERSION }}.exe"
+            echo "${{ env.VERSION }}" > ${{ env.WB_DIR }}/latest.txt
+            ls -lh ${{ env.WB_DIR }}
