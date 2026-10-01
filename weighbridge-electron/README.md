@@ -55,8 +55,10 @@ lists.
 **Camera** (Settings > Camera): a USB / built-in camera or an IP camera's snapshot address. The
 Weighing screen shows it live, and a photo is taken the moment a weighing is saved. Photos are kept
 in `%APPDATA%\TradeLink247 Weighbridge\photos\<yyyy-MM>\` (IP camera pictures shrunk to 1280 px
-wide) and uploaded after their weighing (server V085), where Weighbridge Entry in the web admin
-shows them. A failed photo never stops a save; the operator sees why.
+wide). Two switches: **Upload photos to the server** (on by default; off keeps them on the PC
+only), uploaded after their weighing (server V085) and shown in the web admin's Weighbridge Entry;
+and **Print the photo on the voucher** (off by default; also on reprints and the PDF copy). A failed
+photo never stops a save; the operator sees why.
 
 Every Settings save sends a copy of the PC's indicator, printing and weighing settings to the server
 with the next check-in (server V084; PCs set up earlier send one copy after updating). **Fetch from

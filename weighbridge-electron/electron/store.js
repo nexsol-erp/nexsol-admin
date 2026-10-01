@@ -114,7 +114,7 @@ class Store {
     // columns added after a table first shipped
     const cols = this.db.prepare("PRAGMA table_info(wb_vehicle_wheel)").all().map((c) => c.name);
     if (!cols.includes("set_on_server")) this.db.exec("ALTER TABLE wb_vehicle_wheel ADD COLUMN set_on_server INTEGER DEFAULT 0");
-    // camera photo of a weighing: photo_synced 0 = to upload, 1 = on the server
+    // camera photo of a weighing: photo_synced 0 = to upload, 1 = on the server, 2 = this PC only
     const wcols = this.db.prepare("PRAGMA table_info(wb_weights)").all().map((c) => c.name);
     if (!wcols.includes("photo_path")) this.db.exec("ALTER TABLE wb_weights ADD COLUMN photo_path TEXT");
     if (!wcols.includes("photo_synced")) this.db.exec("ALTER TABLE wb_weights ADD COLUMN photo_synced INTEGER DEFAULT 0");
@@ -344,8 +344,9 @@ class Store {
   }
 
   // ── camera photos ────────────────────────────────────────────────────────
-  setPhoto(id, photoPath) {
-    this.db.prepare("UPDATE wb_weights SET photo_path = ?, photo_synced = 0, photo_error = NULL WHERE id = ?").run(photoPath, id);
+  // upload false: the photo stays on this PC only (photo_synced 2)
+  setPhoto(id, photoPath, upload = true) {
+    this.db.prepare("UPDATE wb_weights SET photo_path = ?, photo_synced = ?, photo_error = NULL WHERE id = ?").run(photoPath, upload ? 0 : 2, id);
   }
 
   // Photos to upload: their weighing is on the server already.

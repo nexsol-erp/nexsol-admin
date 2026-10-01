@@ -431,7 +431,7 @@ function CameraSettings({ isAdmin }) {
   return (
     <Card size="small" title="Camera" style={{ maxWidth: 700 }}>
       <Space direction="vertical" size={14} style={{ width: "100%" }}>
-        <Typography.Text type="secondary">A photo is taken the moment a weighing is saved. It is kept on this PC and uploaded with the weighing, so it can be seen in the web admin (Weighbridge Entry).</Typography.Text>
+        <Typography.Text type="secondary">A photo is taken the moment a weighing is saved and kept on this PC. It can also be uploaded with the weighing (seen in the web admin's Weighbridge Entry) and printed on the voucher.</Typography.Text>
         <Radio.Group disabled={!isAdmin} value={cam.source} onChange={(e) => set({ source: e.target.value })} optionType="button" options={[
           { value: "none", label: "No camera" },
           { value: "webcam", label: "USB / built-in camera" },
@@ -450,6 +450,12 @@ function CameraSettings({ isAdmin }) {
             <Input disabled={!isAdmin} value={cam.url} onChange={(e) => set({ url: e.target.value })} placeholder="http://user:password@192.168.1.64/ISAPI/Streaming/channels/101/picture" />
             <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>The camera's snapshot (still picture) address. Hikvision: /ISAPI/Streaming/channels/101/picture · Dahua: /cgi-bin/snapshot.cgi</div>
           </div>
+        )}
+        {cam.source !== "none" && (
+          <Space direction="vertical">
+            <Space><Switch disabled={!isAdmin} checked={cam.upload !== false} onChange={(v) => set({ upload: v })} /> Upload photos to the server (seen in the web admin). Off: photos stay on this PC only.</Space>
+            <Space><Switch disabled={!isAdmin} checked={!!cam.printPhoto} onChange={(v) => set({ printPhoto: v })} /> Print the photo on the voucher</Space>
+          </Space>
         )}
         {cam.source !== "none" && <CameraPanel camera={cam} active title="Preview" />}
         <Space>

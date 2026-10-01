@@ -75,3 +75,21 @@ test("a photo whose file is gone is not retried forever", async () => {
   assert.equal(s.pendingCount().photos, 0);
   assert.match(s.getWeighing(row.id).photo_error, /missing/);
 });
+
+test("photos kept on this PC only are never uploaded", () => {
+  const { s, row } = storeWithWeighing();
+  s.markSynced("weights", row.id);
+  s.setPhoto(row.id, "/x/photo.jpg", false);
+  assert.equal(s.pendingCount().photos, 0);
+  assert.equal(s.pendingPhotos().length, 0);
+  assert.equal(s.getWeighing(row.id).photo_path, "/x/photo.jpg");
+});
+
+test("the voucher prints the photo only when one is given", () => {
+  const { voucherHtml } = require("../electron/voucher");
+  const row = { voucher_number: "000001", vehicle_number: "KL1", lcd_number: 9000, amount: 100 };
+  const data = "data:image/jpeg;base64," + JPEG.toString("base64");
+  assert.match(voucherHtml(row, { photo: data }), /<img src="data:image\/jpeg;base64,/);
+  assert.doesNotMatch(voucherHtml(row, {}), /<img/);
+  assert.doesNotMatch(voucherHtml(row, { photo: 'x" onerror="alert(1)' }), /<img/);
+});

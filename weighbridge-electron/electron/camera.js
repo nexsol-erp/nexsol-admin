@@ -11,7 +11,9 @@
 const path = require("path");
 const fs = require("fs");
 
-const DEFAULT_CAMERA = { source: "none", deviceId: "", deviceLabel: "", url: "" };
+// upload: send photos to the server too (else they stay on this PC only)
+// printPhoto: print the photo on the voucher
+const DEFAULT_CAMERA = { source: "none", deviceId: "", deviceLabel: "", url: "", upload: true, printPhoto: false };
 const MAX_PHOTO_BYTES = 1500 * 1024;
 
 const isJpeg = (b) => Buffer.isBuffer(b) && b.length > 3 && b[0] === 0xff && b[1] === 0xd8;

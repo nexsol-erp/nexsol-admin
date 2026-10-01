@@ -192,6 +192,15 @@ function startPhoto(frame) {
   return Promise.resolve(camera.jpegFromDataUrl(frame));
 }
 
+// The weighing's photo on this PC as a data URL, or "".
+function photoDataUrl(row) {
+  try {
+    return row?.photo_path && fs.existsSync(row.photo_path) ? "data:image/jpeg;base64," + fs.readFileSync(row.photo_path).toString("base64") : "";
+  } catch (_) {
+    return "";
+  }
+}
+
 // IP cameras send full-size pictures: keep at most 1280 px wide, so uploads stay small.
 function shrinkPhoto(buf) {
   if (!buf) return buf;
@@ -211,7 +220,7 @@ async function finishPhoto(row, shot) {
     const buf = shrinkPhoto(await shot);
     if (!buf) return "No picture from the camera";
     const file = camera.savePhoto(path.join(app.getPath("userData"), "photos"), row, buf);
-    store.setPhoto(row.id, file);
+    store.setPhoto(row.id, file, cameraSettings().upload !== false);
     return "";
   } catch (e) {
     log("WARN", "camera", row.voucher_number, e.message);
@@ -245,8 +254,9 @@ async function printVoucher(row, { reprint = false } = {}) {
   const ps = printSettings();
   const copies = Math.max(1, Math.min(5, Number(ps.copies) || 1));
   const result = { printed: false, pdf: null, error: "" };
+  const photo = cameraSettings().printPhoto ? photoDataUrl(row) : "";
   for (let i = 0; i < copies; i++) {
-    const html = voucherHtml(row, { ...ps, copyLabel: reprint ? "DUPLICATE" : copies > 1 ? (i === 0 ? "ORIGINAL" : "COPY") : "" });
+    const html = voucherHtml(row, { ...ps, photo, copyLabel: reprint ? "DUPLICATE" : copies > 1 ? (i === 0 ? "ORIGINAL" : "COPY") : "" });
     try {
       await renderHtml(html, (w) => new Promise((resolve, reject) => {
         w.webContents.print({
@@ -270,7 +280,7 @@ async function printVoucher(row, { reprint = false } = {}) {
       const dir = pdfFolder();
       fs.mkdirSync(dir, { recursive: true });
       const file = path.join(dir, pdfFileName(row));
-      const pdf = await renderHtml(voucherHtml(row, ps), (w) => w.webContents.printToPDF({ printBackground: true, pageSize: ps.layout === "80mm" ? { width: 3.15, height: 7.87 } : "A5" }));
+      const pdf = await renderHtml(voucherHtml(row, { ...ps, photo }), (w) => w.webContents.printToPDF({ printBackground: true, pageSize: ps.layout === "80mm" ? { width: 3.15, height: 7.87 } : "A5" }));
       fs.writeFileSync(file, pdf);
       result.pdf = file;
     } catch (e) {
@@ -437,9 +447,10 @@ function registerIpc() {
     shot?.catch(() => {}); // handled in finishPhoto
     const row = store.saveWeighing({ ...fields, weight, branchCode: a.branchCode, userId: a.username || "" });
     log("INFO", "saved", row.voucher_number, row.vehicle_number, row.lcd_number, row.amount, row.first_weight_kind);
-    let print = { printed: false, pdf: null, error: "" };
-    if (printSettings().autoPrint) print = await printVoucher(row);
+    // the photo first, so it can go on the voucher
     const photoError = await finishPhoto(row, shot);
+    let print = { printed: false, pdf: null, error: "" };
+    if (printSettings().autoPrint) print = await printVoucher(store.getWeighing(row.id) || row);
     sync.run();
     return { row, print, photoError };
   });
@@ -452,7 +463,7 @@ function registerIpc() {
   handle("wb:preview", ({ id }) => {
     const row = store.getWeighing(id);
     if (!row) throw new ValidationError("Voucher not found");
-    return { html: voucherHtml(row, printSettings()) };
+    return { html: voucherHtml(row, { ...printSettings(), photo: cameraSettings().printPhoto ? photoDataUrl(row) : "" }) };
   });
 
   // tare weights
@@ -528,7 +539,8 @@ function registerIpc() {
   handle("camera:save", ({ camera: cam }) => {
     requireSettings();
     const source = ["none", "webcam", "url"].includes(cam?.source) ? cam.source : "none";
-    const next = { ...cameraSettings(), source, deviceId: String(cam?.deviceId || ""), deviceLabel: String(cam?.deviceLabel || ""), url: String(cam?.url || "").trim() };
+    const next = { ...cameraSettings(), source, deviceId: String(cam?.deviceId || ""), deviceLabel: String(cam?.deviceLabel || ""), url: String(cam?.url || "").trim(),
+      upload: cam?.upload !== false, printPhoto: !!cam?.printPhoto };
     if (source === "url" && !/^https?:\/\//i.test(next.url)) throw new ValidationError("Enter the camera's snapshot address, starting with http://");
     store.setSetting("camera", next);
     settingsLock.saved();
@@ -545,11 +557,7 @@ function registerIpc() {
     shell.openPath(dir);
     return {};
   });
-  handle("wb:photo", ({ id }) => {
-    const row = store.getWeighing(id);
-    if (!row?.photo_path || !fs.existsSync(row.photo_path)) return { dataUrl: null };
-    return { dataUrl: "data:image/jpeg;base64," + fs.readFileSync(row.photo_path).toString("base64") };
-  });
+  handle("wb:photo", ({ id }) => ({ dataUrl: photoDataUrl(store.getWeighing(id)) || null }));
   handle("settings:lock", () => ({ lock: settingsLock.state() }));
   handle("settings:lock-check", async () => ({ lock: await settingsLock.refresh() }));
   handle("settings:pick-folder", async () => {
