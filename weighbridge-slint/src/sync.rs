@@ -127,11 +127,6 @@ impl Syncer {
         (self.on_event)(SyncEvent::State(st));
     }
 
-    /// Re-reads the outbox counts (after a save) and tells the screen.
-    pub fn touch(&self) {
-        self.set(|_| {});
-    }
-
     fn db(&self) -> std::sync::MutexGuard<'_, Store> {
         self.store.lock().unwrap()
     }
@@ -464,7 +459,9 @@ mod tests {
         let row = weigh(&s, "KL1", 9000.0, Pick::None);
         let (sy, srv) = sync(&s, FakeServer::default().on("POST /weighbridge/save", ok(json!({ "success": true }))).on("GET /wb-rates", ok(json!([]))).on("GET /weighbridge/resync-request", ok(json!([]))));
         let st = sy.run(false);
-        let save = srv.calls().into_iter().find(|c| c.path == "/weighbridge/save").unwrap().body.unwrap();
+        let save = srv.calls().into_iter().find(|c| c.path == "/weighbridge/save").unwrap();
+        assert_eq!(save.method, "POST");
+        let save = save.body.unwrap();
         assert_eq!(save["ddId"], row.id.as_str());
         assert_eq!(save["voucherNumber"], "000001");
         assert_eq!(save["roundTrip"], 0);

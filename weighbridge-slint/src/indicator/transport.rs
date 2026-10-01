@@ -108,7 +108,7 @@ fn run(profile: Profile, stop: Arc<AtomicBool>, on: impl Fn(TransportEvent)) {
         let mut conn = match conn {
             Ok(c) => c,
             Err(e) => {
-                status(&on, "error", e);
+                status(&on, "error", format!("{label}: {e}"));
                 sleep_unless_stopped(&stop, RETRY);
                 continue;
             }

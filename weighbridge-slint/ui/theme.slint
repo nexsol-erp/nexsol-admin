@@ -1,0 +1,502 @@
+// Colours and the small building blocks every screen uses. Same look as the Electron app:
+
+import { ListView } from "std-widgets.slint";
+// navy header, light grey page, white cards, a black weight panel with green digits.
+
+export global Theme {
+    out property <color> navy: #0b3a75;
+    out property <color> navy-dark: #082b57;
+    out property <color> page: #f3f5f8;
+    out property <color> card: #ffffff;
+    out property <color> border: #dde3ea;
+    out property <color> text: #1f2933;
+    out property <color> muted: #5f6b7a;
+    out property <color> faint: #8a96a3;
+    out property <color> green: #2e7d32;
+    out property <color> green-bg: #e8f5e9;
+    out property <color> red: #c62828;
+    out property <color> red-bg: #fdecea;
+    out property <color> gold: #ad6800;
+    out property <color> gold-bg: #fff7e0;
+    out property <color> blue: #0b5cad;
+    out property <color> blue-bg: #e6f0fb;
+    out property <color> row-hover: #f0f5fb;
+    out property <color> row-selected: #dbe9fa;
+    out property <color> row-open: #eaf7ec;
+    out property <length> font: 15px;
+    out property <length> small: 13px;
+
+    // kind: success | error | warning | info | default
+    public pure function fg(kind: string) -> color {
+        if kind == "success" { return Theme.green; }
+        if kind == "error" { return Theme.red; }
+        if kind == "warning" { return Theme.gold; }
+        if kind == "info" { return Theme.blue; }
+        return Theme.muted;
+    }
+
+    public pure function bg(kind: string) -> color {
+        if kind == "success" { return Theme.green-bg; }
+        if kind == "error" { return Theme.red-bg; }
+        if kind == "warning" { return Theme.gold-bg; }
+        if kind == "info" { return Theme.blue-bg; }
+        return #f0f2f5;
+    }
+}
+
+export component Btn inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary;
+    in property <bool> danger;
+    in property <bool> enabled: true;
+    in property <bool> busy;
+    in property <bool> big;
+    in property <length> font-size: big ? 18px : Theme.font;
+    callback clicked;
+    min-width: max(big ? 160px : 64px, label.preferred-width + (big ? 40px : 24px));
+    min-height: big ? 52px : 34px;
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    border-radius: 6px;
+    border-width: primary ? 0px : 1px;
+    border-color: danger ? Theme.red : Theme.border;
+    background: !root.enabled ? #eef1f4 : primary ? (ta.pressed ? Theme.navy-dark : ta.has-hover ? #134a8e : Theme.navy) : (ta.pressed ? #e4e9ef : ta.has-hover ? #f5f8fb : #ffffff);
+    label := Text {
+        text: root.busy ? "Please wait…" : root.text;
+        font-size: root.font-size;
+        font-weight: root.primary ? 600 : 400;
+        color: !root.enabled ? Theme.faint : root.primary ? #ffffff : root.danger ? Theme.red : Theme.text;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    ta := TouchArea {
+        enabled: root.enabled && !root.busy;
+        mouse-cursor: root.enabled ? pointer : default;
+        clicked => { root.clicked(); }
+    }
+}
+
+// A small link-like button.
+export component LinkText inherits Text {
+    callback clicked;
+    color: Theme.blue;
+    font-size: Theme.small;
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component Tag inherits Rectangle {
+    in property <string> text;
+    in property <string> kind: "default";
+    in property <length> font-size: Theme.small;
+    callback clicked;
+    border-radius: 4px;
+    background: Theme.bg(root.kind);
+    border-width: 1px;
+    border-color: Theme.fg(root.kind).with-alpha(0.35);
+    min-width: t.preferred-width + 14px;
+    height: t.preferred-height + 6px;
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    t := Text {
+        text: root.text;
+        color: Theme.fg(root.kind);
+        font-size: root.font-size;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+export component Card inherits Rectangle {
+    in property <string> title;
+    in property <length> pad: 14px;
+    background: Theme.card;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: Theme.border;
+    VerticalLayout {
+        padding: root.pad;
+        spacing: 10px;
+        if root.title != "": Text {
+            text: root.title;
+            font-size: 16px;
+            font-weight: 600;
+            color: Theme.text;
+        }
+        @children
+    }
+}
+
+// A label above a control, with optional help under it.
+export component Field inherits VerticalLayout {
+    in property <string> label;
+    in property <string> help;
+    spacing: 3px;
+    alignment: start;
+    // fields in a row share its width evenly unless one asks for more
+    horizontal-stretch: 1;
+    preferred-width: 120px;
+    Text {
+        text: root.label;
+        font-size: Theme.small;
+        color: Theme.muted;
+    }
+    @children
+    if root.help != "": Text {
+        text: root.help;
+        font-size: 12px;
+        color: Theme.faint;
+        wrap: word-wrap;
+    }
+}
+
+// A coloured message bar.
+export component Note inherits Rectangle {
+    in property <string> text;
+    in property <string> kind: "info";
+    border-radius: 6px;
+    background: Theme.bg(root.kind);
+    border-width: 1px;
+    border-color: Theme.fg(root.kind).with-alpha(0.3);
+    HorizontalLayout {
+        padding: 10px;
+        padding-left: 14px;
+        spacing: 10px;
+        Text {
+            horizontal-stretch: 1;
+            text: root.text;
+            color: root.kind == "default" ? Theme.text : Theme.fg(root.kind).darker(0.2);
+            wrap: word-wrap;
+            vertical-alignment: center;
+            font-size: Theme.font - 1px;
+        }
+        @children
+    }
+}
+
+// Buttons side by side, one picked (radio buttons in the Electron app).
+export component Segmented inherits HorizontalLayout {
+    in property <[string]> options;
+    in property <[string]> values;
+    in property <string> value;
+    in property <bool> enabled: true;
+    in property <bool> big;
+    callback picked(string);
+    spacing: 0px;
+    for o[i] in root.options: Rectangle {
+        property <bool> on: root.values[i] == root.value;
+        min-width: t.preferred-width + (root.big ? 32px : 22px);
+        height: root.big ? 42px : 34px;
+        background: on ? Theme.navy : ta.has-hover && root.enabled ? #f5f8fb : #ffffff;
+        border-width: 1px;
+        border-color: on ? Theme.navy : Theme.border;
+        border-top-left-radius: i == 0 ? 6px : 0px;
+        border-bottom-left-radius: i == 0 ? 6px : 0px;
+        border-top-right-radius: i == root.options.length - 1 ? 6px : 0px;
+        border-bottom-right-radius: i == root.options.length - 1 ? 6px : 0px;
+        t := Text {
+            text: o;
+            color: on ? #ffffff : root.enabled ? Theme.text : Theme.faint;
+            font-size: root.big ? 16px : Theme.font;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        ta := TouchArea {
+            enabled: root.enabled;
+            mouse-cursor: root.enabled ? pointer : default;
+            clicked => { root.picked(root.values[i]); }
+        }
+    }
+}
+
+export struct Column {
+    title: string,
+    // 0 = takes the spare width
+    width: int,
+    right: bool,
+}
+
+export struct TableRow {
+    id: string,
+    cells: [string],
+    tag: string,
+    tag-kind: string,
+    // shaded green (the open first weighing)
+    highlight: bool,
+    selected: bool,
+}
+
+// Rows with a header, a coloured tag at the end and an optional button per row.
+export component Table inherits Rectangle {
+    in property <[Column]> columns;
+    in property <[TableRow]> rows;
+    in property <string> empty-text: "Nothing to show";
+    in property <string> action;
+    in property <int> tag-width: 0;
+    in property <bool> radio;
+    callback row-clicked(int);
+    callback action-clicked(int);
+    border-width: 1px;
+    border-color: Theme.border;
+    border-radius: 6px;
+    clip: true;
+    VerticalLayout {
+        Rectangle {
+            background: #f7f9fb;
+            height: 34px;
+            HorizontalLayout {
+                padding-left: 10px;
+                padding-right: 10px;
+                spacing: 8px;
+                if root.radio: Rectangle { width: 18px; }
+                for c in root.columns: Text {
+                    text: c.title;
+                    font-weight: 600;
+                    font-size: Theme.small;
+                    color: Theme.muted;
+                    vertical-alignment: center;
+                    horizontal-alignment: c.right ? right : left;
+                    min-width: c.width * 1px;
+                    preferred-width: c.width * 1px;
+                    horizontal-stretch: c.width == 0 ? 1 : 0;
+                    overflow: elide;
+                }
+                if root.tag-width > 0: Rectangle { width: root.tag-width * 1px; }
+                if root.action != "": Rectangle { width: 84px; }
+            }
+        }
+        Rectangle { height: 1px; background: Theme.border; }
+        if root.rows.length == 0: Rectangle {
+            min-height: 60px;
+            Text {
+                text: root.empty-text;
+                color: Theme.faint;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+        if root.rows.length > 0: ListView {
+            for r[ri] in root.rows: Rectangle {
+                height: 36px;
+                background: r.selected ? Theme.row-selected : r.highlight ? Theme.row-open : ta.has-hover ? Theme.row-hover : transparent;
+                ta := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { root.row-clicked(ri); }
+                }
+                HorizontalLayout {
+                    padding-left: 10px;
+                    padding-right: 10px;
+                    spacing: 8px;
+                    if root.radio: Rectangle {
+                        width: 18px;
+                        Rectangle {
+                            width: 14px;
+                            height: 14px;
+                            border-radius: 7px;
+                            border-width: r.selected ? 4px : 1px;
+                            border-color: r.selected ? Theme.navy : Theme.faint;
+                            background: #ffffff;
+                        }
+                    }
+                    for c[ci] in root.columns: Text {
+                        text: r.cells[ci];
+                        color: Theme.text;
+                        font-size: Theme.font - 1px;
+                        vertical-alignment: center;
+                        horizontal-alignment: c.right ? right : left;
+                        min-width: c.width * 1px;
+                        preferred-width: c.width * 1px;
+                        horizontal-stretch: c.width == 0 ? 1 : 0;
+                        overflow: elide;
+                    }
+                    if root.tag-width > 0: HorizontalLayout {
+                        width: root.tag-width * 1px;
+                        alignment: end;
+                        VerticalLayout {
+                            alignment: center;
+                            if r.tag != "": Tag { text: r.tag; kind: r.tag-kind; }
+                        }
+                    }
+                    if root.action != "": VerticalLayout {
+                        width: 84px;
+                        alignment: center;
+                        Btn {
+                            text: root.action;
+                            min-height: 28px;
+                            font-size: Theme.small;
+                            clicked => { root.action-clicked(ri); }
+                        }
+                    }
+                }
+                Rectangle {
+                    y: parent.height - 1px;
+                    height: 1px;
+                    background: #eef1f4;
+                }
+            }
+        }
+    }
+}
+
+// Big number with a label (report totals).
+export component Stat inherits VerticalLayout {
+    in property <string> label;
+    in property <string> value;
+    in property <string> sub;
+    in property <length> size: 22px;
+    spacing: 1px;
+    Text { text: root.label; font-size: Theme.small; color: Theme.muted; }
+    Text { text: root.value; font-size: root.size; font-weight: 700; color: Theme.text; }
+    if root.sub != "": Text { text: root.sub; font-size: 12px; color: Theme.faint; }
+}
+
+// A drop-down list chosen by value. ComboBox picks by position and resets on model changes,
+// which loses a saved choice; this keeps whatever value the screen gives it.
+export component Select inherits Rectangle {
+    in property <[string]> labels;
+    in property <[string]> values;
+    in property <string> value;
+    in property <string> placeholder: "Select";
+    in property <bool> enabled: true;
+    in property <bool> big;
+    // "" is a real choice (e.g. "Windows default printer"), not "nothing chosen"
+    in property <bool> blank-is-value;
+    callback picked(string);
+    min-width: 90px;
+    height: root.big ? 42px : 34px;
+    horizontal-stretch: 1;
+    vertical-stretch: 0;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: ta.has-hover && root.enabled ? Theme.navy : Theme.border;
+    background: root.enabled ? #ffffff : #eef1f4;
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 6px;
+        // the chosen value's label (the matching one of the overlapping texts), else the placeholder.
+        // No preferred width of its own, so a long label never widens the field.
+        Rectangle {
+            horizontal-stretch: 1;
+            min-width: 0px;
+            preferred-width: 0px;
+            if root.value == "" && !root.blank-is-value: Text {
+                width: parent.width;
+                height: parent.height;
+                text: root.placeholder;
+                color: Theme.faint;
+                font-size: root.big ? 17px : Theme.font;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            for l[i] in root.labels: Text {
+                width: parent.width;
+                height: parent.height;
+                visible: root.values[i] == root.value;
+                text: l;
+                color: root.enabled ? Theme.text : Theme.muted;
+                font-size: root.big ? 17px : Theme.font;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Path {
+                width: 10px;
+                height: 6px;
+                commands: "M 0 0 L 5 5 L 10 0";
+                stroke: Theme.muted;
+                stroke-width: 1.5px;
+            }
+        }
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: root.enabled ? pointer : default;
+        clicked => { popup.show(); }
+    }
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 2px;
+        width: root.width;
+        height: min(root.labels.length * 34px + 10px, 340px);
+        Rectangle {
+            background: #ffffff;
+            border-width: 1px;
+            border-color: Theme.border;
+            border-radius: 6px;
+            drop-shadow-blur: 10px;
+            drop-shadow-color: #00000030;
+            ListView {
+                for l[i] in root.labels: Rectangle {
+                    height: 34px;
+                    background: root.values[i] == root.value ? Theme.row-selected : it.has-hover ? Theme.row-hover : transparent;
+                    Text {
+                        x: 10px;
+                        width: parent.width - 20px;
+                        text: l;
+                        color: Theme.text;
+                        font-size: Theme.font;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    it := TouchArea {
+                        clicked => {
+                            root.picked(root.values[i]);
+                            popup.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export struct Choice {
+    value: string,
+    label: string,
+}
+
+// Suggestions under a text box. Drawn over what follows, so the parent gives this a higher z.
+export component Suggestions inherits Rectangle {
+    in property <[Choice]> items;
+    in property <bool> open;
+    callback picked(string);
+    height: 0px;
+    if root.open && root.items.length > 0: Rectangle {
+        y: 2px;
+        width: root.width;
+        height: min(root.items.length * 34px + 8px, 280px);
+        background: #ffffff;
+        border-width: 1px;
+        border-color: Theme.border;
+        border-radius: 6px;
+        drop-shadow-blur: 10px;
+        drop-shadow-color: #00000030;
+        TouchArea { }
+        ListView {
+            for s in root.items: Rectangle {
+                height: 34px;
+                background: st.has-hover ? Theme.row-hover : transparent;
+                Text {
+                    x: 10px;
+                    width: parent.width - 20px;
+                    text: s.label;
+                    color: Theme.text;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                st := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { root.picked(s.value); }
+                }
+            }
+        }
+    }
+}

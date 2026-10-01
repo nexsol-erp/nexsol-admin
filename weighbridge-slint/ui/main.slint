@@ -1,0 +1,354 @@
+// TradeLink247 Weighbridge: the window. Connect to server, sign in, choose the branch, then the
+// five tabs the Qt screen had: Weighing, Tare Weights, Daily Report, Rates and Settings.
+
+import { LineEdit, Palette } from "std-widgets.slint";
+import { Theme, Btn, Tag, Card, Field, Note, Select } from "theme.slint";
+import { WB, Toast } from "state.slint";
+import { WeighingPage } from "pages/weighing.slint";
+import { TaresPage } from "pages/tares.slint";
+import { ReportPage } from "pages/report.slint";
+import { RatesPage } from "pages/rates.slint";
+import { SettingsPage } from "pages/settings.slint";
+
+export { WB, Theme }
+
+component CenterCard inherits Rectangle {
+    in property <length> card-width: 460px;
+    background: Theme.page;
+    VerticalLayout {
+        alignment: center;
+        HorizontalLayout {
+            alignment: center;
+            Rectangle {
+                width: root.card-width;
+                background: Theme.card;
+                border-radius: 10px;
+                border-width: 1px;
+                border-color: Theme.border;
+                drop-shadow-blur: 16px;
+                drop-shadow-color: #00000014;
+                VerticalLayout {
+                    padding: 28px;
+                    spacing: 14px;
+                    @children
+                }
+            }
+        }
+    }
+}
+
+// First start on a PC: which TradeLink247 server this weighbridge reports to.
+component ServerScreen inherits CenterCard {
+    Text { text: "Connect to server"; font-size: 24px; font-weight: 700; }
+    Text {
+        text: "Enter the address of your TradeLink247 server. Weighings are saved on this PC first and uploaded there.";
+        color: Theme.muted;
+        wrap: word-wrap;
+    }
+    LineEdit {
+        height: 42px;
+        font-size: 16px;
+        text <=> WB.server-address;
+        placeholder-text: "https://erp.example.com";
+        accepted => { WB.connect(); }
+    }
+    if WB.server-error != "": Note { text: WB.server-error; kind: "error"; }
+    Btn { primary: true; big: true; text: "Connect"; busy: WB.server-busy; clicked => { WB.connect(); } }
+}
+
+component LoginScreen inherits CenterCard {
+    card-width: 420px;
+    Text { text: "TradeLink247 Weighbridge"; font-size: 24px; font-weight: 700; }
+    Text { text: WB.login-subtitle; color: Theme.muted; wrap: word-wrap; }
+    user := LineEdit {
+        height: 42px;
+        font-size: 16px;
+        placeholder-text: "Username";
+        text <=> WB.username;
+        accepted => { pw.focus(); }
+    }
+    pw := LineEdit {
+        height: 42px;
+        font-size: 16px;
+        placeholder-text: "Password";
+        input-type: password;
+        text <=> WB.password;
+        accepted => { WB.login(); }
+    }
+    if WB.login-error != "": Note { text: WB.login-error; kind: "error"; }
+    Btn { primary: true; big: true; text: "Sign in"; busy: WB.login-busy; clicked => { WB.login(); } }
+    Text { text: "Version " + WB.version; color: Theme.faint; font-size: 12px; }
+    init => { user.focus(); }
+}
+
+// Which branch this weighbridge PC belongs to. Set once; changing it later needs an admin.
+component BranchScreen inherits CenterCard {
+    Text { text: "Choose the branch"; font-size: 24px; font-weight: 700; }
+    Text {
+        text: "Pick the weighbridge branch this PC is at. Voucher numbers continue from that branch's last voucher, and its recent weighings are copied here so return weighings are recognised.";
+        color: Theme.muted;
+        wrap: word-wrap;
+    }
+    Select {
+        big: true;
+        placeholder: "Branch";
+        labels: WB.branch-names;
+        values: WB.branch-codes;
+        value: WB.branch-code;
+        picked(v) => { WB.branch-code = v; }
+    }
+    if WB.branch-error != "": Note { text: WB.branch-error; kind: "error"; }
+    Btn {
+        primary: true;
+        big: true;
+        text: "Continue";
+        enabled: WB.branch-code != "";
+        busy: WB.branch-busy;
+        clicked => { WB.choose-branch(); }
+    }
+    Text { text: "Signed in as " + WB.user; color: Theme.faint; font-size: 12px; }
+}
+
+component TabButton inherits Rectangle {
+    in property <string> key;
+    in property <string> label;
+    in property <bool> locked;
+    callback clicked;
+    property <bool> on: WB.tab == root.key;
+    min-width: t.preferred-width + 36px;
+    height: 46px;
+    t := Text {
+        text: root.label;
+        font-size: 16px;
+        font-weight: on ? 600 : 400;
+        color: root.locked ? Theme.faint : on ? Theme.navy : ta.has-hover ? Theme.navy : Theme.text;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    Rectangle {
+        y: parent.height - 3px;
+        height: 3px;
+        background: on ? Theme.navy : transparent;
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+component Header inherits Rectangle {
+    background: Theme.navy;
+    height: 56px;
+    HorizontalLayout {
+        padding-left: 20px;
+        padding-right: 20px;
+        spacing: 14px;
+        Text {
+            text: "TradeLink247 Weighbridge";
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 700;
+            vertical-alignment: center;
+        }
+        VerticalLayout {
+            alignment: center;
+            Tag {
+                text: WB.version-busy ? "Checking…" : "v" + WB.version;
+                kind: "default";
+                clicked => { if !WB.version-busy { WB.check-update(); } }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Tag { text: WB.branch; kind: "info"; font-size: 14px; }
+        }
+        Rectangle { horizontal-stretch: 1; }
+        VerticalLayout {
+            alignment: center;
+            sync := Tag {
+                text: WB.sync-text + (WB.pending > 0 ? "  (" + WB.pending + ")" : "");
+                kind: WB.sync-kind;
+                font-size: 13px;
+                clicked => { WB.sync-now(); }
+            }
+        }
+        Text { text: WB.user; color: #cfe0ff; vertical-alignment: center; }
+        VerticalLayout {
+            alignment: center;
+            Btn { text: "Sign out"; min-height: 30px; font-size: 13px; clicked => { WB.sign-out(); } }
+        }
+    }
+}
+
+export component AppWindow inherits Window {
+    title: "TradeLink247 Weighbridge v" + WB.version;
+    icon: @image-url("icon.svg");
+    preferred-width: 1366px;
+    preferred-height: 860px;
+    min-width: 1100px;
+    min-height: 700px;
+    background: Theme.page;
+    default-font-size: Theme.font;
+    default-font-family: "Segoe UI";
+
+    callback focus-vehicle();
+    focus-vehicle => { if WB.screen == "main" && WB.tab == "weigh" { weigh.focus-vehicle(); } }
+
+    init => { Palette.color-scheme = ColorScheme.light; }
+
+    if WB.screen == "server": ServerScreen { }
+    if WB.screen == "login": LoginScreen { }
+    if WB.screen == "branch": BranchScreen { }
+
+    main := VerticalLayout {
+        visible: WB.screen == "main";
+        Header { }
+        if WB.update-ready: Rectangle {
+            background: Theme.blue-bg;
+            height: 44px;
+            HorizontalLayout {
+                padding-left: 20px;
+                padding-right: 20px;
+                spacing: 12px;
+                Text {
+                    text: "Version " + WB.update-version + " is ready. It installs when you restart the app or close it at the end of the day.";
+                    color: Theme.blue;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                }
+                VerticalLayout {
+                    alignment: center;
+                    Btn { primary: true; text: "Restart to update"; min-height: 30px; clicked => { WB.install-update(); } }
+                }
+            }
+        }
+        Rectangle {
+            background: #ffffff;
+            height: 46px;
+            HorizontalLayout {
+                padding-left: 12px;
+                TabButton { key: "weigh"; label: "Weighing"; clicked => { WB.tab = "weigh"; WB.tab-shown("weigh"); root.focus-vehicle(); } }
+                TabButton { key: "tares"; label: "Tare Weights"; clicked => { WB.tab = "tares"; WB.tab-shown("tares"); } }
+                TabButton { key: "report"; label: "Daily Report"; clicked => { WB.tab = "report"; WB.tab-shown("report"); } }
+                TabButton { key: "rates"; label: "Rates"; clicked => { WB.tab = "rates"; WB.tab-shown("rates"); } }
+                TabButton {
+                    key: "settings";
+                    label: WB.settings-locked ? "Settings (locked)" : "Settings";
+                    locked: WB.settings-locked;
+                    clicked => {
+                        if WB.settings-locked { locked-popup.show(); } else { WB.tab = "settings"; WB.tab-shown("settings"); }
+                    }
+                    locked-popup := PopupWindow {
+                        x: 0;
+                        y: parent.height;
+                        width: 320px;
+                        Rectangle {
+                            background: #ffffff;
+                            border-radius: 8px;
+                            border-width: 1px;
+                            border-color: Theme.border;
+                            drop-shadow-blur: 12px;
+                            drop-shadow-color: #00000030;
+                            VerticalLayout {
+                                padding: 14px;
+                                spacing: 10px;
+                                Text { text: "Settings are locked"; font-weight: 700; }
+                                Text {
+                                    text: "An admin can allow changes in the web admin, under Weighbridge PCs. This PC checks every minute.";
+                                    wrap: word-wrap;
+                                    color: Theme.muted;
+                                }
+                                HorizontalLayout {
+                                    alignment: start;
+                                    Btn { text: "Check now"; busy: WB.lock-checking; clicked => { WB.check-lock(); } }
+                                }
+                            }
+                        }
+                    }
+                }
+                Rectangle { }
+            }
+            Rectangle { y: parent.height - 1px; height: 1px; background: Theme.border; }
+        }
+        Rectangle {
+            vertical-stretch: 1;
+            VerticalLayout {
+                padding: 16px;
+                padding-top: 12px;
+                weigh := WeighingPage { visible: WB.tab == "weigh"; }
+            }
+            if WB.tab == "tares": VerticalLayout {
+                padding: 16px;
+                padding-top: 12px;
+                TaresPage { }
+            }
+            if WB.tab == "report": VerticalLayout {
+                padding: 16px;
+                padding-top: 12px;
+                ReportPage { }
+            }
+            if WB.tab == "rates": VerticalLayout {
+                padding: 16px;
+                padding-top: 12px;
+                RatesPage { }
+            }
+            if WB.tab == "settings": VerticalLayout {
+                padding: 16px;
+                padding-top: 12px;
+                SettingsPage { }
+            }
+        }
+    }
+
+    // messages, top centre, newest last
+    VerticalLayout {
+        y: 64px;
+        x: (root.width - 520px) / 2;
+        width: 520px;
+        height: self.preferred-height;
+        spacing: 6px;
+        for t in WB.toasts: Rectangle {
+            background: #ffffff;
+            border-radius: 8px;
+            border-width: 1px;
+            border-color: Theme.fg(t.kind).with-alpha(0.4);
+            drop-shadow-blur: 12px;
+            drop-shadow-color: #00000026;
+            HorizontalLayout {
+                padding: 12px;
+                spacing: 10px;
+                Rectangle { width: 4px; border-radius: 2px; background: Theme.fg(t.kind); }
+                Text { text: t.text; wrap: word-wrap; color: Theme.text; vertical-alignment: center; horizontal-stretch: 1; }
+            }
+        }
+    }
+
+    // a yes/no question
+    if WB.ask-kind != "": Rectangle {
+        background: #00000059;
+        TouchArea { }
+        VerticalLayout {
+            alignment: center;
+            HorizontalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 460px;
+                    background: #ffffff;
+                    border-radius: 10px;
+                    VerticalLayout {
+                        padding: 22px;
+                        spacing: 12px;
+                        Text { text: WB.ask-title; font-size: 17px; font-weight: 700; wrap: word-wrap; }
+                        if WB.ask-text != "": Text { text: WB.ask-text; color: Theme.muted; wrap: word-wrap; }
+                        HorizontalLayout {
+                            alignment: end;
+                            spacing: 8px;
+                            Btn { text: "Cancel"; clicked => { WB.answered(WB.ask-kind, false); } }
+                            Btn { primary: true; text: WB.ask-ok; clicked => { WB.answered(WB.ask-kind, true); } }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

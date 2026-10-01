@@ -17,8 +17,6 @@ pub struct VoucherOptions {
     pub copy_label: String,
     /// the weighing's camera photo (JPEG), printed under the weights when given
     pub photo: Option<Vec<u8>>,
-    /// characters per line for the text layout (dot-matrix)
-    pub text_width: usize,
 }
 
 #[derive(Debug, Clone, PartialEq)]

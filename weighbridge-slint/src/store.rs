@@ -301,12 +301,6 @@ pub struct Pending {
     pub photos: i64,
 }
 
-impl Pending {
-    pub fn total(&self) -> i64 {
-        self.weights + self.tares
-    }
-}
-
 pub struct Report {
     pub rows: Vec<Weighing>,
     pub total: f64,
@@ -344,6 +338,7 @@ impl Store {
         Ok(s)
     }
 
+    #[cfg(test)]
     pub fn memory() -> Store {
         Store::open(":memory:").expect("in-memory database")
     }

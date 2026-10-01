@@ -1,0 +1,83 @@
+import { LineEdit } from "std-widgets.slint";
+import { Theme, Btn, Card, Field, Note, Table, Select } from "../theme.slint";
+import { WB } from "../state.slint";
+import { WeightPanel } from "weighing.slint";
+
+// Empty weights of regular vehicles (Qt: TARE WEIGHT screen). The weight is always read from
+// the indicator, here or with "Save as tare weight" on the Weighing screen; it can't be typed.
+export component TaresPage inherits VerticalLayout {
+    spacing: 12px;
+    Card {
+        title: "Add a tare weight";
+        HorizontalLayout {
+            alignment: start;
+            WeightPanel { width: 560px; }
+        }
+        HorizontalLayout {
+            spacing: 10px;
+            alignment: start;
+            Field {
+                label: "Vehicle number";
+                LineEdit {
+                    width: 220px;
+                    height: 40px;
+                    text <=> WB.tare-vehicle;
+                    placeholder-text: "e.g. KL07AB1234";
+                    edited(t) => { WB.tare-vehicle-edited(t); }
+                }
+            }
+            Field {
+                label: WB.tare-wheel-locked ? "Wheel type  ·  locked, change in web admin" : "Wheel type";
+                Select {
+                    width: 240px;
+                    big: true;
+                    labels: WB.wheel-values;
+                    values: WB.wheel-values;
+                    value: WB.tare-wheel;
+                    enabled: !WB.tare-wheel-locked;
+                    picked(v) => { WB.tare-wheel-picked(v); }
+                }
+            }
+            VerticalLayout {
+                alignment: end;
+                Btn {
+                    primary: true;
+                    text: "Save tare from bridge";
+                    min-height: 42px;
+                    enabled: WB.tare-can-save;
+                    busy: WB.tare-saving;
+                    clicked => { WB.tare-save(); }
+                }
+            }
+        }
+        Text {
+            text: "Drive the empty vehicle onto the bridge. The weight is saved when the indicator reading is stable.";
+            color: Theme.faint;
+        }
+    }
+    Card {
+        title: "Saved tare weights";
+        vertical-stretch: 1;
+        HorizontalLayout {
+            alignment: start;
+            LineEdit {
+                width: 260px;
+                placeholder-text: "Search vehicle";
+                text <=> WB.tare-filter;
+                edited(t) => { WB.tare-filter-edited(t); }
+            }
+        }
+        Table {
+            columns: [
+                { title: "Voucher", width: 90 },
+                { title: "Date", width: 150 },
+                { title: "Vehicle", width: 0 },
+                { title: "Wheel type", width: 160 },
+                { title: "Tare", width: 120, right: true },
+            ];
+            tag-width: 100;
+            rows: WB.tare-rows;
+            empty-text: "No tare weights saved yet";
+        }
+    }
+}

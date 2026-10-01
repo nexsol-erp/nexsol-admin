@@ -1,0 +1,64 @@
+name: Weighbridge app (Slint)
+
+# Tests and a Windows installer for weighbridge-slint. Artifact only for now: publishing to the
+# server (like weighbridge.yml does for the Electron build) waits until site testing is done.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'weighbridge-slint/**'
+      - '.github/workflows/weighbridge-slint.yml'
+  pull_request:
+    paths:
+      - 'weighbridge-slint/**'
+      - '.github/workflows/weighbridge-slint.yml'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: weighbridge-slint
+
+jobs:
+  # ── Indicator parser, charging rule, local store, sync, settings lock ─────
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: System libraries
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev libxkbcommon-dev libfontconfig1-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: weighbridge-slint
+      - run: cargo test --locked
+
+  # ── Windows installer ──────────────────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: weighbridge-slint
+
+      - name: Read version
+        id: ver
+        shell: bash
+        run: echo "version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)" >> $GITHUB_OUTPUT
+
+      - run: cargo build --release --locked
+
+      - name: Build installer
+        shell: bash
+        run: |
+          export PATH="$PATH:/c/Program Files (x86)/NSIS"
+          makensis -V2 -DVERSION=${{ steps.ver.outputs.version }} \
+            '-DEXE=..\target\release\weighbridge-slint.exe' '-DOUTDIR=..\target' installer/installer.nsi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weighbridge-slint-installer
+          path: weighbridge-slint/target/TradeLink247-Weighbridge-Setup-*.exe
+          retention-days: 14

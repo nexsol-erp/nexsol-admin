@@ -59,6 +59,7 @@ impl FrameSplitter {
         frames
     }
 
+    #[cfg(test)]
     pub fn push_str(&mut self, s: &str) -> Vec<String> {
         self.push(&super::profiles::to_bytes(s))
     }
