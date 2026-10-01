@@ -14,6 +14,8 @@ TradeLink247 server. It replaces the weighbridge screen of the old Qt app and ke
   branch), the operator can't pick another. It is changed only in the web admin's Vehicle Wheel
   Type screen; the app picks the change up when the vehicle is next entered, or within ten minutes.
 - Voucher numbers are 6 digits and continue from the branch's last voucher on the server.
+- Tare (empty) weights are always read from the indicator, on the Tare Weights tab or with
+  **Save as tare weight** on the Weighing tab. They can't be typed in.
 
 Everything is saved on the PC first (SQLite in `%APPDATA%\TradeLink247 Weighbridge`) and uploaded
 in the background, so the counter keeps working when the internet is down. The sync badge in the
@@ -34,9 +36,23 @@ installs silently when the app is closed. Weighings, settings and the indicator 
 Settings > Branch & data has **Check for updates**. PCs installed for all users may show a Windows
 permission prompt during the update. Versions before 1.0.2 don't check, so install 1.0.2 by hand once.
 
+## Settings lock
+
+Settings (indicator, printing, weighing, branch) lock once the PC is set up. The first save in
+Settings marks the PC as set up; Settings stay open until the app is closed and are locked from the
+next start. To change them again, an admin opens web admin > **Weighbridge PCs** and clicks
+**Allow settings changes** for the PC; the PC picks it up within a minute (or with **Check now** on
+the locked tab). The opening is used up by the next save on the PC, so Settings lock again at the
+following start. Each PC checks in with its own id, branch, name and version, which that screen
+lists.
+
+The lock needs the V078 migration on the server. Until it has run, Settings stay open. PCs that were
+set up on an earlier version lock from their first start on 1.0.3.
+
 ## Commissioning an indicator
 
-All indicator handling is configuration, in Settings > Indicator (admins only):
+All indicator handling is configuration, in Settings > Indicator (admins only, while Settings are
+open):
 
 1. **Preset.** Pick the closest one. Every field it fills can then be changed.
 

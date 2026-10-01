@@ -60,6 +60,8 @@ contextBridge.exposeInMainWorld("WB", {
   settings: call("settings:get"),
   savePrint: call("settings:save-print"),
   saveWeighing: call("settings:save-weighing"),
+  settingsLock: call("settings:lock"),
+  checkSettingsLock: call("settings:lock-check"),
   pickFolder: call("settings:pick-folder"),
   openFolder: call("settings:open-folder"),
   printers: call("printers:list"),
@@ -80,4 +82,5 @@ contextBridge.exposeInMainWorld("WB", {
   onFrame: on("wb:frame"),
   onSync: on("wb:sync"),
   onUpdate: on("wb:update"),
+  onSettingsLock: on("wb:settings-lock"),
 });

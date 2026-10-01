@@ -211,6 +211,11 @@ class Sync extends EventEmitter {
     return s ? `?since=${encodeURIComponent(s)}` : "";
   }
 
+  // This PC checks in (Weighbridge PCs in the web admin) and learns whether its Settings are open.
+  async checkinTerminal(body) {
+    return this._call("POST", "/weighbridge/terminals/checkin", body);
+  }
+
   async addRate(wheelType, wheelRate) {
     const out = await this._call("POST", "/wb-rates", { wheelType, wheelRate });
     await this.pullRates();

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, App as AntApp, Badge, Button, ConfigProvider, Layout, Space, Tabs, Tag, Tooltip, Typography } from "antd";
+import { Alert, App as AntApp, Badge, Button, ConfigProvider, Layout, Popover, Space, Tabs, Tag, Tooltip, Typography } from "antd";
 import { wb } from "./api";
 import ServerSetup from "./pages/ServerSetup";
 import LoginPage from "./pages/LoginPage";
@@ -27,12 +27,18 @@ function Shell() {
   const [session, setSession] = useState(null); // { auth, isAdmin }
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("weigh");
+  const [lock, setLock] = useState(null); // Settings lock, see electron/settingsLock.js
 
   const refresh = useCallback(async () => {
     try { setSession(await wb("authState")); } catch (_) { setSession(null); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    wb("settingsLock").then((r) => setLock(r.lock)).catch(() => {});
+    return window.WB.onSettingsLock(setLock);
+  }, []);
+  useEffect(() => { if (lock?.locked && tab === "settings") setTab("weigh"); }, [lock?.locked, tab]);
 
   if (!server?.confirmed) return <ServerSetup />;
   if (loading) return null;
@@ -46,7 +52,9 @@ function Shell() {
     { key: "tares", label: "Tare Weights", children: <TaresPage active={tab === "tares"} /> },
     { key: "report", label: "Daily Report", children: <ReportPage active={tab === "report"} /> },
     { key: "rates", label: "Rates", children: <RatesPage active={tab === "rates"} isAdmin={isAdmin} /> },
-    { key: "settings", label: "Settings", children: <SettingsPage active={tab === "settings"} isAdmin={isAdmin} auth={auth} onChanged={refresh} /> },
+    lock?.locked
+      ? { key: "settings", label: <LockedSettings onLock={setLock} />, disabled: true, children: null }
+      : { key: "settings", label: "Settings", children: <SettingsPage active={tab === "settings"} isAdmin={isAdmin} auth={auth} lock={lock} onChanged={refresh} /> },
   ];
 
   return (
@@ -66,6 +74,25 @@ function Shell() {
         <Tabs activeKey={tab} onChange={setTab} items={items} size="large" destroyInactiveTabPane={false} />
       </Layout.Content>
     </Layout>
+  );
+}
+
+// Settings are locked once the PC is set up; the web admin opens them (Weighbridge PCs).
+function LockedSettings({ onLock }) {
+  const [checking, setChecking] = useState(false);
+  const check = async () => {
+    setChecking(true);
+    try { onLock((await wb("checkSettingsLock")).lock); } catch (_) { /* offline */ } finally { setChecking(false); }
+  };
+  return (
+    <Popover title="Settings are locked" content={
+      <div style={{ maxWidth: 280 }}>
+        <div style={{ marginBottom: 8 }}>An admin can allow changes in the web admin, under Weighbridge PCs. This PC checks every minute.</div>
+        <Button size="small" loading={checking} onClick={check}>Check now</Button>
+      </div>
+    }>
+      <span style={{ pointerEvents: "auto" }}>🔒 Settings</span>
+    </Popover>
   );
 }
 

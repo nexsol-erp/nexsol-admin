@@ -2,11 +2,18 @@ import React, { useEffect, useRef, useState } from "react";
 import { Alert, App, Button, Card, Col, Descriptions, Divider, Input, InputNumber, Radio, Row, Select, Space, Switch, Table, Tabs, Typography } from "antd";
 import { wb } from "../api";
 
-export default function SettingsPage({ active, isAdmin, auth, onChanged }) {
+export default function SettingsPage({ active, isAdmin, auth, lock, onChanged }) {
   if (!active) return null;
   return (
     <>
       {!isAdmin && <Alert type="info" showIcon style={{ marginBottom: 12 }} message="Settings are read-only. Sign in as an admin to change them." />}
+      {isAdmin && lock?.serverSupports && (lock.locksOnRestart || !lock.setupDone || lock.unlocked) && (
+        <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={lock.locksOnRestart
+          ? "Settings lock when the app is next started. To change them after that, an admin allows it in the web admin (Weighbridge PCs)."
+          : lock.unlocked
+            ? `Settings were opened from the web admin${lock.unlockedBy ? ` by ${lock.unlockedBy}` : ""}. They lock again after you save and restart the app.`
+            : "Settings lock after the first save, from the next start. After that, only the web admin (Weighbridge PCs) can open them."} />
+      )}
       <Tabs tabPosition="left" items={[
         { key: "indicator", label: "Indicator", children: <IndicatorSettings isAdmin={isAdmin} /> },
         { key: "printing", label: "Printing", children: <PrintSettings isAdmin={isAdmin} /> },
