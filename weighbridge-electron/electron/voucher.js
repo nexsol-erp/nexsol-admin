@@ -16,7 +16,8 @@ function fmtKg(v) {
   return (Number.isInteger(n) ? n.toLocaleString("en-IN") : n.toLocaleString("en-IN", { maximumFractionDigits: 3 })) + " kg";
 }
 
-function voucherHtml(row, { header = [], layout = "a5", currency = "₹", footer = "Thank you for your business!", copyLabel = "" } = {}) {
+// photo: the weighing's camera photo as a data URL, printed under the weights when given.
+function voucherHtml(row, { header = [], layout = "a5", currency = "₹", footer = "Thank you for your business!", copyLabel = "", photo = "" } = {}) {
   const fw = Number(row.first_weight) || 0;
   const net = fw ? Math.abs((Number(row.lcd_number) || 0) - fw) : 0;
   const lines = header.filter((l) => String(l || "").trim());
@@ -64,6 +65,8 @@ hr { border: none; border-top: 1px dashed #000; margin: 2px 0; }
 .solid { border-top: 2px solid #000; margin: 6px 0; }
 .foot { text-align: center; margin-top: 8px; }
 .sign { display: flex; justify-content: space-between; margin-top: ${narrow ? 18 : 36}px; font-size: ${base - 2}px; }
+.photo { text-align: center; margin: 6px 0; }
+.photo img { max-width: 100%; max-height: ${narrow ? 45 : 60}mm; }
 .decl { font-size: ${base - 3}px; margin-top: 6px; }
 </style></head><body>
 <div class="h1">${esc(title)}</div>
@@ -74,6 +77,7 @@ ${copyLabel ? `<div class="copy">${esc(copyLabel)}</div>` : ""}
 <div class="meta"><span>No. ${esc(row.voucher_number)}</span><span>${esc(fmtDate(row.voucher_date))}</span></div>
 <hr/>
 <table>${body}</table>
+${/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(photo) ? `<div class="photo"><img src="${photo}" alt=""/></div>` : ""}
 <div class="solid"></div>
 <div class="decl">The above weights are recorded accurately and truthfully.</div>
 <div class="sign"><span>Driver</span><span>Operator</span></div>

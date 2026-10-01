@@ -3,7 +3,7 @@
 // database, voucher numbering, printing and the upload queue. The React UI (src/) talks to
 // it only through the window.WB bridge in preload.js.
 
-const { app, BrowserWindow, ipcMain, dialog, net, Menu, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, net, Menu, shell, nativeImage } = require("electron");
 const path = require("path");
 const fs = require("fs");
 
@@ -16,6 +16,7 @@ const { Transport, listPorts } = require("./indicator/transport");
 const { voucherHtml, pdfFileName } = require("./voucher");
 const { Updater } = require("./updater");
 const { SettingsLock } = require("./settingsLock");
+const camera = require("./camera");
 const os = require("os");
 const { spawn } = require("child_process");
 
@@ -71,6 +72,7 @@ const DEFAULT_WEIGHING = {
 function auth() { return store.getSetting("auth", null); }
 function printSettings() { return { ...DEFAULT_PRINT, ...(store.getSetting("print", {}) || {}) }; }
 function weighingSettings() { return { ...DEFAULT_WEIGHING, ...(store.getSetting("weighing", {}) || {}) }; }
+function cameraSettings() { return { ...camera.DEFAULT_CAMERA, ...(store.getSetting("camera", {}) || {}) }; }
 function indicatorConfig() { return store.getSetting("indicator", { presetId: "qt-default", overrides: {} }); }
 
 function isAdmin() {
@@ -160,7 +162,7 @@ setInterval(() => {
 // ── printing ─────────────────────────────────────────────────────────────────
 // What "Settings" means for the copy kept on the server (V084) and "Fetch from server".
 function settingsSnapshot() {
-  return { indicator: indicatorConfig(), print: printSettings(), weighing: weighingSettings() };
+  return { indicator: indicatorConfig(), print: printSettings(), weighing: weighingSettings(), camera: cameraSettings() };
 }
 
 // Puts a copy from the server in place. A copy made on another PC keeps this PC's voucher
@@ -176,6 +178,54 @@ function applySettingsCopy(copy, fromThisPc) {
     store.setSetting("print", print);
   }
   if (ok(s.weighing)) store.setSetting("weighing", s.weighing);
+  // another PC's webcam id means nothing here; its name is matched on the Weighing screen
+  if (ok(s.camera)) store.setSetting("camera", fromThisPc ? s.camera : { ...s.camera, deviceId: "" });
+}
+
+// The photo for a weighing: started at the moment of saving (the frame the screen grabbed, or
+// one picture from the IP camera), stored once the weighing has its id and voucher number.
+// Never stops the save.
+function startPhoto(frame) {
+  const cam = cameraSettings();
+  if (cam.source === "none") return null;
+  if (cam.source === "url") return camera.fetchSnapshot(cam.url, net.fetch);
+  return Promise.resolve(camera.jpegFromDataUrl(frame));
+}
+
+// The weighing's photo on this PC as a data URL, or "".
+function photoDataUrl(row) {
+  try {
+    return row?.photo_path && fs.existsSync(row.photo_path) ? "data:image/jpeg;base64," + fs.readFileSync(row.photo_path).toString("base64") : "";
+  } catch (_) {
+    return "";
+  }
+}
+
+// IP cameras send full-size pictures: keep at most 1280 px wide, so uploads stay small.
+function shrinkPhoto(buf) {
+  if (!buf) return buf;
+  try {
+    const img = nativeImage.createFromBuffer(buf);
+    const { width } = img.getSize();
+    return width > 1280 ? img.resize({ width: 1280, quality: "good" }).toJPEG(80) : buf;
+  } catch (_) {
+    return buf;
+  }
+}
+
+// Returns "" or why there is no photo.
+async function finishPhoto(row, shot) {
+  if (!shot) return "";
+  try {
+    const buf = shrinkPhoto(await shot);
+    if (!buf) return "No picture from the camera";
+    const file = camera.savePhoto(path.join(app.getPath("userData"), "photos"), row, buf);
+    store.setPhoto(row.id, file, cameraSettings().upload !== false);
+    return "";
+  } catch (e) {
+    log("WARN", "camera", row.voucher_number, e.message);
+    return e.message;
+  }
 }
 
 function pdfFolder() {
@@ -204,8 +254,9 @@ async function printVoucher(row, { reprint = false } = {}) {
   const ps = printSettings();
   const copies = Math.max(1, Math.min(5, Number(ps.copies) || 1));
   const result = { printed: false, pdf: null, error: "" };
+  const photo = cameraSettings().printPhoto ? photoDataUrl(row) : "";
   for (let i = 0; i < copies; i++) {
-    const html = voucherHtml(row, { ...ps, copyLabel: reprint ? "DUPLICATE" : copies > 1 ? (i === 0 ? "ORIGINAL" : "COPY") : "" });
+    const html = voucherHtml(row, { ...ps, photo, copyLabel: reprint ? "DUPLICATE" : copies > 1 ? (i === 0 ? "ORIGINAL" : "COPY") : "" });
     try {
       await renderHtml(html, (w) => new Promise((resolve, reject) => {
         w.webContents.print({
@@ -229,7 +280,7 @@ async function printVoucher(row, { reprint = false } = {}) {
       const dir = pdfFolder();
       fs.mkdirSync(dir, { recursive: true });
       const file = path.join(dir, pdfFileName(row));
-      const pdf = await renderHtml(voucherHtml(row, ps), (w) => w.webContents.printToPDF({ printBackground: true, pageSize: ps.layout === "80mm" ? { width: 3.15, height: 7.87 } : "A5" }));
+      const pdf = await renderHtml(voucherHtml(row, { ...ps, photo }), (w) => w.webContents.printToPDF({ printBackground: true, pageSize: ps.layout === "80mm" ? { width: 3.15, height: 7.87 } : "A5" }));
       fs.writeFileSync(file, pdf);
       result.pdf = file;
     } catch (e) {
@@ -391,12 +442,17 @@ function registerIpc() {
     const a = auth();
     if (!a?.branchCode) throw new ValidationError("Choose the branch in Settings first");
     const weight = currentWeight();
-    const row = store.saveWeighing({ ...form, weight, branchCode: a.branchCode, userId: a.username || "" });
+    const { photo: frame, ...fields } = form;
+    const shot = startPhoto(frame);
+    shot?.catch(() => {}); // handled in finishPhoto
+    const row = store.saveWeighing({ ...fields, weight, branchCode: a.branchCode, userId: a.username || "" });
     log("INFO", "saved", row.voucher_number, row.vehicle_number, row.lcd_number, row.amount, row.first_weight_kind);
+    // the photo first, so it can go on the voucher
+    const photoError = await finishPhoto(row, shot);
     let print = { printed: false, pdf: null, error: "" };
-    if (printSettings().autoPrint) print = await printVoucher(row);
+    if (printSettings().autoPrint) print = await printVoucher(store.getWeighing(row.id) || row);
     sync.run();
-    return { row, print };
+    return { row, print, photoError };
   });
   handle("wb:reprint", async ({ id }) => {
     const row = store.getWeighing(id);
@@ -407,7 +463,7 @@ function registerIpc() {
   handle("wb:preview", ({ id }) => {
     const row = store.getWeighing(id);
     if (!row) throw new ValidationError("Voucher not found");
-    return { html: voucherHtml(row, printSettings()) };
+    return { html: voucherHtml(row, { ...printSettings(), photo: cameraSettings().printPhoto ? photoDataUrl(row) : "" }) };
   });
 
   // tare weights
@@ -478,6 +534,30 @@ function registerIpc() {
     log("INFO", "settings fetched from server", r.thisPc ? "(this PC)" : `(from ${r.machineName || "another PC"})`, r.savedAt || "");
     return { from: { savedAt: r.savedAt, savedBy: r.savedBy, machineName: r.machineName, thisPc: !!r.thisPc } };
   });
+  // camera
+  handle("camera:get", () => ({ camera: cameraSettings() }));
+  handle("camera:save", ({ camera: cam }) => {
+    requireSettings();
+    const source = ["none", "webcam", "url"].includes(cam?.source) ? cam.source : "none";
+    const next = { ...cameraSettings(), source, deviceId: String(cam?.deviceId || ""), deviceLabel: String(cam?.deviceLabel || ""), url: String(cam?.url || "").trim(),
+      upload: cam?.upload !== false, printPhoto: !!cam?.printPhoto };
+    if (source === "url" && !/^https?:\/\//i.test(next.url)) throw new ValidationError("Enter the camera's snapshot address, starting with http://");
+    store.setSetting("camera", next);
+    settingsLock.saved();
+    return { camera: cameraSettings() };
+  });
+  // One picture from an IP camera, for the live view and the Settings test.
+  handle("camera:snapshot", async ({ url }) => {
+    const buf = await camera.fetchSnapshot(url || cameraSettings().url, net.fetch);
+    return { dataUrl: "data:image/jpeg;base64," + buf.toString("base64") };
+  });
+  handle("camera:open-folder", () => {
+    const dir = path.join(app.getPath("userData"), "photos");
+    fs.mkdirSync(dir, { recursive: true });
+    shell.openPath(dir);
+    return {};
+  });
+  handle("wb:photo", ({ id }) => ({ dataUrl: photoDataUrl(store.getWeighing(id)) || null }));
   handle("settings:lock", () => ({ lock: settingsLock.state() }));
   handle("settings:lock-check", async () => ({ lock: await settingsLock.refresh() }));
   handle("settings:pick-folder", async () => {

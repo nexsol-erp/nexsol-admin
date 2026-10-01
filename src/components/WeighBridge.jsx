@@ -41,6 +41,8 @@ const WeighBridge = () => {
   const [reopenRow, setReopenRow] = useState(null);
   const [reopenBusy, setReopenBusy] = useState(false);
   const [message, setMessage] = useState(null);
+  const [withPhoto, setWithPhoto] = useState(new Set());
+  const [photo, setPhoto] = useState(null); // { row, url, error }
 
   const fetchBranches = async () => {
     try {
@@ -82,7 +84,9 @@ const WeighBridge = () => {
           }
         );
         const data = await response.json();
-        setWeighbridgeData(Array.isArray(data.data) ? data.data : []);
+        const rows = Array.isArray(data.data) ? data.data : [];
+        setWeighbridgeData(rows);
+        loadPhotoFlags(rows);
       } catch (error) {
         console.error("Error fetching Wb data:", error);
       }
@@ -111,6 +115,46 @@ const WeighBridge = () => {
 
   const handleClose = () => {
     setOpen(false);
+  };
+
+  // Which weighings have a camera photo (taken by the weighbridge PC when it was saved).
+  const loadPhotoFlags = async (rows) => {
+    const ddIds = rows.map((r) => r.dd_id).filter(Boolean);
+    if (!ddIds.length) { setWithPhoto(new Set()); return; }
+    try {
+      const token = localStorage.getItem("jwtToken");
+      const tenancyId = localStorage.getItem("tenancyId");
+      const res = await fetch(`/api/${tenancyId}/weighbridge/photos/exists`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ddIds }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setWithPhoto(new Set(Array.isArray(data.ddIds) ? data.ddIds : []));
+    } catch (_) {
+      setWithPhoto(new Set());
+    }
+  };
+
+  const openPhoto = async (row) => {
+    setPhoto({ row, url: null, error: "" });
+    try {
+      const token = localStorage.getItem("jwtToken");
+      const tenancyId = localStorage.getItem("tenancyId");
+      const res = await fetch(`/api/${tenancyId}/weighbridge/photo/${encodeURIComponent(row.dd_id)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("No photo for this weighing");
+      const url = URL.createObjectURL(await res.blob());
+      setPhoto((p) => (p && p.row === row ? { ...p, url } : p));
+    } catch (e) {
+      setPhoto((p) => (p && p.row === row ? { ...p, error: e.message } : p));
+    }
+  };
+
+  const closePhoto = () => {
+    if (photo?.url) URL.revokeObjectURL(photo.url);
+    setPhoto(null);
   };
 
   // Reopen a closed weighing so the weighbridge PC can take this vehicle's second weight
@@ -151,7 +195,7 @@ const WeighBridge = () => {
 
   const handleExport = () => {
     const worksheet = XLSX.utils.json_to_sheet(
-      weighbridgeData.map(({ id, ...rest }) => rest)
+      weighbridgeData.map(({ id, dd_id, ...rest }) => rest)
     );
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "WB Data");
@@ -290,6 +334,20 @@ const WeighBridge = () => {
         </DialogActions>
       </Dialog>
 
+      <Dialog open={!!photo} onClose={closePhoto} maxWidth="md" fullWidth>
+        <DialogTitle>
+          {photo && `${photo.row.vehicle_number} · voucher ${photo.row.voucher_number} · ${photo.row.voucher_date}`}
+        </DialogTitle>
+        <DialogContent>
+          {photo?.url && <img src={photo.url} alt="Weighbridge camera" style={{ width: "100%" }} />}
+          {photo?.error && <DialogContentText>{photo.error}</DialogContentText>}
+          {photo && !photo.url && !photo.error && <DialogContentText>Loading photo…</DialogContentText>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closePhoto}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
       {message && (
         <Alert severity={message.severity} onClose={() => setMessage(null)} sx={{ mt: 2 }}>
           {message.text}
@@ -309,6 +367,7 @@ const WeighBridge = () => {
               <TableCell align="right">First Weight</TableCell>
               <TableCell align="right">Amount</TableCell>
               <TableCell align="right">RoundTrip</TableCell>
+              <TableCell align="center">Photo</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -334,6 +393,13 @@ const WeighBridge = () => {
                     </>
                   ) : (
                     <Chip size="small" color="success" label="Open" />
+                  )}
+                </TableCell>
+                <TableCell align="center">
+                  {withPhoto.has(row.dd_id) && (
+                    <Button size="small" onClick={() => openPhoto(row)}>
+                      View
+                    </Button>
                   )}
                 </TableCell>
               </TableRow>

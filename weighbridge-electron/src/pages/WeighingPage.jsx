@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, App, AutoComplete, Button, Card, Col, Input, Radio, Row, Select, Space, Table, Tag, Typography } from "antd";
 import { wb, kg, showDate } from "../api";
+import CameraPanel from "../components/CameraPanel";
 
 const EMPTY = { vehicleNumber: "", wheelType: "", material: "", mobileNumber: "", kind: "none", sourceId: "" };
 
@@ -21,6 +22,8 @@ export default function WeighingPage({ active }) {
   // A vehicle's saved wheel type is locked; it can only be changed in the web admin.
   const [lock, setLock] = useState({ vehicle: "", wheelType: "" });
   const vehicleRef = useRef(null);
+  const cameraRef = useRef(null);
+  const [camera, setCamera] = useState(null);
 
   // live weight
   useEffect(() => {
@@ -36,6 +39,7 @@ export default function WeighingPage({ active }) {
   useEffect(() => {
     if (!active) return;
     wb("rates").then((r) => setRates(r.rates)).catch(() => {});
+    wb("camera").then((r) => setCamera(r.camera)).catch(() => {});
     setTimeout(() => vehicleRef.current?.focus(), 50);
   }, [active]);
 
@@ -78,16 +82,19 @@ export default function WeighingPage({ active }) {
     if (!canSave || saving) return;
     setSaving(true);
     try {
-      const { row, print } = await wb("save", {
+      const photo = cameraRef.current?.capture() || undefined; // the moment the weight is recorded
+      const { row, print, photoError } = await wb("save", {
+        photo,
         vehicleNumber: form.vehicleNumber,
         wheelType: form.wheelType,
         material: form.material,
         mobileNumber: form.mobileNumber,
         source: form.kind === "none" ? { kind: "none" } : { kind: form.kind, id: form.sourceId },
       });
-      setLast({ row, print });
+      setLast({ row, print, photo: !photoError && camera?.source !== "none" && !!camera });
       if (print.error) message.warning(`Saved voucher ${row.voucher_number}, but printing failed: ${print.error}`);
       else message.success(`Saved voucher ${row.voucher_number}`);
+      if (photoError) message.warning(`No camera photo for voucher ${row.voucher_number}: ${photoError}`);
       setForm(EMPTY);
       setTimeout(() => vehicleRef.current?.focus(), 50);
     } catch (e) {
@@ -95,7 +102,7 @@ export default function WeighingPage({ active }) {
     } finally {
       setSaving(false);
     }
-  }, [canSave, saving, form, message]);
+  }, [canSave, saving, form, message, camera]);
 
   // F9 or Ctrl+S saves, like a till
   useEffect(() => {
@@ -199,6 +206,7 @@ export default function WeighingPage({ active }) {
       </Col>
 
       <Col xs={24} lg={11}>
+        <CameraPanel ref={cameraRef} camera={camera} active={active} />
         {last && <LastVoucher last={last} />}
 
         {form.kind !== "tare" && (
@@ -272,6 +280,7 @@ function LastVoucher({ last }) {
         {row.first_weight ? <span>Net {kg(Math.abs(row.lcd_number - row.first_weight))} kg</span> : null}
         <span>₹{Number(row.amount).toFixed(2)}</span>
         {print.printed ? <Tag color="green">Printed</Tag> : <Tag color="red">Not printed</Tag>}
+        {last.photo && <Tag color="blue">Photo saved</Tag>}
       </Space>
     </Card>
   );

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, App, Button, Card, Col, Descriptions, Divider, Input, InputNumber, Radio, Row, Select, Space, Switch, Table, Tabs, Typography } from "antd";
 import { wb, showDate } from "../api";
+import CameraPanel from "../components/CameraPanel";
 
 export default function SettingsPage({ active, isAdmin, auth, lock, onChanged }) {
   const [reload, setReload] = useState(0);
@@ -20,6 +21,7 @@ export default function SettingsPage({ active, isAdmin, auth, lock, onChanged })
         { key: "indicator", label: "Indicator", children: <IndicatorSettings isAdmin={isAdmin} /> },
         { key: "printing", label: "Printing", children: <PrintSettings isAdmin={isAdmin} /> },
         { key: "weighing", label: "Weighing", children: <WeighingSettings isAdmin={isAdmin} /> },
+        { key: "camera", label: "Camera", children: <CameraSettings isAdmin={isAdmin} /> },
         { key: "data", label: "Branch & data", children: <DataSettings auth={auth} isAdmin={isAdmin} onChanged={onChanged} /> },
       ]} />
     </>
@@ -396,6 +398,75 @@ function WeighingSettings({ isAdmin }) {
   );
 }
 
+// ── Camera ───────────────────────────────────────────────────────────────────
+// A photo is taken each time a weighing is saved, kept on this PC and uploaded with it.
+
+function CameraSettings({ isAdmin }) {
+  const { message } = App.useApp();
+  const [cam, setCam] = useState(null);
+  const [devices, setDevices] = useState([]);
+  const [saved, setSaved] = useState(null);
+
+  const loadDevices = async () => {
+    try {
+      // names are only shown once camera access has been granted
+      const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }).catch(() => null);
+      s?.getTracks().forEach((t) => t.stop());
+      const list = await navigator.mediaDevices.enumerateDevices();
+      setDevices(list.filter((d) => d.kind === "videoinput").map((d, i) => ({ value: d.deviceId, label: d.label || `Camera ${i + 1}` })));
+    } catch (_) { setDevices([]); }
+  };
+
+  useEffect(() => {
+    wb("camera").then((r) => { setCam(r.camera); setSaved(r.camera); }).catch(() => {});
+    loadDevices();
+  }, []);
+  if (!cam) return null;
+
+  const set = (patch) => setCam((c) => ({ ...c, ...patch }));
+  const save = () => wb("saveCamera", { camera: cam })
+    .then((r) => { setCam(r.camera); setSaved(r.camera); message.success("Camera saved"); })
+    .catch((e) => message.error(e.message));
+
+  return (
+    <Card size="small" title="Camera" style={{ maxWidth: 700 }}>
+      <Space direction="vertical" size={14} style={{ width: "100%" }}>
+        <Typography.Text type="secondary">A photo is taken the moment a weighing is saved and kept on this PC. It can also be uploaded with the weighing (seen in the web admin's Weighbridge Entry) and printed on the voucher.</Typography.Text>
+        <Radio.Group disabled={!isAdmin} value={cam.source} onChange={(e) => set({ source: e.target.value })} optionType="button" options={[
+          { value: "none", label: "No camera" },
+          { value: "webcam", label: "USB / built-in camera" },
+          { value: "url", label: "IP camera" },
+        ]} />
+        {cam.source === "webcam" && (
+          <Space wrap>
+            <Select disabled={!isAdmin} style={{ width: 360 }} placeholder="Choose the camera" value={cam.deviceId || undefined}
+              options={devices} notFoundContent="No camera found"
+              onChange={(v) => set({ deviceId: v, deviceLabel: devices.find((d) => d.value === v)?.label || "" })} />
+            <Button onClick={loadDevices}>Refresh list</Button>
+          </Space>
+        )}
+        {cam.source === "url" && (
+          <div>
+            <Input disabled={!isAdmin} value={cam.url} onChange={(e) => set({ url: e.target.value })} placeholder="http://user:password@192.168.1.64/ISAPI/Streaming/channels/101/picture" />
+            <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>The camera's snapshot (still picture) address. Hikvision: /ISAPI/Streaming/channels/101/picture · Dahua: /cgi-bin/snapshot.cgi</div>
+          </div>
+        )}
+        {cam.source !== "none" && (
+          <Space direction="vertical">
+            <Space><Switch disabled={!isAdmin} checked={cam.upload !== false} onChange={(v) => set({ upload: v })} /> Upload photos to the server (seen in the web admin). Off: photos stay on this PC only.</Space>
+            <Space><Switch disabled={!isAdmin} checked={!!cam.printPhoto} onChange={(v) => set({ printPhoto: v })} /> Print the photo on the voucher</Space>
+          </Space>
+        )}
+        {cam.source !== "none" && <CameraPanel camera={cam} active title="Preview" />}
+        <Space>
+          <Button type="primary" disabled={!isAdmin || JSON.stringify(cam) === JSON.stringify(saved)} onClick={save}>Save</Button>
+          <Button onClick={() => wb("openPhotoFolder")}>Open photo folder</Button>
+        </Space>
+      </Space>
+    </Card>
+  );
+}
+
 // ── Branch & data ────────────────────────────────────────────────────────────
 function DataSettings({ auth, isAdmin, onChanged }) {
   const { message, modal } = App.useApp();
@@ -434,7 +505,7 @@ function DataSettings({ auth, isAdmin, onChanged }) {
         <Descriptions.Item label="Server">{window.WB.server?.apiServer}</Descriptions.Item>
         <Descriptions.Item label="Company">{auth.tenantId}</Descriptions.Item>
         <Descriptions.Item label="Branch">{auth.branchCode}</Descriptions.Item>
-        <Descriptions.Item label="Waiting to upload">{sync ? `${sync.pending.weights} weighings, ${sync.pending.tares} tare weights, ${sync.pending.engage} bridge events` : ""}</Descriptions.Item>
+        <Descriptions.Item label="Waiting to upload">{sync ? `${sync.pending.weights} weighings, ${sync.pending.tares} tare weights, ${sync.pending.engage} bridge events${sync.pending.photos ? `, ${sync.pending.photos} camera photos` : ""}` : ""}</Descriptions.Item>
         <Descriptions.Item label="Last sync">{sync?.lastSyncAt ? new Date(sync.lastSyncAt).toLocaleString() : "never"}{sync?.lastError ? ` · ${sync.lastError}` : ""}</Descriptions.Item>
         <Descriptions.Item label="App version">
           {window.WB.version}

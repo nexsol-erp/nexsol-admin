@@ -1,6 +1,6 @@
 {
   "name": "tradelink247-weighbridge",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "TradeLink247 Weighbridge desktop app",
   "main": "electron/main.js",
   "scripts": {
