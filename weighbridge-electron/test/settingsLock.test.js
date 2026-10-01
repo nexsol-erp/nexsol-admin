@@ -113,3 +113,35 @@ test("a PC set up before the lock existed counts as set up", async () => {
   await lock.refresh();
   assert.equal(lock.locked(), true);
 });
+
+test("rates are view only unless the web admin allows changes on this PC", async () => {
+  const store = new Store(":memory:");
+  const srv = fakeServer();
+  const checkin = async (body) => ({ ...(await srv.checkin(body)), ratesSupported: true, ratesUnlocked: srv.rates === true });
+  let lock = new SettingsLock(store, { checkin });
+  assert.equal(lock.ratesAllowed(true), true, "before the server answers, admins keep the old rule");
+  assert.equal(lock.ratesAllowed(false), false);
+  await lock.refresh();
+  assert.equal(lock.state().ratesManaged, true);
+  assert.throws(() => lock.requireRates(true), /web admin/);
+  srv.rates = true;
+  await lock.refresh();
+  lock.requireRates(false); // allowed from the web: any signed-in user
+  lock.saved();
+  lock = new SettingsLock(store, { checkin });
+  await lock.refresh();
+  assert.equal(lock.ratesAllowed(false), true, "a settings save or restart doesn't close rates");
+  srv.rates = false;
+  await lock.refresh();
+  assert.equal(lock.ratesAllowed(true), false);
+});
+
+test("a server without the rates switch keeps rates admin only", async () => {
+  const store = new Store(":memory:");
+  const srv = fakeServer();
+  const lock = new SettingsLock(store, { checkin: srv.checkin });
+  await lock.refresh();
+  assert.equal(lock.state().ratesManaged, false);
+  assert.equal(lock.ratesAllowed(true), true);
+  assert.throws(() => lock.requireRates(false), /Only an admin/);
+});

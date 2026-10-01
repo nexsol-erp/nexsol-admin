@@ -6,6 +6,9 @@
 //
 // The lock applies only once the server has said it supports it (V078), so a PC is never locked
 // with no way to open it. Offline, the last answer from the server stands.
+//
+// Rates have their own switch (V079): the Rates tab is view only unless the web admin has allowed
+// rate changes on this PC. It stays as the web admin left it; a save doesn't close it.
 
 const { EventEmitter } = require("events");
 const crypto = require("crypto");
@@ -53,7 +56,27 @@ class SettingsLock extends EventEmitter {
       unlockedBy: s.unlockedBy || null,
       // open now only because something was saved this run: locks at the next start
       locksOnRestart: this.savedThisRun && !!s.serverSupports && !s.unlocked,
+      // rates are managed from the web admin (V079); ratesUnlocked = this PC may change them
+      ratesManaged: this._ratesManaged(),
+      ratesUnlocked: !!s.ratesUnlocked,
     };
+  }
+
+  _ratesManaged() {
+    const s = this._get();
+    return !!s.serverSupports && !!s.ratesSupported;
+  }
+
+  // May this PC change rates? Servers without V079 keep the old rule: admins only.
+  ratesAllowed(isAdmin) {
+    return this._ratesManaged() ? !!this._get().ratesUnlocked : !!isAdmin;
+  }
+
+  requireRates(isAdmin) {
+    if (this.ratesAllowed(isAdmin)) return;
+    throw new ValidationError(this._ratesManaged()
+      ? "Rates are locked on this PC. Change them in the web admin (Weighbridge Rates), or ask an admin to allow rate changes here."
+      : "Only an admin can change this");
   }
 
   // Throws when Settings may not be changed now.
@@ -88,7 +111,11 @@ class SettingsLock extends EventEmitter {
         if (r && r.installed === false) {
           next.serverSupports = false;
           next.unlocked = false;
+          next.ratesSupported = false;
+          next.ratesUnlocked = false;
         } else if (r) {
+          next.ratesSupported = !!r.ratesSupported;
+          next.ratesUnlocked = !!r.ratesUnlocked;
           next.serverSupports = true;
           // an opening this PC has already used stays closed, whatever an earlier reply said
           next.unlocked = !!r.settingsUnlocked && !(pending && pending === r.unlockedAt);

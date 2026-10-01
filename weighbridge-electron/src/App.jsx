@@ -51,7 +51,7 @@ function Shell() {
     { key: "weigh", label: "Weighing", children: <WeighingPage active={tab === "weigh"} /> },
     { key: "tares", label: "Tare Weights", children: <TaresPage active={tab === "tares"} /> },
     { key: "report", label: "Daily Report", children: <ReportPage active={tab === "report"} /> },
-    { key: "rates", label: "Rates", children: <RatesPage active={tab === "rates"} isAdmin={isAdmin} /> },
+    { key: "rates", label: "Rates", children: <RatesPage active={tab === "rates"} isAdmin={isAdmin} lock={lock} /> },
     lock?.locked
       ? { key: "settings", label: <LockedSettings onLock={setLock} />, disabled: true, children: null }
       : { key: "settings", label: "Settings", children: <SettingsPage active={tab === "settings"} isAdmin={isAdmin} auth={auth} lock={lock} onChanged={refresh} /> },

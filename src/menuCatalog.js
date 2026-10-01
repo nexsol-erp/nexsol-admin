@@ -157,6 +157,7 @@ export const MENU_TREE = [
       { menuKey: "Weighbridge Resync", label: "Resync Records",    link: "/weighbridge-resync", roles: ["WB", "admin"] },
       { menuKey: "Vehicle Wheel Type", label: "Vehicle Wheel Type", link: "/vehicle-wheel-type", roles: ["WB", "admin"] },
       { menuKey: "Weighbridge PCs", label: "Weighbridge PCs", link: "/weighbridge-pcs", roles: ["WB", "admin"] },
+      { menuKey: "Weighbridge Rates", label: "Weighbridge Rates", link: "/weighbridge-rates", roles: ["WB", "admin"] },
     ],
   },
 

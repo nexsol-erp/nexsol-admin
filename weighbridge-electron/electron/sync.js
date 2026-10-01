@@ -216,8 +216,8 @@ class Sync extends EventEmitter {
     return this._call("POST", "/weighbridge/terminals/checkin", body);
   }
 
-  async addRate(wheelType, wheelRate) {
-    const out = await this._call("POST", "/wb-rates", { wheelType, wheelRate });
+  async addRate(wheelType, wheelRate, terminalId) {
+    const out = await this._call("POST", "/wb-rates", { wheelType, wheelRate, terminalId });
     await this.pullRates();
     return out;
   }
