@@ -99,7 +99,7 @@ test("outbox, resync and server import", () => {
   const s = fresh();
   const a = weigh(s);
   s.addEngage({ weight: 800, branchCode: "WB1" });
-  assert.deepEqual(s.pendingCount(), { weights: 1, tares: 0, engage: 1 });
+  assert.deepEqual(s.pendingCount(), { weights: 1, tares: 0, engage: 1, photos: 0 });
   s.markSynced("weights", a.id);
   assert.equal(s.pendingCount().weights, 0);
   assert.equal(s.requeueDate(a.voucher_date), 1);

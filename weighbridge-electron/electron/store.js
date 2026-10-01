@@ -114,6 +114,11 @@ class Store {
     // columns added after a table first shipped
     const cols = this.db.prepare("PRAGMA table_info(wb_vehicle_wheel)").all().map((c) => c.name);
     if (!cols.includes("set_on_server")) this.db.exec("ALTER TABLE wb_vehicle_wheel ADD COLUMN set_on_server INTEGER DEFAULT 0");
+    // camera photo of a weighing: photo_synced 0 = to upload, 1 = on the server
+    const wcols = this.db.prepare("PRAGMA table_info(wb_weights)").all().map((c) => c.name);
+    if (!wcols.includes("photo_path")) this.db.exec("ALTER TABLE wb_weights ADD COLUMN photo_path TEXT");
+    if (!wcols.includes("photo_synced")) this.db.exec("ALTER TABLE wb_weights ADD COLUMN photo_synced INTEGER DEFAULT 0");
+    if (!wcols.includes("photo_error")) this.db.exec("ALTER TABLE wb_weights ADD COLUMN photo_error TEXT");
   }
 
   close() { this.db.close(); }
@@ -338,6 +343,22 @@ class Store {
     return this.db.prepare("SELECT * FROM wb_weights WHERE id = ?").get(id) || null;
   }
 
+  // ── camera photos ────────────────────────────────────────────────────────
+  setPhoto(id, photoPath) {
+    this.db.prepare("UPDATE wb_weights SET photo_path = ?, photo_synced = 0, photo_error = NULL WHERE id = ?").run(photoPath, id);
+  }
+
+  // Photos to upload: their weighing is on the server already.
+  pendingPhotos(limit = 20) {
+    return this.db.prepare(`SELECT * FROM wb_weights WHERE photo_path IS NOT NULL AND photo_synced = 0
+      AND synced = 1 AND photo_error IS NULL ORDER BY voucher_date LIMIT ?`).all(limit);
+  }
+
+  markPhotoSynced(id, error = null) {
+    if (error) this.db.prepare("UPDATE wb_weights SET photo_error = ? WHERE id = ?").run(String(error).slice(0, 300), id);
+    else this.db.prepare("UPDATE wb_weights SET photo_synced = 1, photo_error = NULL WHERE id = ?").run(id);
+  }
+
   getWeighingByVoucher(voucherNumber) {
     return this.db.prepare("SELECT * FROM wb_weights WHERE voucher_number = ? ORDER BY voucher_date DESC LIMIT 1").get(voucherNumber) || null;
   }
@@ -412,6 +433,7 @@ class Store {
       weights: q("SELECT COUNT(*) n FROM wb_weights WHERE synced = 0"),
       tares: q("SELECT COUNT(*) n FROM wb_vehicles WHERE synced = 0"),
       engage: q("SELECT COUNT(*) n FROM wb_engage WHERE synced = 0"),
+      photos: q("SELECT COUNT(*) n FROM wb_weights WHERE photo_path IS NOT NULL AND photo_synced = 0 AND photo_error IS NULL"),
     };
   }
 

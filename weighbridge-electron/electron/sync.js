@@ -3,6 +3,7 @@
 // server is down or the login has expired, rows simply wait in the outbox.
 
 const { EventEmitter } = require("events");
+const fs = require("fs");
 
 const PUSH_EVERY_MS = 30 * 1000;
 const PULL_EVERY_MS = 10 * 60 * 1000;
@@ -115,6 +116,7 @@ class Sync extends EventEmitter {
         this.store.markSynced("weights", r.id, e.message); // server rejected this row: keep it, show why
       }
     }
+    await this.pushPhotos();
     for (const r of this.store.pendingTares()) {
       try {
         await this._call("POST", "/weighbridge/tare", {
@@ -139,6 +141,36 @@ class Sync extends EventEmitter {
       } catch (e) {
         if (e instanceof AuthError || !e.status) throw e;
         this.store.markSynced("engage", r.id); // a bad engage row is not worth blocking the queue
+      }
+    }
+  }
+
+  // Camera photos, after their weighing is on the server (V085). A server without photos yet
+  // (404/409) keeps them waiting; a missing file or a rejected photo is not retried.
+  async pushPhotos() {
+    const a = this.auth() || {};
+    for (const r of this.store.pendingPhotos()) {
+      let image;
+      try {
+        image = fs.readFileSync(r.photo_path).toString("base64");
+      } catch (e) {
+        this.store.markPhotoSynced(r.id, `photo file missing: ${e.message}`);
+        continue;
+      }
+      try {
+        await this._call("POST", "/weighbridge/photo", {
+          ddId: r.id,
+          branchCode: r.branch_code || a.branchCode,
+          vehicleNumber: r.vehicle_number,
+          voucherNumber: r.voucher_number,
+          takenAt: r.voucher_date,
+          image,
+        });
+        this.store.markPhotoSynced(r.id);
+      } catch (e) {
+        if (e instanceof AuthError || !e.status) throw e;
+        if (e.status === 404 || e.status === 409) return; // server not ready for photos yet
+        this.store.markPhotoSynced(r.id, e.message);
       }
     }
   }
