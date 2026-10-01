@@ -641,7 +641,8 @@ impl Core {
         let r = rx.recv_timeout(Duration::from_secs(8)).unwrap_or_else(|_| Err("The camera did not answer in time".into()));
         let result = r.and_then(|jpeg| {
             let file = camera::save_photo(&paths::photos_dir(), &row.voucher_date, &row.voucher_number, &row.vehicle_number, &row.id, &jpeg).map_err(|e| e.to_string())?;
-            self.db().set_photo(&row.id, &file.to_string_lossy(), self.camera_settings().upload).map_err(|e| e.to_string())
+            let upload = self.camera_settings().upload; // before taking the database lock: it takes it too
+            self.db().set_photo(&row.id, &file.to_string_lossy(), upload).map_err(|e| e.to_string())
         });
         match result {
             Ok(()) => String::new(),
@@ -1202,6 +1203,33 @@ mod tests {
         assert_eq!(h.weights.len(), 1);
         let csv = core.report_csv("2000-01-01 00:00:00", "2100-01-01 00:00:00");
         assert!(csv.starts_with('\u{feff}') && csv.contains("\"KL07AB1234\""));
+    }
+
+    #[test]
+    fn photo_on_save_is_stored_without_locking_up() {
+        // set_photo used to take the database lock twice in one statement and hang the save
+        let dir = std::env::temp_dir().join(format!("wb-photo-{}", std::process::id()));
+        unsafe { std::env::set_var("WB_USERDATA", &dir) };
+        let (core, _) = core_with(FakeServer::default());
+        core.db().set_setting("weighing", &json!({ "simulator": true })).unwrap();
+        core.db().set_setting("camera", &json!({ "source": "webcam", "upload": true })).unwrap();
+        core.db().set_setting("print", &json!({ "autoPrint": false, "keepPdf": false })).unwrap();
+        core.db().replace_rates(&[json!({ "id": "r", "wheelType": "6 WHEEL", "wheelRate": 100, "voucherDate": "2026-01-01" })]).unwrap();
+        core.set_auth(&AuthRec { token: "t".into(), tenant_id: "T1".into(), branch_code: "WB1".into(), username: "op".into(), ..Default::default() }).unwrap();
+        core.simulate(Some(9000.0)).unwrap();
+        let row = core.save(SaveForm { vehicle_number: "KL07AB1234".into(), wheel_type: "6 WHEEL".into(), ..Default::default() }).unwrap().row;
+        let jpeg = camera::encode(image::RgbImage::new(16, 8), 960).unwrap();
+        let (tx, rx) = mpsc::channel();
+        tx.send(Ok(jpeg)).unwrap();
+        let (done_tx, done_rx) = mpsc::channel();
+        let (c, r) = (core.clone(), row.clone());
+        thread::spawn(move || {
+            let _ = done_tx.send(c.finish_photo(&r, Some(rx)));
+        });
+        let err = done_rx.recv_timeout(Duration::from_secs(5)).expect("finish_photo hung");
+        assert_eq!(err, "");
+        assert!(core.db().get_weighing(&row.id).unwrap().photo_path.is_some_and(|p| p.contains("KL07AB1234")));
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
