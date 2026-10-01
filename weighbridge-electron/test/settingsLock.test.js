@@ -145,3 +145,19 @@ test("a server without the rates switch keeps rates admin only", async () => {
   assert.equal(lock.ratesAllowed(true), true);
   assert.throws(() => lock.requireRates(false), /Only an admin/);
 });
+
+test("developer tools follow the web admin's switch, and stay on with an older server", async () => {
+  const store = new Store(":memory:");
+  const srv = fakeServer();
+  let dev = false;
+  const lock = new SettingsLock(store, { checkin: async (b) => ({ ...(await srv.checkin(b)), devToolsSupported: true, devToolsEnabled: dev }) });
+  assert.equal(lock.devToolsAllowed(), true, "before the server answers");
+  await lock.refresh();
+  assert.equal(lock.devToolsAllowed(), false);
+  dev = true;
+  await lock.refresh();
+  assert.equal(lock.state().devTools, true);
+  const old = new SettingsLock(new Store(":memory:"), { checkin: srv.checkin });
+  await old.refresh();
+  assert.equal(old.devToolsAllowed(), true);
+});

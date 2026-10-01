@@ -530,10 +530,30 @@ function createWindow() {
   if (app.isPackaged) win.loadFile(path.join(__dirname, "../dist/index.html"));
   else win.loadURL(process.env.ELECTRON_START_URL || "http://localhost:5174");
 
+  applyDevTools();
+  // anything that opens the tools another way is closed again unless the web admin allows them
+  win.webContents.on("devtools-opened", () => { if (!devToolsAllowed()) win.webContents.closeDevTools(); });
+}
+
+// View > Toggle Developer Tools (F12) only when the web admin allows it for this PC (Weighbridge PCs).
+// Development builds always have it.
+function devToolsAllowed() {
+  return !app.isPackaged || !settingsLock || settingsLock.devToolsAllowed();
+}
+
+let menuDevTools = null;
+function applyDevTools() {
+  const allowed = devToolsAllowed();
+  if (allowed === menuDevTools) return;
+  menuDevTools = allowed;
+  const view = [{ role: "reload" }];
+  if (allowed) view.push({ role: "toggleDevTools", accelerator: "F12" });
+  view.push({ role: "togglefullscreen" });
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: "File", submenu: [{ role: "quit" }] },
-    { label: "View", submenu: [{ role: "reload" }, { role: "toggleDevTools", accelerator: "F12" }, { role: "togglefullscreen" }] },
+    { label: "View", submenu: view },
   ]));
+  if (!allowed && win && !win.isDestroyed() && win.webContents.isDevToolsOpened()) win.webContents.closeDevTools();
 }
 
 // Runs the downloaded installer silently (/S keeps the install folder and data) and quits so it
@@ -577,7 +597,7 @@ app.whenReady().then(() => {
     info: () => ({ branchCode: auth()?.branchCode || "", machineName: os.hostname(), appVersion: app.getVersion() }),
     log,
   });
-  settingsLock.on("state", (s) => send("wb:settings-lock", s));
+  settingsLock.on("state", (s) => { send("wb:settings-lock", s); applyDevTools(); });
   // the web admin's "allow changes" and rate changes reach the PC within a minute
   setTimeout(() => settingsLock.refresh().catch(() => {}), 3000);
   setInterval(() => {
