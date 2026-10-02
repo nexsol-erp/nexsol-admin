@@ -16,14 +16,21 @@ pub struct Rate {
     pub voucher_date: String,
 }
 
+/// A wheel type for comparing: "10 Wheel", "10WHEEL" and "10 WHEEL " are the same type. Old
+/// (Qt) weighings and the web admin don't always spell it the way the rates do.
+pub fn wheel_key(wheel_type: &str) -> String {
+    wheel_type.to_uppercase().chars().filter(|c| c.is_alphanumeric()).collect()
+}
+
 /// Newest positive rate for a wheel type.
 pub fn rate_for(rates: &[Rate], wheel_type: &str) -> f64 {
-    if wheel_type.is_empty() {
+    let key = wheel_key(wheel_type);
+    if key.is_empty() {
         return 0.0;
     }
     let mut best: Option<&Rate> = None;
     for r in rates {
-        if r.wheel_type != wheel_type || !(r.wheel_rate > 0.0) {
+        if wheel_key(&r.wheel_type) != key || !(r.wheel_rate > 0.0) {
             continue;
         }
         if best.is_none_or(|b| r.voucher_date > b.voucher_date) {

@@ -4,9 +4,9 @@ The weighbridge screen for site PCs, written in Rust with [Slint](https://slint.
 the Qt weighbridge application. It reads the indicator, saves each weighing on the PC first (so
 it works offline), prints the voucher, and uploads to the TradeLink247 server.
 
-It keeps the same rules, server endpoints and local database as the Electron build in
-`../weighbridge-electron`, which never went to production. Version numbers start at 2.0.0, so the
-updater never goes back to an Electron 1.x installer.
+It keeps the same rules, server endpoints and local database as the Electron build it replaced
+(removed; it never went to production). Version numbers start at 2.0.0, so the updater never goes
+back to an Electron 1.x installer.
 
 ![Weighing](docs/screenshots/weighing.png)
 
@@ -27,6 +27,8 @@ updater never goes back to an Electron 1.x installer.
   A PDF copy of every voucher is kept in Documents\TradeLink247 Weighbridge\Vouchers unless turned off.
 - **Camera**: a USB/built-in camera or an IP camera's snapshot address (Hikvision, Dahua). A photo
   is taken on save, kept on the PC, and optionally uploaded and printed.
+- **Screen size**: opens maximized and fits screens from 1024x768 up. Under 1280x800 it switches
+  to a compact layout (smaller controls, less padding) so every tab fits without scrolling sideways.
 - **Updates**: checks the server every 30 minutes (click the version in the header to check now),
   downloads in the background, installs on "Restart to update" or when the app is closed.
 
@@ -51,7 +53,7 @@ Everything lives in `%APPDATA%\TradeLink247 Weighbridge` (`weighbridge.db`, `ser
 ## Build
 
 ```sh
-cargo test                # parser, charging rule, store, sync, settings lock (90 tests)
+cargo test                # parser, charging rule, store, sync, settings lock (94 tests)
 cargo run                 # development build; no auto-update
 cargo build --release     # Windows: target\release\weighbridge-slint.exe
 makensis -DVERSION=2.0.0 -DEXE=..\target\release\weighbridge-slint.exe installer\installer.nsi

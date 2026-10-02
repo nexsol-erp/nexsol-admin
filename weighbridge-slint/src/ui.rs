@@ -103,6 +103,7 @@ fn kg(v: f64) -> String {
 }
 
 fn rupees(v: f64) -> String {
+    let v = if v == 0.0 { 0.0 } else { v }; // not "₹ -0.00"
     format!("₹ {v:.2}")
 }
 
@@ -403,6 +404,22 @@ fn load_rates(a: &mut App, w: &AppWindow) {
     g.set_rate_rows(rows(rates.iter().map(|(t, r)| row(t, vec![t.clone(), rupees(*r)], "", "", false, false)).collect()));
 }
 
+/// A vehicle locked to a wheel type that has no rate (an old type, or its rate was removed) would
+/// show an empty, locked picker. Add it to the list so the operator sees what it is.
+fn show_wheel_type(w: &AppWindow, wheel_type: &str) {
+    let g = w.global::<WB>();
+    let values = g.get_wheel_values();
+    if wheel_type.is_empty() || values.iter().any(|v| v.as_str() == wheel_type) {
+        return;
+    }
+    let mut v: Vec<String> = values.iter().map(|s| s.to_string()).collect();
+    let mut l: Vec<String> = g.get_wheel_labels().iter().map(|s| s.to_string()).collect();
+    v.push(wheel_type.to_string());
+    l.push(format!("{wheel_type}  ·  no rate"));
+    g.set_wheel_values(strings(v));
+    g.set_wheel_labels(strings(l));
+}
+
 fn render_history(a: &mut App, w: &AppWindow) {
     let g = w.global::<WB>();
     let v = &a.view;
@@ -465,6 +482,7 @@ fn lookup_vehicle(a: &mut App) {
                         a.view.hist_tares = h.tares;
                         g.set_wheel_locked(h.wheel_locked);
                         if h.wheel_locked {
+                            show_wheel_type(w, &h.wheel_type);
                             g.set_wheel(ss(&h.wheel_type));
                         }
                     }
@@ -598,6 +616,7 @@ fn lookup_tare_vehicle(a: &mut App) {
                 let g = w.global::<WB>();
                 g.set_tare_wheel_locked(h.wheel_locked);
                 if h.wheel_locked {
+                    show_wheel_type(w, &h.wheel_type);
                     g.set_tare_wheel(ss(&h.wheel_type));
                 }
                 refresh_can_save(a, w);
