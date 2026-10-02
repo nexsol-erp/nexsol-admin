@@ -229,7 +229,7 @@ fn common_defaults() -> Value {
         "stableCount": 3,         // readings in a row within tolerance count as stable
         "stableToleranceKg": 0,
         "zeroBandKg": 0,          // |weight| at or below this counts as an empty bridge
-        "engageThresholdKg": 500, // Qt sends "bridge engaged" the first time weight exceeds 500 kg
+        "engageThresholdKg": 200, // a vehicle on the bridge: first stable weight above this is reported to the server
         "noSignalMs": 3000,       // no valid reading for this long → "No signal"
     })
 }

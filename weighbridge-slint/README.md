@@ -29,6 +29,9 @@ back to an Electron 1.x installer.
   is taken on save, kept on the PC, and optionally uploaded and printed.
 - **Screen size**: opens maximized and fits screens from 1024x768 up. Under 1280x800 it switches
   to a compact layout (smaller controls, less padding) so every tab fits without scrolling sideways.
+- **Vehicles on the bridge**: every vehicle's first stable weight above 200 kg ("Vehicle on bridge
+  above" in Settings > Indicator) is sent to the server, voucher or not. The web admin's
+  Weight-Count compares them with the vouchers saved to show vehicles weighed without a voucher.
 - **Updates**: checks the server every 30 minutes (click the version in the header to check now),
   downloads in the background, installs on "Restart to update" or when the app is closed.
 
@@ -53,7 +56,7 @@ Everything lives in `%APPDATA%\TradeLink247 Weighbridge` (`weighbridge.db`, `ser
 ## Build
 
 ```sh
-cargo test                # parser, charging rule, store, sync, settings lock (95 tests)
+cargo test                # parser, charging rule, store, sync, settings lock (96 tests)
 cargo run                 # development build; no auto-update
 cargo build --release     # Windows: target\release\weighbridge-slint.exe
 makensis -DVERSION=2.0.0 -DEXE=..\target\release\weighbridge-slint.exe installer\installer.nsi
