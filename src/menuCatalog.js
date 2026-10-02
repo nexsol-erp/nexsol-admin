@@ -151,6 +151,7 @@ export const MENU_TREE = [
     menuKey: "Weighbridge Group", label: "Weighbridge", icon: Scale, color: "#37474F", link: "",
     roles: ["WB"], hasSubmenu: true,
     submenu: [
+      { menuKey: "Weighbridge Setup",  label: "Get Started",       link: "/weighbridge-start",  roles: ["WB"] },
       { menuKey: "Weighbridge",        label: "Weighbridge Entry", link: "/weighbridge",        roles: ["WB"] },
       { menuKey: "Weight-Count",       label: "Weight-Count",      link: "/bridge-count",       roles: ["WB"] },
       { menuKey: "WeighBridge Usage",  label: "WeighBridge Usage", link: "/weighbridgeusage",   roles: ["WB"] },
