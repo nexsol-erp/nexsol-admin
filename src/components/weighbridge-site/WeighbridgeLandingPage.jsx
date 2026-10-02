@@ -22,7 +22,7 @@ import SystemUpdateAltIcon from "@mui/icons-material/SystemUpdateAlt";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import HubIcon from "@mui/icons-material/Hub";
 import StorageIcon from "@mui/icons-material/Storage";
-import { WB, BASE, WbNavbar, WbFooter } from "./WbChrome";
+import { WB, SIGNUP, LOGIN, WbNavbar, WbFooter } from "./WbChrome";
 import {
   DOWNLOAD_URL, HERO_POINTS, FEATURES, COMPARISON, ROADMAP, SCREENSHOTS, SETUP_STEPS,
 } from "./weighbridgeContent";
@@ -101,7 +101,7 @@ const Hero = () => {
             <Box sx={{ display: "flex", gap: 1.5, mt: 4, flexWrap: "wrap" }}>
               <Button
                 size="large"
-                onClick={() => navigate(`${BASE}/signup`)}
+                onClick={() => navigate(SIGNUP)}
                 sx={{ bgcolor: WB.green, color: WB.navyDeep, fontWeight: 800, textTransform: "none", borderRadius: "10px", px: 3.5, py: 1.3, fontSize: 16, "&:hover": { bgcolor: "#13ad66" } }}
               >
                 Start free
@@ -109,7 +109,7 @@ const Hero = () => {
               <Button
                 size="large"
                 variant="outlined"
-                onClick={() => navigate(`${BASE}/login`)}
+                onClick={() => navigate(LOGIN)}
                 sx={{ color: "#fff", borderColor: "rgba(255,255,255,0.5)", fontWeight: 600, textTransform: "none", borderRadius: "10px", px: 3, py: 1.3, fontSize: 16, "&:hover": { borderColor: "#fff", bgcolor: "rgba(255,255,255,0.06)" } }}
               >
                 Sign in
@@ -320,7 +320,7 @@ const GetStarted = () => {
             You can also start with the weighbridge and add the ERP later.
           </Typography>
           <Box sx={{ display: "flex", gap: 1.5, justifyContent: "center", mt: 3, flexWrap: "wrap" }}>
-            <Button onClick={() => navigate(`${BASE}/signup`)} sx={{ bgcolor: WB.green, color: WB.navyDeep, fontWeight: 800, textTransform: "none", borderRadius: "10px", px: 3.5, py: 1.2, "&:hover": { bgcolor: "#13ad66" } }}>
+            <Button onClick={() => navigate(SIGNUP)} sx={{ bgcolor: WB.green, color: WB.navyDeep, fontWeight: 800, textTransform: "none", borderRadius: "10px", px: 3.5, py: 1.2, "&:hover": { bgcolor: "#13ad66" } }}>
               Start free
             </Button>
             <Button href={DOWNLOAD_URL} startIcon={<DownloadIcon />} sx={{ color: "#fff", border: "1px solid rgba(255,255,255,0.5)", fontWeight: 600, textTransform: "none", borderRadius: "10px", px: 3, py: 1.2 }}>

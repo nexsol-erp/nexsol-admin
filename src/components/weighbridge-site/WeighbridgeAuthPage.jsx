@@ -13,7 +13,7 @@ import HubIcon from "@mui/icons-material/Hub";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SignUpForm from "../SignUpForm";
-import { WB, BASE, WbLogo } from "./WbChrome";
+import { WB, HOME, LOGIN, SIGNUP, WbLogo } from "./WbChrome";
 
 const lightTheme = createTheme({ palette: { mode: "light", primary: { main: WB.navy } } });
 
@@ -60,8 +60,8 @@ const Shell = ({ children, wide = false }) => {
       >
         <Box sx={{ width: "100%", maxWidth: wide ? 820 : 440 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 4 }}>
-            <WbLogo light onClick={() => navigate(BASE)} />
-            <Button onClick={() => navigate(BASE)} startIcon={<ArrowBackIcon />} sx={{ color: "rgba(255,255,255,0.75)", textTransform: "none" }}>
+            <WbLogo light onClick={() => navigate(HOME)} />
+            <Button onClick={() => navigate(HOME)} startIcon={<ArrowBackIcon />} sx={{ color: "rgba(255,255,255,0.75)", textTransform: "none" }}>
               Back
             </Button>
           </Box>
@@ -164,7 +164,7 @@ const WeighbridgeLogin = ({ onLogin }) => {
       </Paper>
       <Typography sx={{ mt: 3, textAlign: "center", fontSize: 14, color: "rgba(255,255,255,0.7)" }}>
         New to TradeLink247?{" "}
-        <Link component="button" onClick={() => navigate(`${BASE}/signup`)} sx={{ color: WB.green, fontWeight: 700 }}>
+        <Link component="button" onClick={() => navigate(SIGNUP)} sx={{ color: WB.green, fontWeight: 700 }}>
           Create an account
         </Link>
       </Typography>
@@ -222,7 +222,7 @@ const WeighbridgeSignUp = ({ onLogin }) => {
         </Box>
         <Typography sx={{ mt: 3, textAlign: "center", fontSize: 14, color: "rgba(255,255,255,0.7)" }}>
           Already have an account?{" "}
-          <Link component="button" onClick={() => navigate(`${BASE}/login`)} sx={{ color: WB.green, fontWeight: 700 }}>
+          <Link component="button" onClick={() => navigate(LOGIN)} sx={{ color: WB.green, fontWeight: 700 }}>
             Sign in
           </Link>
         </Typography>
@@ -244,7 +244,7 @@ const WeighbridgeSignUp = ({ onLogin }) => {
           submitLabel="Create account"
           onClose={() => setProduct(null)}
           onLogin={(roles) => onLogin?.(roles)}
-          onSignUp={() => navigate(`${BASE}/login`)}
+          onSignUp={() => navigate(LOGIN)}
         />
       </Paper>
       <Typography sx={{ mt: 3, textAlign: "center", fontSize: 14, color: "rgba(255,255,255,0.7)" }}>

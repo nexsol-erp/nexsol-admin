@@ -23,6 +23,13 @@ export const WB = {
 
 export const BASE = "/weighbridge-software";
 
+// On the weighbridge subdomain (weights.tradelink247.com) the same app serves these pages at the
+// root: / is the landing page, /login and /signup the weighbridge sign-in and sign-up.
+export const WB_HOST = /^weights\./i.test(window.location.hostname);
+export const HOME = WB_HOST ? "/" : BASE;
+export const LOGIN = WB_HOST ? "/login" : `${BASE}/login`;
+export const SIGNUP = WB_HOST ? "/signup" : `${BASE}/signup`;
+
 const LINKS = [
   { label: "Features", id: "features" },
   { label: "Screenshots", id: "screenshots" },
@@ -58,7 +65,7 @@ export const WbNavbar = () => {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const scrolled = useScrollTrigger({ disableHysteresis: true, threshold: 40 });
-  const onLanding = location.pathname === BASE;
+  const onLanding = location.pathname === HOME;
   const solid = scrolled || !onLanding;
 
   const go = (id) => {
@@ -67,7 +74,7 @@ export const WbNavbar = () => {
       const el = document.getElementById(id);
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     } else {
-      navigate(BASE, { state: { scrollTo: id } });
+      navigate(HOME, { state: { scrollTo: id } });
     }
   };
 
@@ -86,7 +93,7 @@ export const WbNavbar = () => {
         <Container maxWidth="lg">
           <Toolbar disableGutters sx={{ gap: 1 }}>
             <Box sx={{ flexGrow: 1 }}>
-              <WbLogo light={!solid} onClick={() => (onLanding ? go("top") : navigate(BASE))} />
+              <WbLogo light={!solid} onClick={() => (onLanding ? go("top") : navigate(HOME))} />
             </Box>
             <Box sx={{ display: { xs: "none", md: "flex" }, gap: 0.5, mr: 1 }}>
               {LINKS.map((l) => (
@@ -100,7 +107,7 @@ export const WbNavbar = () => {
               ))}
             </Box>
             <Button
-              onClick={() => navigate(`${BASE}/login`)}
+              onClick={() => navigate(LOGIN)}
               variant="outlined"
               sx={{
                 display: { xs: "none", sm: "inline-flex" },
@@ -111,7 +118,7 @@ export const WbNavbar = () => {
               Sign in
             </Button>
             <Button
-              onClick={() => navigate(`${BASE}/signup`)}
+              onClick={() => navigate(SIGNUP)}
               variant="contained"
               sx={{
                 display: { xs: "none", sm: "inline-flex" },
@@ -139,10 +146,10 @@ export const WbNavbar = () => {
           ))}
         </List>
         <Divider sx={{ my: 2 }} />
-        <Button fullWidth variant="outlined" onClick={() => navigate(`${BASE}/login`)} sx={{ mb: 1.5, textTransform: "none", fontWeight: 600 }}>
+        <Button fullWidth variant="outlined" onClick={() => navigate(LOGIN)} sx={{ mb: 1.5, textTransform: "none", fontWeight: 600 }}>
           Sign in
         </Button>
-        <Button fullWidth variant="contained" onClick={() => navigate(`${BASE}/signup`)} sx={{ textTransform: "none", fontWeight: 700, bgcolor: WB.green, color: WB.navyDeep, "&:hover": { bgcolor: "#13ad66" } }}>
+        <Button fullWidth variant="contained" onClick={() => navigate(SIGNUP)} sx={{ textTransform: "none", fontWeight: 700, bgcolor: WB.green, color: WB.navyDeep, "&:hover": { bgcolor: "#13ad66" } }}>
           Start free
         </Button>
       </Drawer>
@@ -156,10 +163,10 @@ export const WbFooter = () => {
     <Box component="footer" sx={{ bgcolor: WB.navyDeep, color: "rgba(255,255,255,0.7)", py: 5 }}>
       <Container maxWidth="lg">
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, justifyContent: "space-between", alignItems: "center" }}>
-          <WbLogo light onClick={() => navigate(BASE)} />
+          <WbLogo light onClick={() => navigate(HOME)} />
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2.5, fontSize: 14 }}>
             {[
-              ["TradeLink247 ERP", "/"],
+              ["TradeLink247 ERP", WB_HOST ? "https://www.tradelink247.com/" : "/"],
               ["Pricing", "/pricing"],
               ["Privacy", "/privacy-policy"],
               ["Terms", "/terms-and-conditions"],
@@ -169,7 +176,7 @@ export const WbFooter = () => {
                 key={to}
                 component="a"
                 href={to}
-                onClick={(e) => { e.preventDefault(); navigate(to); }}
+                onClick={(e) => { if (to.startsWith("/")) { e.preventDefault(); navigate(to); } }}
                 sx={{ color: "inherit", textDecoration: "none", "&:hover": { color: "#fff" } }}
               >
                 {label}

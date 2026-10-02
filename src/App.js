@@ -120,6 +120,7 @@ import SignUpPage from "./components/landing/SignUpPage";
 import WeighbridgeLandingPage from "./components/weighbridge-site/WeighbridgeLandingPage";
 import WeighbridgeAuthPage from "./components/weighbridge-site/WeighbridgeAuthPage";
 import WeighbridgeStartPage from "./components/weighbridge-site/WeighbridgeStartPage";
+import { WB_HOST } from "./components/weighbridge-site/WbChrome";
 import KOTEntry from "./components/KOTEntry";
 import GoodsReceiptForm from "./components/GoodsReceiptForm";
 import ReceiptModePage from "./components/ReceiptModePage";
@@ -806,14 +807,15 @@ const App = () => {
         <Router>
           <Routes>
             {/* Public pages — no auth required */}
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={WB_HOST ? <WeighbridgeLandingPage /> : <LandingPage />} />
+            {WB_HOST && <Route path="/login" element={<WeighbridgeAuthPage mode="login" onLogin={publicLogin} />} />}
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/partner" element={<PartnerPage />} />
             <Route path="/partner/apply" element={<PartnerApplyPage />} />
             <Route
               path="/signup"
               element={
-                <SignUpPage
+                WB_HOST ? <WeighbridgeAuthPage mode="signup" onLogin={publicLogin} /> : <SignUpPage
                   onLogin={async (loginRoles) => {
                     localStorage.setItem("roles", JSON.stringify(loginRoles));
                     setRoles(loginRoles);
