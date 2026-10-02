@@ -469,7 +469,14 @@ impl Store {
 
     /// The wheel type a vehicle is locked to: the one set in the web admin, else its newest weighing
     /// or tare here, else the server's newest. Only the web admin changes it.
+    /// Spelled the way the rates spell it, so the wheel type picker can show it.
     pub fn wheel_type_of(&self, vehicle: &str) -> String {
+        let wt = self.saved_wheel_type(vehicle);
+        let key = charge::wheel_key(&wt);
+        self.rates().into_iter().map(|(t, _)| t).find(|t| charge::wheel_key(t) == key).unwrap_or(wt)
+    }
+
+    fn saved_wheel_type(&self, vehicle: &str) -> String {
         let v = normalize_vehicle(vehicle);
         if v.is_empty() {
             return String::new();
@@ -515,7 +522,7 @@ impl Store {
     /// Errors unless wheel_type matches the vehicle's locked one.
     pub fn check_wheel_type(&self, vehicle: &str, wheel_type: &str) -> Res<String> {
         let saved = self.wheel_type_of(vehicle);
-        if !saved.is_empty() && !wheel_type.is_empty() && saved != wheel_type {
+        if !saved.is_empty() && !wheel_type.is_empty() && charge::wheel_key(&saved) != charge::wheel_key(wheel_type) {
             return Err(AppError::validation(format!(
                 "{} is saved as {saved}. Its wheel type can only be changed in the web admin (Vehicle Wheel Type).",
                 normalize_vehicle(vehicle)

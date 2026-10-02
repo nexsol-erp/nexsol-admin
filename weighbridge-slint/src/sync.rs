@@ -635,6 +635,19 @@ mod tests {
     }
 
     #[test]
+    fn wheel_type_spelled_differently_matches_the_rate() {
+        // KL16Y5696 in production: saved as "6 Wheel" by the Qt screen, rate is "6 WHEEL"
+        let s = store_with_rates();
+        let (sy, _) = sync(&s, FakeServer::default().on("GET /weighbridge/wheel-type/KL16Y5696", ok(json!({ "vehicleNumber": "KL16Y5696", "wheelType": "6 Wheel ", "source": "history", "lastDate": "2025-01-01 10:00:00" }))));
+        sy.lookup_wheel_type("KL16Y5696").unwrap();
+        let st = s.lock().unwrap();
+        assert_eq!(st.wheel_type_of("KL16Y5696"), "6 WHEEL", "shown as the rate's wheel type");
+        assert!(st.check_wheel_type("KL16Y5696", "6 WHEEL").is_ok());
+        assert!(st.check_wheel_type("KL16Y5696", "10 WHEEL").is_err());
+        assert_eq!(crate::charge::rate_for(&st.all_rates(), "6 wheel"), 100.0);
+    }
+
+    #[test]
     fn wheel_type_changes_from_where_it_left_off() {
         let s = store_with_rates();
         weigh(&s, "KL07AB1234", 9000.0, Pick::None);
