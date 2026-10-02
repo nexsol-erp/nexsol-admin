@@ -54,6 +54,7 @@ const TenantSelectorPage = ({ onLogin }) => {
       localStorage.setItem("jwtToken",   data.token);
       localStorage.setItem("tenancyId",  data.tenancyId);
       localStorage.setItem("roles",      JSON.stringify(data.roles || []));
+      localStorage.setItem("platformAdmin", data.platformAdmin ? "true" : "false");
       localStorage.setItem("setupCompleted", data.setupCompleted !== false ? "true" : "false");
 
       const payload = decodeJwtPayload(data.token);
