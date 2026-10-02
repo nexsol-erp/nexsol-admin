@@ -152,6 +152,7 @@ export component Field inherits VerticalLayout {
         text: root.label;
         font-size: Theme.small;
         color: Theme.muted;
+        wrap: word-wrap; // a long label wraps instead of widening the row past a small screen
     }
     @children
     if root.help != "": Text {

@@ -4,14 +4,14 @@ import { WB } from "../state.slint";
 
 // Qt's Daily Weights report: vouchers for a period, total amount, last voucher, reprint.
 export component ReportPage inherits VerticalLayout {
-    spacing: 12px;
+    spacing: Theme.compact ? 8px : 12px;
     Card {
         HorizontalLayout {
-            spacing: 12px;
+            spacing: Theme.compact ? 8px : 12px;
             Field {
                 label: "From (dd/mm/yyyy hh:mm)";
                 LineEdit {
-                    width: 180px;
+                    width: Theme.compact ? 150px : 180px;
                     text <=> WB.report-from;
                     accepted => { WB.report-load(); }
                 }
@@ -19,7 +19,7 @@ export component ReportPage inherits VerticalLayout {
             Field {
                 label: "To";
                 LineEdit {
-                    width: 180px;
+                    width: Theme.compact ? 150px : 180px;
                     text <=> WB.report-to;
                     accepted => { WB.report-load(); }
                 }

@@ -103,6 +103,7 @@ fn kg(v: f64) -> String {
 }
 
 fn rupees(v: f64) -> String {
+    let v = if v == 0.0 { 0.0 } else { v }; // not "₹ -0.00"
     format!("₹ {v:.2}")
 }
 

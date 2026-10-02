@@ -1,8 +1,7 @@
 name: Weighbridge app (Slint)
 
 # Tests and a Windows installer for weighbridge-slint. On main it publishes the installer to the
-# server, where /download and the app's update check pick it up. The Slint app replaced the
-# Electron one (weighbridge.yml), which no longer publishes.
+# server, where /download and the app's update check pick it up.
 on:
   push:
     branches: [main]

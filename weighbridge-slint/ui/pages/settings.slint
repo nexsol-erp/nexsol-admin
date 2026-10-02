@@ -46,6 +46,7 @@ component Toggle inherits HorizontalLayout {
 component Input inherits LineEdit {
     in property <bool> mono;
     height: 34px;
+    min-width: 60px; // five to a row still fits a 1024-wide screen
     font-family: root.mono ? "Consolas" : "";
 }
 
@@ -678,7 +679,7 @@ export component SettingsPage inherits VerticalLayout {
         spacing: 12px;
         vertical-stretch: 1;
         VerticalLayout {
-            width: 170px;
+            width: Theme.compact ? 140px : 170px;
             spacing: 2px;
             alignment: start;
             for t[i] in [
@@ -711,8 +712,11 @@ export component SettingsPage inherits VerticalLayout {
                 }
             }
         }
-        ScrollView {
+        sv := ScrollView {
+            // as wide as the visible area, so the cards fit the window instead of running off its
+            // right edge on a small screen (and scroll sideways only when they really can't fit)
             VerticalLayout {
+                width: max(sv.visible-width, self.min-width);
                 padding-right: 12px;
                 padding-bottom: 12px;
                 alignment: start;

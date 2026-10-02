@@ -307,7 +307,7 @@ export component WeighingPage inherits Rectangle {
                         if WB.last.net != "": Text { text: WB.last.net; vertical-alignment: center; }
                         Text { text: WB.last.amount; vertical-alignment: center; }
                         Tag { text: WB.last.printed ? "Printed" : "Not printed"; kind: WB.last.printed ? "success" : "error"; }
-                        if WB.last.photo: Tag { text: "Photo saved"; kind: "info"; }
+                        if WB.last.photo && !Theme.compact: Tag { text: "Photo saved"; kind: "info"; }
                         Rectangle { }
                         Btn {
                             text: "Reprint";
