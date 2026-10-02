@@ -11,6 +11,10 @@ import { getItems } from "../services/apiservice";
 import { useBranch } from "./BranchContext";
 import { taxInvoiceHtml } from "./salesEntry/taxInvoiceHtml";
 import usePrintPack from "../multilanguage/usePrintPack";
+import useInvoiceTemplate from "../invoiceDesign/useInvoiceTemplate";
+import { renderInvoiceHtml } from "../invoiceDesign/renderInvoice";
+import { fromSalesInvoice } from "../invoiceDesign/invoiceModel";
+import { printHtml } from "../invoiceDesign/printHtml";
 
 const { Title, Text } = Typography;
 
@@ -90,7 +94,12 @@ const authHeaders = () => ({
 });
 const api = (path) => `/api/${localStorage.getItem("tenancyId")}${path}`;
 
-function printTaxInvoice(inv, ml) {
+// With an Invoice Designer template for sales invoices, print that; otherwise the built-in A4 invoice.
+function printTaxInvoice(inv, ml, template, branch) {
+  if (template) {
+    printHtml(renderInvoiceHtml(template, fromSalesInvoice(inv, branch), ml));
+    return;
+  }
   const html = taxInvoiceHtml(inv, ml);
   const win = window.open("", "_blank", "width=900,height=700");
   if (!win) return;
@@ -105,6 +114,7 @@ const emptyPayments = { CASH: 0, UPI: 0, CARD: 0 };
 const SalesEntryForm = () => {
   const { branch: branchCode, setBranch, branches } = useBranch();
   const printPack = usePrintPack(branchCode);
+  const invoiceTemplate = useInvoiceTemplate("SALES");
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.lg;
   const [customerForm] = Form.useForm();
@@ -515,7 +525,8 @@ const SalesEntryForm = () => {
           <Row gutter={[8, 8]} style={{ marginTop: 16 }}>
             <Col xs={24} sm={12}>
               <Button type="primary" size="large" block icon={<PrinterOutlined />}
-                onClick={() => printTaxInvoice(savedInvoice, printPack)}>Print tax invoice</Button>
+                onClick={() => printTaxInvoice(savedInvoice, printPack, invoiceTemplate,
+                  branches.find((b) => b.branchCode === savedInvoice.branchCode))}>Print tax invoice</Button>
             </Col>
             <Col xs={24} sm={12}>
               <Button size="large" block icon={<PlusOutlined />} onClick={resetInvoice}>New invoice</Button>
