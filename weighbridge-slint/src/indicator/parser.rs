@@ -387,11 +387,15 @@ impl IndicatorSession {
             ev.push(Event::Reading(reading.clone()));
             let threshold = self.profile.engage_threshold();
             let zero = self.profile.zero_band();
+            // One "vehicle on the bridge" per visit, even if no voucher is saved: the first
+            // stable weight above the threshold. It re-arms when the bridge is empty again
+            // (within the zero band, or under a quarter of the threshold, as an empty bridge
+            // rarely reads exactly 0).
             if threshold > 0.0 {
-                if self.armed && reading.weight > threshold {
+                if self.armed && reading.stable && reading.weight > threshold {
                     self.armed = false;
                     ev.push(Event::Engage { weight: reading.weight, at: now });
-                } else if !self.armed && reading.weight.abs() <= zero {
+                } else if !self.armed && reading.weight.abs() <= zero.max(threshold / 4.0) {
                     self.armed = true;
                 }
             }
@@ -553,11 +557,19 @@ mod tests {
     }
 
     #[test]
-    fn bridge_engaged_rearms_at_zero() {
+    fn bridge_engaged_once_per_vehicle_on_a_stable_weight() {
+        // stableCount 3: the third same reading in a row is stable
         let mut s = IndicatorSession::new(prof("qt-default"));
-        let data: String = ["000100", "000600", "012000", "000300", "000000", "000900"].iter().map(|w| format!("\x02{w}\r")).collect();
+        let w = [
+            "000100", "000100", "000100", // empty-ish, under 200: nothing
+            "004000", "012000", "012000", "012000", // drives on, settles: one event at 12000
+            "012000", "012000", "006000", "000300", // still on, then leaving: nothing more
+            "000030", "000030", "000030", // empty again (under 50): re-armed
+            "000250", "000250", "000250", // a light vehicle above 200 kg
+        ];
+        let data: String = w.iter().map(|w| format!("\x02{w}\r")).collect();
         let engaged: Vec<f64> = s.feed(data.as_bytes(), 0).into_iter().filter_map(|e| if let Event::Engage { weight, .. } = e { Some(weight) } else { None }).collect();
-        assert_eq!(engaged, vec![600.0, 900.0]);
+        assert_eq!(engaged, vec![12000.0, 250.0]);
     }
 
     #[test]

@@ -587,17 +587,20 @@ const content = {
   },
 
   "Weight-Count": {
-    summary: "Counts how many times the weighbridge was engaged at a branch over a period, listing each engagement with its weight. Use it to compare machine activity against billed weighings.",
+    summary: "Compares the vehicles that stood on the weighbridge with the vouchers saved, day by day, to catch weighings done without a voucher. The weighbridge PC reports every vehicle on the bridge (its first stable weight above 200 kg) even when no voucher is saved.",
     steps: [
       "Open Weighbridge > Weight-Count.",
       "Choose the \"Branch\".",
-      "Set \"From Date\" and \"To Date\" (both include a time; it opens on the last week).",
-      "Click \"Fetch Engage Report\".",
-      "Read the lines: date and time, and the weight recorded. \"Total Count\" at the foot gives the number of engagements.",
-      "Click \"Export to Excel\", type a file name and click \"Export\".",
+      "Set \"From\" and \"To\", or click \"Today\" or \"Yesterday\".",
+      "Click \"Show\".",
+      "Read the day table: vehicles on the bridge, weighing and tare vouchers saved, the \"Gap\" (vehicles minus vouchers) and how many vehicles have no voucher near their time.",
+      "Below it, each vehicle on the bridge is listed with the voucher it was paired with. Turn on \"Only vehicles with no voucher\" to see just the suspicious ones (shown in red).",
+      "Click \"Export to Excel\" for both tables.",
     ],
     tips: [
-      "The count here is what the machine did. If it is much higher than the number of billed weighings on the Weighbridge Entry screen for the same period, weighings are going unbilled.",
+      "A vehicle is paired with a weighing or tare voucher saved up to 5 minutes before or 30 minutes after it stood on the bridge.",
+      "A vehicle that stays on the bridge counts once; the next one counts after the bridge is empty again.",
+      "PCs that were offline send their vehicles when they reconnect, so a recent gap can shrink once they sync.",
       "A branch must be chosen - there is no all-branches option.",
     ],
     related: ["Weighbridge", "WeighBridge Usage"],

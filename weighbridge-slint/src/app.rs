@@ -156,8 +156,28 @@ fn hex(b: &[u8]) -> String {
     b.iter().map(|x| format!("{x:02x}")).collect::<Vec<_>>().join(" ")
 }
 
+/// "Vehicle on the bridge" moved from Qt's 500 kg to a stable weight above 200 kg (regy,
+/// 2026-10-02). Settings saved before then carry the old 500, so it changes once to 200.
+fn engage_at_200(store: &Store) -> Res<()> {
+    if !store.get_str("engage200").is_empty() {
+        return Ok(());
+    }
+    if let Some(mut cfg) = store.get_setting("indicator") {
+        let old = cfg["overrides"]["engageThresholdKg"].clone();
+        if old.as_f64().or_else(|| old.as_str().and_then(|s| s.trim().parse().ok())) == Some(500.0) {
+            cfg["overrides"]["engageThresholdKg"] = json!(200);
+            store.set_setting("indicator", &cfg)?;
+        }
+    }
+    store.set_setting("engage200", &Value::String("1".into()))?;
+    Ok(())
+}
+
 impl Core {
     pub fn new(version: &str, store: Store, http: Arc<dyn Http>, server: ServerConfig, emit: Emit) -> Arc<Core> {
+        if let Err(e) = engage_at_200(&store) {
+            crate::error!("engage threshold {e}");
+        }
         let store: Shared = Arc::new(Mutex::new(store));
         Arc::new_cyclic(|me: &Weak<Core>| {
             let st = store.clone();
@@ -1211,6 +1231,18 @@ mod tests {
         assert_eq!(h.weights.len(), 1);
         let csv = core.report_csv("2000-01-01 00:00:00", "2100-01-01 00:00:00");
         assert!(csv.starts_with('\u{feff}') && csv.contains("\"KL07AB1234\""));
+    }
+
+    #[test]
+    fn saved_500_kg_bridge_threshold_becomes_200_once() {
+        let s = Store::memory();
+        s.set_setting("indicator", &json!({ "presetId": "qt-default", "overrides": { "engageThresholdKg": "500", "zeroBandKg": 20 } })).unwrap();
+        engage_at_200(&s).unwrap();
+        assert_eq!(s.get_setting("indicator").unwrap()["overrides"]["engageThresholdKg"], json!(200));
+        // a site that sets 500 again afterwards keeps it
+        s.set_setting("indicator", &json!({ "presetId": "qt-default", "overrides": { "engageThresholdKg": 500 } })).unwrap();
+        engage_at_200(&s).unwrap();
+        assert_eq!(s.get_setting("indicator").unwrap()["overrides"]["engageThresholdKg"], json!(500));
     }
 
     #[test]
