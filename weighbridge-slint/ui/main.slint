@@ -115,11 +115,11 @@ component TabButton inherits Rectangle {
     in property <bool> locked;
     callback clicked;
     property <bool> on: WB.tab == root.key;
-    min-width: t.preferred-width + 36px;
-    height: 46px;
+    min-width: t.preferred-width + (Theme.compact ? 24px : 36px);
+    height: Theme.compact ? 38px : 46px;
     t := Text {
         text: root.label;
-        font-size: 16px;
+        font-size: Theme.compact ? 15px : 16px;
         font-weight: on ? 600 : 400;
         color: root.locked ? Theme.faint : on ? Theme.navy : ta.has-hover ? Theme.navy : Theme.text;
         horizontal-alignment: center;
@@ -138,15 +138,15 @@ component TabButton inherits Rectangle {
 
 component Header inherits Rectangle {
     background: Theme.navy;
-    height: 56px;
+    height: Theme.compact ? 46px : 56px;
     HorizontalLayout {
-        padding-left: 20px;
-        padding-right: 20px;
-        spacing: 14px;
+        padding-left: Theme.compact ? 12px : 20px;
+        padding-right: Theme.compact ? 12px : 20px;
+        spacing: Theme.compact ? 10px : 14px;
         Text {
             text: "TradeLink247 Weighbridge";
             color: #ffffff;
-            font-size: 18px;
+            font-size: Theme.compact ? 16px : 18px;
             font-weight: 700;
             vertical-alignment: center;
         }
@@ -172,7 +172,7 @@ component Header inherits Rectangle {
                 clicked => { WB.sync-now(); }
             }
         }
-        Text { text: WB.user; color: #cfe0ff; vertical-alignment: center; }
+        Text { text: WB.user; color: #cfe0ff; vertical-alignment: center; overflow: elide; min-width: 0px; }
         VerticalLayout {
             alignment: center;
             Btn { text: "Sign out"; min-height: 30px; font-size: 13px; clicked => { WB.sign-out(); } }
@@ -185,8 +185,13 @@ export component AppWindow inherits Window {
     icon: @image-url("icon.svg");
     preferred-width: 1366px;
     preferred-height: 860px;
-    min-width: 1100px;
-    min-height: 700px;
+    // Site PCs run anything from 1024x768 up. The window opens maximized (ui.rs), and on a
+    // screen smaller than 1280x800 the layout goes compact so every tab still fits.
+    min-width: 960px;
+    min-height: 640px;
+    changed width => { root.fit(); }
+    changed height => { root.fit(); }
+    function fit() { Theme.compact = root.width < 1280px || root.height < 800px; }
     background: Theme.page;
     default-font-size: Theme.font;
     default-font-family: "Segoe UI";
@@ -194,7 +199,10 @@ export component AppWindow inherits Window {
     callback focus-vehicle();
     focus-vehicle => { if WB.screen == "main" && WB.tab == "weigh" { weigh.focus-vehicle(); } }
 
-    init => { Palette.color-scheme = ColorScheme.light; }
+    init => {
+        Palette.color-scheme = ColorScheme.light;
+        root.fit();
+    }
 
     if WB.screen == "server": ServerScreen { }
     if WB.screen == "login": LoginScreen { }
@@ -224,7 +232,7 @@ export component AppWindow inherits Window {
         }
         Rectangle {
             background: #ffffff;
-            height: 46px;
+            height: Theme.compact ? 38px : 46px;
             HorizontalLayout {
                 padding-left: 12px;
                 TabButton { key: "weigh"; label: "Weighing"; clicked => { WB.tab = "weigh"; WB.tab-shown("weigh"); root.focus-vehicle(); } }
@@ -273,28 +281,28 @@ export component AppWindow inherits Window {
         Rectangle {
             vertical-stretch: 1;
             VerticalLayout {
-                padding: 16px;
-                padding-top: 12px;
+                padding: Theme.compact ? 10px : 16px;
+                padding-top: Theme.compact ? 8px : 12px;
                 weigh := WeighingPage { visible: WB.tab == "weigh"; }
             }
             if WB.tab == "tares": VerticalLayout {
-                padding: 16px;
-                padding-top: 12px;
+                padding: Theme.compact ? 10px : 16px;
+                padding-top: Theme.compact ? 8px : 12px;
                 TaresPage { }
             }
             if WB.tab == "report": VerticalLayout {
-                padding: 16px;
-                padding-top: 12px;
+                padding: Theme.compact ? 10px : 16px;
+                padding-top: Theme.compact ? 8px : 12px;
                 ReportPage { }
             }
             if WB.tab == "rates": VerticalLayout {
-                padding: 16px;
-                padding-top: 12px;
+                padding: Theme.compact ? 10px : 16px;
+                padding-top: Theme.compact ? 8px : 12px;
                 RatesPage { }
             }
             if WB.tab == "settings": VerticalLayout {
-                padding: 16px;
-                padding-top: 12px;
+                padding: Theme.compact ? 10px : 16px;
+                padding-top: Theme.compact ? 8px : 12px;
                 SettingsPage { }
             }
         }
@@ -303,8 +311,8 @@ export component AppWindow inherits Window {
     // messages, top centre, newest last
     VerticalLayout {
         y: 64px;
-        x: (root.width - 520px) / 2;
-        width: 520px;
+        x: (root.width - self.width) / 2;
+        width: min(520px, root.width - 40px);
         height: self.preferred-height;
         spacing: 6px;
         for t in WB.toasts: Rectangle {

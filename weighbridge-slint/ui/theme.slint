@@ -23,8 +23,15 @@ export global Theme {
     out property <color> row-hover: #f0f5fb;
     out property <color> row-selected: #dbe9fa;
     out property <color> row-open: #eaf7ec;
-    out property <length> font: 15px;
-    out property <length> small: 13px;
+    // Small screens (1024x768 site PCs): AppWindow turns this on when the window is under
+    // 1280x800, and everything below gets tighter: smaller big controls, less padding.
+    in-out property <bool> compact;
+    out property <length> font: compact ? 14px : 15px;
+    out property <length> small: compact ? 12px : 13px;
+    out property <length> gap: compact ? 10px : 16px;
+    out property <length> input-h: compact ? 36px : 42px;      // big inputs and selects
+    out property <length> big-btn-h: compact ? 42px : 52px;
+    out property <length> big-font: compact ? 16px : 18px;
 
     // kind: success | error | warning | info | default
     public pure function fg(kind: string) -> color {
@@ -51,10 +58,10 @@ export component Btn inherits Rectangle {
     in property <bool> enabled: true;
     in property <bool> busy;
     in property <bool> big;
-    in property <length> font-size: big ? 18px : Theme.font;
+    in property <length> font-size: big ? Theme.big-font : Theme.font;
     callback clicked;
-    min-width: max(big ? 160px : 64px, label.preferred-width + (big ? 40px : 24px));
-    min-height: big ? 52px : 34px;
+    min-width: max(big ? (Theme.compact ? 110px : 160px) : 64px, label.preferred-width + (big ? (Theme.compact ? 28px : 40px) : 24px));
+    min-height: big ? Theme.big-btn-h : 34px;
     horizontal-stretch: 0;
     vertical-stretch: 0;
     border-radius: 6px;
@@ -114,7 +121,7 @@ export component Tag inherits Rectangle {
 
 export component Card inherits Rectangle {
     in property <string> title;
-    in property <length> pad: 14px;
+    in property <length> pad: Theme.compact ? 10px : 14px;
     background: Theme.card;
     border-radius: 8px;
     border-width: 1px;
@@ -190,8 +197,8 @@ export component Segmented inherits HorizontalLayout {
     spacing: 0px;
     for o[i] in root.options: Rectangle {
         property <bool> on: root.values[i] == root.value;
-        min-width: t.preferred-width + (root.big ? 32px : 22px);
-        height: root.big ? 42px : 34px;
+        min-width: t.preferred-width + (root.big && !Theme.compact ? 32px : 18px);
+        height: root.big ? Theme.input-h : 34px;
         background: on ? Theme.navy : ta.has-hover && root.enabled ? #f5f8fb : #ffffff;
         border-width: 1px;
         border-color: on ? Theme.navy : Theme.border;
@@ -202,7 +209,7 @@ export component Segmented inherits HorizontalLayout {
         t := Text {
             text: o;
             color: on ? #ffffff : root.enabled ? Theme.text : Theme.faint;
-            font-size: root.big ? 16px : Theme.font;
+            font-size: root.big && !Theme.compact ? 16px : Theme.font;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
@@ -368,7 +375,7 @@ export component Select inherits Rectangle {
     in property <bool> blank-is-value;
     callback picked(string);
     min-width: 90px;
-    height: root.big ? 42px : 34px;
+    height: root.big ? Theme.input-h : 34px;
     horizontal-stretch: 1;
     vertical-stretch: 0;
     border-radius: 6px;
@@ -390,7 +397,7 @@ export component Select inherits Rectangle {
                 height: parent.height;
                 text: root.placeholder;
                 color: Theme.faint;
-                font-size: root.big ? 17px : Theme.font;
+                font-size: root.big ? (Theme.compact ? 15px : 17px) : Theme.font;
                 vertical-alignment: center;
                 overflow: elide;
             }
@@ -400,7 +407,7 @@ export component Select inherits Rectangle {
                 visible: root.values[i] == root.value;
                 text: l;
                 color: root.enabled ? Theme.text : Theme.muted;
-                font-size: root.big ? 17px : Theme.font;
+                font-size: root.big ? (Theme.compact ? 15px : 17px) : Theme.font;
                 vertical-alignment: center;
                 overflow: elide;
             }
