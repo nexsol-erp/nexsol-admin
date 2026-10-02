@@ -15,6 +15,11 @@ import InvoicePrint from "./InvoicePrint";
 import BarcodeScannerModal from "./BarcodeScannerModal";
 import ItemPicker, { findByCode, normalizeItem } from "./pos/ItemPicker";
 import usePrintPack from "../multilanguage/usePrintPack";
+import useInvoiceTemplate from "../invoiceDesign/useInvoiceTemplate";
+import { renderInvoiceHtml } from "../invoiceDesign/renderInvoice";
+import { fromPosBill } from "../invoiceDesign/invoiceModel";
+import { printHtml } from "../invoiceDesign/printHtml";
+import { isThermal } from "../invoiceDesign/templateModel";
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -114,6 +119,13 @@ const POSEntry = () => {
 
   const [billToPrint, setBillToPrint] = useState(null);
   const printPack = usePrintPack(branchInfo?.branchCode);
+  // An Invoice Designer template for POS bills replaces the built-in receipt when one is chosen.
+  const invoiceTemplate = useInvoiceTemplate("POS");
+  const designedHtml = useMemo(
+    () => (billToPrint && invoiceTemplate ? renderInvoiceHtml(invoiceTemplate, fromPosBill(billToPrint), printPack) : null),
+    [billToPrint, invoiceTemplate, printPack],
+  );
+  const designedWide = !!invoiceTemplate && !isThermal(invoiceTemplate.config?.paper);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -357,6 +369,13 @@ const POSEntry = () => {
 
   const handleConfirmPrint = async () => {
     if (!billToPrint) return message.error("Invoice not ready to print");
+    if (designedHtml) {
+      printHtml(designedHtml);
+      setPreviewOpen(false);
+      setBillToPrint(null);
+      setTimeout(resetBill, 500);
+      return;
+    }
     await new Promise((r) => setTimeout(r, 150));
     if (!printContentRef.current) return message.error("Print content not mounted yet.");
     handlePrint();
@@ -636,14 +655,19 @@ const POSEntry = () => {
           setBillToPrint(null);
         }}
         // Centered on phones: a modal pinned to the top slides under the app bar.
-        width={isPhone ? "calc(100vw - 16px)" : 520}
+        width={isPhone ? "calc(100vw - 16px)" : designedWide ? 880 : 520}
         centered={isPhone}
         footer={[
           <Button key="cancel" onClick={() => setPreviewOpen(false)}>Close</Button>,
           <Button key="print" type="primary" icon={<PrinterOutlined />} onClick={handleConfirmPrint}>Print invoice</Button>,
         ]}
       >
-        {billToPrint ? (
+        {designedHtml ? (
+          <iframe
+            title="Invoice preview" srcDoc={designedHtml}
+            style={{ width: "100%", height: "70vh", border: "1px solid #f0f0f0", borderRadius: 8, background: "#e9ecef" }}
+          />
+        ) : billToPrint ? (
           <div
             style={{
               maxHeight: "70vh", overflow: "auto", border: "1px solid #f0f0f0", borderRadius: 8, padding: 12,

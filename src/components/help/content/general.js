@@ -347,24 +347,24 @@ const content = {
 
   "Invoice Designer": {
     summary:
-      "Sets how your printed bill looks: company name and address at the top, your logo, which item columns are printed and the footer line. One template is active at a time.",
+      "Designs the printed invoice for the web: the Sales Entry tax invoice (cash and credit bills) and the web POS bill. Pick a paper size and style, add your logo, choose which details and item columns print, and add bank details, terms and a signature. The desktop POS receipt is not affected.",
     steps: [
       "Open Tools & Design > Invoice Designer.",
-      "Fill in \"Company Name\", \"Company Address\", \"Company Contact\" and \"Company GST Number\".",
-      "Drag your logo file onto the dashed box, or click it to choose the file.",
-      "Set \"Logo Width (in mm)\", \"Logo Height (in mm)\", \"Logo Start X Position (in mm)\" and \"Logo Start Y Position (in mm)\" to place the logo on the page.",
-      "Under \"Select Columns to Include\", tick the columns to print: Item Name, Description, Quantity, Unit Price, Tax Rate, Total.",
-      "Type the \"Footer Text\", for example your return policy or a thank-you line.",
-      "Click \"Save Template\". It appears under \"Available Templates\".",
-      "Select the radio button in the \"Active\" column of the template you want used for printing. Use the red bin to delete a template you no longer need.",
+      "Click \"New\" and pick a starting layout (Modern, Classic, Minimal or Bold on A4, or an 80 mm receipt), or open an existing template from the list at the top.",
+      "Under \"Paper and look\", set the template name, paper (A4, A5, US Letter, 80 mm or 58 mm receipt), accent colour, style, font and text size.",
+      "Under \"Logo and business details\", click \"Upload logo\", choose its position and height, and add a business name, tagline and extra lines such as email, website or licence numbers.",
+      "Under \"Title and customer details\", \"Item columns\", \"Totals\" and \"Footer\", switch on what should print. Columns can be renamed and moved with the arrows.",
+      "Watch the preview on the right; switch it between \"Sales invoice\" and \"Web POS bill\", and use \"Test print\" to try it on your printer.",
+      "Click \"Save template\".",
+      "Under \"Prints with\", choose the template for \"Sales invoice\" and/or \"Web POS bill\". From then on, invoices of that type print with it.",
     ],
     tips: [
-      "Company name, address and contact are required, and at least one column must be ticked, or the template will not save.",
-      "Saving a template does not switch to it. Nothing changes on printed bills until you select it as the active one.",
-      "Positions are in millimetres from the top-left of the page. Change them in small steps and print a test bill.",
-      "Keep the logo modest in size; a tall logo pushes the item lines onto a second page.",
+      "Nothing changes on printed invoices until you pick a template under \"Prints with\". Choose \"Built-in invoice (as today)\" to go back.",
+      "The branch's own address, phone and GSTIN print from the branch master, so one template works for every branch. Fill \"Business name\" only to print a different name.",
+      "If a notice says invoice templates aren't set up yet, the V086 database migration has to be run first.",
+      "Use an 80 mm receipt template for the web POS when it prints on a thermal printer.",
     ],
-    related: ["Download"],
+    related: ["Sales Entry", "POS"],
   },
 
   "Workflow Designer": {
