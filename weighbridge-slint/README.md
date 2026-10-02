@@ -15,7 +15,7 @@ back to an Electron 1.x installer.
 | Tab | |
 |---|---|
 | Weighing | Live weight, vehicle number with suggestions, wheel type (locked when the web admin set it), material, driver mobile. New weighing, use previous weight (return trip), or use a saved tare weight. **F9** or **Ctrl+S** saves and prints. |
-| Tare Weights | Save an empty vehicle's weight, list and search saved tares. |
+| Tare Weights | Save an empty vehicle's weight, list and search saved tares. Every tare on the server (all branches, including ones imported from the Qt screen) is downloaded at setup and each time the app starts. |
 | Daily Report | Weighings between two times, totals, reprint, export CSV. |
 | Rates | Rate per wheel type. Admins can change them when the web admin allows it (Weighbridge PCs). |
 | Settings | Indicator, Printing, Weighing, Camera, Branch & data. Admin only, and locked until the web admin opens them for this PC. |
@@ -53,7 +53,7 @@ Everything lives in `%APPDATA%\TradeLink247 Weighbridge` (`weighbridge.db`, `ser
 ## Build
 
 ```sh
-cargo test                # parser, charging rule, store, sync, settings lock (94 tests)
+cargo test                # parser, charging rule, store, sync, settings lock (95 tests)
 cargo run                 # development build; no auto-update
 cargo build --release     # Windows: target\release\weighbridge-slint.exe
 makensis -DVERSION=2.0.0 -DEXE=..\target\release\weighbridge-slint.exe installer\installer.nsi
