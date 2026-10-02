@@ -29,6 +29,7 @@ import {
   ModeNightRounded,
   Refresh,
   LockReset,
+  AdminPanelSettings,
 } from "@mui/icons-material";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -36,6 +37,7 @@ import { useBranch } from "./BranchContext";
 import { useMenuAccess } from "./MenuAccessContext";
 import { MENU_TREE } from "../menuCatalog";
 import { rememberRecentMenu } from "./GlobalMenuSearch";
+import { signOut } from "../authGuard";
 
 const DRAWER_WIDTH = 240;
 
@@ -70,16 +72,12 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("jwtToken");
-    localStorage.removeItem("partialToken");
-    localStorage.removeItem("roles");
-    localStorage.removeItem("tenancyId");
+    // Ends the session on the server too, so the token cannot be reused.
     localStorage.removeItem("branchCode");
-    localStorage.removeItem("allowedBranches");
-    localStorage.removeItem("pendingTenants");
-    localStorage.removeItem("setupCompleted");
-    window.location.href = "/login";
+    signOut();
   };
+
+  const isPlatformAdmin = localStorage.getItem("platformAdmin") === "true";
 
   const handleRefresh = () => {
     localStorage.removeItem("items");
@@ -426,6 +424,29 @@ const Sidebar = ({ mode, setMode, roles = [], mobileOpen, setMobileOpen }) => {
           pb: 1,
         }}
       >
+        {/* Platform Console: only for platform admins (the server enforces it too) */}
+        {isPlatformAdmin && (
+          <ListItemButton
+            component={Link}
+            to="/platform"
+            onClick={() => setMobileOpen(false)}
+            sx={{
+              borderRadius: "8px",
+              px: 1.5,
+              py: 0.6,
+              mb: 0.5,
+              bgcolor: isActive("/platform") ? C.activeBg : "transparent",
+              "& .MuiListItemText-primary": { fontSize: 12, color: isActive("/platform") ? C.textActive : C.text },
+              "&:hover": { bgcolor: C.hover, "& .MuiListItemText-primary": { color: C.textActive } },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 34 }}>
+              <AdminPanelSettings sx={{ fontSize: 18, color: C.icon }} />
+            </ListItemIcon>
+            <ListItemText primary={t("Platform Console")} />
+          </ListItemButton>
+        )}
+
         {/* Dark mode toggle */}
         <ListItemButton
           onClick={() => setMode(mode === "light" ? "dark" : "light")}

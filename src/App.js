@@ -166,6 +166,7 @@ import TenantSelectorPage from "./components/TenantSelectorPage";
 import FranchiseTransferConfigPage from "./components/FranchiseTransferConfigPage";
 import FranchiseMigrationPage from "./components/FranchiseMigrationPage";
 import DbMigrationsPage from "./components/DbMigrationsPage";
+import PlatformConsolePage from "./components/PlatformConsolePage";
 import FranchiseUsersPage from "./components/FranchiseUsersPage";
 
 // Accounting
@@ -730,6 +731,7 @@ function HideOnScroll({ children }) {
             <Route path="/franchise-migration"       element={<FranchiseMigrationPage />} />
             <Route path="/franchise-users"           element={<FranchiseUsersPage />} />
             <Route path="/db-migrations"             element={<DbMigrationsPage />} />
+            <Route path="/platform"                  element={<PlatformConsolePage />} />
 
           </Routes>
         </WebSocketProvider>

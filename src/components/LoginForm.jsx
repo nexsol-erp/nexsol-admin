@@ -16,6 +16,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import SignUpForm from "./SignUpForm";
 import { useNavigate } from "react-router-dom";
+import { readSignOutReason, clearSignOutReason } from "../authGuard";
 
 // ✅ Decode JWT payload (base64url) without any library
 const decodeJwtPayload = (token) => {
@@ -44,7 +45,9 @@ const LoginForm = ({ onLogin, autoOpen = false }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
-  const [modalOpen, setModalOpen] = useState(autoOpen);
+  // Why the server ended the last sign-in (signed out by an admin, expired, disabled), shown once.
+  const [signOutReason] = useState(() => readSignOutReason());
+  const [modalOpen, setModalOpen] = useState(autoOpen || !!signOutReason);
 
   const { t, i18n } = useTranslation();
   const [selectedLanguage, setSelectedLanguage] = useState("en");
@@ -88,6 +91,8 @@ const LoginForm = ({ onLogin, autoOpen = false }) => {
         localStorage.setItem("jwtToken",  data.token);
         localStorage.setItem("tenancyId", data.tenancyId);
         localStorage.setItem("roles",     JSON.stringify(data.roles || []));
+        localStorage.setItem("platformAdmin", data.platformAdmin ? "true" : "false");
+        clearSignOutReason();
 
         // Store setup status so the app can redirect to wizard if needed
         const setupCompleted = data.setupCompleted !== false; // default true for legacy
@@ -399,9 +404,21 @@ const LoginForm = ({ onLogin, autoOpen = false }) => {
                 <Typography sx={{ fontWeight: 700, fontSize: 22, color: "#fff", mb: 0.5 }}>
                   Welcome back
                 </Typography>
-                <Typography sx={{ fontSize: 13.5, color: "rgba(255,255,255,0.5)", mb: 3 }}>
+                <Typography sx={{ fontSize: 13.5, color: "rgba(255,255,255,0.5)", mb: signOutReason ? 2 : 3 }}>
                   Sign in to continue to your dashboard
                 </Typography>
+                {signOutReason && (
+                  <Box
+                    role="status"
+                    sx={{
+                      mb: 2, px: 1.75, py: 1.25, borderRadius: "10px", fontSize: 13,
+                      color: "#fde68a", bgcolor: "rgba(251,191,36,0.12)",
+                      border: "1px solid rgba(251,191,36,0.35)",
+                    }}
+                  >
+                    {signOutReason}
+                  </Box>
+                )}
 
                 <form onSubmit={handleSubmit}>
                   <TextField
