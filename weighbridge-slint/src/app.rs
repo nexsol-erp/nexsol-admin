@@ -1069,6 +1069,10 @@ impl Core {
                 if !c.auth().branch_code.is_empty() && !c.sync.has_all_wheel_types() {
                     let _ = c.sync.pull_all_wheel_types();
                 }
+                // tares added on the server (e.g. imported from the Qt screen) reach the PC on each start
+                if !c.auth().branch_code.is_empty() && !c.sync.has_pulled_tares() {
+                    let _ = c.sync.pull_all_tares();
+                }
             }),
         );
         every("sync", Duration::from_secs(2), crate::sync::PUSH_EVERY, Box::new(|c| {

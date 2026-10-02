@@ -97,6 +97,8 @@ pub struct Syncer {
     last_pull: Mutex<Option<Instant>>,
     state: Mutex<SyncState>,
     on_event: Box<dyn Fn(SyncEvent) + Send + Sync>,
+    /// every tare on the server downloaded since the app started
+    tares_pulled: std::sync::atomic::AtomicBool,
 }
 
 impl Syncer {
@@ -109,6 +111,7 @@ impl Syncer {
             last_pull: Mutex::new(None),
             state: Mutex::new(SyncState { pending, ..Default::default() }),
             on_event: Box::new(on_event),
+            tares_pulled: Default::default(),
         }
     }
 
@@ -308,6 +311,7 @@ impl Syncer {
         self.pull_rates()?;
         self.pull_wheel_types()?;
         self.pull_all_wheel_types()?;
+        self.pull_all_tares()?;
         let (lwb, lwt) = {
             let db = self.db();
             db.set_setting("seededAt", &Value::String(chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)))?;
@@ -396,6 +400,39 @@ impl Syncer {
         self.db().set_setting("wheelTypesAllAt", &Value::String(chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)))?;
         crate::info!("wheel types: {n} vehicle(s) from the server");
         Ok(n)
+    }
+
+    /// Every tare weight on the server, every branch, including old ones imported from the Qt
+    /// screen (the seed only brings this branch's last 30 days). Already-known ones are skipped,
+    /// so it runs at branch setup and once each time the app starts. A server without the
+    /// endpoint yet is skipped and tried again next start.
+    pub fn pull_all_tares(&self) -> Res<usize> {
+        const PAGE: usize = 5000;
+        let mut after = String::new();
+        let mut n = 0;
+        loop {
+            let data = match self.api.call("GET", &format!("/weighbridge/tares/all?limit={PAGE}&after={}", enc(&after)), None) {
+                Ok(d) => d,
+                Err(e @ AppError::Auth(_)) => return Err(e),
+                Err(e) => {
+                    crate::warn!("tares {e}");
+                    return Ok(n);
+                }
+            };
+            let rows = data.get("rows").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+            n += self.db().import_from_server(&[], &rows)?.1;
+            match rows.last() {
+                Some(last) if rows.len() >= PAGE => after = vstr(last, "id"),
+                _ => break,
+            }
+        }
+        self.tares_pulled.store(true, std::sync::atomic::Ordering::Relaxed);
+        crate::info!("tares: {n} new from the server");
+        Ok(n)
+    }
+
+    pub fn has_pulled_tares(&self) -> bool {
+        self.tares_pulled.load(std::sync::atomic::Ordering::Relaxed)
     }
 
     /// True once this PC has downloaded every vehicle's wheel type.
@@ -632,6 +669,29 @@ mod tests {
         assert_eq!(sy.lookup_wheel_type("MH12Q7").unwrap(), "10 WHEEL");
         assert_eq!(s.lock().unwrap().wheel_type_of("MH12Q7"), "10 WHEEL");
         assert_eq!(sy.lookup_wheel_type("NONE1").unwrap(), "");
+    }
+
+    #[test]
+    fn all_tares_come_down_from_every_branch_and_only_once() {
+        let s = store_with_rates();
+        let (sy, srv) = sync(
+            &s,
+            FakeServer::default().on("GET /weighbridge/tares/all", ok(json!({ "rows": [
+                { "id": "1ca158ac", "vehicleNumber": "KL39T9183", "voucherDate": null, "voucherNumber": "000463", "tareWeight": 13680, "wheelType": "10 WHEEL", "branchCode": "STMWB" },
+                { "id": "843147d5", "vehicleNumber": "KL829688", "voucherDate": "2023-09-20 15:03:13", "voucherNumber": "4076", "tareWeight": 1730, "wheelType": "4 WHEEL", "branchCode": "KTR" }
+            ], "limit": 5000 }))),
+        );
+        assert!(!sy.has_pulled_tares());
+        assert_eq!(sy.pull_all_tares().unwrap(), 2);
+        assert!(sy.has_pulled_tares());
+        assert_eq!(sy.pull_all_tares().unwrap(), 0, "already known");
+        assert_eq!(srv.calls().last().unwrap().path, "/weighbridge/tares/all?limit=5000&after=");
+        let (_, tares) = s.lock().unwrap().history("KL39T9183", 10);
+        assert_eq!(tares.len(), 1);
+        assert_eq!(tares[0].tare_weight, 13680.0);
+        let (old, _) = sync(&store_with_rates(), FakeServer::default());
+        assert_eq!(old.pull_all_tares().unwrap(), 0, "a server without the endpoint is skipped");
+        assert!(!old.has_pulled_tares(), "and tried again later");
     }
 
     #[test]
