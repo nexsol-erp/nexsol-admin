@@ -32,8 +32,8 @@ const WeighbridgeStartPage = () => {
   const steps = [
     {
       title: "Add your weighbridge site",
-      text: "Create a branch for each weighbridge. Its name and address print on the voucher, and voucher numbers are counted per branch.",
-      actions: [{ label: "Create branch", to: "/branchcreationpage" }],
+      text: "Type the weighbridge's name and address. They print on the voucher, and each weighbridge counts its own voucher numbers.",
+      actions: [{ label: "Add weighbridge", to: "/branchcreationpage?type=WB" }],
     },
     {
       title: "Set your rates",
