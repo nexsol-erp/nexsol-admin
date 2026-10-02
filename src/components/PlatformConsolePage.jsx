@@ -15,6 +15,7 @@ import {
   PlayCircle as ActivateIcon,
   PersonRemove as RemoveIcon,
   AdminPanelSettings as AdminIcon,
+  KeyOff as KeyOffIcon,
 } from "@mui/icons-material";
 
 // Platform Console: operators who look after every tenant. The server only answers for users
@@ -106,6 +107,7 @@ export default function PlatformConsolePage() {
   const [confirm, setConfirm] = useState(null); // { title, text, action, danger, needsReason }
   const [reason, setReason] = useState("");
   const [newAdmin, setNewAdmin] = useState("");
+  const [typed, setTyped] = useState(""); // confirmation phrase / pasted token in the dialog
   const me = useMemo(() => {
     try {
       const p = JSON.parse(atob(localStorage.getItem("jwtToken").split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
@@ -135,13 +137,13 @@ export default function PlatformConsolePage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const ask = (c) => { setReason(""); setConfirm(c); };
+  const ask = (c) => { setReason(""); setTyped(""); setConfirm(c); };
 
   const runConfirmed = async () => {
     const c = confirm;
     setConfirm(null);
     try {
-      const msg = await c.action(reason.trim());
+      const msg = await c.action(reason.trim(), typed.trim());
       setToast(msg);
       load();
     } catch (e) {
@@ -170,11 +172,44 @@ export default function PlatformConsolePage() {
 
   const signOutUser = (username) => ask({
     title: `Sign out ${username} everywhere?`,
-    text: "Ends every browser and app sign-in of this user. They can sign in again.",
+    text: "Ends every token this user holds, in browsers and in POS or weighbridge apps, including old app sign-ins that are not listed here. They can sign in again.",
     needsReason: true,
     action: async (r) => {
       const d = await api("/users/sign-out", { method: "POST", body: { username, reason: r } });
       return `${username}: ${d.sessionsEnded} sign-in(s) ended`;
+    },
+  });
+
+  const signOutTenant = (t) => ask({
+    title: `Sign out everyone in ${company(t) || t.tenantId}?`,
+    text: "Ends every token of this company's users, including POS and weighbridge apps. They can sign in again; the subscription is not changed.",
+    needsReason: true,
+    action: async (r) => {
+      const d = await api(`/tenants/${encodeURIComponent(t.tenantId)}/sign-out`, { method: "POST", body: { reason: r } });
+      return `${t.tenantId}: everyone signed out (${d.sessionsEnded} listed sign-in(s))`;
+    },
+  });
+
+  const revokeToken = () => ask({
+    title: "Revoke a token",
+    text: "Paste the token (with or without \"Bearer\"). A token from before sign-ins were tracked also ends that user's older tokens; newer ones keep working.",
+    input: { label: "Token", multiline: true },
+    needsReason: true,
+    action: async (r, token) => {
+      const d = await api("/tokens/revoke", { method: "POST", body: { token, reason: r } });
+      return d.scope === "already-expired" ? `That token of ${d.username} had already expired` : `Token of ${d.username} revoked`;
+    },
+  });
+
+  const signOutEveryone = () => ask({
+    title: "Sign out everyone?",
+    text: "Ends every token on the platform: all users of all companies, POS and weighbridge apps, and you. Everyone has to sign in again. Type SIGN OUT EVERYONE to confirm.",
+    input: { label: "Type SIGN OUT EVERYONE", match: "SIGN OUT EVERYONE" },
+    danger: true,
+    needsReason: true,
+    action: async (r) => {
+      await api("/sign-out-everyone", { method: "POST", body: { confirm: "SIGN OUT EVERYONE", reason: r } });
+      return "Everyone signed out";
     },
   });
 
@@ -232,6 +267,8 @@ export default function PlatformConsolePage() {
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, flexWrap: "wrap" }}>
         <AdminIcon color="primary" />
         <Typography variant="h5" sx={{ fontWeight: 700, flexGrow: 1 }}>Platform Console</Typography>
+        <Button startIcon={<KeyOffIcon />} onClick={revokeToken}>Revoke a token</Button>
+        <Button color="error" startIcon={<SignOutIcon />} onClick={signOutEveryone}>Sign out everyone</Button>
         <Button startIcon={loading ? <CircularProgress size={16} /> : <RefreshIcon />} onClick={load} disabled={loading}>
           Refresh
         </Button>
@@ -358,11 +395,9 @@ export default function PlatformConsolePage() {
                         : <Chip size="small" variant="outlined" label="Active" />}
                     </TableCell>
                     <TableCell align="right" sx={cellSx}>
-                      {u.openSessions > 0 && (
-                        <Button size="small" color="warning" startIcon={<SignOutIcon />} onClick={() => signOutUser(u.username)}>
-                          Sign out
-                        </Button>
-                      )}
+                      <Button size="small" color="warning" startIcon={<SignOutIcon />} onClick={() => signOutUser(u.username)}>
+                        Sign out
+                      </Button>
                       {u.username !== me.username && (
                         <Button size="small" color={u.disabled ? "success" : "error"} startIcon={u.disabled ? <EnableIcon /> : <BlockIcon />} onClick={() => toggleUser(u)}>
                           {u.disabled ? "Enable" : "Disable"}
@@ -409,6 +444,9 @@ export default function PlatformConsolePage() {
                         : <Chip size="small" color="success" variant="outlined" label="Active" />}
                     </TableCell>
                     <TableCell align="right" sx={cellSx}>
+                      <Button size="small" color="warning" startIcon={<SignOutIcon />} onClick={() => signOutTenant(t)}>
+                        Sign out all
+                      </Button>
                       {t.tenantId !== me.tenantId && (
                         <Button size="small" color={t.status === "SUSPENDED" ? "success" : "error"}
                           startIcon={t.status === "SUSPENDED" ? <ActivateIcon /> : <SuspendIcon />} onClick={() => toggleTenant(t)}>
@@ -487,13 +525,22 @@ export default function PlatformConsolePage() {
         <DialogTitle>{confirm?.title}</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: confirm?.needsReason ? 2 : 0 }}>{confirm?.text}</DialogContentText>
+          {confirm?.input && (
+            <TextField autoFocus fullWidth size="small" label={confirm.input.label} value={typed}
+              multiline={!!confirm.input.multiline} minRows={confirm.input.multiline ? 3 : undefined}
+              onChange={(e) => setTyped(e.target.value)} sx={{ mb: 2 }}
+              inputProps={{ style: confirm.input.multiline ? { fontFamily: "monospace", fontSize: 12 } : undefined }} />
+          )}
           {confirm?.needsReason && (
-            <TextField autoFocus fullWidth size="small" label="Reason (optional)" value={reason} onChange={(e) => setReason(e.target.value)} />
+            <TextField autoFocus={!confirm?.input} fullWidth size="small" label="Reason (optional)" value={reason} onChange={(e) => setReason(e.target.value)} />
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirm(null)}>Cancel</Button>
-          <Button variant="contained" color={confirm?.danger ? "error" : "primary"} onClick={runConfirmed}>Confirm</Button>
+          <Button variant="contained" color={confirm?.danger ? "error" : "primary"} onClick={runConfirmed}
+            disabled={!!confirm?.input && (confirm.input.match ? typed.trim() !== confirm.input.match : !typed.trim())}>
+            Confirm
+          </Button>
         </DialogActions>
       </Dialog>
 
