@@ -5,13 +5,23 @@ import {
 import PersonIcon from "@mui/icons-material/Person";
 import EmailIcon from "@mui/icons-material/Email";
 import PhoneIcon from "@mui/icons-material/Phone";
+import BusinessIcon from "@mui/icons-material/Business";
 import LockIcon from "@mui/icons-material/Lock";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import CloseIcon from "@mui/icons-material/Close";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 
-const SignUpForm = ({ onSignUp, onClose, onLogin }) => {
+// product: "ERP" (default, full ERP + setup wizard) or "WEIGHBRIDGE" (weighbridge menus only).
+// askCompany shows a company name field (the ERP asks for it later, in the setup wizard).
+const SignUpForm = ({
+  onSignUp, onClose, onLogin,
+  product = "ERP", askCompany = false,
+  heading = "Create Your Account",
+  subheading = "Your ERP workspace will be ready in minutes",
+  submitLabel = "Get Started →",
+}) => {
+  const [companyName, setCompanyName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
@@ -73,7 +83,10 @@ const SignUpForm = ({ onSignUp, onClose, onLogin }) => {
       const response = await fetch("/api/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, mobileNumber, password }),
+        body: JSON.stringify({
+          username, email, mobileNumber, password, product,
+          ...(askCompany && companyName.trim() ? { companyName: companyName.trim() } : {}),
+        }),
       });
       const data = await response.json();
       if (data.success) {
@@ -165,10 +178,10 @@ const SignUpForm = ({ onSignUp, onClose, onLogin }) => {
         </Box>
 
         <Typography variant="h5" sx={{ color: "#fff", fontWeight: 700, letterSpacing: "0.3px" }}>
-          Create Your Account
+          {heading}
         </Typography>
         <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.65)", mt: 0.5, fontSize: "0.82rem" }}>
-          Your ERP workspace will be ready in minutes
+          {subheading}
         </Typography>
       </Box>
 
@@ -181,6 +194,15 @@ const SignUpForm = ({ onSignUp, onClose, onLogin }) => {
         )}
 
         <form onSubmit={handleSubmit} autoComplete="off">
+          {askCompany && (
+            <TextField
+              label="Company / site name (optional)" fullWidth sx={{ ...fieldSx, mb: 1.5 }}
+              value={companyName} onChange={e => setCompanyName(e.target.value)}
+              InputProps={{
+                startAdornment: <InputAdornment position="start"><BusinessIcon /></InputAdornment>,
+              }}
+            />
+          )}
           <TextField
             label="Username" fullWidth sx={fieldSx}
             value={username} onChange={e => setUsername(e.target.value)}
@@ -263,7 +285,7 @@ const SignUpForm = ({ onSignUp, onClose, onLogin }) => {
               transition: "all 0.2s ease",
             }}
           >
-            {submitting ? "Creating account…" : "Get Started →"}
+            {submitting ? "Creating account…" : submitLabel}
           </Button>
         </form>
 

@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { label: "Home", href: "home" },
   { label: "Features", href: "features" },
   { label: "Industries", href: "industries" },
+  { label: "Weighbridge", href: "/weighbridge-software", isRoute: true },
   { label: "Pricing", href: "/pricing", isRoute: true },
   { label: "Partner", href: "/partner", isRoute: true },
   { label: "Contact", href: "contact" },

@@ -117,6 +117,10 @@ import PricingPage from "./components/landing/pricing/PricingPage";
 import PartnerPage from "./components/landing/PartnerPage";
 import PartnerApplyPage from "./components/landing/PartnerApplyPage";
 import SignUpPage from "./components/landing/SignUpPage";
+import WeighbridgeLandingPage from "./components/weighbridge-site/WeighbridgeLandingPage";
+import WeighbridgeAuthPage from "./components/weighbridge-site/WeighbridgeAuthPage";
+import WeighbridgeStartPage from "./components/weighbridge-site/WeighbridgeStartPage";
+import { WB_HOST } from "./components/weighbridge-site/WbChrome";
 import KOTEntry from "./components/KOTEntry";
 import GoodsReceiptForm from "./components/GoodsReceiptForm";
 import ReceiptModePage from "./components/ReceiptModePage";
@@ -210,6 +214,8 @@ const InsightsPage = React.lazy(() => import("./features/insights/InsightsPage")
 // ORDERED MENU ROUTE MAP  (mirrors Sidebar menuItems order)
 // ========================
 const ROUTE_ORDER = [
+  // Only weighbridge accounts are granted this menu (at sign-up), so they open on its setup guide.
+  { key: "Weighbridge Setup",                path: "/weighbridge-start" },
   { key: "Dashboard",                        path: "/dashboard" },
   { key: "AI Stock Intelligence",            path: "/ai-dashboard" },
   { key: "AI Report Assistant",             path: "/ai-report" },
@@ -540,6 +546,7 @@ function HideOnScroll({ children }) {
             <Route path="/hsn-sales-summary" element={<HsnSalesSummaryReport />} />
             <Route path="/purchasereport" element={<PurchaseDetail />} />
             <Route path="/weighbridge" element={<WeighBridge />} />
+            <Route path="/weighbridge-start" element={<WeighbridgeStartPage />} />
             <Route path="/branchcreationpage" element={<BranchCreationPage />} />
             <Route path="/branch-update" element={<BranchUpdatePage />} />
             <Route path="/pos-address-config" element={<PosAddressConfigPage />} />
@@ -776,6 +783,14 @@ const App = () => {
     }
   }, [i18n]);
 
+  // Sign-in from a public page (weighbridge site): store roles, then open the user's landing page.
+  const publicLogin = async (loginRoles) => {
+    localStorage.setItem("roles", JSON.stringify(loginRoles));
+    setRoles(loginRoles);
+    const landing = await resolveLoginLanding(loginRoles);
+    window.location.href = landing;
+  };
+
   // Theme setup
   const theme = createTheme({
     typography: {
@@ -794,14 +809,15 @@ const App = () => {
         <Router>
           <Routes>
             {/* Public pages — no auth required */}
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={WB_HOST ? <WeighbridgeLandingPage /> : <LandingPage />} />
+            {WB_HOST && <Route path="/login" element={<WeighbridgeAuthPage mode="login" onLogin={publicLogin} />} />}
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/partner" element={<PartnerPage />} />
             <Route path="/partner/apply" element={<PartnerApplyPage />} />
             <Route
               path="/signup"
               element={
-                <SignUpPage
+                WB_HOST ? <WeighbridgeAuthPage mode="signup" onLogin={publicLogin} /> : <SignUpPage
                   onLogin={async (loginRoles) => {
                     localStorage.setItem("roles", JSON.stringify(loginRoles));
                     setRoles(loginRoles);
@@ -810,6 +826,16 @@ const App = () => {
                   }}
                 />
               }
+            />
+            {/* Weighbridge product site, with its own sign-in and sign-up */}
+            <Route path="/weighbridge-software" element={<WeighbridgeLandingPage />} />
+            <Route
+              path="/weighbridge-software/login"
+              element={<WeighbridgeAuthPage mode="login" onLogin={publicLogin} />}
+            />
+            <Route
+              path="/weighbridge-software/signup"
+              element={<WeighbridgeAuthPage mode="signup" onLogin={publicLogin} />}
             />
             <Route path="/privacy" element={<PrivacyPolicyPage isPublic />} />
             <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
