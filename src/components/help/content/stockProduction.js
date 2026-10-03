@@ -587,7 +587,7 @@ const content = {
   },
 
   "Weight-Count": {
-    summary: "Compares the vehicles that stood on the weighbridge with the vouchers saved, day by day, to catch weighings done without a voucher. The weighbridge PC reports every vehicle on the bridge (its first stable weight above 200 kg) even when no voucher is saved.",
+    summary: "Compares the vehicles that stood on the weighbridge with the vouchers saved, day by day, to catch weighings done without a voucher. The weighbridge PC reports every vehicle on the bridge even when no voucher is saved, with a photo taken when it stood still.",
     steps: [
       "Open Weighbridge > Weight-Count.",
       "Choose the \"Branch\".",
@@ -595,11 +595,14 @@ const content = {
       "Click \"Show\".",
       "Read the day table: vehicles on the bridge, weighing and tare vouchers saved, the \"Gap\" (vehicles minus vouchers) and how many vehicles have no voucher near their time.",
       "Below it, each vehicle on the bridge is listed with the voucher it was paired with. Turn on \"Only vehicles with no voucher\" to see just the suspicious ones (shown in red).",
+      "Click \"View\" in the Photo column to see the camera photo of that vehicle on the bridge.",
+      "To change the matching, edit \"Voucher up to (min) before\", \"Voucher up to (min) after\" and \"Gate weight (kg)\" and click \"Save settings\". They apply to every branch.",
       "Click \"Export to Excel\" for both tables.",
     ],
     tips: [
-      "A vehicle is paired with a weighing or tare voucher saved up to 5 minutes before or 30 minutes after it stood on the bridge.",
-      "A vehicle that stays on the bridge counts once; the next one counts after the bridge is empty again.",
+      "A vehicle is paired with a weighing or tare voucher saved up to 5 minutes before or 10 minutes after it stood on the bridge, unless the settings say otherwise.",
+      "A vehicle only counts when the bridge was empty before it came on and empty again after it left (empty means up to the PC's \"Empty bridge up to (kg)\" setting), and its weight is at least the gate weight (200 kg unless changed).",
+      "Photos follow the PC's camera settings: no camera, or \"Upload photos to the server\" off, means no photo here.",
       "PCs that were offline send their vehicles when they reconnect, so a recent gap can shrink once they sync.",
       "A branch must be chosen - there is no all-branches option.",
     ],
