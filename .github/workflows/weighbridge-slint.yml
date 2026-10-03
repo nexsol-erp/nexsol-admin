@@ -52,6 +52,14 @@ jobs:
 
       - run: cargo build --release --locked
 
+      # the C runtime is linked in (.cargo/config.toml): the exe must not need the VC++ Redistributable
+      - name: Check no VC++ runtime DLL is needed
+        shell: pwsh
+        run: |
+          if (Select-String -Path target/release/weighbridge-slint.exe -Pattern 'VCRUNTIME140','MSVCP140' -SimpleMatch -Quiet) {
+            Write-Error "weighbridge-slint.exe still imports the VC++ runtime"; exit 1
+          }
+
       # NSIS is no longer on the windows-latest image
       - name: Install NSIS
         run: choco install nsis -y --no-progress

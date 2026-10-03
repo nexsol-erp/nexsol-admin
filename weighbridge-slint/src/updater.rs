@@ -145,8 +145,35 @@ impl Updater {
         if relaunch {
             cmd.arg("/RUN");
         }
-        cmd.spawn().is_ok()
+        match cmd.spawn() {
+            Ok(_) => true,
+            // 740: the installer needs an administrator (3.0 installs for the whole PC and its
+            // service): ask Windows for one, so whoever knows the admin password can approve it
+            Err(e) if e.raw_os_error() == Some(740) => run_as_admin(&file, if relaunch { "/S /RUN" } else { "/S" }),
+            Err(e) => {
+                crate::warn!("installer {e}");
+                false
+            }
+        }
     }
+}
+
+#[cfg(windows)]
+fn run_as_admin(file: &Path, args: &str) -> bool {
+    use windows::core::{HSTRING, PCWSTR};
+    use windows::Win32::UI::Shell::ShellExecuteW;
+    use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+    let (verb, file, args) = (HSTRING::from("runas"), HSTRING::from(file.as_os_str()), HSTRING::from(args));
+    let r = unsafe { ShellExecuteW(None, &verb, &file, &args, PCWSTR::null(), SW_SHOWNORMAL) };
+    // above 32 is success; the operator may also have said no
+    let ok = r.0 as isize > 32;
+    crate::info!("installer as administrator: {}", if ok { "started" } else { "not approved" });
+    ok
+}
+
+#[cfg(not(windows))]
+fn run_as_admin(_file: &Path, _args: &str) -> bool {
+    false
 }
 
 /// A Windows program ("MZ" header) of a plausible size. Partial downloads never get this name.

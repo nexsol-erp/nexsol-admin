@@ -1,6 +1,6 @@
 [package]
 name = "weighbridge-slint"
-version = "2.0.5"
+version = "2.0.6"
 edition = "2024"
 
 [dependencies]
@@ -24,7 +24,7 @@ slint-build = "1.18.1"
 [target."cfg(windows)".dependencies]
 rfd = "0.15"
 nokhwa = { version = "0.10.11", default-features = false, features = ["input-msmf"] }
-windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_Graphics_Printing", "Win32_Storage_Xps", "Win32_System_Threading", "Win32_Security"] }
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_Graphics_Printing", "Win32_Storage_Xps", "Win32_System_Threading", "Win32_Security", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 
 [profile.release]
 strip = true
