@@ -119,6 +119,11 @@ impl Syncer {
         self.state.lock().unwrap().clone()
     }
 
+    /// Screen: the service's state, shown as this one's.
+    pub fn mirror(&self, st: SyncState) {
+        *self.state.lock().unwrap() = st;
+    }
+
     fn set(&self, f: impl FnOnce(&mut SyncState)) {
         let pending = self.store.lock().unwrap().pending_count();
         let st = {

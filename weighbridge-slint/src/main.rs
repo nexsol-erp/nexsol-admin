@@ -1,6 +1,12 @@
 // TradeLink247 Weighbridge, Slint edition. Replaces the Qt weighbridge screen on site PCs.
 // Reads the indicator, saves weighings on this PC first (works offline), prints the voucher and
-// uploads to the TradeLink247 server. Same data folder and database as the Electron build.
+// uploads to the TradeLink247 server.
+//
+// One exe, three ways to run (3.0+):
+//   --service   the Windows service: indicator, bridge visits, camera, uploads, updates (service.rs)
+//   (nothing)   the screen; installed for the whole PC it gets the weight from the service,
+//               otherwise (development, 2.x-style installs) it does everything itself
+//   --relaunch  a temporary copy that reopens the screen after an update
 
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
@@ -11,11 +17,13 @@ mod dialogs;
 mod error;
 mod http;
 mod indicator;
+mod ipc;
 mod logx;
 mod paths;
 mod pdf;
 mod print_win;
 mod server_config;
+mod service;
 mod settings;
 mod settings_lock;
 mod store;
@@ -27,7 +35,7 @@ mod webcam;
 
 use std::sync::{mpsc, Arc, Mutex};
 
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Two copies would fight over the COM port and the voucher counter.
 #[cfg(windows)]
@@ -48,10 +56,23 @@ fn already_running() -> bool {
 }
 
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|a| a == "--service") {
+        run_service();
+        return;
+    }
+    if let Some(i) = args.iter().position(|a| a == "--relaunch") {
+        if let (Some(exe), Some(old)) = (args.get(i + 1), args.get(i + 2)) {
+            service::relaunch(std::path::Path::new(exe), old);
+        }
+        return;
+    }
     if already_running() {
         return;
     }
-    crate::info!("start {VERSION} userData {}", paths::user_data().display());
+    service::clean_relaunchers();
+    let screen = paths::machine_install();
+    crate::info!("start {VERSION} userData {} {}", paths::user_data().display(), if screen { "(screen of the service)" } else { "" });
     std::panic::set_hook(Box::new(|p| crate::error!("panic {p}")));
 
     let store = match store::Store::open(&paths::db_file().to_string_lossy()) {
@@ -80,15 +101,43 @@ fn main() {
         let _ = slint::BackendSelector::new().renderer_name("software".into()).select();
     }
 
-    core.start_indicator();
-    core.start_camera();
-    // a development build would "update" itself to the published one
-    let packaged = cfg!(all(windows, not(debug_assertions))) && std::env::var_os("WB_NO_UPDATES").is_none();
-    core.start_background(packaged);
+    if screen {
+        // the service has the indicator and camera, uploads and updates
+        let weak = Arc::downgrade(&core);
+        let port = std::env::var("WB_IPC_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(ipc::PORT);
+        let remote = ipc::Remote::start(port, paths::ipc_token_file(), move |v| {
+            if let Some(c) = weak.upgrade() {
+                c.on_remote(v);
+            }
+        });
+        core.set_role(app::Role::Screen(remote));
+        service::remove_per_user_install();
+        core.start_background(false);
+    } else {
+        core.start_indicator();
+        core.start_camera();
+        // a development build would "update" itself to the published one
+        let packaged = cfg!(all(windows, not(debug_assertions))) && std::env::var_os("WB_NO_UPDATES").is_none();
+        core.start_background(packaged);
+    }
 
     if let Err(e) = ui::run(core.clone(), rx) {
         crate::error!("window {e}");
     }
     core.shutdown();
     crate::info!("stop");
+}
+
+/// Under the Windows service manager; elsewhere (development) in the foreground until killed.
+fn run_service() {
+    #[cfg(windows)]
+    {
+        if std::env::var_os("WB_SERVICE_CONSOLE").is_none() && service::windows_svc::start() {
+            return;
+        }
+    }
+    let (_tx, rx) = mpsc::channel::<()>();
+    if !service::run(VERSION, rx, &|| {}) {
+        std::process::exit(1);
+    }
 }

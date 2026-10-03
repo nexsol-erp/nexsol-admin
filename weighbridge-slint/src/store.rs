@@ -841,6 +841,23 @@ impl Store {
             .unwrap_or_default()
     }
 
+    /// After the data folder moved (2.x per-user folder to the PC's folder in 3.0).
+    pub fn move_photo_paths(&self, from: &str, to: &str) -> Res<()> {
+        for t in ["wb_weights", "wb_engage"] {
+            self.db.execute(
+                &format!("UPDATE {t} SET photo_path = ? || substr(photo_path, length(?) + 1) WHERE photo_path IS NOT NULL AND substr(photo_path, 1, length(?)) = ?"),
+                params![to, from, from, from],
+            )?;
+        }
+        Ok(())
+    }
+
+    #[cfg(test)]
+    pub fn engage_photo_paths(&self) -> Vec<String> {
+        let mut st = self.db.prepare("SELECT photo_path FROM wb_engage WHERE photo_path IS NOT NULL").unwrap();
+        st.query_map([], |r| r.get(0)).unwrap().filter_map(Result::ok).collect()
+    }
+
     pub fn mark_engage_photo(&self, id: &str, error: Option<&str>) -> Res<()> {
         match error {
             Some(e) => self.db.execute("UPDATE wb_engage SET photo_error = ? WHERE id = ?", params![clip(e, 300), id])?,
