@@ -18,6 +18,8 @@ import {
   CircularProgress,
   Stack,
   Divider,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 import {
   Delete as DeleteIcon,
@@ -59,6 +61,10 @@ const ProductionExecutionPage = () => {
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [message, setMessage] = useState({ text: "", severity: "info" });
+  // "plan" = execute a saved planning voucher; "direct" = enter what was produced, raw
+  // materials are worked out from the BOM on the server and a plan is created behind the scenes.
+  const [mode, setMode] = useState("plan");
+  const [problems, setProblems] = useState([]);
 
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
@@ -194,6 +200,96 @@ const ProductionExecutionPage = () => {
 
   const handleSummarise = () => buildSummary(rawMaterialDetails);
 
+  const handleModeChange = (_, val) => {
+    if (!val || val === mode) return;
+    setMode(val);
+    setSelectedPlanningVoucher(null);
+    setProductionRows([emptyRow()]);
+    setRawMaterialDetails([]);
+    setRawMaterialSummary([]);
+    setProblems([]);
+    setMessage({ text: "", severity: "info" });
+  };
+
+  const directPayload = (rows) => ({
+    voucherDate: `${voucherDate}T00:00:00`,
+    branchCode,
+    items: rows.map(r => ({
+      itemName: r.itemName,
+      itemId: r.itemId,
+      qty: parseFloat(r.qty) || 0,
+      standardPrice: parseFloat(r.standardPrice) || 0,
+      batch: r.batch,
+      expiry: r.expiry,
+    })),
+  });
+
+  const previewDirect = async () => {
+    const validRows = productionRows.filter(r => r.itemName.trim());
+    if (validRows.length === 0) {
+      setMessage({ text: "Add the finished items produced, with quantity", severity: "warning" });
+      return;
+    }
+    setGenerating(true);
+    setProblems([]);
+    try {
+      const res = await fetch(`/api/${tenancyId}/production-execution/direct/preview`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(directPayload(validRows)),
+      });
+      if (!res.ok) {
+        setMessage({ text: "Failed to work out raw materials", severity: "error" });
+        return;
+      }
+      const data = await res.json();
+      const raws = (data.rawMaterials || []).map(r => ({ ...r, barcode: r.barCode }));
+      setRawMaterialDetails([]);
+      setRawMaterialSummary(raws);
+      setProblems(data.problems || []);
+    } catch (e) {
+      setMessage({ text: "Error: " + e.message, severity: "error" });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const saveDirect = async () => {
+    const validRows = productionRows.filter(r => r.itemName.trim());
+    if (validRows.length === 0) {
+      setMessage({ text: "Add the finished items produced, with quantity", severity: "warning" });
+      return;
+    }
+    setLoading(true);
+    setProblems([]);
+    setMessage({ text: "", severity: "info" });
+    try {
+      const res = await fetch(`/api/${tenancyId}/production-execution/direct`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(directPayload(validRows)),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setProblems(data.problems || []);
+        setMessage({ text: data.problems?.length ? "Nothing was saved. Fix the items below and try again." : (data.message || "Failed to save direct production"), severity: "error" });
+        return;
+      }
+      if (data.warning) {
+        setMessage({ text: `Production saved (Voucher: ${data.voucherNumber}), but: ${data.warning}`, severity: "warning" });
+      } else {
+        setMessage({ text: `Production saved! Voucher: ${data.voucherNumber} (plan ${data.planningVoucherNumber}). Finished goods added and ${data.rawMaterials?.length || 0} raw material(s) consumed from stock.`, severity: "success" });
+      }
+      setProductionRows([emptyRow()]);
+      setRawMaterialDetails([]);
+      setRawMaterialSummary([]);
+    } catch (e) {
+      setMessage({ text: "Error: " + e.message, severity: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const exportToExcel = () => {
     const wb = XLSX.utils.book_new();
 
@@ -235,6 +331,7 @@ const ProductionExecutionPage = () => {
   };
 
   const handleSave = async () => {
+    if (mode === "direct") return saveDirect();
     const validRows = productionRows.filter(r => r.itemName.trim());
     if (validRows.length === 0) {
       setMessage({ text: "Add at least one production item", severity: "warning" });
@@ -377,15 +474,21 @@ const ProductionExecutionPage = () => {
       )}
 
       <Paper sx={{ p: 2, mb: 2 }}>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
-          <Autocomplete
-            options={planningVouchers}
-            getOptionLabel={(o) => o}
-            value={selectedPlanningVoucher}
-            onChange={(_, val) => handlePlanningVoucherSelect(val)}
-            renderInput={(params) => <TextField {...params} label="Planning Voucher No." size="small" />}
-            sx={{ width: 260 }}
-          />
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "stretch", sm: "center" }}>
+          <ToggleButtonGroup value={mode} exclusive size="small" color="primary" onChange={handleModeChange}>
+            <ToggleButton value="plan">From plan</ToggleButton>
+            <ToggleButton value="direct">Direct production</ToggleButton>
+          </ToggleButtonGroup>
+          {mode === "plan" && (
+            <Autocomplete
+              options={planningVouchers}
+              getOptionLabel={(o) => o}
+              value={selectedPlanningVoucher}
+              onChange={(_, val) => handlePlanningVoucherSelect(val)}
+              renderInput={(params) => <TextField {...params} label="Planning Voucher No." size="small" />}
+              sx={{ width: { xs: "100%", sm: 260 } }}
+            />
+          )}
           <TextField
             label="Execution Date"
             type="date"
@@ -393,10 +496,25 @@ const ProductionExecutionPage = () => {
             value={voucherDate}
             onChange={(e) => setVoucherDate(e.target.value)}
             InputLabelProps={{ shrink: true }}
-            sx={{ width: 180 }}
+            sx={{ width: { xs: "100%", sm: 180 } }}
           />
         </Stack>
+        {mode === "direct" && (
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+            Enter the finished goods you produced. Raw materials are worked out from each item's Bill of Materials,
+            consumed from stock, and a planning voucher is created automatically. Items without a Bill of Materials can't be saved here.
+          </Typography>
+        )}
       </Paper>
+
+      {problems.length > 0 && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <b>These items can't be produced directly:</b>
+          <ul style={{ margin: "4px 0 0", paddingLeft: 20 }}>
+            {problems.map((p, i) => <li key={i}>{p}</li>)}
+          </ul>
+        </Alert>
+      )}
 
       {/* Production Items Table */}
       <Paper sx={{ mb: 2 }}>
@@ -470,25 +588,27 @@ const ProductionExecutionPage = () => {
       </Paper>
 
       {/* Action Buttons */}
-      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+      <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 2 }}>
         <Button
           variant="contained"
           color="info"
           startIcon={generating ? <CircularProgress size={16} color="inherit" /> : <GenerateIcon />}
-          onClick={generateRawMaterials}
+          onClick={mode === "direct" ? previewDirect : generateRawMaterials}
           disabled={generating}
         >
-          Generate Raw Material List
+          {mode === "direct" ? "Calculate Raw Materials" : "Generate Raw Material List"}
         </Button>
-        <Button
-          variant="contained"
-          color="secondary"
-          startIcon={<SummarizeIcon />}
-          onClick={handleSummarise}
-          disabled={rawMaterialDetails.length === 0}
-        >
-          Summarise Raw Material List
-        </Button>
+        {mode === "plan" && (
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<SummarizeIcon />}
+            onClick={handleSummarise}
+            disabled={rawMaterialDetails.length === 0}
+          >
+            Summarise Raw Material List
+          </Button>
+        )}
         <Button
           variant="outlined"
           color="success"
