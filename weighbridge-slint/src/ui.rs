@@ -336,6 +336,8 @@ fn refresh_weight(a: &mut App, w: &AppWindow) {
 
 fn refresh_can_save(a: &mut App, w: &AppWindow) {
     let g = w.global::<WB>();
+    // the service installs an update only while no weighing is being typed or saved
+    a.core.set_idle(g.get_vehicle().is_empty() && !g.get_saving());
     let v = &a.view;
     let f = fresh(v);
     let r = v.reading.clone();
@@ -526,6 +528,7 @@ fn save(a: &mut App, w: &AppWindow) {
         return;
     }
     g.set_saving(true);
+    a.core.set_idle(false);
     let form = SaveForm {
         vehicle_number: g.get_vehicle().to_string(),
         wheel_type: g.get_wheel().to_string(),
@@ -1081,6 +1084,11 @@ fn on_event(a: &mut App, w: &AppWindow, ev: UiEvent) {
         UiEvent::CameraError(m) => {
             g.set_camera_error(ss(m));
         }
+        UiEvent::Restart(version) => {
+            crate::info!("the service is installing {version}: closing, back after the update");
+            crate::service::spawn_relauncher(&a.core.version);
+            let _ = slint::quit_event_loop();
+        }
     }
 }
 
@@ -1173,7 +1181,7 @@ fn wire(w: &AppWindow) {
 
     g.on_sync_now(|| {
         bg(
-            |c| c.sync.run(true),
+            |c| c.sync_now(),
             |a, w, s| {
                 refresh_sync(a, w);
                 load_rates(a, w);
@@ -1206,12 +1214,15 @@ fn wire(w: &AppWindow) {
 
     g.on_install_update(|| {
         with(|a, w| {
-            if a.core.updater.run_installer(true) {
-                a.core.stop_indicator();
-                let _ = slint::quit_event_loop();
-                std::process::exit(0);
-            } else {
-                toast(w, a, "error", "No update is ready to install");
+            match a.core.install_update() {
+                Ok(true) => {
+                    a.core.stop_indicator();
+                    let _ = slint::quit_event_loop();
+                    std::process::exit(0);
+                }
+                // the service installs it and closes this window when the bridge is free
+                Ok(false) => toast(w, a, "info", "Installing the update as soon as the bridge is free…"),
+                Err(e) => toast(w, a, "error", e),
             }
         });
     });
@@ -1511,7 +1522,7 @@ fn wire(w: &AppWindow) {
     });
     g.on_rates_refresh(|| {
         bg(
-            |c| c.sync.run(true),
+            |c| c.sync_now(),
             |a, w, s| {
                 load_rates(a, w);
                 refresh_sync(a, w);

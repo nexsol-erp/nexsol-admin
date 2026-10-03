@@ -435,6 +435,11 @@ impl IndicatorSession {
         None
     }
 
+    /// A vehicle is on the bridge (or the bridge hasn't read empty since): not the moment for an update.
+    pub fn visit_in_progress(&self) -> bool {
+        self.visit.is_some() || self.last.as_ref().is_some_and(|r| r.weight.abs() > self.profile.zero_band())
+    }
+
     /// Called on a timer; flips to "no signal" when readings stop.
     pub fn tick(&mut self, now: u64) -> Option<Event> {
         if self.signal && now.saturating_sub(self.last_at) > self.profile.no_signal_ms() {

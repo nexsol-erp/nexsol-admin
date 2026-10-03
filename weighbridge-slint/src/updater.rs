@@ -50,6 +50,11 @@ impl Updater {
         self.state.lock().unwrap().clone()
     }
 
+    /// Screen: the service's update state (the service downloads and installs).
+    pub fn mirror(&self, st: UpdateState) {
+        *self.state.lock().unwrap() = st;
+    }
+
     fn set(&self, f: impl FnOnce(&mut UpdateState)) {
         f(&mut self.state.lock().unwrap());
     }
@@ -145,7 +150,7 @@ impl Updater {
         if relaunch {
             cmd.arg("/RUN");
         }
-        match cmd.spawn() {
+        let ok = match cmd.spawn() {
             Ok(_) => true,
             // 740: the installer needs an administrator (3.0 installs for the whole PC and its
             // service): ask Windows for one, so whoever knows the admin password can approve it
@@ -154,7 +159,15 @@ impl Updater {
                 crate::warn!("installer {e}");
                 false
             }
+        };
+        if !ok {
+            // not again until the next check downloads it afresh
+            self.set(|s| {
+                s.status = "error".into();
+                s.error = "The update could not be installed".into();
+            });
         }
+        ok
     }
 }
 

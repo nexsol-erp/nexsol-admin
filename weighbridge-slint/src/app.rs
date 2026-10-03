@@ -8,6 +8,7 @@
 use crate::camera::{self, CameraSettings};
 use crate::error::{AppError, Res};
 use crate::http::Http;
+use crate::ipc::{Hub, Remote};
 use crate::indicator::parser::{decode_frame, Decoded, Event, FrameSplitter, IndicatorSession, Reading};
 use crate::indicator::profiles::{build_profile, build_profile_value, escape_ctl, latin1, unescape_ctl, Profile};
 use crate::indicator::transport::{Transport, TransportEvent};
@@ -43,6 +44,17 @@ pub enum UiEvent {
     /// a camera picture for the live view
     Frame(image::RgbImage),
     CameraError(String),
+    /// the service is installing an update: the screen closes and comes back on the new version
+    Restart(String),
+}
+
+/// What this process is (3.0+). Standalone: everything in one app, as before (development, PCs
+/// without the service). Service: the indicator, camera, uploads and updates, for the screens.
+/// Screen: the operator's window, getting the weight and pictures from the service.
+pub enum Role {
+    Standalone,
+    Service(Arc<Hub>),
+    Screen(Arc<Remote>),
 }
 
 pub type Emit = Arc<dyn Fn(UiEvent) + Send + Sync>;
@@ -56,6 +68,8 @@ struct Ind {
     monitor: bool,
     /// (weight, at) while the simulator drives the display
     simulated: Option<(f64, u64)>,
+    /// screen: the newest reading from the service (at = this process's clock)
+    remote_last: Option<Reading>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -119,6 +133,9 @@ pub struct Core {
     preview: Mutex<bool>,
     /// the photo file of the bridge visit in progress (see begin_visit_photo)
     visit_photo: Mutex<Option<PathBuf>>,
+    role: Mutex<Arc<Role>>,
+    /// service: an update is being installed
+    installing: std::sync::atomic::AtomicBool,
     emit: Emit,
     t0: Instant,
     me: Weak<Core>,
@@ -229,11 +246,35 @@ impl Core {
                 webcam: Mutex::new(None),
                 preview: Mutex::new(false),
                 visit_photo: Mutex::new(None),
+                role: Mutex::new(Arc::new(Role::Standalone)),
+                installing: Default::default(),
                 emit,
                 t0: Instant::now(),
                 me: me.clone(),
             }
         })
+    }
+
+    pub fn set_role(&self, role: Role) {
+        *self.role.lock().unwrap() = Arc::new(role);
+    }
+
+    fn role(&self) -> Arc<Role> {
+        self.role.lock().unwrap().clone()
+    }
+
+    fn remote(&self) -> Option<Arc<Remote>> {
+        match &*self.role() {
+            Role::Screen(r) => Some(r.clone()),
+            _ => None,
+        }
+    }
+
+    fn hub(&self) -> Option<Arc<Hub>> {
+        match &*self.role() {
+            Role::Service(h) => Some(h.clone()),
+            _ => None,
+        }
     }
 
     fn db(&self) -> std::sync::MutexGuard<'_, Store> {
@@ -436,6 +477,10 @@ impl Core {
     }
 
     pub fn start_indicator(&self) {
+        if let Some(r) = self.remote() {
+            r.send(json!({ "t": "reload", "what": "indicator" }));
+            return;
+        }
         self.stop_indicator();
         let profile = self.profile();
         self.ind.lock().unwrap().session = Some(IndicatorSession::new(profile.clone()));
@@ -449,6 +494,9 @@ impl Core {
     }
 
     pub fn stop_indicator(&self) {
+        if self.remote().is_some() {
+            return;
+        }
         let t = {
             let mut i = self.ind.lock().unwrap();
             i.session = None;
@@ -552,6 +600,9 @@ impl Core {
     }
 
     pub fn set_monitor(&self, on: bool) {
+        if let Some(r) = self.remote() {
+            r.send(json!({ "t": "monitor", "on": on }));
+        }
         self.ind.lock().unwrap().monitor = on;
     }
 
@@ -585,13 +636,17 @@ impl Core {
     pub fn current_weight(&self) -> Res<f64> {
         let ws = self.weighing_settings();
         let now = self.now_ms();
+        let screen = self.remote().is_some();
+        let screen_profile = if screen { Some(self.profile()) } else { None };
         let i = self.ind.lock().unwrap();
         let r = match (i.simulated, ws.simulator) {
             (Some((w, at)), true) => Some(Self::sim_reading(w, at)),
+            _ if screen => i.remote_last.clone(),
             _ => i.session.as_ref().and_then(|s| s.last.clone()),
         };
-        let limit = i.session.as_ref().map(|s| s.profile.no_signal_ms()).unwrap_or(3000);
-        let zero = i.session.as_ref().map(|s| s.profile.zero_band()).unwrap_or(0.0);
+        let profile = screen_profile.as_ref().or(i.session.as_ref().map(|s| &s.profile));
+        let limit = profile.map(|p| p.no_signal_ms()).unwrap_or(3000);
+        let zero = profile.map(|p| p.zero_band()).unwrap_or(0.0);
         let Some(r) = r.filter(|r| now.saturating_sub(r.at) <= limit) else {
             return Err(AppError::validation("No reading from the weighbridge"));
         };
@@ -611,6 +666,10 @@ impl Core {
     /// Opens the USB camera (kept open while the app runs, so a photo is there at every save) or
     /// closes it when Settings say another source.
     pub fn start_camera(&self) {
+        if let Some(r) = self.remote() {
+            r.send(json!({ "t": "reload", "what": "camera" }));
+            return;
+        }
         // taken out first, so the lock isn't held while the old camera stops
         let old = self.webcam.lock().unwrap().take();
         if let Some(w) = old {
@@ -625,7 +684,7 @@ impl Core {
         let w = Webcam::open(
             &cam.device_label,
             move |img| {
-                if me.upgrade().is_some_and(|c| *c.preview.lock().unwrap()) {
+                if me.upgrade().is_some_and(|c| c.preview_on()) {
                     e1(UiEvent::Frame(img.clone()));
                 }
             },
@@ -664,10 +723,24 @@ impl Core {
     /// The live view is only sent while a screen shows it.
     pub fn set_preview(&self, on: bool) {
         *self.preview.lock().unwrap() = on;
+        if let Some(r) = self.remote() {
+            r.set_preview(on);
+        }
     }
 
+    /// service: while any screen shows it
     pub fn preview_on(&self) -> bool {
-        *self.preview.lock().unwrap()
+        match self.hub() {
+            Some(h) => h.any_preview(),
+            None => *self.preview.lock().unwrap(),
+        }
+    }
+
+    /// screen: no weighing in progress, so the service may install an update now
+    pub fn set_idle(&self, idle: bool) {
+        if let Some(r) = self.remote() {
+            r.set_idle(idle);
+        }
     }
 
     /// One picture from an IP camera (the live view and the Settings test), shrunk for showing.
@@ -684,6 +757,20 @@ impl Core {
     fn start_photo(&self) -> Option<mpsc::Receiver<Result<Vec<u8>, String>>> {
         let cam = self.camera_settings();
         let (tx, rx) = mpsc::channel();
+        if let Some(r) = self.remote().filter(|_| cam.source != "none") {
+            // the service has the camera
+            thread::spawn(move || {
+                let shot = r.request(json!({ "t": "photo" }), Duration::from_secs(7)).and_then(|v| {
+                    use base64::Engine;
+                    match v["jpeg"].as_str() {
+                        Some(b) => base64::engine::general_purpose::STANDARD.decode(b).map_err(|e| e.to_string()),
+                        None => Err(v["error"].as_str().unwrap_or("No picture from the camera").to_string()),
+                    }
+                });
+                let _ = tx.send(shot);
+            });
+            return Some(rx);
+        }
         match cam.source.as_str() {
             "webcam" => {
                 let shot = self.webcam.lock().unwrap().as_ref().and_then(|w| w.capture()).ok_or_else(|| "No picture from the camera".to_string());
@@ -1091,12 +1178,83 @@ impl Core {
     }
 
     pub fn check_update(&self) -> UpdateState {
+        if let Some(r) = self.remote() {
+            if let Ok(v) = r.request(json!({ "t": "check_update" }), Duration::from_secs(660)) {
+                self.updater.mirror(wire::update_from(&v));
+            }
+            return self.updater.state();
+        }
         let e = self.emit.clone();
-        self.updater.check(&*self.http, &self.server.state().api_server, &move |s| e(UiEvent::Update(s.clone())))
+        let st = self.updater.check(&*self.http, &self.server.state().api_server, &move |s| e(UiEvent::Update(s.clone())));
+        self.maybe_install(false);
+        st
+    }
+
+    /// "Restart to update". Standalone: true when the installer started and the app must quit.
+    /// Screen: the service installs as soon as the bridge is free and tells the screen to close.
+    pub fn install_update(&self) -> Result<bool, String> {
+        if let Some(r) = self.remote() {
+            if self.updater.state().status != "ready" {
+                return Err("No update is ready to install".into());
+            }
+            return if r.send(json!({ "t": "update_now" })) { Ok(false) } else { Err("The weighbridge service is not running".into()) };
+        }
+        if self.updater.run_installer(true) { Ok(true) } else { Err("No update is ready to install".into()) }
+    }
+
+    /// Service: installs a downloaded update when no screen is in the middle of a weighing and no
+    /// vehicle is on the bridge (or right away when a screen asked). The installer stops this
+    /// service, replaces the files and starts it again; screens close and reopen on the new version.
+    fn maybe_install(&self, asked: bool) {
+        use std::sync::atomic::Ordering;
+        let Some(hub) = self.hub() else { return };
+        let st = self.updater.state();
+        if st.status != "ready" || self.installing.load(Ordering::SeqCst) {
+            return;
+        }
+        let bridge_busy = self.ind.lock().unwrap().session.as_ref().is_some_and(|s| s.visit_in_progress());
+        if bridge_busy || !(asked || hub.all_idle()) {
+            return;
+        }
+        if self.installing.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        crate::info!("service installing update {}", st.version);
+        hub.broadcast(&json!({ "t": "update", "status": "installing", "version": st.version, "error": "" }));
+        let updater = self.updater.clone();
+        let weak = self.me.clone();
+        thread::spawn(move || {
+            // the screens close first, so their files can be replaced
+            thread::sleep(Duration::from_secs(4));
+            if !updater.run_installer(false) {
+                crate::warn!("service could not start the installer");
+                // screens that closed reopen on this version; the next check tries again
+                if let Some(c) = weak.upgrade() {
+                    c.installing.store(false, Ordering::SeqCst);
+                    (c.emit)(UiEvent::Update(c.updater.state()));
+                }
+            }
+        });
+    }
+
+    /// Uploads now and waits. Screen: the service does it, so two programs never upload the same rows.
+    pub fn sync_now(&self) -> SyncState {
+        if let Some(r) = self.remote() {
+            match r.request(json!({ "t": "sync_now" }), Duration::from_secs(300)) {
+                Ok(v) => self.sync.mirror(wire::sync_from(&v)),
+                Err(e) => self.sync.mirror(SyncState { online: Some(false), last_error: e, ..self.sync.state() }),
+            }
+            return self.sync.state();
+        }
+        self.sync.run(true)
     }
 
     // ── sync ─────────────────────────────────────────────────────────────────
     pub fn sync_soon(&self) {
+        if let Some(r) = self.remote() {
+            r.send(json!({ "t": "sync" }));
+            return;
+        }
         let me = self.me.clone();
         thread::spawn(move || {
             if let Some(c) = me.upgrade() {
@@ -1121,6 +1279,13 @@ impl Core {
             });
         };
         every("tick", Duration::from_secs(1), Duration::from_secs(1), Box::new(|c| c.tick()));
+        if self.remote().is_some() {
+            // the screen: the service does uploads, downloads and updates
+            every("lock", Duration::from_secs(3), Duration::from_secs(60), Box::new(|c| {
+                c.refresh_lock();
+            }));
+            return;
+        }
         // the web admin's "allow changes", rate changes and reopened weighings reach the PC within a minute
         every(
             "lock",
@@ -1143,6 +1308,10 @@ impl Core {
         every("sync", Duration::from_secs(2), crate::sync::PUSH_EVERY, Box::new(|c| {
             c.sync.run(false);
         }));
+        if self.hub().is_some() {
+            // a downloaded update waits for a quiet moment
+            every("install", Duration::from_secs(30), Duration::from_secs(15), Box::new(|c| c.maybe_install(false)));
+        }
         if check_updates {
             every("updates", crate::updater::FIRST_CHECK, crate::updater::CHECK_EVERY, Box::new(|c| {
                 c.check_update();
@@ -1171,14 +1340,210 @@ impl Core {
         );
     }
 
-    /// At close: stop the indicator and camera, and install a downloaded update.
+    /// At close: stop the indicator and camera, and (standalone) install a downloaded update.
+    /// A screen leaves the service running.
     pub fn shutdown(&self) {
+        if self.remote().is_some() {
+            return;
+        }
         self.stop_indicator();
         let cam = self.webcam.lock().unwrap().take();
         if let Some(w) = cam {
             w.close();
         }
-        self.updater.run_installer(false);
+        if matches!(*self.role(), Role::Standalone) {
+            self.updater.run_installer(false);
+        }
+    }
+
+    // ── service ↔ screens ────────────────────────────────────────────────────
+    /// Screen: one event from the service.
+    pub fn on_remote(&self, v: Value) {
+        let ev = match v["t"].as_str().unwrap_or("") {
+            "connected" => {
+                crate::info!("connected to the weighbridge service {}", v["version"].as_str().unwrap_or(""));
+                return;
+            }
+            "disconnected" => {
+                let mut i = self.ind.lock().unwrap();
+                i.remote_last = None;
+                i.state = "error".into();
+                i.message = "Waiting for the weighbridge service".into();
+                Some(UiEvent::IndicatorStatus { state: i.state.clone(), message: i.message.clone() })
+            }
+            "reading" => {
+                let r = wire::reading_from(&v, self.now_ms());
+                let mut i = self.ind.lock().unwrap();
+                i.remote_last = Some(r.clone());
+                if i.simulated.is_some() { None } else { Some(UiEvent::Reading(r)) }
+            }
+            "signal" => Some(UiEvent::Signal(v["on"].as_bool().unwrap_or(false))),
+            "indicator" => {
+                let (state, message) = (wire::s(&v, "state"), wire::s(&v, "message"));
+                let mut i = self.ind.lock().unwrap();
+                i.state = state.clone();
+                i.message = message.clone();
+                Some(UiEvent::IndicatorStatus { state, message })
+            }
+            "monitor" => Some(UiEvent::Monitor(wire::s(&v, "line"))),
+            "sync" => {
+                self.sync.mirror(wire::sync_from(&v));
+                Some(UiEvent::Sync(self.sync.state()))
+            }
+            "update" => {
+                let st = wire::update_from(&v);
+                self.updater.mirror(st.clone());
+                if st.status == "installing" { Some(UiEvent::Restart(st.version)) } else { Some(UiEvent::Update(st)) }
+            }
+            "lock" => Some(UiEvent::Lock(self.lock.state())),
+            "reopened" => Some(UiEvent::Reopened(v["n"].as_u64().unwrap_or(0) as usize)),
+            "frame" => {
+                use base64::Engine;
+                base64::engine::general_purpose::STANDARD
+                    .decode(v["jpeg"].as_str().unwrap_or(""))
+                    .ok()
+                    .and_then(|b| image::load_from_memory_with_format(&b, image::ImageFormat::Jpeg).ok())
+                    .map(|i| UiEvent::Frame(i.to_rgb8()))
+            }
+            "camera_error" => Some(UiEvent::CameraError(wire::s(&v, "message"))),
+            _ => None,
+        };
+        if let Some(e) = ev {
+            (self.emit)(e);
+        }
+    }
+
+    /// Service: what goes to the screens for one of this process's events.
+    pub fn event_json(&self, e: &UiEvent) -> Option<Value> {
+        Some(match e {
+            UiEvent::Reading(r) => wire::reading(r),
+            UiEvent::Signal(on) => json!({ "t": "signal", "on": on }),
+            UiEvent::IndicatorStatus { state, message } => json!({ "t": "indicator", "state": state, "message": message }),
+            UiEvent::Monitor(line) => json!({ "t": "monitor", "line": line }),
+            UiEvent::Sync(s) => wire::sync(s),
+            UiEvent::Update(u) => wire::update(u),
+            UiEvent::Lock(_) => json!({ "t": "lock" }),
+            UiEvent::Reopened(n) => json!({ "t": "reopened", "n": n }),
+            UiEvent::Frame(img) => {
+                use base64::Engine;
+                let jpeg = camera::encode(img.clone(), 640).ok()?;
+                json!({ "t": "frame", "jpeg": base64::engine::general_purpose::STANDARD.encode(jpeg) })
+            }
+            UiEvent::CameraError(m) => json!({ "t": "camera_error", "message": m }),
+            UiEvent::Restart(_) => return None,
+        })
+    }
+
+    /// Service: the state a screen needs when it connects.
+    pub fn greeting(&self) -> Vec<Value> {
+        let (state, message) = self.indicator_status();
+        vec![
+            json!({ "t": "indicator", "state": state, "message": message }),
+            wire::sync(&self.sync.state()),
+            wire::update(&self.updater.state()),
+        ]
+    }
+
+    /// Service: one request from a screen.
+    pub fn serve_request(&self, cmd: &Value) -> Option<Value> {
+        match cmd["t"].as_str().unwrap_or("") {
+            "photo" => Some(match self.start_photo() {
+                None => json!({ "ok": false, "error": "No camera in Settings" }),
+                Some(rx) => match rx.recv_timeout(Duration::from_secs(6)).unwrap_or_else(|_| Err("The camera did not answer in time".into())) {
+                    Ok(jpeg) => {
+                        use base64::Engine;
+                        json!({ "ok": true, "jpeg": base64::engine::general_purpose::STANDARD.encode(jpeg) })
+                    }
+                    Err(e) => json!({ "ok": false, "error": e }),
+                },
+            }),
+            "reload" => {
+                match cmd["what"].as_str() {
+                    Some("indicator") => self.start_indicator(),
+                    Some("camera") => self.start_camera(),
+                    _ => {}
+                }
+                Some(json!({ "ok": true }))
+            }
+            "monitor" => {
+                self.set_monitor(cmd["on"].as_bool().unwrap_or(false));
+                None
+            }
+            "sync" => {
+                self.sync_soon();
+                None
+            }
+            "sync_now" => Some(wire::sync(&self.sync.run(true))),
+            "check_update" => Some(wire::update(&self.check_update())),
+            "update_now" => {
+                self.maybe_install(true);
+                None
+            }
+            _ => None,
+        }
+    }
+
+    /// Service: a screen opened or closed the live view, or started or finished a weighing.
+    pub fn screens_changed(&self) {
+        self.maybe_install(false);
+    }
+}
+
+/// The JSON the service and screens exchange for readings, sync and update state.
+mod wire {
+    use super::*;
+    use crate::store::Pending;
+
+    pub fn s(v: &Value, k: &str) -> String {
+        v[k].as_str().unwrap_or("").to_string()
+    }
+
+    pub fn reading(r: &Reading) -> Value {
+        json!({ "t": "reading", "weight": r.weight, "stable": r.stable, "overload": r.overload, "unit": r.unit, "raw": r.raw })
+    }
+
+    /// stamped with the screen's own clock
+    pub fn reading_from(v: &Value, now: u64) -> Reading {
+        Reading {
+            weight: v["weight"].as_f64().unwrap_or(0.0),
+            stable: v["stable"].as_bool().unwrap_or(false),
+            overload: v["overload"].as_bool().unwrap_or(false),
+            unit: s(v, "unit"),
+            raw: s(v, "raw"),
+            at: now,
+            simulated: false,
+        }
+    }
+
+    pub fn sync(st: &SyncState) -> Value {
+        json!({
+            "t": "sync", "online": st.online, "needsLogin": st.needs_login, "lastSyncAt": st.last_sync_at, "lastError": st.last_error,
+            "pending": { "weights": st.pending.weights, "tares": st.pending.tares, "engage": st.pending.engage, "photos": st.pending.photos },
+        })
+    }
+
+    pub fn sync_from(v: &Value) -> SyncState {
+        let p = &v["pending"];
+        SyncState {
+            online: v["online"].as_bool(),
+            needs_login: v["needsLogin"].as_bool().unwrap_or(false),
+            last_sync_at: v["lastSyncAt"].as_str().map(String::from),
+            last_error: s(v, "lastError"),
+            pending: Pending {
+                weights: p["weights"].as_i64().unwrap_or(0),
+                tares: p["tares"].as_i64().unwrap_or(0),
+                engage: p["engage"].as_i64().unwrap_or(0),
+                photos: p["photos"].as_i64().unwrap_or(0),
+            },
+        }
+    }
+
+    pub fn update(u: &UpdateState) -> Value {
+        json!({ "t": "update", "status": u.status, "version": u.version, "error": u.error })
+    }
+
+    pub fn update_from(v: &Value) -> UpdateState {
+        UpdateState { status: s(v, "status"), version: s(v, "version"), error: s(v, "error"), file: None }
     }
 }
 
