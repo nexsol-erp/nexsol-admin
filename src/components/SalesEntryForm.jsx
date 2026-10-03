@@ -5,8 +5,9 @@ import {
 } from "antd";
 import {
   DeleteOutlined, PlusOutlined, MinusOutlined, SearchOutlined, UserAddOutlined, PhoneOutlined,
-  EnvironmentOutlined, SaveOutlined, PrinterOutlined,
+  EnvironmentOutlined, SaveOutlined, PrinterOutlined, EditOutlined, CloseOutlined,
 } from "@ant-design/icons";
+import { useSearchParams } from "react-router-dom";
 import { getItems } from "../services/apiservice";
 import { useBranch } from "./BranchContext";
 import { taxInvoiceHtml } from "./salesEntry/taxInvoiceHtml";
@@ -110,6 +111,54 @@ function printTaxInvoice(inv, ml, template, branch) {
 }
 
 const emptyPayments = { CASH: 0, UPI: 0, CARD: 0 };
+const today = () => new Date().toISOString().slice(0, 10);
+const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+
+// Picks a saved web invoice to edit: search by number, customer or mobile within a date range.
+function EditInvoicePicker({ open, onClose, onPick, branchCode, isMobile }) {
+  const [search, setSearch] = useState("");
+  const [from, setFrom] = useState(daysAgo(30));
+  const [to, setTo] = useState(today());
+  const [rows, setRows] = useState([]);
+  const [busy, setBusy] = useState(false);
+
+  const load = () => {
+    setBusy(true);
+    const q = new URLSearchParams({ fromDate: from, toDate: to, search, branchCode: branchCode || "" });
+    fetch(api(`/sales/web-invoices?${q}`), { headers: authHeaders() })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r)))
+      .then((data) => setRows(Array.isArray(data) ? data : []))
+      .catch(() => message.error("Couldn't load invoices"))
+      .finally(() => setBusy(false));
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) load(); }, [open, branchCode]);
+
+  return (
+    <Modal open={open} title="Edit an invoice" footer={null} onCancel={onClose} destroyOnClose
+      width={isMobile ? "100%" : 720} style={isMobile ? { top: 0, maxWidth: "100vw", margin: 0, paddingBottom: 0 } : undefined}>
+      <Row gutter={[8, 8]} style={{ marginBottom: 12 }}>
+        <Col xs={24} md={10}>
+          <Input allowClear prefix={<SearchOutlined />} placeholder="Invoice no., customer or mobile"
+            value={search} onChange={(e) => setSearch(e.target.value)} onPressEnter={load} />
+        </Col>
+        <Col xs={12} md={5}><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From" /></Col>
+        <Col xs={12} md={5}><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="To" /></Col>
+        <Col xs={24} md={4}><Button block type="primary" onClick={load} loading={busy}>Search</Button></Col>
+      </Row>
+      <Table size="small" rowKey="id" loading={busy} dataSource={rows} pagination={{ pageSize: 10, hideOnSinglePage: true }}
+        locale={{ emptyText: "No web invoices in these dates" }}
+        onRow={(r) => ({ onClick: () => onPick(r.id), style: { cursor: "pointer" } })}
+        columns={[
+          { title: "Invoice", dataIndex: "voucherNumber", render: (v, r) => (<><div style={{ fontWeight: 500 }}>{v}</div>
+            <Text type="secondary" style={{ fontSize: 12 }}>{String(r.voucherDate || "").slice(0, 10)} · {r.branchCode}</Text></>) },
+          { title: "Customer", dataIndex: "customerName", responsive: ["sm"] },
+          { title: "Total", dataIndex: "totalAmount", align: "right", render: inr },
+          { width: 40, render: () => <EditOutlined style={{ color: "#1677ff" }} /> },
+        ]} />
+    </Modal>
+  );
+}
 
 const SalesEntryForm = () => {
   const { branch: branchCode, setBranch, branches } = useBranch();
@@ -136,6 +185,10 @@ const SalesEntryForm = () => {
 
   const [newCustomerOpen, setNewCustomerOpen] = useState(false);
   const [savedInvoice, setSavedInvoice] = useState(null);
+  // The saved invoice being edited ({ id, voucherNumber, voucherDate, branchCode, allocatedAmount }), or null for a new one.
+  const [editing, setEditing] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     Promise.all([
@@ -144,6 +197,61 @@ const SalesEntryForm = () => {
     ]).finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    const id = searchParams.get("edit");
+    if (id) loadForEdit(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Loads a saved invoice into the form. Number, date and branch can't change; the server says why
+  // an invoice can't be edited at all (e-invoice already sent, sales return made...).
+  const loadForEdit = async (id) => {
+    setPickerOpen(false);
+    setLoading(true);
+    try {
+      const res = await fetch(api(`/sales/web-invoice/${encodeURIComponent(id)}`), { headers: authHeaders() });
+      const inv = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        message.error(inv.message || "Couldn't load the invoice");
+        return;
+      }
+      if (inv.editBlockedReason) {
+        Modal.warning({ title: `Invoice ${inv.voucherNumber} can't be edited`, content: inv.editBlockedReason });
+        return;
+      }
+      const pay = { ...emptyPayments };
+      (inv.payments || []).forEach((p) => {
+        const m = (p.receiptMode || "").toUpperCase();
+        if (m in pay) pay[m] = r2(pay[m] + Number(p.amount || 0));
+        else pay.CASH = r2(pay.CASH + Number(p.amount || 0));
+      });
+      setSavedInvoice(null);
+      setEditing({
+        id: inv.id, voucherNumber: inv.voucherNumber, voucherDate: inv.voucherDate,
+        branchCode: inv.branchCode, allocatedAmount: Number(inv.allocatedAmount) || 0,
+      });
+      setCustomerId(inv.customerId);
+      setDeliveryAddress(inv.deliveryAddress || "");
+      setLines((inv.lines || []).map((l, i) => ({
+        key: `${l.itemId}-${i}`,
+        itemId: l.itemId, itemName: l.itemName, itemCode: l.itemCode, barcode: l.barcode, unit: l.unit,
+        hsnCode: l.hsnCode, taxRate: Number(l.taxRate) || 0, qty: Number(l.qty) || 0, rate: Number(l.rate) || 0,
+      })));
+      setCredit(!!inv.credit);
+      setPayments(pay);
+      setSearchParams({ edit: inv.id }, { replace: true });
+    } catch (e) {
+      console.error(e);
+      message.error("Couldn't load the invoice");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancelEdit = () => {
+    resetInvoice();
+  };
+
   const loadCustomers = () =>
     fetch(api("/customers"), { headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : []))
@@ -151,7 +259,9 @@ const SalesEntryForm = () => {
       .catch(() => message.error("Couldn't load customers"));
 
   const customer = useMemo(() => customers.find((c) => c.id === customerId) || null, [customers, customerId]);
-  const branch = useMemo(() => branches.find((b) => b.branchCode === branchCode) || null, [branches, branchCode]);
+  // An invoice being edited keeps its own branch, whatever branch is picked at the top of the app.
+  const billBranchCode = editing ? editing.branchCode : branchCode;
+  const branch = useMemo(() => branches.find((b) => b.branchCode === billBranchCode) || null, [branches, billBranchCode]);
   const interState = isInterState(customer, branch);
 
   const calcLines = useMemo(() => lines.map(calcLine), [lines]);
@@ -251,6 +361,8 @@ const SalesEntryForm = () => {
 
   const resetInvoice = () => {
     setSavedInvoice(null);
+    setEditing(null);
+    if (searchParams.get("edit")) setSearchParams({}, { replace: true });
     setCustomerId(null);
     setDeliveryAddress("");
     setLines([]);
@@ -259,7 +371,7 @@ const SalesEntryForm = () => {
   };
 
   const save = async () => {
-    if (!branchCode) return message.warning("Select a branch");
+    if (!billBranchCode) return message.warning("Select a branch");
     if (!customer) return message.warning("Select or add a customer");
     if (!lines.length) return message.warning("Add at least one item");
     if (paid - totals.total > 0.01) return message.warning("Payment is more than the invoice total");
@@ -270,8 +382,8 @@ const SalesEntryForm = () => {
     setSaving(true);
     try {
       const body = {
-        branchCode,
-        voucherDate,
+        branchCode: billBranchCode,
+        voucherDate: editing ? editing.voucherDate : voucherDate,
         customerId: customer.id,
         deliveryAddress,
         credit,
@@ -279,14 +391,18 @@ const SalesEntryForm = () => {
           ({ itemId, itemName, itemCode, barcode, unit, qty, rate, taxRate })),
         payments: PAY_MODES.filter((m) => Number(payments[m]) > 0).map((m) => ({ receiptMode: m, amount: r2(payments[m]) })),
       };
-      const res = await fetch(api("/sales/web-invoice"), { method: "POST", headers: authHeaders(), body: JSON.stringify(body) });
+      const res = editing
+        ? await fetch(api(`/sales/web-invoice/${encodeURIComponent(editing.id)}`), { method: "PUT", headers: authHeaders(), body: JSON.stringify(body) })
+        : await fetch(api("/sales/web-invoice"), { method: "POST", headers: authHeaders(), body: JSON.stringify(body) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         message.error(data.message || "Couldn't save the invoice");
         return;
       }
-      setSavedInvoice(data);
-      message.success(`Invoice ${data.voucherNumber} saved`);
+      setSavedInvoice({ ...data, edited: !!editing });
+      setEditing(null);
+      if (searchParams.get("edit")) setSearchParams({}, { replace: true });
+      message.success(`Invoice ${data.voucherNumber} ${editing ? "updated" : "saved"}`);
     } catch (e) {
       console.error(e);
       message.error("Couldn't save the invoice");
@@ -296,7 +412,7 @@ const SalesEntryForm = () => {
   };
 
   const readiness = [
-    !branchCode && "Select a branch",
+    !billBranchCode && "Select a branch",
     !customer && "Select or add a customer",
     !lines.length && "Add at least one item",
     paid - totals.total > 0.01 && "Payment is more than the total",
@@ -475,6 +591,11 @@ const SalesEntryForm = () => {
           ? "Enter any down payment. The rest goes on the customer's account and is collected from the Receipt screen."
           : "Split across Cash, UPI and Card if needed. Tap Rest to fill the balance."}
       </Text>
+      {editing?.allocatedAmount > 0 && (
+        <Text type="warning" style={{ display: "block", marginBottom: 12 }}>
+          {inr(editing.allocatedAmount)} was already collected for this invoice on the Receipt screen, so keep at least that much on credit.
+        </Text>
+      )}
       {PAY_MODES.map((m) => (
         <div key={m} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
           <span style={{ width: 64, fontWeight: 500 }}>{PAY_LABELS[m]}</span>
@@ -501,7 +622,7 @@ const SalesEntryForm = () => {
       {!isMobile && (
         <>
           <Button type="primary" size="large" block icon={<SaveOutlined />} loading={saving}
-            disabled={!ready} onClick={save} style={{ marginTop: 12 }}>Save invoice</Button>
+            disabled={!ready} onClick={save} style={{ marginTop: 12 }}>{editing ? "Save changes" : "Save invoice"}</Button>
           {!ready && <Text type="secondary" style={{ display: "block", marginTop: 8, fontSize: 12 }}>{readiness[0]}</Text>}
         </>
       )}
@@ -515,7 +636,7 @@ const SalesEntryForm = () => {
         <Card style={S.card}>
           <Result
             status="success"
-            title={`Invoice ${savedInvoice.voucherNumber} saved`}
+            title={`Invoice ${savedInvoice.voucherNumber} ${savedInvoice.edited ? "updated" : "saved"}`}
             subTitle={savedInvoice.customerName}
             style={{ padding: isMobile ? "16px 0" : undefined }}
           />
@@ -531,6 +652,10 @@ const SalesEntryForm = () => {
             <Col xs={24} sm={12}>
               <Button size="large" block icon={<PlusOutlined />} onClick={resetInvoice}>New invoice</Button>
             </Col>
+            <Col xs={24}>
+              <Button size="large" block type="link" icon={<EditOutlined />}
+                onClick={() => loadForEdit(savedInvoice.id)}>Edit this invoice</Button>
+            </Col>
           </Row>
         </Card>
       </div>
@@ -541,17 +666,29 @@ const SalesEntryForm = () => {
     <div style={{ ...S.page, paddingBottom: isMobile ? 96 : S.page.padding }}>
       <div style={S.header}>
         <div>
-          <Title level={isMobile ? 4 : 3} style={{ margin: 0, color: "inherit" }}>Sales Entry</Title>
-          <Text style={{ color: "inherit", opacity: 0.7 }}>GST tax invoice</Text>
+          <Title level={isMobile ? 4 : 3} style={{ margin: 0, color: "inherit" }}>
+            {editing ? `Edit invoice ${editing.voucherNumber}` : "Sales Entry"}
+          </Title>
+          <Text style={{ color: "inherit", opacity: 0.7 }}>
+            {editing ? `${editing.branchCode} · ${editing.voucherDate} · number, date and branch stay the same` : "GST tax invoice"}
+          </Text>
         </div>
-        <div style={{ display: "flex", gap: 8, minWidth: 0, flex: isMobile ? "1 1 100%" : undefined }}>
+        {editing ? (
+          <Button icon={<CloseOutlined />} onClick={cancelEdit}>Cancel edit</Button>
+        ) : (
+        <div style={{ display: "flex", gap: 8, minWidth: 0, flex: isMobile ? "1 1 100%" : undefined, flexWrap: "wrap" }}>
           <Select style={{ minWidth: isMobile ? 0 : 220, flex: 1 }} value={branchCode || undefined}
             placeholder="Select branch" onChange={setBranch}
             options={branches.map((b) => ({ value: b.branchCode, label: b.branchName ? `${b.branchCode} — ${b.branchName}` : b.branchCode }))} />
           <Input type="date" value={voucherDate} onChange={(e) => setVoucherDate(e.target.value)}
             style={{ width: 150, flexShrink: 0 }} aria-label="Invoice date" />
+          <Button icon={<EditOutlined />} onClick={() => setPickerOpen(true)}>{isMobile ? "Edit" : "Edit an invoice"}</Button>
         </div>
+        )}
       </div>
+
+      <EditInvoicePicker open={pickerOpen} onClose={() => setPickerOpen(false)} onPick={loadForEdit}
+        branchCode={branchCode} isMobile={isMobile} />
 
       <Spin spinning={loading}>
         <Row gutter={[16, 16]}>
@@ -585,7 +722,7 @@ const SalesEntryForm = () => {
             <div style={{ fontSize: 20, fontWeight: 700 }}>{inr(totals.total)}</div>
           </div>
           <Button type="primary" size="large" icon={<SaveOutlined />} loading={saving} disabled={!ready} onClick={save}>
-            Save
+            {editing ? "Save changes" : "Save"}
           </Button>
         </div>
       )}
