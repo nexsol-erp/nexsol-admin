@@ -20,6 +20,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -242,7 +243,18 @@ const WeighBridgeEngageReport = () => {
                   </TableRow>
                 )}
                 {events.map((e) => (
-                  <TableRow key={e.dateTime} sx={{ bgcolor: e.voucherNumber ? undefined : "#fdecea" }}>
+                  <TableRow
+                    key={e.dateTime}
+                    sx={
+                      e.voucherNumber
+                        ? undefined
+                        : {
+                            // a light tint of the theme's red, so the text stays readable in dark and light mode
+                            bgcolor: (theme) => alpha(theme.palette.error.main, theme.palette.mode === "dark" ? 0.18 : 0.1),
+                            "& td:first-of-type": { boxShadow: (theme) => `inset 4px 0 0 ${theme.palette.error.main}` },
+                          }
+                    }
+                  >
                     <TableCell>{fmt(e.dateTime)}</TableCell>
                     <TableCell align="right">{e.weight}</TableCell>
                     <TableCell>
