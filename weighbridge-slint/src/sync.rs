@@ -230,6 +230,36 @@ impl Syncer {
                 _ => self.db().mark_synced("engage", &r.id, None)?,
             }
         }
+        self.push_engage_photos()
+    }
+
+    /// Photos of bridge events (V087), after their event is on the server; same rules as
+    /// push_photos. The server finds the event by branch and time.
+    pub fn push_engage_photos(&self) -> Res<()> {
+        use base64::Engine;
+        let branch = self.api.auth().map(|a| a.branch_code).unwrap_or_default();
+        let rows = self.db().pending_engage_photos(20);
+        for (r, path) in rows {
+            let image = match std::fs::read(&path) {
+                Ok(b) => base64::engine::general_purpose::STANDARD.encode(b),
+                Err(e) => {
+                    self.db().mark_engage_photo(&r.id, Some(&format!("photo file missing: {e}")))?;
+                    continue;
+                }
+            };
+            let body = json!({
+                "branchCode": if r.branch_code.is_empty() { branch.clone() } else { r.branch_code.clone() },
+                "dateTime": r.date_time,
+                "weight": r.weight,
+                "image": image,
+            });
+            match self.api.call("POST", "/weighbridge/engage/photo", Some(&body)) {
+                Ok(_) => self.db().mark_engage_photo(&r.id, None)?,
+                Err(e) if stops(&e) => return Err(e),
+                Err(e) if matches!(e.status(), Some(404 | 409)) => return Ok(()), // server not ready for them yet
+                Err(e) => self.db().mark_engage_photo(&r.id, Some(&e.to_string()))?,
+            }
+        }
         Ok(())
     }
 
@@ -774,6 +804,31 @@ mod tests {
         sy2.push_photos().unwrap();
         assert_eq!(s.lock().unwrap().pending_count().photos, 0);
         assert_eq!(srv2.calls()[0].body.as_ref().unwrap()["image"], "/9j/2Q==");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn bridge_event_photos_follow_their_event() {
+        let s = store_with_rates();
+        let dir = std::env::temp_dir().join(format!("wbengage-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("e.jpg");
+        std::fs::write(&file, [0xff, 0xd8, 0xff, 0xd9]).unwrap();
+        let at = chrono::NaiveDate::from_ymd_opt(2026, 10, 3).unwrap().and_hms_opt(9, 15, 0).unwrap();
+        s.lock().unwrap().add_engage_with_photo(12000.0, "WB1", Some(at), Some((file.to_str().unwrap(), true))).unwrap();
+        s.lock().unwrap().add_engage_with_photo(9000.0, "WB1", Some(at), Some((file.to_str().unwrap(), false))).unwrap(); // upload off
+        let base = || FakeServer::default().on("POST /weighbridge/engage", ok(json!({ "success": true }))).on("GET /wb-rates", ok(json!([]))).on("GET /weighbridge/resync-request", ok(json!([])));
+        let (sy, _) = sync(&s, base().on("POST /weighbridge/engage/photo", |_| (409, json!({ "error": "run V087" }))));
+        sy.run(false);
+        assert_eq!(s.lock().unwrap().pending_count().photos, 1, "an older server: keep waiting");
+        let (sy2, srv2) = sync(&s, base().on("POST /weighbridge/engage/photo", ok(json!({ "success": true }))));
+        sy2.run(false);
+        assert_eq!(s.lock().unwrap().pending_count().photos, 0);
+        let sent: Vec<_> = srv2.calls().into_iter().filter(|c| c.path == "/weighbridge/engage/photo").collect();
+        assert_eq!(sent.len(), 1);
+        let body = sent[0].body.as_ref().unwrap();
+        assert_eq!((body["branchCode"].as_str(), body["weight"].as_i64(), body["image"].as_str()), (Some("WB1"), Some(12000), Some("/9j/2Q==")));
+        assert!(body["dateTime"].as_str().unwrap().starts_with("2026-10-03"));
         let _ = std::fs::remove_dir_all(dir);
     }
 }

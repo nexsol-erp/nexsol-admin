@@ -347,11 +347,8 @@ component IndicatorSettings inherits VerticalLayout {
             }
             Field {
                 label: "Empty bridge up to (kg)";
+                help: "A vehicle is reported to Weight-Count when the bridge was empty before and after it";
                 Input { enabled: !ro; text <=> WB.ind.zero-band; input-type: decimal; }
-            }
-            Field {
-                label: "Vehicle on bridge above (kg)";
-                Input { enabled: !ro; text <=> WB.ind.engage; input-type: decimal; }
             }
         }
         HorizontalLayout {
