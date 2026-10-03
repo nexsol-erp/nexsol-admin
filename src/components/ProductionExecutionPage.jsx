@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import UnitSelect from "./UnitSelect";
 import {
   Box,
@@ -28,6 +28,8 @@ import {
   PlayArrow as GenerateIcon,
   Summarize as SummarizeIcon,
   TableChart as ExcelIcon,
+  UploadFile as UploadFileIcon,
+  Download as DownloadIcon,
 } from "@mui/icons-material";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -65,6 +67,7 @@ const ProductionExecutionPage = () => {
   // materials are worked out from the BOM on the server and a plan is created behind the scenes.
   const [mode, setMode] = useState("plan");
   const [problems, setProblems] = useState([]);
+  const fileInputRef = useRef(null);
 
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
@@ -153,7 +156,13 @@ const ProductionExecutionPage = () => {
     }));
   };
 
-  const addRow = () => setProductionRows(prev => [...prev, emptyRow()]);
+  // New rows go on top so long lists don't need scrolling to the bottom; the item box is focused.
+  const [focusRowKey, setFocusRowKey] = useState(null);
+  const addRow = () => {
+    const row = emptyRow();
+    setFocusRowKey(row.key);
+    setProductionRows(prev => [row, ...prev]);
+  };
   const deleteRow = (key) => setProductionRows(prev => prev.filter(r => r.key !== key));
 
   const buildSummary = (details) => {
@@ -209,6 +218,82 @@ const ProductionExecutionPage = () => {
     setRawMaterialSummary([]);
     setProblems([]);
     setMessage({ text: "", severity: "info" });
+  };
+
+  // Same sheet layout as the Production Planning import (A = Item Name, B = Qty, C = Branch Code),
+  // so one template serves both. Branch Code is optional here; rows for another branch are skipped.
+  const downloadTemplate = async () => {
+    try {
+      const res = await fetch(`/api/${tenancyId}/production-planning/import-template`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      saveAs(await res.blob(), "Production_Execution_Import_Template.xlsx");
+    } catch (e) {
+      setMessage({ text: "Could not download the template: " + e.message, severity: "error" });
+    }
+  };
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const lines = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: true }).slice(1);
+      const byName = new Map(allItems.map(i => [String(i.itemName || "").trim().toLowerCase(), i]));
+      const merged = new Map();
+      const skipped = [];
+      lines.forEach((cols, idx) => {
+        const rowNo = idx + 2;
+        const name = String(cols[0] ?? "").trim();
+        const qtyRaw = String(cols[1] ?? "").trim();
+        const branch = String(cols[2] ?? "").trim();
+        if (!name && !qtyRaw && !branch) return;
+        const qty = typeof cols[1] === "number" ? cols[1] : parseFloat(qtyRaw.replace(/,/g, ""));
+        if (!name) { skipped.push(`Row ${rowNo}: item name is blank`); return; }
+        if (!(qty > 0)) { skipped.push(`Row ${rowNo}: ${name}, qty must be above zero`); return; }
+        if (branch && branchCode && branch.toLowerCase() !== branchCode.toLowerCase()) {
+          skipped.push(`Row ${rowNo}: ${name}, branch ${branch} is not ${branchCode}`);
+          return;
+        }
+        const item = byName.get(name.toLowerCase());
+        if (!item) { skipped.push(`Row ${rowNo}: ${name} is not in the item list`); return; }
+        const key = item.itemName;
+        merged.set(key, { item, qty: (merged.get(key)?.qty || 0) + qty });
+      });
+
+      if (merged.size === 0) {
+        setMessage({ text: `No rows imported. ${skipped.slice(0, 10).join("; ")}`, severity: "error" });
+        return;
+      }
+      setMode("direct");
+      setSelectedPlanningVoucher(null);
+      setRawMaterialDetails([]);
+      setRawMaterialSummary([]);
+      setProblems([]);
+      setProductionRows([...merged.values()].map(({ item, qty }) => {
+        const price = item.standardPrice ?? "";
+        return {
+          ...emptyRow(),
+          itemName: item.itemName || "",
+          barCode: item.barcode || "",
+          qty: String(qty),
+          taxRate: item.taxRate ?? "",
+          standardPrice: price,
+          amount: ((parseFloat(price) || 0) * qty).toFixed(2),
+          unit: item.unitName || "",
+          itemId: item.itemId || item.id || "",
+        };
+      }));
+      const more = skipped.length > 10 ? ` and ${skipped.length - 10} more` : "";
+      setMessage(skipped.length
+        ? { text: `Imported ${merged.size} item(s). Skipped ${skipped.length}: ${skipped.slice(0, 10).join("; ")}${more}. Check the list, then Calculate Raw Materials and Save.`, severity: "warning" }
+        : { text: `Imported ${merged.size} item(s). Check the list, then Calculate Raw Materials and Save.`, severity: "success" });
+    } catch (err) {
+      setMessage({ text: "Could not read the Excel file: " + err.message, severity: "error" });
+    }
   };
 
   const directPayload = (rows) => ({
@@ -500,7 +585,19 @@ const ProductionExecutionPage = () => {
           />
         </Stack>
         {mode === "direct" && (
+          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.5 }}>
+            <Button size="small" variant="outlined" startIcon={<UploadFileIcon />} onClick={() => fileInputRef.current?.click()}>
+              Import Excel
+            </Button>
+            <Button size="small" startIcon={<DownloadIcon />} onClick={downloadTemplate}>
+              Download Template
+            </Button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={handleImportFile} />
+          </Stack>
+        )}
+        {mode === "direct" && (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+            Excel columns: Item Name, Qty, and optionally Branch Code (the Production Planning template works too).
             Enter the finished goods you produced. Raw materials are worked out from each item's Bill of Materials,
             consumed from stock, and a planning voucher is created automatically. Items without a Bill of Materials can't be saved here.
           </Typography>
@@ -542,7 +639,7 @@ const ProductionExecutionPage = () => {
                       getOptionLabel={(o) => o.itemName || ""}
                       value={allItems.find(i => i.itemName === row.itemName) || null}
                       onChange={(_, val) => handleItemSelect(row.key, val)}
-                      renderInput={(params) => <TextField {...params} size="small" placeholder="Item" />}
+                      renderInput={(params) => <TextField {...params} size="small" placeholder="Item" autoFocus={row.key === focusRowKey} />}
                       freeSolo
                       onInputChange={(_, val) => handleRowChange(row.key, "itemName", val)}
                     />

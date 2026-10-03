@@ -118,7 +118,13 @@ const ProductionPlanningPage = () => {
     }));
   };
 
-  const addRow = () => setProductionRows(prev => [...prev, emptyProductionRow()]);
+  // New rows go on top so long lists don't need scrolling to the bottom; the item box is focused.
+  const [focusRowKey, setFocusRowKey] = useState(null);
+  const addRow = () => {
+    const row = emptyProductionRow();
+    setFocusRowKey(row.key);
+    setProductionRows(prev => [row, ...prev]);
+  };
   const deleteRow = (key) => setProductionRows(prev => prev.filter(r => r.key !== key));
 
   const fetchPlanningsByDate = useCallback(async () => {
@@ -523,7 +529,7 @@ const ProductionPlanningPage = () => {
                       getOptionLabel={(o) => o.itemName || ""}
                       value={allItems.find(i => i.itemName === row.itemName) || null}
                       onChange={(_, val) => handleItemSelect(row.key, val)}
-                      renderInput={(params) => <TextField {...params} size="small" placeholder="Item" />}
+                      renderInput={(params) => <TextField {...params} size="small" placeholder="Item" autoFocus={row.key === focusRowKey} />}
                       freeSolo
                       onInputChange={(_, val) => handleRowChange(row.key, "itemName", val)}
                     />
