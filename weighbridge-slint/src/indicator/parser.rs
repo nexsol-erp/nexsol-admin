@@ -341,8 +341,20 @@ pub struct Reading {
 pub enum Event {
     Frame { raw: String, ok: bool },
     Reading(Reading),
+    /// A vehicle's visit, reported when it has left: the bridge was empty before it came on and
+    /// empty again after. `weight` is its highest stable weight, `at` the time of its first one.
     Engage { weight: f64, at: u64 },
+    /// The vehicle of a visit first stood still on the bridge (the moment for its photo).
+    Settled { at: u64 },
     Signal(bool),
+}
+
+/// A stable weight below this is noise or a person, not a visit worth reporting.
+const VISIT_MIN_KG: f64 = 20.0;
+
+struct Visit {
+    peak: f64,
+    first_stable_at: Option<u64>,
 }
 
 /// Everything between the transport and the screen: framing, decoding, stability, "bridge
@@ -351,7 +363,10 @@ pub struct IndicatorSession {
     pub profile: Profile,
     splitter: FrameSplitter,
     stabilizer: Stabilizer,
-    armed: bool,
+    /// the bridge has read empty since the last visit (unknown at start, so a vehicle already
+    /// standing there when the app starts is not counted)
+    was_empty: bool,
+    visit: Option<Visit>,
     pub last: Option<Reading>,
     last_at: u64,
     signal: bool,
@@ -363,7 +378,8 @@ impl IndicatorSession {
             splitter: FrameSplitter::new(&profile.frame),
             stabilizer: Stabilizer::new(profile.stable_count, profile.stable_tolerance_kg),
             profile,
-            armed: true,
+            was_empty: false,
+            visit: None,
             last: None,
             last_at: 0,
             signal: false,
@@ -385,22 +401,38 @@ impl IndicatorSession {
                 ev.push(Event::Signal(true));
             }
             ev.push(Event::Reading(reading.clone()));
-            let threshold = self.profile.engage_threshold();
-            let zero = self.profile.zero_band();
-            // One "vehicle on the bridge" per visit, even if no voucher is saved: the first
-            // stable weight above the threshold. It re-arms when the bridge is empty again
-            // (within the zero band, or under a quarter of the threshold, as an empty bridge
-            // rarely reads exactly 0).
-            if threshold > 0.0 {
-                if self.armed && reading.stable && reading.weight > threshold {
-                    self.armed = false;
-                    ev.push(Event::Engage { weight: reading.weight, at: now });
-                } else if !self.armed && reading.weight.abs() <= zero.max(threshold / 4.0) {
-                    self.armed = true;
-                }
+            if let Some(e) = self.track_visit(&reading) {
+                ev.push(e);
             }
         }
         ev
+    }
+
+    /// One visit per vehicle, even if no voucher is saved: it starts when the weight rises above
+    /// the empty band (only if the bridge read empty before), and is reported once the bridge is
+    /// empty again, provided a stable weight above VISIT_MIN_KG was seen. Which visits count as
+    /// vehicles (the gate weight) is decided on the server.
+    fn track_visit(&mut self, r: &Reading) -> Option<Event> {
+        let zero = self.profile.zero_band();
+        if r.weight.abs() <= zero {
+            self.was_empty = true;
+            let v = self.visit.take()?;
+            return v.first_stable_at.map(|at| Event::Engage { weight: v.peak, at });
+        }
+        if self.visit.is_none() && self.was_empty {
+            self.was_empty = false;
+            self.visit = Some(Visit { peak: 0.0, first_stable_at: None });
+        }
+        if let Some(v) = self.visit.as_mut() {
+            if r.stable && r.weight > zero.max(VISIT_MIN_KG) {
+                v.peak = v.peak.max(r.weight);
+                if v.first_stable_at.is_none() {
+                    v.first_stable_at = Some(r.at);
+                    return Some(Event::Settled { at: r.at });
+                }
+            }
+        }
+        None
     }
 
     /// Called on a timer; flips to "no signal" when readings stop.
@@ -556,20 +588,65 @@ mod tests {
         assert_eq!(flags, vec![false, false, false, true, false]);
     }
 
+    fn visits(s: &mut IndicatorSession, w: &[&str]) -> Vec<(f64, u64)> {
+        let mut out = Vec::new();
+        for (i, w) in w.iter().enumerate() {
+            for e in s.feed(format!("\x02{w}\r").as_bytes(), i as u64) {
+                if let Event::Engage { weight, at } = e {
+                    out.push((weight, at));
+                }
+            }
+        }
+        out
+    }
+
     #[test]
-    fn bridge_engaged_once_per_vehicle_on_a_stable_weight() {
-        // stableCount 3: the third same reading in a row is stable
+    fn a_visit_counts_only_with_an_empty_bridge_before_and_after() {
+        // stableCount 3: the third same reading in a row is stable; empty bridge = 0 kg
         let mut s = IndicatorSession::new(prof("qt-default"));
         let w = [
-            "000100", "000100", "000100", // empty-ish, under 200: nothing
-            "004000", "012000", "012000", "012000", // drives on, settles: one event at 12000
-            "012000", "012000", "006000", "000300", // still on, then leaving: nothing more
-            "000030", "000030", "000030", // empty again (under 50): re-armed
-            "000250", "000250", "000250", // a light vehicle above 200 kg
+            "012000", "012000", "012000", // already on the bridge at start: never empty before, not counted
+            "000000", // empty
+            "004000", "012000", "012000", "012000", // a vehicle drives on and settles (first stable at 7)
+            "012500", "012500", "012500", // settles higher: the highest stable weight is kept
+            "006000", // leaving
+            "000000", // empty again: reported now, timed at its first stable weight
+            "000250", "000250", "000250", "000000", // a light vehicle: reported, the server applies the gate
+            "000010", "000010", "000010", "000000", // noise under 20 kg: nothing
+            "008000", "008000", "008000", "003000", "003000", "003000", // the bridge doesn't empty between these
         ];
-        let data: String = w.iter().map(|w| format!("\x02{w}\r")).collect();
-        let engaged: Vec<f64> = s.feed(data.as_bytes(), 0).into_iter().filter_map(|e| if let Event::Engage { weight, .. } = e { Some(weight) } else { None }).collect();
-        assert_eq!(engaged, vec![12000.0, 250.0]);
+        assert_eq!(visits(&mut s, &w), vec![(12500.0, 7), (250.0, 15)]);
+        // the indicator can't tell a second vehicle from the first moving, so it is one visit once empty
+        assert_eq!(visits(&mut s, &["000000"]), vec![(8000.0, 23)]);
+    }
+
+    #[test]
+    fn settled_once_per_visit_for_the_photo() {
+        let mut s = IndicatorSession::new(prof("qt-default"));
+        let mut settled = Vec::new();
+        for (i, w) in ["000000", "009000", "009000", "009000", "009500", "009500", "009500", "000000"].iter().enumerate() {
+            for e in s.feed(format!("\x02{w}\r").as_bytes(), i as u64) {
+                if let Event::Settled { at } = e {
+                    settled.push(at);
+                }
+            }
+        }
+        assert_eq!(settled, vec![3]);
+    }
+
+    #[test]
+    fn the_empty_band_counts_as_zero() {
+        let mut p = prof("qt-default");
+        p.zero_band_kg = Some(40.0);
+        let mut s = IndicatorSession::new(p);
+        let w = ["000030", "009000", "009000", "009000", "000020"];
+        assert_eq!(visits(&mut s, &w), vec![(9000.0, 3)]);
+    }
+
+    #[test]
+    fn a_vehicle_that_never_stands_still_is_not_a_visit() {
+        let mut s = IndicatorSession::new(prof("qt-default"));
+        assert_eq!(visits(&mut s, &["000000", "003000", "007000", "011000", "000000"]), vec![]);
     }
 
     #[test]

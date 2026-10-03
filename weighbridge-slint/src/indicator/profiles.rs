@@ -229,7 +229,7 @@ fn common_defaults() -> Value {
         "stableCount": 3,         // readings in a row within tolerance count as stable
         "stableToleranceKg": 0,
         "zeroBandKg": 0,          // |weight| at or below this counts as an empty bridge
-        "engageThresholdKg": 200, // a vehicle on the bridge: first stable weight above this is reported to the server
+        "engageThresholdKg": 200, // no longer used: the gate weight for Weight-Count is set on the server
         "noSignalMs": 3000,       // no valid reading for this long → "No signal"
     })
 }
@@ -450,7 +450,6 @@ impl Profile {
         match self.no_signal_ms { Some(n) if n > 0.0 => n as u64, _ => 3000 }
     }
     pub fn zero_band(&self) -> f64 { self.zero_band_kg.unwrap_or(0.0) }
-    pub fn engage_threshold(&self) -> f64 { self.engage_threshold_kg.unwrap_or(0.0) }
     pub fn implied(&self) -> u32 { self.implied_decimals.unwrap_or(0.0).max(0.0) as u32 }
     pub fn is_tcp(&self) -> bool { self.transport.kind == "tcp" }
 }

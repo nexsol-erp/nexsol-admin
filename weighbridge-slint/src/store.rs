@@ -335,6 +335,17 @@ impl Store {
                 s.db.execute_batch(ddl)?;
             }
         }
+        // camera photo of a bridge event (same photo_synced values)
+        let e = s.columns("wb_engage")?;
+        for (col, ddl) in [
+            ("photo_path", "ALTER TABLE wb_engage ADD COLUMN photo_path TEXT"),
+            ("photo_synced", "ALTER TABLE wb_engage ADD COLUMN photo_synced INTEGER DEFAULT 0"),
+            ("photo_error", "ALTER TABLE wb_engage ADD COLUMN photo_error TEXT"),
+        ] {
+            if !e.iter().any(|c| c == col) {
+                s.db.execute_batch(ddl)?;
+            }
+        }
         Ok(s)
     }
 
@@ -785,11 +796,56 @@ impl Store {
     }
 
     // ── engage events ────────────────────────────────────────────────────────
+    #[cfg(test)]
     pub fn add_engage(&self, weight: f64, branch_code: &str, at: Option<NaiveDateTime>) -> Res<()> {
+        self.add_engage_with_photo(weight, branch_code, at, None)
+    }
+
+    /// photo: (file, upload); upload false keeps it on this PC only (photo_synced 2)
+    pub fn add_engage_with_photo(&self, weight: f64, branch_code: &str, at: Option<NaiveDateTime>, photo: Option<(&str, bool)>) -> Res<()> {
         self.db.execute(
-            "INSERT INTO wb_engage (id, date_time, weight, branch_code, synced) VALUES (?, ?, ?, ?, 0)",
-            params![uuid(), local_stamp(at.unwrap_or_else(|| Local::now().naive_local())), weight.round() as i64, branch_code],
+            "INSERT INTO wb_engage (id, date_time, weight, branch_code, synced, photo_path, photo_synced) VALUES (?, ?, ?, ?, 0, ?, ?)",
+            params![
+                uuid(),
+                local_stamp(at.unwrap_or_else(|| Local::now().naive_local())),
+                weight.round() as i64,
+                branch_code,
+                photo.map(|p| p.0),
+                if photo.is_some_and(|p| p.1) { 0 } else { 2 }
+            ],
         )?;
+        Ok(())
+    }
+
+    /// Bridge-event photos to upload: their event is on the server already.
+    pub fn pending_engage_photos(&self, limit: i64) -> Vec<(Engage, String)> {
+        self.db
+            .prepare(
+                "SELECT id, date_time, weight, branch_code, photo_path FROM wb_engage
+                 WHERE photo_path IS NOT NULL AND photo_synced = 0 AND synced = 1 AND photo_error IS NULL ORDER BY date_time LIMIT ?",
+            )
+            .and_then(|mut st| {
+                st.query_map([limit], |r| {
+                    Ok((
+                        Engage {
+                            id: r.get(0)?,
+                            date_time: r.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                            weight: r.get::<_, Option<i64>>(2)?.unwrap_or(0),
+                            branch_code: r.get::<_, Option<String>>(3)?.unwrap_or_default(),
+                        },
+                        r.get::<_, String>(4)?,
+                    ))
+                })
+                .map(|it| it.filter_map(Result::ok).collect())
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn mark_engage_photo(&self, id: &str, error: Option<&str>) -> Res<()> {
+        match error {
+            Some(e) => self.db.execute("UPDATE wb_engage SET photo_error = ? WHERE id = ?", params![clip(e, 300), id])?,
+            None => self.db.execute("UPDATE wb_engage SET photo_synced = 1, photo_error = NULL WHERE id = ?", [id])?,
+        };
         Ok(())
     }
 
@@ -835,7 +891,8 @@ impl Store {
             weights: q("SELECT COUNT(*) FROM wb_weights WHERE synced = 0"),
             tares: q("SELECT COUNT(*) FROM wb_vehicles WHERE synced = 0"),
             engage: q("SELECT COUNT(*) FROM wb_engage WHERE synced = 0"),
-            photos: q("SELECT COUNT(*) FROM wb_weights WHERE photo_path IS NOT NULL AND photo_synced = 0 AND photo_error IS NULL"),
+            photos: q("SELECT COUNT(*) FROM wb_weights WHERE photo_path IS NOT NULL AND photo_synced = 0 AND photo_error IS NULL")
+                + q("SELECT COUNT(*) FROM wb_engage WHERE photo_path IS NOT NULL AND photo_synced = 0 AND photo_error IS NULL"),
         }
     }
 

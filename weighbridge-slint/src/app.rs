@@ -117,6 +117,8 @@ pub struct Core {
     ind: Mutex<Ind>,
     webcam: Mutex<Option<Webcam>>,
     preview: Mutex<bool>,
+    /// the photo file of the bridge visit in progress (see begin_visit_photo)
+    visit_photo: Mutex<Option<PathBuf>>,
     emit: Emit,
     t0: Instant,
     me: Weak<Core>,
@@ -226,6 +228,7 @@ impl Core {
                 ind: Mutex::new(Ind { state: "closed".into(), ..Default::default() }),
                 webcam: Mutex::new(None),
                 preview: Mutex::new(false),
+                visit_photo: Mutex::new(None),
                 emit,
                 t0: Instant::now(),
                 me: me.clone(),
@@ -325,9 +328,13 @@ impl Core {
         if next.source == "url" && !(next.url.to_lowercase().starts_with("http://") || next.url.to_lowercase().starts_with("https://")) {
             return Err(AppError::validation("Enter the camera's snapshot address, starting with http://"));
         }
+        let before = self.camera_settings();
         self.db().set_setting("camera", &serde_json::to_value(&next)?)?;
         self.settings_saved();
-        self.start_camera();
+        // the USB camera is only reopened when the camera itself changed, not for the switches
+        if before.source != next.source || before.device_label != next.device_label {
+            self.start_camera();
+        }
         Ok(self.camera_settings())
     }
 
@@ -454,7 +461,7 @@ impl Core {
 
     fn on_transport(&self, ev: TransportEvent) {
         let mut out = Vec::new();
-        let mut engaged = Vec::new();
+        let mut visits = Vec::new(); // Settled / Engage, in order
         match ev {
             TransportEvent::Data(d) => {
                 let now = self.now_ms();
@@ -478,7 +485,8 @@ impl Core {
                             }
                         }
                         Event::Signal(s) => out.push(UiEvent::Signal(s)),
-                        Event::Engage { weight, .. } => engaged.push(weight),
+                        Event::Engage { weight, at } => visits.push((Some(weight), now.saturating_sub(at))),
+                        Event::Settled { .. } => visits.push((None, 0)),
                     }
                 }
             }
@@ -494,10 +502,18 @@ impl Core {
                 out.push(UiEvent::IndicatorStatus { state, message });
             }
         }
-        if !engaged.is_empty() {
+        if !visits.is_empty() {
             let branch = self.auth().branch_code;
-            for w in engaged {
-                if let Err(e) = self.db().add_engage(w, &branch, None) {
+            let upload = self.camera_settings().upload;
+            for (weight, ago) in visits {
+                let Some(w) = weight else {
+                    self.begin_visit_photo();
+                    continue;
+                };
+                // reported as the vehicle leaves, timed when it first stood still on the bridge
+                let at = chrono::Local::now().naive_local() - chrono::Duration::milliseconds(ago as i64);
+                let photo = self.visit_photo.lock().unwrap().take().map(|p| p.to_string_lossy().to_string());
+                if let Err(e) = self.db().add_engage_with_photo(w, &branch, Some(at), photo.as_deref().map(|p| (p, upload))) {
                     crate::error!("engage save {e}");
                 }
                 crate::info!("bridge engaged {w}");
@@ -595,7 +611,9 @@ impl Core {
     /// Opens the USB camera (kept open while the app runs, so a photo is there at every save) or
     /// closes it when Settings say another source.
     pub fn start_camera(&self) {
-        if let Some(w) = self.webcam.lock().unwrap().take() {
+        // taken out first, so the lock isn't held while the old camera stops
+        let old = self.webcam.lock().unwrap().take();
+        if let Some(w) = old {
             w.close();
         }
         let cam = self.camera_settings();
@@ -614,6 +632,33 @@ impl Core {
             move |m| e2(UiEvent::CameraError(m)),
         );
         *self.webcam.lock().unwrap() = Some(w);
+    }
+
+    /// The photo of a bridge visit, taken when the vehicle first stands still and uploaded with
+    /// its bridge event (Weight-Count), so a visit without a voucher can be checked.
+    fn begin_visit_photo(&self) {
+        let cam = self.camera_settings();
+        if cam.source == "none" {
+            *self.visit_photo.lock().unwrap() = None;
+            return;
+        }
+        let now = chrono::Local::now();
+        let id: String = uuid::Uuid::new_v4().simple().to_string().chars().take(8).collect();
+        let file = paths::photos_dir().join("bridge").join(now.format("%Y-%m").to_string()).join(format!("{}_{id}.jpg", now.format("%Y%m%d_%H%M%S")));
+        *self.visit_photo.lock().unwrap() = Some(file.clone());
+        let Some(me) = self.me.upgrade() else { return };
+        thread::spawn(move || {
+            let Some(rx) = me.start_photo() else { return };
+            let saved = rx
+                .recv_timeout(Duration::from_secs(8))
+                .unwrap_or_else(|_| Err("the camera did not answer in time".into()))
+                .and_then(|jpeg| {
+                    std::fs::create_dir_all(file.parent().unwrap_or(&file)).and_then(|_| std::fs::write(&file, jpeg)).map_err(|e| e.to_string())
+                });
+            if let Err(e) = saved {
+                crate::warn!("bridge photo {e}");
+            }
+        });
     }
 
     /// The live view is only sent while a screen shows it.
@@ -1129,7 +1174,8 @@ impl Core {
     /// At close: stop the indicator and camera, and install a downloaded update.
     pub fn shutdown(&self) {
         self.stop_indicator();
-        if let Some(w) = self.webcam.lock().unwrap().take() {
+        let cam = self.webcam.lock().unwrap().take();
+        if let Some(w) = cam {
             w.close();
         }
         self.updater.run_installer(false);

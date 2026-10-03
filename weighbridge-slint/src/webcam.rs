@@ -31,10 +31,19 @@ impl Webcam {
         crate::camera::encode(frame, 960).ok()
     }
 
+    /// Stops the camera thread, waiting at most 3 s: a camera driver can block inside a frame
+    /// read, and the app must not hang on it (the thread then ends by itself when the read returns).
     pub fn close(mut self) {
         self.stop.store(true, Ordering::SeqCst);
         if let Some(h) = self.handle.take() {
-            let _ = h.join();
+            let (tx, rx) = std::sync::mpsc::channel();
+            let _ = thread::Builder::new().name("webcam-close".into()).spawn(move || {
+                let _ = h.join();
+                let _ = tx.send(());
+            });
+            if rx.recv_timeout(std::time::Duration::from_secs(3)).is_err() {
+                crate::warn!("camera did not stop in 3 s; left to stop by itself");
+            }
         }
     }
 }
